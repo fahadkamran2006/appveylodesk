@@ -7,20 +7,18 @@ const Footer = () => {
   const links = {
     product: [
       { name: "Features", href: "#features" },
-      { name: "Pricing", href: "#pricing" },
+      { name: "Pricing", href: "/pricing", isRoute: true },
       { name: "Testimonials", href: "#testimonials" },
-      { name: "Changelog", href: "#" },
     ],
     company: [
       { name: "About", href: "#" },
       { name: "Blog", href: "#" },
-      { name: "Careers", href: "#" },
       { name: "Contact", href: "#" },
     ],
     legal: [
-      { name: "Privacy", href: "#" },
-      { name: "Terms", href: "#" },
-      { name: "Security", href: "#" },
+      { name: "Privacy", href: "/privacy", isRoute: true },
+      { name: "Terms", href: "/terms", isRoute: true },
+      { name: "Refund Policy", href: "/refund", isRoute: true },
     ],
   };
 
@@ -69,12 +67,15 @@ const Footer = () => {
             <ul className="space-y-3">
               {links.product.map((link) => (
                 <li key={link.name}>
-                  <a
-                    href={link.href}
-                    className="text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {link.name}
-                  </a>
+                  {link.isRoute ? (
+                    <Link to={link.href} className="text-muted-foreground hover:text-foreground transition-colors">
+                      {link.name}
+                    </Link>
+                  ) : (
+                    <a href={link.href} className="text-muted-foreground hover:text-foreground transition-colors">
+                      {link.name}
+                    </a>
+                  )}
                 </li>
               ))}
             </ul>
@@ -85,10 +86,7 @@ const Footer = () => {
             <ul className="space-y-3">
               {links.company.map((link) => (
                 <li key={link.name}>
-                  <a
-                    href={link.href}
-                    className="text-muted-foreground hover:text-foreground transition-colors"
-                  >
+                  <a href={link.href} className="text-muted-foreground hover:text-foreground transition-colors">
                     {link.name}
                   </a>
                 </li>
@@ -101,12 +99,9 @@ const Footer = () => {
             <ul className="space-y-3">
               {links.legal.map((link) => (
                 <li key={link.name}>
-                  <a
-                    href={link.href}
-                    className="text-muted-foreground hover:text-foreground transition-colors"
-                  >
+                  <Link to={link.href} className="text-muted-foreground hover:text-foreground transition-colors">
                     {link.name}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>

@@ -43,12 +43,12 @@ const Navbar = () => {
             >
               Features
             </a>
-            <a
-              href="#pricing"
+            <Link
+              to="/pricing"
               className="text-muted-foreground hover:text-foreground transition-colors"
             >
               Pricing
-            </a>
+            </Link>
             <a
               href="#testimonials"
               className="text-muted-foreground hover:text-foreground transition-colors"
@@ -87,13 +87,13 @@ const Navbar = () => {
               >
                 Features
               </a>
-              <a
-                href="#pricing"
+              <Link
+                to="/pricing"
                 className="text-muted-foreground hover:text-foreground transition-colors py-2"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Pricing
-              </a>
+              </Link>
               <a
                 href="#testimonials"
                 className="text-muted-foreground hover:text-foreground transition-colors py-2"
