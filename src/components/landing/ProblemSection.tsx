@@ -20,7 +20,7 @@ const ProblemSection = () => {
   ];
 
   return (
-    <section className="relative py-24 overflow-hidden">
+    <section className="relative py-32 overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0 bg-surface-dark" />
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
