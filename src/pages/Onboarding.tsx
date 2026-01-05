@@ -4,21 +4,32 @@ import { Helmet } from 'react-helmet-async';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
-import { Command, Loader2, Building2, Upload, Users } from 'lucide-react';
+import { Command, Loader2, Building2, Users, UserPlus, Plus, X, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 
-type Step = 1 | 2 | 3;
+type Step = 1 | 2 | 3 | 4;
+type InviteRole = 'editor' | 'client';
+
+interface TeamInvite {
+  id: string;
+  email: string;
+  role: InviteRole;
+}
 
 const Onboarding = () => {
   const [step, setStep] = useState<Step>(1);
   const [agencyName, setAgencyName] = useState('');
   const [teamSize, setTeamSize] = useState('');
+  const [teamInvites, setTeamInvites] = useState<TeamInvite[]>([
+    { id: crypto.randomUUID(), email: '', role: 'editor' }
+  ]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSendingInvites, setIsSendingInvites] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if user is authenticated
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) {
         navigate('/auth/login');
@@ -26,7 +37,23 @@ const Onboarding = () => {
     });
   }, [navigate]);
 
-  const handleComplete = async () => {
+  const addInvite = () => {
+    setTeamInvites([...teamInvites, { id: crypto.randomUUID(), email: '', role: 'editor' }]);
+  };
+
+  const removeInvite = (id: string) => {
+    if (teamInvites.length > 1) {
+      setTeamInvites(teamInvites.filter(invite => invite.id !== id));
+    }
+  };
+
+  const updateInvite = (id: string, field: 'email' | 'role', value: string) => {
+    setTeamInvites(teamInvites.map(invite => 
+      invite.id === id ? { ...invite, [field]: value } : invite
+    ));
+  };
+
+  const handleCreateAgency = async () => {
     if (!agencyName.trim()) {
       toast.error('Please enter your agency name');
       return;
@@ -58,19 +85,18 @@ const Onboarding = () => {
 
       if (roleError) throw roleError;
 
-      // Update profile with agency_id and mark onboarding complete
+      // Update profile with agency_id
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
           agency_id: agency.id,
-          onboarding_completed: true,
         })
         .eq('id', user.id);
 
       if (profileError) throw profileError;
 
-      toast.success('Agency created! Welcome to Veylodesk.');
-      navigate('/admin/dashboard');
+      // Move to invite step
+      setStep(3);
     } catch (error: any) {
       toast.error(error.message || 'Failed to create agency');
     } finally {
@@ -78,10 +104,114 @@ const Onboarding = () => {
     }
   };
 
+  const handleSendInvites = async () => {
+    const validInvites = teamInvites.filter(invite => invite.email.trim() !== '');
+    
+    if (validInvites.length === 0) {
+      toast.error('Please enter at least one email address');
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const invalidEmails = validInvites.filter(invite => !emailRegex.test(invite.email));
+    if (invalidEmails.length > 0) {
+      toast.error('Please enter valid email addresses');
+      return;
+    }
+
+    setIsSendingInvites(true);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      // Get user's agency_id
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('agency_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.agency_id) throw new Error('Agency not found');
+
+      // Create placeholder profiles and roles for invited users
+      for (const invite of validInvites) {
+        // Generate a placeholder UUID for the invited user
+        const placeholderId = crypto.randomUUID();
+
+        // Create profile for invited user
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: placeholderId,
+            email: invite.email.toLowerCase().trim(),
+            agency_id: profile.agency_id,
+            onboarding_completed: false,
+          });
+
+        if (profileError) {
+          // If email already exists, skip
+          if (profileError.code === '23505') {
+            console.log(`User ${invite.email} already exists, skipping...`);
+            continue;
+          }
+          throw profileError;
+        }
+
+        // Create user role
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .insert({
+            user_id: placeholderId,
+            agency_id: profile.agency_id,
+            role: invite.role,
+          });
+
+        if (roleError) throw roleError;
+      }
+
+      toast.success(`Invited ${validInvites.length} team member${validInvites.length > 1 ? 's' : ''}!`);
+      setStep(4);
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to send invites');
+    } finally {
+      setIsSendingInvites(false);
+    }
+  };
+
+  const handleComplete = async () => {
+    setIsLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      // Mark onboarding complete
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ onboarding_completed: true })
+        .eq('id', user.id);
+
+      if (profileError) throw profileError;
+
+      toast.success('Welcome to Veylodesk!');
+      navigate('/admin/dashboard');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to complete onboarding');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSkipInvites = async () => {
+    setStep(4);
+  };
+
   const steps = [
     { number: 1, title: 'Agency Details', icon: Building2 },
     { number: 2, title: 'Team Size', icon: Users },
-    { number: 3, title: 'Get Started', icon: Command },
+    { number: 3, title: 'Invite Team', icon: UserPlus },
+    { number: 4, title: 'Get Started', icon: Command },
   ];
 
   return (
@@ -94,7 +224,7 @@ const Onboarding = () => {
       <div className="min-h-screen bg-background flex items-center justify-center p-6">
         <div className="w-full max-w-lg">
           {/* Progress Steps */}
-          <div className="flex items-center justify-center gap-4 mb-12">
+          <div className="flex items-center justify-center gap-2 mb-12">
             {steps.map((s, i) => (
               <div key={s.number} className="flex items-center">
                 <div
@@ -108,7 +238,7 @@ const Onboarding = () => {
                 </div>
                 {i < steps.length - 1 && (
                   <div
-                    className={`w-16 h-0.5 mx-2 transition-colors ${
+                    className={`w-12 h-0.5 mx-1 transition-colors ${
                       step > s.number ? 'bg-primary' : 'bg-muted'
                     }`}
                   />
@@ -118,6 +248,7 @@ const Onboarding = () => {
           </div>
 
           <div className="glass-card rounded-2xl p-8">
+            {/* Step 1: Agency Name */}
             {step === 1 && (
               <div className="space-y-6">
                 <div className="text-center mb-8">
@@ -149,6 +280,7 @@ const Onboarding = () => {
               </div>
             )}
 
+            {/* Step 2: Team Size */}
             {step === 2 && (
               <div className="space-y-6">
                 <div className="text-center mb-8">
@@ -183,16 +315,111 @@ const Onboarding = () => {
                     variant="hero"
                     size="lg"
                     className="flex-1"
-                    onClick={() => setStep(3)}
-                    disabled={!teamSize}
+                    onClick={handleCreateAgency}
+                    disabled={!teamSize || isLoading}
                   >
-                    Continue
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      'Continue'
+                    )}
                   </Button>
                 </div>
               </div>
             )}
 
+            {/* Step 3: Invite Team */}
             {step === 3 && (
+              <div className="space-y-6">
+                <div className="text-center mb-6">
+                  <h1 className="text-2xl font-bold text-foreground mb-2">Invite your team</h1>
+                  <p className="text-muted-foreground">Add editors and clients to your agency.</p>
+                </div>
+
+                <div className="space-y-3 max-h-64 overflow-y-auto">
+                  {teamInvites.map((invite, index) => (
+                    <div key={invite.id} className="flex items-center gap-2">
+                      <div className="flex-1">
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                          <Input
+                            type="email"
+                            value={invite.email}
+                            onChange={(e) => updateInvite(invite.id, 'email', e.target.value)}
+                            placeholder="colleague@email.com"
+                            className="pl-10"
+                          />
+                        </div>
+                      </div>
+                      <Select
+                        value={invite.role}
+                        onValueChange={(value) => updateInvite(invite.id, 'role', value as InviteRole)}
+                      >
+                        <SelectTrigger className="w-28">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="editor">Editor</SelectItem>
+                          <SelectItem value="client">Client</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeInvite(invite.id)}
+                        disabled={teamInvites.length === 1}
+                        className="shrink-0"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={addInvite}
+                  className="w-full"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Another
+                </Button>
+
+                <div className="flex gap-3 pt-2">
+                  <Button 
+                    variant="ghost" 
+                    size="lg" 
+                    className="flex-1"
+                    onClick={handleSkipInvites}
+                  >
+                    Skip for Now
+                  </Button>
+                  <Button
+                    variant="hero"
+                    size="lg"
+                    className="flex-1"
+                    onClick={handleSendInvites}
+                    disabled={isSendingInvites}
+                  >
+                    {isSendingInvites ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      'Send Invites'
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 4: Get Started */}
+            {step === 4 && (
               <div className="space-y-6">
                 <div className="text-center mb-8">
                   <div className="w-16 h-16 rounded-2xl bg-gradient-primary flex items-center justify-center mx-auto mb-6 shadow-glow">
@@ -206,31 +433,26 @@ const Onboarding = () => {
 
                 <div className="p-4 rounded-xl bg-muted/30 border border-border/50">
                   <p className="text-sm text-muted-foreground">
-                    <strong className="text-foreground">Pro tip:</strong> Start by inviting your first client or editor from the dashboard.
+                    <strong className="text-foreground">Pro tip:</strong> Start by creating your first project from the dashboard.
                   </p>
                 </div>
 
-                <div className="flex gap-3">
-                  <Button variant="outline" size="lg" className="flex-1" onClick={() => setStep(2)}>
-                    Back
-                  </Button>
-                  <Button
-                    variant="hero"
-                    size="lg"
-                    className="flex-1"
-                    onClick={handleComplete}
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Setting up...
-                      </>
-                    ) : (
-                      'Launch Dashboard'
-                    )}
-                  </Button>
-                </div>
+                <Button
+                  variant="hero"
+                  size="lg"
+                  className="w-full"
+                  onClick={handleComplete}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Setting up...
+                    </>
+                  ) : (
+                    'Launch Dashboard'
+                  )}
+                </Button>
               </div>
             )}
           </div>
