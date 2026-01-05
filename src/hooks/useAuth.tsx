@@ -41,10 +41,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         navigate('/admin/dashboard');
         break;
       case 'client':
-        navigate('/client/portal');
+        navigate('/client/dashboard');
         break;
       case 'editor':
-        navigate('/editor/workspace');
+        navigate('/editor/dashboard');
         break;
       default:
         navigate('/onboarding');

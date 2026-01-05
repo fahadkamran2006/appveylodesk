@@ -18,8 +18,8 @@ import AdminTeam from "./pages/admin/Team";
 import AdminInvoices from "./pages/admin/Invoices";
 import AdminMessages from "./pages/admin/Messages";
 import AdminSettings from "./pages/admin/Settings";
-import ClientPortal from "./pages/client/Portal";
-import EditorWorkspace from "./pages/editor/Workspace";
+import ClientDashboard from "./pages/client/Dashboard";
+import EditorDashboard from "./pages/editor/Dashboard";
 import Pricing from "./pages/Pricing";
 import Privacy from "./pages/legal/Privacy";
 import Terms from "./pages/legal/Terms";
@@ -48,8 +48,8 @@ const App = () => (
                 <Route path="/admin/invoices" element={<AdminInvoices />} />
                 <Route path="/admin/messages" element={<AdminMessages />} />
                 <Route path="/admin/settings" element={<AdminSettings />} />
-                <Route path="/client/portal" element={<ClientPortal />} />
-                <Route path="/editor/workspace" element={<EditorWorkspace />} />
+                <Route path="/client/dashboard" element={<ClientDashboard />} />
+                <Route path="/editor/dashboard" element={<EditorDashboard />} />
                 <Route path="/pricing" element={<Pricing />} />
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/terms" element={<Terms />} />

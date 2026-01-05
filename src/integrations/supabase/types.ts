@@ -339,6 +339,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_project_editor: {
+        Args: { _project_id: string; _user_id: string }
+        Returns: boolean
+      }
+      project_belongs_to_agency: {
+        Args: { _agency_id: string; _project_id: string }
+        Returns: boolean
+      }
       user_belongs_to_agency: {
         Args: { _agency_id: string; _user_id: string }
         Returns: boolean
