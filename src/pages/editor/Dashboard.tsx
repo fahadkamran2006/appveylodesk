@@ -1,0 +1,289 @@
+import { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { EditorSidebar } from '@/components/editor/EditorSidebar';
+import { Button } from '@/components/ui/button';
+import { Clock, CheckCircle2, FolderKanban, Upload } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
+import { cn } from '@/lib/utils';
+import type { Database } from '@/integrations/supabase/types';
+
+type ProjectStatus = Database['public']['Enums']['project_status'];
+
+interface Project {
+  id: string;
+  title: string;
+  status: ProjectStatus;
+  due_date: string | null;
+  description: string | null;
+}
+
+const COLUMNS: { id: ProjectStatus; title: string }[] = [
+  { id: 'backlog', title: 'Backlog' },
+  { id: 'in_progress', title: 'In Progress' },
+  { id: 'review', title: 'Review' },
+  { id: 'done', title: 'Delivered' },
+];
+
+const EditorDashboard = () => {
+  const { user, userRole, loading } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loadingData, setLoadingData] = useState(true);
+
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate('/auth/login');
+    }
+    if (!loading && userRole && userRole !== 'editor') {
+      navigate(userRole === 'admin' ? '/admin/dashboard' : '/client/dashboard');
+    }
+  }, [user, userRole, loading, navigate]);
+
+  const fetchProjects = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      // Fetch projects assigned to this editor via project_editors table
+      const { data, error } = await supabase
+        .from('project_editors')
+        .select(`
+          project:projects(
+            id,
+            title,
+            status,
+            due_date,
+            description
+          )
+        `)
+        .eq('editor_id', user.id);
+
+      if (error) throw error;
+
+      // Flatten the data
+      const projectsData = data
+        ?.map(pe => pe.project)
+        .filter((p): p is Project => p !== null) || [];
+      
+      setProjects(projectsData);
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+      toast({
+        title: "Error loading projects",
+        description: "Please try refreshing the page.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingData(false);
+    }
+  }, [user, toast]);
+
+  useEffect(() => {
+    if (user && userRole === 'editor') {
+      fetchProjects();
+    }
+  }, [user, userRole, fetchProjects]);
+
+  const handleDragEnd = async (result: DropResult) => {
+    const { destination, source, draggableId } = result;
+
+    if (!destination || destination.droppableId === source.droppableId) {
+      return;
+    }
+
+    const newStatus = destination.droppableId as ProjectStatus;
+    
+    // Optimistic update
+    setProjects(prev => 
+      prev.map(p => p.id === draggableId ? { ...p, status: newStatus } : p)
+    );
+
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .update({ status: newStatus })
+        .eq('id', draggableId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Status updated",
+        description: `Project moved to ${COLUMNS.find(c => c.id === newStatus)?.title}`,
+      });
+    } catch (error) {
+      console.error('Error updating status:', error);
+      // Revert on error
+      fetchProjects();
+      toast({
+        title: "Update failed",
+        description: "Could not update project status.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const getProjectsByStatus = (status: ProjectStatus) => 
+    projects.filter(p => p.status === status);
+
+  const isOverdue = (dueDate: string | null) => {
+    if (!dueDate) return false;
+    return new Date(dueDate) < new Date();
+  };
+
+  if (loading || loadingData) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <Helmet>
+        <title>Editor Dashboard | Veylodesk</title>
+        <meta name="description" content="Manage your assigned projects." />
+      </Helmet>
+
+      <div className="min-h-screen bg-background flex">
+        <EditorSidebar />
+
+        <main className="flex-1 p-8 overflow-x-auto">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">My Projects</h1>
+              <p className="text-muted-foreground">Manage your assigned projects and upload deliverables.</p>
+            </div>
+            <div className="glass-card rounded-xl px-6 py-4">
+              <p className="text-sm text-muted-foreground">Assigned to you</p>
+              <p className="text-2xl font-bold text-primary">{projects.length} projects</p>
+            </div>
+          </div>
+
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="glass-card rounded-xl p-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <FolderKanban className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">In Progress</p>
+                  <p className="text-2xl font-bold text-foreground">
+                    {projects.filter(p => p.status === 'in_progress').length}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="glass-card rounded-xl p-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-lg bg-warning/10 flex items-center justify-center">
+                  <Clock className="w-6 h-6 text-warning" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">In Review</p>
+                  <p className="text-2xl font-bold text-foreground">
+                    {projects.filter(p => p.status === 'review').length}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="glass-card rounded-xl p-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-lg bg-success/10 flex items-center justify-center">
+                  <CheckCircle2 className="w-6 h-6 text-success" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Delivered</p>
+                  <p className="text-2xl font-bold text-foreground">
+                    {projects.filter(p => p.status === 'done').length}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Kanban Board - No client contact info or invoice amounts shown */}
+          <DragDropContext onDragEnd={handleDragEnd}>
+            <div className="flex gap-6 min-w-max pb-4">
+              {COLUMNS.map((column) => {
+                const columnProjects = getProjectsByStatus(column.id);
+                return (
+                  <div key={column.id} className="w-72 flex-shrink-0">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-semibold text-foreground">{column.title}</h3>
+                      <span className="text-sm text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                        {columnProjects.length}
+                      </span>
+                    </div>
+                    <Droppable droppableId={column.id}>
+                      {(provided, snapshot) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.droppableProps}
+                          className={cn(
+                            "min-h-[400px] rounded-xl p-3 transition-colors",
+                            snapshot.isDraggingOver
+                              ? "bg-primary/10 border-2 border-dashed border-primary"
+                              : "bg-muted/30 border border-border/50"
+                          )}
+                        >
+                          {columnProjects.map((project, index) => (
+                            <Draggable key={project.id} draggableId={project.id} index={index}>
+                              {(provided, snapshot) => (
+                                <div
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  {...provided.dragHandleProps}
+                                  className={cn(
+                                    "bg-background rounded-lg p-4 mb-3 border border-border/50 cursor-grab active:cursor-grabbing transition-shadow",
+                                    snapshot.isDragging && "shadow-lg ring-2 ring-primary"
+                                  )}
+                                >
+                                  <h4 className="font-medium text-foreground mb-2">{project.title}</h4>
+                                  {project.description && (
+                                    <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+                                      {project.description}
+                                    </p>
+                                  )}
+                                  {project.due_date && (
+                                    <div className={cn(
+                                      "flex items-center gap-1 text-xs",
+                                      isOverdue(project.due_date) ? "text-destructive" : "text-muted-foreground"
+                                    )}>
+                                      <Clock className="w-3 h-3" />
+                                      {isOverdue(project.due_date) ? 'Overdue: ' : 'Due '}
+                                      {new Date(project.due_date).toLocaleDateString()}
+                                    </div>
+                                  )}
+                                  {column.id === 'in_progress' && (
+                                    <Button variant="outline" size="sm" className="w-full mt-3">
+                                      <Upload className="w-4 h-4 mr-2" />
+                                      Upload Deliverable
+                                    </Button>
+                                  )}
+                                </div>
+                              )}
+                            </Draggable>
+                          ))}
+                          {provided.placeholder}
+                        </div>
+                      )}
+                    </Droppable>
+                  </div>
+                );
+              })}
+            </div>
+          </DragDropContext>
+        </main>
+      </div>
+    </>
+  );
+};
+
+export default EditorDashboard;
