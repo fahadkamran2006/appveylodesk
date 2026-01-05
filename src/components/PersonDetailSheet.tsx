@@ -1,0 +1,168 @@
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Mail, Calendar, FolderKanban, DollarSign, Clock } from 'lucide-react';
+
+interface PersonDetailSheetProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  person: {
+    id: string;
+    name: string;
+    email: string;
+    avatarUrl?: string | null;
+    role?: 'client' | 'editor';
+    createdAt?: string;
+  } | null;
+  variant?: 'client' | 'team';
+}
+
+export function PersonDetailSheet({
+  open,
+  onOpenChange,
+  person,
+  variant = 'client',
+}: PersonDetailSheetProps) {
+  if (!person) return null;
+
+  const initials = person.name
+    ? person.name
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2)
+    : person.email.slice(0, 2).toUpperCase();
+
+  // Mock data for demonstration
+  const mockProjects = [
+    { name: 'Brand Redesign', status: 'in_progress' },
+    { name: 'Marketing Campaign', status: 'completed' },
+    { name: 'Website Update', status: 'backlog' },
+  ];
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="glass-card border-l-border/50 w-full sm:max-w-lg overflow-y-auto">
+        <SheetHeader className="text-left">
+          <div className="flex items-center gap-4 mb-2">
+            <Avatar className="w-16 h-16 border-2 border-border/50">
+              <AvatarImage src={person.avatarUrl || undefined} alt={person.name} />
+              <AvatarFallback className="bg-primary/20 text-primary text-xl font-medium">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <SheetTitle className="text-xl text-foreground">
+                {person.name || 'Unnamed User'}
+              </SheetTitle>
+              <SheetDescription className="flex items-center gap-2">
+                {person.role && (
+                  <Badge variant="secondary" className="capitalize">
+                    {person.role}
+                  </Badge>
+                )}
+              </SheetDescription>
+            </div>
+          </div>
+        </SheetHeader>
+
+        <div className="mt-6 space-y-6">
+          {/* Contact Info */}
+          <div>
+            <h4 className="text-sm font-medium text-muted-foreground mb-3">
+              Contact Information
+            </h4>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 text-sm">
+                <Mail className="w-4 h-4 text-muted-foreground" />
+                <span className="text-foreground">{person.email}</span>
+              </div>
+              {person.createdAt && (
+                <div className="flex items-center gap-3 text-sm">
+                  <Calendar className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-foreground">
+                    Joined {new Date(person.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <Separator className="bg-border/50" />
+
+          {/* Stats Summary */}
+          <div>
+            <h4 className="text-sm font-medium text-muted-foreground mb-3">
+              {variant === 'client' ? 'Client Summary' : 'Performance Summary'}
+            </h4>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="glass-card-premium rounded-lg p-4">
+                <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                  <FolderKanban className="w-4 h-4" />
+                  <span className="text-xs">
+                    {variant === 'client' ? 'Total Projects' : 'Completed Tasks'}
+                  </span>
+                </div>
+                <p className="text-2xl font-bold text-foreground">12</p>
+              </div>
+              <div className="glass-card-premium rounded-lg p-4">
+                <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                  {variant === 'client' ? (
+                    <DollarSign className="w-4 h-4" />
+                  ) : (
+                    <Clock className="w-4 h-4" />
+                  )}
+                  <span className="text-xs">
+                    {variant === 'client' ? 'Total Spent' : 'Avg. Delivery'}
+                  </span>
+                </div>
+                <p className="text-2xl font-bold text-foreground">
+                  {variant === 'client' ? '$24,500' : '2.3 days'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <Separator className="bg-border/50" />
+
+          {/* Project History */}
+          <div>
+            <h4 className="text-sm font-medium text-muted-foreground mb-3">
+              {variant === 'client' ? 'Project History' : 'Assigned Projects'}
+            </h4>
+            <div className="space-y-2">
+              {mockProjects.map((project, index) => (
+                <div
+                  key={index}
+                  className="flex items-center justify-between p-3 rounded-lg bg-surface-elevated/50"
+                >
+                  <span className="text-sm text-foreground">{project.name}</span>
+                  <Badge
+                    variant="secondary"
+                    className={
+                      project.status === 'completed'
+                        ? 'bg-success/20 text-success'
+                        : project.status === 'in_progress'
+                        ? 'bg-primary/20 text-primary'
+                        : 'bg-muted text-muted-foreground'
+                    }
+                  >
+                    {project.status.replace('_', ' ')}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
