@@ -34,7 +34,7 @@ const adminNavItems: NavItem[] = [
 ];
 
 const clientNavItems: NavItem[] = [
-  { label: 'Portal', icon: Briefcase, href: '/client/portal' },
+  { label: 'Dashboard', icon: Briefcase, href: '/client/dashboard' },
   { label: 'Projects', icon: FolderKanban, href: '/client/projects' },
   { label: 'Invoices', icon: FileText, href: '/client/invoices' },
   { label: 'Messages', icon: MessageSquare, href: '/client/messages' },
@@ -42,7 +42,7 @@ const clientNavItems: NavItem[] = [
 ];
 
 const editorNavItems: NavItem[] = [
-  { label: 'Workspace', icon: LayoutDashboard, href: '/editor/workspace' },
+  { label: 'Dashboard', icon: LayoutDashboard, href: '/editor/dashboard' },
   { label: 'My Tasks', icon: FolderKanban, href: '/editor/tasks' },
   { label: 'Messages', icon: MessageSquare, href: '/editor/messages' },
   { label: 'Earnings', icon: Receipt, href: '/editor/earnings' },

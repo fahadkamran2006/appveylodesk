@@ -52,36 +52,64 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+    const resolveRoleAndMaybeAcceptInvite = async (userId: string) => {
+      // 1) Try normal role lookup
+      let role = await fetchUserRole(userId);
 
-        // Defer role fetching with setTimeout to prevent deadlock
-        if (session?.user) {
-          setTimeout(async () => {
-            const role = await fetchUserRole(session.user.id);
-            setUserRole(role);
-            setLoading(false);
-          }, 0);
-        } else {
-          setUserRole(null);
-          setLoading(false);
+      // 2) If no role yet, try to accept an invitation token (if present)
+      if (!role) {
+        const token = localStorage.getItem('pending_invite_token');
+        if (token) {
+          const { error: acceptError } = await supabase.rpc('accept_agency_invitation', {
+            _token: token,
+          });
+
+          if (!acceptError) {
+            localStorage.removeItem('pending_invite_token');
+            role = await fetchUserRole(userId);
+          }
         }
       }
-    );
+
+      setUserRole(role);
+
+      // Only auto-redirect when the user is currently in the auth/onboarding flow
+      const path = window.location.pathname;
+      const shouldRedirect =
+        path === '/' || path === '/onboarding' || path.startsWith('/auth/');
+
+      if (role && shouldRedirect) {
+        redirectByRole(role);
+      }
+
+      setLoading(false);
+    };
+
+    // Set up auth state listener FIRST
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+
+      if (session?.user) {
+        // Defer role fetching with setTimeout to prevent deadlock
+        setTimeout(() => {
+          resolveRoleAndMaybeAcceptInvite(session.user.id);
+        }, 0);
+      } else {
+        setUserRole(null);
+        setLoading(false);
+      }
+    });
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      
+
       if (session?.user) {
-        fetchUserRole(session.user.id).then((role) => {
-          setUserRole(role);
-          setLoading(false);
-        });
+        resolveRoleAndMaybeAcceptInvite(session.user.id);
       } else {
         setLoading(false);
       }
