@@ -31,7 +31,7 @@ const AdminProjects = () => {
       navigate('/auth/login');
     }
     if (!loading && userRole && userRole !== 'admin') {
-      navigate(userRole === 'client' ? '/client/portal' : '/editor/workspace');
+      navigate(userRole === 'client' ? '/client/dashboard' : '/editor/dashboard');
     }
   }, [user, userRole, loading, navigate]);
 

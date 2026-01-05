@@ -83,36 +83,36 @@ export function InviteUserModal({
 
       const agencyId = userRole.agency_id;
 
-      // Create a placeholder profile for the invited user
-      // Generate a temporary UUID for the invited user
-      const tempUserId = crypto.randomUUID();
+      // Create an invitation (don't create placeholder auth users)
+      const { data: invitation, error: inviteError } = await supabase
+        .from('agency_invitations')
+        .insert({
+          agency_id: agencyId,
+          email: data.email.toLowerCase().trim(),
+          full_name: data.name?.trim() ? data.name.trim() : null,
+          role: data.role,
+          invited_by: user.id,
+        })
+        .select('id')
+        .single();
 
-      // Insert into profiles table
-      const { error: profileError } = await supabase.from('profiles').insert({
-        id: tempUserId,
-        email: data.email,
-        full_name: data.name || null,
-        agency_id: agencyId,
-        onboarding_completed: false,
-      });
-
-      if (profileError) {
-        // Check if it's a duplicate email
-        if (profileError.code === '23505') {
-          throw new Error('A user with this email already exists');
-        }
-        throw profileError;
+      if (inviteError) {
+        throw inviteError;
       }
 
-      // Insert into user_roles table
-      const { error: userRoleError } = await supabase.from('user_roles').insert({
-        user_id: tempUserId,
-        agency_id: agencyId,
-        role: data.role,
-      });
+      const inviteLink = `${window.location.origin}/auth/signup?invite=${invitation.id}`;
 
-      if (userRoleError) {
-        throw userRoleError;
+      try {
+        await navigator.clipboard.writeText(inviteLink);
+        toast({
+          title: 'Invitation created',
+          description: `Invite link copied for ${data.email}`,
+        });
+      } catch {
+        toast({
+          title: 'Invitation created',
+          description: `Share this link with ${data.email}: ${inviteLink}`,
+        });
       }
 
       toast({

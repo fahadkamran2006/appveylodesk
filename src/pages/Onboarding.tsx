@@ -135,40 +135,21 @@ const Onboarding = () => {
 
       if (!profile?.agency_id) throw new Error('Agency not found');
 
-      // Create placeholder profiles and roles for invited users
+      // Create invitation records for invited users
       for (const invite of validInvites) {
-        // Generate a placeholder UUID for the invited user
-        const placeholderId = crypto.randomUUID();
-
-        // Create profile for invited user
-        const { error: profileError } = await supabase
-          .from('profiles')
+        const { error: inviteError } = await supabase
+          .from('agency_invitations')
           .insert({
-            id: placeholderId,
+            agency_id: profile.agency_id,
             email: invite.email.toLowerCase().trim(),
-            agency_id: profile.agency_id,
-            onboarding_completed: false,
-          });
-
-        if (profileError) {
-          // If email already exists, skip
-          if (profileError.code === '23505') {
-            console.log(`User ${invite.email} already exists, skipping...`);
-            continue;
-          }
-          throw profileError;
-        }
-
-        // Create user role
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .insert({
-            user_id: placeholderId,
-            agency_id: profile.agency_id,
+            full_name: invite.name?.trim() ? invite.name.trim() : null,
             role: invite.role,
+            invited_by: user.id,
           });
 
-        if (roleError) throw roleError;
+        if (inviteError) {
+          throw inviteError;
+        }
       }
 
       toast.success(`Invited ${validInvites.length} team member${validInvites.length > 1 ? 's' : ''}!`);
