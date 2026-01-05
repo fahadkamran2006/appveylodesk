@@ -16,6 +16,14 @@ export default {
       fontFamily: {
         sans: ["Plus Jakarta Sans", "system-ui", "sans-serif"],
       },
+      letterSpacing: {
+        tighter: "-0.04em",
+        tight: "-0.025em",
+      },
+      lineHeight: {
+        relaxed: "1.75",
+        loose: "2",
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -66,6 +74,10 @@ export default {
           soft: "hsl(var(--indigo-soft))",
           dark: "hsl(var(--indigo-dark))",
         },
+        midnight: {
+          DEFAULT: "hsl(var(--midnight))",
+          deep: "hsl(var(--midnight-deep))",
+        },
         surface: {
           dark: "hsl(var(--surface-dark))",
           elevated: "hsl(var(--surface-elevated))",
@@ -88,12 +100,16 @@ export default {
       boxShadow: {
         glow: "var(--shadow-glow)",
         "glow-sm": "var(--shadow-glow-sm)",
+        "glow-lg": "var(--shadow-glow-lg)",
         card: "var(--shadow-card)",
       },
       backgroundImage: {
         "gradient-primary": "var(--gradient-primary)",
         "gradient-hero": "var(--gradient-hero)",
+        "gradient-section": "var(--gradient-section)",
+        "gradient-cinematic": "var(--gradient-cinematic)",
         "gradient-glow": "var(--gradient-glow)",
+        "gradient-glow-soft": "var(--gradient-glow-soft)",
         "gradient-card": "var(--gradient-card)",
       },
       keyframes: {

@@ -5,7 +5,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-semibold transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -19,18 +19,18 @@ const buttonVariants = cva(
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "text-foreground hover:bg-muted hover:text-foreground",
         link: "text-primary underline-offset-4 hover:underline",
-        hero: "bg-gradient-to-r from-[hsl(240,76%,59%)] to-[hsl(260,70%,65%)] text-white shadow-lg shadow-[hsl(240,76%,59%)]/30 hover:shadow-xl hover:shadow-[hsl(240,76%,59%)]/40 hover:scale-[1.02] active:scale-[0.98]",
+        hero: "bg-gradient-primary text-primary-foreground shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/50 hover:scale-[1.02] active:scale-[0.98]",
         "hero-outline":
-          "border border-[hsl(240,76%,59%)]/50 bg-[hsl(240,76%,59%)]/10 text-white backdrop-blur-sm hover:bg-[hsl(240,76%,59%)]/20 hover:border-[hsl(240,76%,59%)]",
+          "border border-primary/40 bg-primary/10 text-foreground backdrop-blur-xl hover:bg-primary/20 hover:border-primary/60 hover:shadow-lg hover:shadow-primary/20",
         glass:
-          "bg-[hsl(240,10%,10%)]/60 backdrop-blur-xl border border-[hsl(240,10%,15%)]/50 text-white hover:bg-[hsl(240,10%,10%)]/80",
-        glow: "bg-primary text-primary-foreground shadow-[0_0_60px_hsl(240,76%,59%,0.3)] hover:shadow-[0_0_30px_hsl(240,76%,59%,0.2)] active:scale-[0.98]",
+          "bg-surface-glass/40 backdrop-blur-2xl border border-white/[0.08] text-foreground hover:bg-surface-glass/60 hover:border-white/[0.12]",
+        glow: "bg-primary text-primary-foreground shadow-glow hover:shadow-glow-lg active:scale-[0.98]",
       },
       size: {
         default: "h-10 px-5 py-2",
         sm: "h-9 rounded-md px-4 text-xs",
-        lg: "h-12 rounded-lg px-8 text-base",
-        xl: "h-14 rounded-xl px-10 text-lg",
+        lg: "h-12 rounded-xl px-8 text-base",
+        xl: "h-14 rounded-2xl px-10 text-lg font-semibold",
         icon: "h-10 w-10",
       },
     },
