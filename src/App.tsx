@@ -14,6 +14,7 @@ import Onboarding from "./pages/Onboarding";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminProjects from "./pages/admin/Projects";
 import AdminClients from "./pages/admin/Clients";
+import AdminTeam from "./pages/admin/Team";
 import AdminInvoices from "./pages/admin/Invoices";
 import AdminMessages from "./pages/admin/Messages";
 import AdminSettings from "./pages/admin/Settings";
@@ -43,6 +44,7 @@ const App = () => (
                 <Route path="/admin/dashboard" element={<AdminDashboard />} />
                 <Route path="/admin/projects" element={<AdminProjects />} />
                 <Route path="/admin/clients" element={<AdminClients />} />
+                <Route path="/admin/team" element={<AdminTeam />} />
                 <Route path="/admin/invoices" element={<AdminInvoices />} />
                 <Route path="/admin/messages" element={<AdminMessages />} />
                 <Route path="/admin/settings" element={<AdminSettings />} />

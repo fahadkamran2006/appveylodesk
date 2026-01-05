@@ -8,9 +8,9 @@ import { PersonCard } from '@/components/PersonCard';
 import { PersonDetailSheet } from '@/components/PersonDetailSheet';
 import { InviteUserModal } from '@/components/InviteUserModal';
 import { supabase } from '@/integrations/supabase/client';
-import { Users, UserPlus, Loader2 } from 'lucide-react';
+import { UsersRound, UserPlus, Loader2 } from 'lucide-react';
 
-interface ClientProfile {
+interface TeamMember {
   id: string;
   full_name: string | null;
   email: string;
@@ -18,13 +18,13 @@ interface ClientProfile {
   created_at: string;
 }
 
-const AdminClients = () => {
+const AdminTeam = () => {
   const { user, userRole, loading } = useAuth();
   const navigate = useNavigate();
-  const [clients, setClients] = useState<ClientProfile[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [selectedClient, setSelectedClient] = useState<ClientProfile | null>(null);
+  const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
   useEffect(() => {
@@ -36,7 +36,7 @@ const AdminClients = () => {
     }
   }, [user, userRole, loading, navigate]);
 
-  const fetchClients = async () => {
+  const fetchTeamMembers = async () => {
     if (!user) return;
 
     setIsLoading(true);
@@ -53,30 +53,30 @@ const AdminClients = () => {
         return;
       }
 
-      // Get all client user_ids in this agency
-      const { data: clientRoles } = await supabase
+      // Get all editor user_ids in this agency
+      const { data: editorRoles } = await supabase
         .from('user_roles')
         .select('user_id')
         .eq('agency_id', userRoleData.agency_id)
-        .eq('role', 'client');
+        .eq('role', 'editor');
 
-      if (!clientRoles || clientRoles.length === 0) {
-        setClients([]);
+      if (!editorRoles || editorRoles.length === 0) {
+        setTeamMembers([]);
         setIsLoading(false);
         return;
       }
 
-      const clientUserIds = clientRoles.map((r) => r.user_id);
+      const editorUserIds = editorRoles.map((r) => r.user_id);
 
       // Get profiles for these users
       const { data: profiles } = await supabase
         .from('profiles')
         .select('id, full_name, email, avatar_url, created_at')
-        .in('id', clientUserIds);
+        .in('id', editorUserIds);
 
-      setClients(profiles || []);
+      setTeamMembers(profiles || []);
     } catch (error) {
-      console.error('Error fetching clients:', error);
+      console.error('Error fetching team members:', error);
     } finally {
       setIsLoading(false);
     }
@@ -84,14 +84,14 @@ const AdminClients = () => {
 
   useEffect(() => {
     if (user && userRole === 'admin') {
-      fetchClients();
+      fetchTeamMembers();
     }
   }, [user, userRole]);
 
-  const handleExpandClient = (id: string) => {
-    const client = clients.find((c) => c.id === id);
-    if (client) {
-      setSelectedClient(client);
+  const handleExpandMember = (id: string) => {
+    const member = teamMembers.find((m) => m.id === id);
+    if (member) {
+      setSelectedMember(member);
       setDetailOpen(true);
     }
   };
@@ -107,8 +107,8 @@ const AdminClients = () => {
   return (
     <>
       <Helmet>
-        <title>Clients | Veylodesk</title>
-        <meta name="description" content="Manage your agency clients." />
+        <title>Team | Veylodesk</title>
+        <meta name="description" content="Manage your agency team members." />
       </Helmet>
 
       <div className="min-h-screen bg-background flex">
@@ -118,9 +118,9 @@ const AdminClients = () => {
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h1 className="text-3xl font-bold text-foreground">Clients</h1>
+              <h1 className="text-3xl font-bold text-foreground">Team</h1>
               <p className="text-muted-foreground mt-1">
-                Manage your agency clients and their projects
+                Manage your editors and team members
               </p>
             </div>
             <Button
@@ -128,7 +128,7 @@ const AdminClients = () => {
               className="bg-primary hover:bg-primary/90"
             >
               <UserPlus className="w-4 h-4 mr-2" />
-              Invite Client
+              Invite Member
             </Button>
           </div>
 
@@ -137,42 +137,42 @@ const AdminClients = () => {
             <div className="flex items-center justify-center h-64">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
-          ) : clients.length === 0 ? (
+          ) : teamMembers.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 text-center">
               <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6">
-                <Users className="w-8 h-8 text-primary" />
+                <UsersRound className="w-8 h-8 text-primary" />
               </div>
               <h2 className="text-xl font-semibold text-foreground mb-2">
-                No clients yet
+                No team members yet
               </h2>
               <p className="text-muted-foreground max-w-md mb-6">
-                Start building your client base by sending invitations. They'll
-                be able to view projects, track progress, and communicate with
-                your team.
+                Build your team by inviting editors. They'll be able to work on
+                projects, communicate with clients, and track their earnings.
               </p>
               <Button
                 onClick={() => setInviteOpen(true)}
                 className="bg-primary hover:bg-primary/90"
               >
                 <UserPlus className="w-4 h-4 mr-2" />
-                Invite Your First Client
+                Invite Your First Team Member
               </Button>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {clients.map((client) => (
+              {teamMembers.map((member) => (
                 <PersonCard
-                  key={client.id}
-                  id={client.id}
-                  name={client.full_name || ''}
-                  email={client.email}
-                  avatarUrl={client.avatar_url}
-                  variant="client"
+                  key={member.id}
+                  id={member.id}
+                  name={member.full_name || ''}
+                  email={member.email}
+                  avatarUrl={member.avatar_url}
+                  role="editor"
+                  variant="team"
                   stats={{
-                    activeProjects: Math.floor(Math.random() * 5),
-                    totalSpent: Math.floor(Math.random() * 50000),
+                    currentLoad: Math.floor(Math.random() * 8),
+                    status: Math.random() > 0.3 ? 'active' : 'offline',
                   }}
-                  onExpand={handleExpandClient}
+                  onExpand={handleExpandMember}
                 />
               ))}
             </div>
@@ -184,8 +184,8 @@ const AdminClients = () => {
       <InviteUserModal
         open={inviteOpen}
         onOpenChange={setInviteOpen}
-        lockedRole="client"
-        onSuccess={fetchClients}
+        lockedRole="editor"
+        onSuccess={fetchTeamMembers}
       />
 
       {/* Detail Sheet */}
@@ -193,21 +193,21 @@ const AdminClients = () => {
         open={detailOpen}
         onOpenChange={setDetailOpen}
         person={
-          selectedClient
+          selectedMember
             ? {
-                id: selectedClient.id,
-                name: selectedClient.full_name || '',
-                email: selectedClient.email,
-                avatarUrl: selectedClient.avatar_url,
-                role: 'client',
-                createdAt: selectedClient.created_at,
+                id: selectedMember.id,
+                name: selectedMember.full_name || '',
+                email: selectedMember.email,
+                avatarUrl: selectedMember.avatar_url,
+                role: 'editor',
+                createdAt: selectedMember.created_at,
               }
             : null
         }
-        variant="client"
+        variant="team"
       />
     </>
   );
 };
 
-export default AdminClients;
+export default AdminTeam;
