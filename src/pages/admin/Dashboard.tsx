@@ -2,23 +2,19 @@ import { useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/hooks/useAuth';
+import { AppSidebar } from '@/components/AppSidebar';
 import { Button } from '@/components/ui/button';
 import { 
-  Command, 
-  LayoutDashboard, 
-  Users, 
-  FolderKanban, 
-  Receipt, 
-  Settings,
-  LogOut,
   Plus,
-  TrendingUp,
   Clock,
-  DollarSign
+  DollarSign,
+  FolderKanban,
+  Receipt,
+  Users
 } from 'lucide-react';
 
 const AdminDashboard = () => {
-  const { user, userRole, loading, signOut } = useAuth();
+  const { user, userRole, loading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -60,49 +56,7 @@ const AdminDashboard = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background flex">
-        {/* Sidebar */}
-        <aside className="w-64 bg-surface-dark border-r border-border/50 flex flex-col">
-          <div className="p-6">
-            <Link to="/" className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-lg bg-gradient-primary flex items-center justify-center">
-                <Command className="w-5 h-5 text-primary-foreground" />
-              </div>
-              <span className="text-xl font-bold text-foreground">
-                Veylo<span className="text-gradient">desk</span>
-              </span>
-            </Link>
-          </div>
-
-          <nav className="flex-1 px-4 space-y-1">
-            <a href="#" className="flex items-center gap-3 px-4 py-3 rounded-lg bg-primary/10 text-primary font-medium">
-              <LayoutDashboard className="w-5 h-5" />
-              Dashboard
-            </a>
-            <a href="#" className="flex items-center gap-3 px-4 py-3 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors">
-              <FolderKanban className="w-5 h-5" />
-              Projects
-            </a>
-            <a href="#" className="flex items-center gap-3 px-4 py-3 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors">
-              <Users className="w-5 h-5" />
-              Clients
-            </a>
-            <a href="#" className="flex items-center gap-3 px-4 py-3 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors">
-              <Receipt className="w-5 h-5" />
-              Invoices
-            </a>
-            <a href="#" className="flex items-center gap-3 px-4 py-3 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors">
-              <Settings className="w-5 h-5" />
-              Settings
-            </a>
-          </nav>
-
-          <div className="p-4 border-t border-border/50">
-            <Button variant="ghost" className="w-full justify-start text-muted-foreground" onClick={signOut}>
-              <LogOut className="w-5 h-5 mr-3" />
-              Sign out
-            </Button>
-          </div>
-        </aside>
+        <AppSidebar role="admin" />
 
         {/* Main Content */}
         <main className="flex-1 p-8">
