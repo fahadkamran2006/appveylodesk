@@ -6,22 +6,22 @@
 
 @layer base {
   :root {
-    --background: 240 10% 3.9%;
+    --background: 240 15% 4%;
     --foreground: 0 0% 98%;
 
-    --card: 240 10% 5%;
+    --card: 240 12% 6%;
     --card-foreground: 0 0% 98%;
 
-    --popover: 240 10% 5%;
+    --popover: 240 12% 6%;
     --popover-foreground: 0 0% 98%;
 
     --primary: 240 76% 59%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 10% 12%;
+    --secondary: 240 12% 10%;
     --secondary-foreground: 0 0% 98%;
 
-    --muted: 240 10% 15%;
+    --muted: 240 12% 14%;
     --muted-foreground: 240 5% 55%;
 
     --accent: 240 76% 59%;
@@ -30,21 +30,23 @@
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 240 10% 15%;
-    --input: 240 10% 15%;
+    --border: 240 12% 14%;
+    --input: 240 12% 14%;
     --ring: 240 76% 59%;
 
     --radius: 0.75rem;
 
     /* Custom Veylodesk tokens */
     --indigo: 240 76% 59%;
-    --indigo-glow: 240 76% 59%;
-    --indigo-soft: 240 60% 70%;
+    --indigo-glow: 240 80% 65%;
+    --indigo-soft: 260 70% 68%;
     --indigo-dark: 240 76% 45%;
+    --midnight: 240 20% 8%;
+    --midnight-deep: 250 25% 5%;
     
-    --surface-dark: 240 10% 6%;
-    --surface-elevated: 240 10% 8%;
-    --surface-glass: 240 10% 10%;
+    --surface-dark: 240 15% 5%;
+    --surface-elevated: 240 12% 8%;
+    --surface-glass: 240 12% 10%;
     
     --success: 142 76% 45%;
     --success-foreground: 0 0% 100%;
@@ -52,22 +54,27 @@
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 0%;
 
-    --gradient-primary: linear-gradient(135deg, hsl(240, 76%, 59%) 0%, hsl(260, 80%, 55%) 100%);
-    --gradient-hero: linear-gradient(180deg, hsl(240, 10%, 3.9%) 0%, hsl(240, 15%, 8%) 50%, hsl(240, 10%, 3.9%) 100%);
-    --gradient-glow: radial-gradient(ellipse at center, hsl(240, 76%, 59%, 0.15) 0%, transparent 70%);
-    --gradient-card: linear-gradient(135deg, hsl(240, 10%, 8%) 0%, hsl(240, 10%, 6%) 100%);
+    /* Enhanced gradients for cinematic feel */
+    --gradient-primary: linear-gradient(135deg, hsl(240, 76%, 59%) 0%, hsl(270, 80%, 55%) 100%);
+    --gradient-hero: linear-gradient(180deg, hsl(250, 25%, 5%) 0%, hsl(240, 20%, 8%) 30%, hsl(240, 15%, 4%) 100%);
+    --gradient-section: linear-gradient(180deg, hsl(240, 15%, 4%) 0%, hsl(245, 18%, 6%) 50%, hsl(240, 15%, 4%) 100%);
+    --gradient-glow: radial-gradient(ellipse at center, hsl(240, 76%, 59%, 0.2) 0%, transparent 70%);
+    --gradient-glow-soft: radial-gradient(ellipse at center, hsl(260, 70%, 60%, 0.1) 0%, transparent 60%);
+    --gradient-card: linear-gradient(135deg, hsl(240, 12%, 10%) 0%, hsl(240, 15%, 6%) 100%);
+    --gradient-cinematic: linear-gradient(135deg, hsl(250, 25%, 5%) 0%, hsl(235, 20%, 10%) 50%, hsl(240, 15%, 4%) 100%);
 
-    --shadow-glow: 0 0 60px hsl(240, 76%, 59%, 0.3);
-    --shadow-glow-sm: 0 0 30px hsl(240, 76%, 59%, 0.2);
-    --shadow-card: 0 4px 24px hsl(0, 0%, 0%, 0.4);
+    --shadow-glow: 0 0 80px hsl(240, 76%, 59%, 0.35);
+    --shadow-glow-sm: 0 0 40px hsl(240, 76%, 59%, 0.25);
+    --shadow-glow-lg: 0 0 120px hsl(260, 70%, 55%, 0.3);
+    --shadow-card: 0 8px 32px hsl(0, 0%, 0%, 0.5);
 
-    --sidebar-background: 240 10% 5%;
+    --sidebar-background: 240 12% 5%;
     --sidebar-foreground: 0 0% 98%;
     --sidebar-primary: 240 76% 59%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 10% 12%;
+    --sidebar-accent: 240 12% 12%;
     --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 240 10% 15%;
+    --sidebar-border: 240 12% 14%;
     --sidebar-ring: 240 76% 59%;
   }
 
@@ -124,12 +131,17 @@
 
 @layer utilities {
   .glass {
-    @apply bg-surface-glass/60 backdrop-blur-xl border border-border/50;
+    @apply bg-surface-glass/40 backdrop-blur-2xl border border-white/[0.08];
   }
 
   .glass-card {
-    background: linear-gradient(135deg, hsl(var(--surface-elevated)) 0%, hsl(var(--surface-dark)) 100%);
-    @apply backdrop-blur-xl border border-border/30 shadow-card;
+    background: linear-gradient(135deg, hsl(var(--surface-elevated) / 0.8) 0%, hsl(var(--surface-dark) / 0.6) 100%);
+    @apply backdrop-blur-2xl border border-white/[0.08] shadow-card;
+  }
+
+  .glass-card-premium {
+    background: linear-gradient(135deg, hsl(var(--surface-glass) / 0.5) 0%, hsl(var(--surface-dark) / 0.3) 100%);
+    @apply backdrop-blur-2xl border border-white/[0.06] shadow-card;
   }
 
   .glow-primary {
@@ -138,6 +150,10 @@
 
   .glow-primary-sm {
     box-shadow: var(--shadow-glow-sm);
+  }
+
+  .glow-primary-lg {
+    box-shadow: var(--shadow-glow-lg);
   }
 
   .text-gradient {
@@ -149,24 +165,45 @@
     background: var(--gradient-hero);
   }
 
+  .bg-gradient-section {
+    background: var(--gradient-section);
+  }
+
+  .bg-gradient-cinematic {
+    background: var(--gradient-cinematic);
+  }
+
   .bg-gradient-glow {
     background: var(--gradient-glow);
   }
 
+  .bg-gradient-glow-soft {
+    background: var(--gradient-glow-soft);
+  }
+
   .animate-float {
-    animation: float 6s ease-in-out infinite;
+    animation: float 8s ease-in-out infinite;
   }
 
   .animate-pulse-glow {
-    animation: pulse-glow 3s ease-in-out infinite;
+    animation: pulse-glow 4s ease-in-out infinite;
   }
 
   .animate-fade-up {
-    animation: fade-up 0.6s ease-out forwards;
+    animation: fade-up 0.8s ease-out forwards;
   }
 
   .animate-fade-in {
-    animation: fade-in 0.4s ease-out forwards;
+    animation: fade-in 0.5s ease-out forwards;
+  }
+
+  /* Button hover glow */
+  .btn-glow {
+    @apply transition-all duration-300;
+  }
+
+  .btn-glow:hover {
+    box-shadow: 0 0 30px hsl(var(--primary) / 0.5), 0 0 60px hsl(var(--primary) / 0.3);
   }
 }
 
