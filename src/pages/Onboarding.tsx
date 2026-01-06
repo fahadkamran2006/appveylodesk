@@ -137,19 +137,31 @@ const Onboarding = () => {
 
       // Create invitation records for invited users
       for (const invite of validInvites) {
-        const { error: inviteError } = await supabase
+        const { data: invitation, error: inviteError } = await supabase
           .from('agency_invitations')
           .insert({
             agency_id: profile.agency_id,
             email: invite.email.toLowerCase().trim(),
-            full_name: invite.name?.trim() ? invite.name.trim() : null,
+            full_name: null,
             role: invite.role,
             invited_by: user.id,
-          });
+          })
+          .select('id')
+          .single();
 
         if (inviteError) {
           throw inviteError;
         }
+
+        // Send invite email via edge function
+        await supabase.functions.invoke('send-invite-email', {
+          body: {
+            invitationId: invitation.id,
+            email: invite.email.toLowerCase().trim(),
+            role: invite.role,
+            agencyName: agencyName,
+          },
+        });
       }
 
       toast.success(`Invited ${validInvites.length} team member${validInvites.length > 1 ? 's' : ''}!`);

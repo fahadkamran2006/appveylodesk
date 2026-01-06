@@ -100,24 +100,31 @@ export function InviteUserModal({
         throw inviteError;
       }
 
-      const inviteLink = `${window.location.origin}/auth/signup?invite=${invitation.id}`;
+      // Get agency name for email
+      const { data: agency } = await supabase
+        .from('agencies')
+        .select('name')
+        .eq('id', agencyId)
+        .single();
 
-      try {
-        await navigator.clipboard.writeText(inviteLink);
-        toast({
-          title: 'Invitation created',
-          description: `Invite link copied for ${data.email}`,
-        });
-      } catch {
-        toast({
-          title: 'Invitation created',
-          description: `Share this link with ${data.email}: ${inviteLink}`,
-        });
+      // Send invite email via edge function
+      const { error: emailError } = await supabase.functions.invoke('send-invite-email', {
+        body: {
+          invitationId: invitation.id,
+          email: data.email.toLowerCase().trim(),
+          role: data.role,
+          agencyName: agency?.name || 'Your Agency',
+        },
+      });
+
+      if (emailError) {
+        console.error('Failed to send email:', emailError);
+        // Don't throw - the invite was created, just email failed
       }
 
       toast({
         title: 'Invitation sent',
-        description: `Invitation sent to ${data.email}`,
+        description: `Invitation email sent to ${data.email}`,
       });
 
       form.reset();
