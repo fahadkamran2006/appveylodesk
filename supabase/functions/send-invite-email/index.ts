@@ -55,13 +55,13 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Sending invite email to ${email} for role ${role} at ${agencyName}`);
 
-    const siteUrl = Deno.env.get("SUPABASE_URL")?.replace(".supabase.co", "") || "https://your-app.lovable.app";
+    const siteUrl = "https://bwfnxidpifugpklczfyo.lovable.app";
     const inviteLink = `${siteUrl}/auth/signup?invite=${invitationId}`;
 
     const roleLabel = role === "client" ? "client" : "team member";
 
     const emailResponse = await resend.emails.send({
-      from: "Veylodesk <invites@send.veylodesk.com>",
+      from: "Veylodesk <invites@veylodesk.com>",
       reply_to: "hello@veylodesk.com",
       to: [email],
       subject: `You've been invited to join ${agencyName} on Veylodesk`,
