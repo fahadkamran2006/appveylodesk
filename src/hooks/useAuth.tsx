@@ -121,6 +121,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signUp = async (email: string, password: string, fullName: string) => {
     const redirectUrl = `${window.location.origin}/`;
     
+    // Check if there's a pending invite token
+    const inviteToken = localStorage.getItem('pending_invite_token');
+    
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -133,8 +136,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     if (!error) {
-      // After signup, redirect to onboarding
-      navigate('/onboarding');
+      // After signup, redirect to onboarding (which will detect invite token)
+      if (inviteToken) {
+        navigate(`/onboarding?invite=${inviteToken}`);
+      } else {
+        navigate('/onboarding');
+      }
     }
 
     return { error: error as Error | null };
