@@ -19,7 +19,9 @@ import AdminInvoices from "./pages/admin/Invoices";
 import AdminMessages from "./pages/admin/Messages";
 import AdminSettings from "./pages/admin/Settings";
 import ClientDashboard from "./pages/client/Dashboard";
+import ClientInvoices from "./pages/client/Invoices";
 import EditorDashboard from "./pages/editor/Dashboard";
+import EditorEarnings from "./pages/editor/Earnings";
 import Pricing from "./pages/Pricing";
 import Privacy from "./pages/legal/Privacy";
 import Terms from "./pages/legal/Terms";
@@ -49,7 +51,9 @@ const App = () => (
                 <Route path="/admin/messages" element={<AdminMessages />} />
                 <Route path="/admin/settings" element={<AdminSettings />} />
                 <Route path="/client/dashboard" element={<ClientDashboard />} />
+                <Route path="/client/invoices" element={<ClientInvoices />} />
                 <Route path="/editor/dashboard" element={<EditorDashboard />} />
+                <Route path="/editor/earnings" element={<EditorEarnings />} />
                 <Route path="/pricing" element={<Pricing />} />
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/terms" element={<Terms />} />

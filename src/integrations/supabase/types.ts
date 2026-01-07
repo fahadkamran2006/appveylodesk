@@ -299,6 +299,7 @@ export type Database = {
           created_at: string
           description: string | null
           due_date: string | null
+          editor_rate: number | null
           id: string
           status: Database["public"]["Enums"]["project_status"]
           title: string
@@ -311,6 +312,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           due_date?: string | null
+          editor_rate?: number | null
           id?: string
           status?: Database["public"]["Enums"]["project_status"]
           title: string
@@ -323,6 +325,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           due_date?: string | null
+          editor_rate?: number | null
           id?: string
           status?: Database["public"]["Enums"]["project_status"]
           title?: string
@@ -405,7 +408,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "client" | "editor"
-      invoice_status: "unpaid" | "paid" | "overdue"
+      invoice_status: "unpaid" | "paid" | "overdue" | "pending"
       project_status: "backlog" | "in_progress" | "review" | "done"
     }
     CompositeTypes: {
@@ -535,7 +538,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "client", "editor"],
-      invoice_status: ["unpaid", "paid", "overdue"],
+      invoice_status: ["unpaid", "paid", "overdue", "pending"],
       project_status: ["backlog", "in_progress", "review", "done"],
     },
   },
