@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button';
 import { PersonCard } from '@/components/PersonCard';
 import { PersonDetailSheet } from '@/components/PersonDetailSheet';
 import { InviteUserModal } from '@/components/InviteUserModal';
+import { PendingInvitationCard } from '@/components/PendingInvitationCard';
 import { supabase } from '@/integrations/supabase/client';
-import { Users, UserPlus, Loader2 } from 'lucide-react';
+import { Users, UserPlus, Loader2, Clock } from 'lucide-react';
 
 interface ClientProfile {
   id: string;
@@ -18,10 +19,21 @@ interface ClientProfile {
   created_at: string;
 }
 
+interface PendingInvitation {
+  id: string;
+  email: string;
+  full_name: string | null;
+  role: 'client' | 'editor' | 'admin';
+  created_at: string;
+  agency_id: string;
+}
+
 const AdminClients = () => {
   const { user, userRole, loading } = useAuth();
   const navigate = useNavigate();
   const [clients, setClients] = useState<ClientProfile[]>([]);
+  const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([]);
+  const [agencyName, setAgencyName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<ClientProfile | null>(null);
@@ -53,28 +65,48 @@ const AdminClients = () => {
         return;
       }
 
+      const agencyId = userRoleData.agency_id;
+
+      // Get agency name
+      const { data: agency } = await supabase
+        .from('agencies')
+        .select('name')
+        .eq('id', agencyId)
+        .single();
+      
+      setAgencyName(agency?.name || '');
+
       // Get all client user_ids in this agency
       const { data: clientRoles } = await supabase
         .from('user_roles')
         .select('user_id')
-        .eq('agency_id', userRoleData.agency_id)
+        .eq('agency_id', agencyId)
         .eq('role', 'client');
 
-      if (!clientRoles || clientRoles.length === 0) {
-        setClients([]);
-        setIsLoading(false);
-        return;
-      }
-
-      const clientUserIds = clientRoles.map((r) => r.user_id);
+      const clientUserIds = clientRoles?.map((r) => r.user_id) || [];
 
       // Get profiles for these users
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, full_name, email, avatar_url, created_at')
-        .in('id', clientUserIds);
+      if (clientUserIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, full_name, email, avatar_url, created_at')
+          .in('id', clientUserIds);
 
-      setClients(profiles || []);
+        setClients(profiles || []);
+      } else {
+        setClients([]);
+      }
+
+      // Get pending client invitations
+      const { data: invitations } = await supabase
+        .from('agency_invitations')
+        .select('id, email, full_name, role, created_at, agency_id')
+        .eq('agency_id', agencyId)
+        .eq('role', 'client')
+        .is('accepted_at', null)
+        .order('created_at', { ascending: false });
+
+      setPendingInvitations((invitations as PendingInvitation[]) || []);
     } catch (error) {
       console.error('Error fetching clients:', error);
     } finally {
@@ -137,7 +169,7 @@ const AdminClients = () => {
             <div className="flex items-center justify-center h-64">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
-          ) : clients.length === 0 ? (
+          ) : clients.length === 0 && pendingInvitations.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 text-center">
               <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6">
                 <Users className="w-8 h-8 text-primary" />
@@ -159,22 +191,57 @@ const AdminClients = () => {
               </Button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {clients.map((client) => (
-                <PersonCard
-                  key={client.id}
-                  id={client.id}
-                  name={client.full_name || ''}
-                  email={client.email}
-                  avatarUrl={client.avatar_url}
-                  variant="client"
-                  stats={{
-                    activeProjects: Math.floor(Math.random() * 5),
-                    totalSpent: Math.floor(Math.random() * 50000),
-                  }}
-                  onExpand={handleExpandClient}
-                />
-              ))}
+            <div className="space-y-8">
+              {/* Pending Invitations */}
+              {pendingInvitations.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <Clock className="w-5 h-5 text-yellow-500" />
+                    <h2 className="text-lg font-semibold text-foreground">
+                      Pending Invitations ({pendingInvitations.length})
+                    </h2>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {pendingInvitations.map((invitation) => (
+                      <PendingInvitationCard
+                        key={invitation.id}
+                        invitation={invitation}
+                        agencyName={agencyName}
+                        onResend={fetchClients}
+                        onCancel={fetchClients}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Active Clients */}
+              {clients.length > 0 && (
+                <div>
+                  {pendingInvitations.length > 0 && (
+                    <h2 className="text-lg font-semibold text-foreground mb-4">
+                      Active Clients ({clients.length})
+                    </h2>
+                  )}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {clients.map((client) => (
+                      <PersonCard
+                        key={client.id}
+                        id={client.id}
+                        name={client.full_name || ''}
+                        email={client.email}
+                        avatarUrl={client.avatar_url}
+                        variant="client"
+                        stats={{
+                          activeProjects: Math.floor(Math.random() * 5),
+                          totalSpent: Math.floor(Math.random() * 50000),
+                        }}
+                        onExpand={handleExpandClient}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </main>
