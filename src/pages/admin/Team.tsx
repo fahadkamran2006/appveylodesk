@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button';
 import { PersonCard } from '@/components/PersonCard';
 import { PersonDetailSheet } from '@/components/PersonDetailSheet';
 import { InviteUserModal } from '@/components/InviteUserModal';
+import { PendingInvitationCard } from '@/components/PendingInvitationCard';
 import { supabase } from '@/integrations/supabase/client';
-import { UsersRound, UserPlus, Loader2 } from 'lucide-react';
+import { UsersRound, UserPlus, Loader2, Clock } from 'lucide-react';
 
 interface TeamMember {
   id: string;
@@ -18,10 +19,21 @@ interface TeamMember {
   created_at: string;
 }
 
+interface PendingInvitation {
+  id: string;
+  email: string;
+  full_name: string | null;
+  role: 'admin' | 'editor' | 'client';
+  created_at: string;
+  agency_id: string;
+}
+
 const AdminTeam = () => {
   const { user, userRole, loading } = useAuth();
   const navigate = useNavigate();
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([]);
+  const [agencyName, setAgencyName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
@@ -36,7 +48,7 @@ const AdminTeam = () => {
     }
   }, [user, userRole, loading, navigate]);
 
-  const fetchTeamMembers = async () => {
+  const fetchTeamData = async () => {
     if (!user) return;
 
     setIsLoading(true);
@@ -53,30 +65,31 @@ const AdminTeam = () => {
         return;
       }
 
-      // Get all editor user_ids in this agency
-      const { data: editorRoles } = await supabase
-        .from('user_roles')
-        .select('user_id')
-        .eq('agency_id', userRoleData.agency_id)
-        .eq('role', 'editor');
+      const agencyId = userRoleData.agency_id;
 
-      if (!editorRoles || editorRoles.length === 0) {
+      // Fetch agency name, editor profiles, and pending invitations in parallel
+      const [agencyResult, editorRolesResult, invitationsResult] = await Promise.all([
+        supabase.from('agencies').select('name').eq('id', agencyId).maybeSingle(),
+        supabase.from('user_roles').select('user_id').eq('agency_id', agencyId).eq('role', 'editor'),
+        supabase.from('agency_invitations').select('*').eq('agency_id', agencyId).eq('role', 'editor').is('accepted_at', null),
+      ]);
+
+      setAgencyName(agencyResult.data?.name || '');
+      setPendingInvitations((invitationsResult.data as PendingInvitation[]) || []);
+
+      // Get profiles for editors
+      if (editorRolesResult.data && editorRolesResult.data.length > 0) {
+        const editorUserIds = editorRolesResult.data.map((r) => r.user_id);
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, full_name, email, avatar_url, created_at')
+          .in('id', editorUserIds);
+        setTeamMembers(profiles || []);
+      } else {
         setTeamMembers([]);
-        setIsLoading(false);
-        return;
       }
-
-      const editorUserIds = editorRoles.map((r) => r.user_id);
-
-      // Get profiles for these users
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, full_name, email, avatar_url, created_at')
-        .in('id', editorUserIds);
-
-      setTeamMembers(profiles || []);
     } catch (error) {
-      console.error('Error fetching team members:', error);
+      console.error('Error fetching team data:', error);
     } finally {
       setIsLoading(false);
     }
@@ -84,7 +97,7 @@ const AdminTeam = () => {
 
   useEffect(() => {
     if (user && userRole === 'admin') {
-      fetchTeamMembers();
+      fetchTeamData();
     }
   }, [user, userRole]);
 
@@ -96,6 +109,10 @@ const AdminTeam = () => {
     }
   };
 
+  const handleInvitationChange = () => {
+    fetchTeamData();
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -103,6 +120,8 @@ const AdminTeam = () => {
       </div>
     );
   }
+
+  const hasContent = teamMembers.length > 0 || pendingInvitations.length > 0;
 
   return (
     <>
@@ -137,7 +156,7 @@ const AdminTeam = () => {
             <div className="flex items-center justify-center h-64">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
-          ) : teamMembers.length === 0 ? (
+          ) : !hasContent ? (
             <div className="flex flex-col items-center justify-center h-64 text-center">
               <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6">
                 <UsersRound className="w-8 h-8 text-primary" />
@@ -158,23 +177,65 @@ const AdminTeam = () => {
               </Button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {teamMembers.map((member) => (
-                <PersonCard
-                  key={member.id}
-                  id={member.id}
-                  name={member.full_name || ''}
-                  email={member.email}
-                  avatarUrl={member.avatar_url}
-                  role="editor"
-                  variant="team"
-                  stats={{
-                    currentLoad: Math.floor(Math.random() * 8),
-                    status: Math.random() > 0.3 ? 'active' : 'offline',
-                  }}
-                  onExpand={handleExpandMember}
-                />
-              ))}
+            <div className="space-y-8">
+              {/* Pending Invitations */}
+              {pendingInvitations.length > 0 && (
+                <section>
+                  <div className="flex items-center gap-2 mb-4">
+                    <Clock className="w-5 h-5 text-muted-foreground" />
+                    <h2 className="text-lg font-semibold text-foreground">
+                      Pending Invitations
+                    </h2>
+                    <span className="text-sm text-muted-foreground">
+                      ({pendingInvitations.length})
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {pendingInvitations.map((invitation) => (
+                      <PendingInvitationCard
+                        key={invitation.id}
+                        invitation={invitation}
+                        agencyName={agencyName}
+                        onResend={handleInvitationChange}
+                        onCancel={handleInvitationChange}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* Active Team Members */}
+              {teamMembers.length > 0 && (
+                <section>
+                  <div className="flex items-center gap-2 mb-4">
+                    <UsersRound className="w-5 h-5 text-muted-foreground" />
+                    <h2 className="text-lg font-semibold text-foreground">
+                      Active Team Members
+                    </h2>
+                    <span className="text-sm text-muted-foreground">
+                      ({teamMembers.length})
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {teamMembers.map((member) => (
+                      <PersonCard
+                        key={member.id}
+                        id={member.id}
+                        name={member.full_name || ''}
+                        email={member.email}
+                        avatarUrl={member.avatar_url}
+                        role="editor"
+                        variant="team"
+                        stats={{
+                          currentLoad: Math.floor(Math.random() * 8),
+                          status: Math.random() > 0.3 ? 'active' : 'offline',
+                        }}
+                        onExpand={handleExpandMember}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )}
             </div>
           )}
         </main>
@@ -185,7 +246,7 @@ const AdminTeam = () => {
         open={inviteOpen}
         onOpenChange={setInviteOpen}
         lockedRole="editor"
-        onSuccess={fetchTeamMembers}
+        onSuccess={fetchTeamData}
       />
 
       {/* Detail Sheet */}
