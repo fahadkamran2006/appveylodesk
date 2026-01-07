@@ -52,33 +52,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
-    const resolveRoleAndMaybeAcceptInvite = async (userId: string) => {
+    const resolveRoleAndMaybeAcceptInvite = async (userId: string, isFromSignUp = false) => {
+      // If there's a pending invite token, don't auto-redirect - let onboarding handle it
+      const hasPendingInvite = localStorage.getItem('pending_invite_token');
+      
       // 1) Try normal role lookup
       let role = await fetchUserRole(userId);
 
-      // 2) If no role yet, try to accept an invitation token (if present)
-      if (!role) {
-        const token = localStorage.getItem('pending_invite_token');
-        if (token) {
-          const { error: acceptError } = await supabase.rpc('accept_agency_invitation', {
-            _token: token,
-          });
-
-          if (!acceptError) {
-            localStorage.removeItem('pending_invite_token');
-            role = await fetchUserRole(userId);
-          }
-        }
+      // 2) If no role yet and NO pending invite, try to accept invitation token
+      // (If there IS a pending invite, let the Onboarding page handle it)
+      if (!role && !hasPendingInvite) {
+        // No role and no pending invite - user needs onboarding
+      } else if (!role && hasPendingInvite) {
+        // Has pending invite but no role yet - don't try to auto-accept here
+        // Let the onboarding page handle the full flow
+        setUserRole(null);
+        setLoading(false);
+        return;
       }
 
       setUserRole(role);
 
-      // Only auto-redirect when the user is currently in the auth/onboarding flow
+      // Only auto-redirect when:
+      // 1. User has a role
+      // 2. No pending invite (invited users should go through onboarding)
+      // 3. Currently in auth/onboarding flow
       const path = window.location.pathname;
       const shouldRedirect =
         path === '/' || path === '/onboarding' || path.startsWith('/auth/');
 
-      if (role && shouldRedirect) {
+      if (role && !hasPendingInvite && shouldRedirect) {
         redirectByRole(role);
       }
 
