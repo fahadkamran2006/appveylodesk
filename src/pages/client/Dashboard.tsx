@@ -38,12 +38,14 @@ const ClientDashboard = () => {
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [uploading, setUploading] = useState(false);
 
+  // Allow admin god mode - only redirect non-admins away
   useEffect(() => {
     if (!loading && !user) {
       navigate('/auth/login');
     }
-    if (!loading && userRole && userRole !== 'client') {
-      navigate(userRole === 'admin' ? '/admin/dashboard' : '/editor/dashboard');
+    // Allow admins to view this page for testing
+    if (!loading && userRole && userRole !== 'client' && userRole !== 'admin') {
+      navigate('/editor/dashboard');
     }
   }, [user, userRole, loading, navigate]);
 
@@ -83,7 +85,8 @@ const ClientDashboard = () => {
   }, [user, toast]);
 
   useEffect(() => {
-    if (user && userRole === 'client') {
+    // Allow admins to test the client dashboard
+    if (user && (userRole === 'client' || userRole === 'admin')) {
       fetchData();
     }
   }, [user, userRole, fetchData]);
