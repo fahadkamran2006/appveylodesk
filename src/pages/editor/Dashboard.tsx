@@ -36,12 +36,14 @@ const EditorDashboard = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
+  // Allow admin god mode - only redirect non-admins away
   useEffect(() => {
     if (!loading && !user) {
       navigate('/auth/login');
     }
-    if (!loading && userRole && userRole !== 'editor') {
-      navigate(userRole === 'admin' ? '/admin/dashboard' : '/client/dashboard');
+    // Allow admins to view this page for testing
+    if (!loading && userRole && userRole !== 'editor' && userRole !== 'admin') {
+      navigate('/client/dashboard');
     }
   }, [user, userRole, loading, navigate]);
 
@@ -84,7 +86,8 @@ const EditorDashboard = () => {
   }, [user, toast]);
 
   useEffect(() => {
-    if (user && userRole === 'editor') {
+    // Allow admins to test the editor dashboard
+    if (user && (userRole === 'editor' || userRole === 'admin')) {
       fetchProjects();
     }
   }, [user, userRole, fetchProjects]);
