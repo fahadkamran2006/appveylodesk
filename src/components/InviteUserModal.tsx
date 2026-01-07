@@ -123,8 +123,8 @@ export function InviteUserModal({
       }
 
       toast({
-        title: 'Invitation sent',
-        description: `Invitation email sent to ${data.email}`,
+        title: 'Invite sent!',
+        description: `Invite sent to ${data.email}`,
       });
 
       form.reset();

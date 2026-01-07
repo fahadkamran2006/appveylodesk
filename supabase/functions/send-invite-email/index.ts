@@ -61,7 +61,8 @@ const handler = async (req: Request): Promise<Response> => {
     const roleLabel = role === "client" ? "client" : "team member";
 
     const emailResponse = await resend.emails.send({
-      from: "Veylodesk <onboarding@resend.dev>",
+      from: "Veylodesk <invites@send.veylodesk.com>",
+      reply_to: "hello@veylodesk.com",
       to: [email],
       subject: `You've been invited to join ${agencyName} on Veylodesk`,
       html: `
