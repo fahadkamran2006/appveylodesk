@@ -58,7 +58,7 @@ const handler = async (req: Request): Promise<Response> => {
     const siteUrl = "https://appveylodesk.lovable.app";
     
     // Generate role-specific invite links
-    const invitePath = role === "client" ? "/auth/join-client" : "/auth/join-team";
+    const invitePath = role === "client" ? "/join-client" : "/join-team";
     const inviteLink = `${siteUrl}${invitePath}?invite=${invitationId}`;
 
     const roleLabel = role === "client" ? "client" : "team member";
