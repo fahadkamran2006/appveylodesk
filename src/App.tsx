@@ -41,11 +41,12 @@ const App = () => (
           <BrowserRouter>
             <AuthProvider>
               <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/auth/login" element={<Login />} />
-                <Route path="/auth/signup" element={<Signup />} />
+                {/* Public auth routes - accessible without authentication */}
                 <Route path="/auth/join-client" element={<JoinClient />} />
                 <Route path="/auth/join-team" element={<JoinTeam />} />
+                <Route path="/auth/login" element={<Login />} />
+                <Route path="/auth/signup" element={<Signup />} />
+                <Route path="/" element={<Index />} />
                 <Route path="/onboarding" element={<Onboarding />} />
                 <Route path="/admin/dashboard" element={<AdminDashboard />} />
                 <Route path="/admin/projects" element={<AdminProjects />} />
