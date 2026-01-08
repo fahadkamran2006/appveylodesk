@@ -56,7 +56,10 @@ const handler = async (req: Request): Promise<Response> => {
     console.log(`Sending invite email to ${email} for role ${role} at ${agencyName}`);
 
     const siteUrl = "https://appveylodesk.lovable.app";
-    const inviteLink = `${siteUrl}/auth/signup?invite=${invitationId}`;
+    
+    // Generate role-specific invite links
+    const invitePath = role === "client" ? "/auth/join-client" : "/auth/join-team";
+    const inviteLink = `${siteUrl}${invitePath}?invite=${invitationId}`;
 
     const roleLabel = role === "client" ? "client" : "team member";
 

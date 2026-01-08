@@ -1,16 +1,15 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
-import { Command, Loader2, Building2, Users, UserPlus, Plus, X, Mail, UserCircle, CheckCircle } from 'lucide-react';
+import { Command, Loader2, Building2, Users, UserPlus, Plus, X, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 
 type Step = 1 | 2 | 3 | 4;
-type InviteStep = 1 | 2; // 1 = Profile setup, 2 = Complete
 type InviteRole = 'editor' | 'client';
 
 interface TeamInvite {
@@ -19,88 +18,39 @@ interface TeamInvite {
   role: InviteRole;
 }
 
-interface InvitationData {
-  agency_id: string;
-  agency_name: string;
-  role: 'admin' | 'client' | 'editor';
-}
-
 const Onboarding = () => {
-  const [searchParams] = useSearchParams();
   const [step, setStep] = useState<Step>(1);
-  const [inviteStep, setInviteStep] = useState<InviteStep>(1);
   const [agencyName, setAgencyName] = useState('');
   const [teamSize, setTeamSize] = useState('');
-  const [fullName, setFullName] = useState('');
   const [teamInvites, setTeamInvites] = useState<TeamInvite[]>([
     { id: crypto.randomUUID(), email: '', role: 'editor' }
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSendingInvites, setIsSendingInvites] = useState(false);
-  const [isInviteFlow, setIsInviteFlow] = useState(false);
-  const [invitationData, setInvitationData] = useState<InvitationData | null>(null);
-  const [inviteToken, setInviteToken] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const init = async () => {
+    const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         navigate('/auth/login');
         return;
       }
 
-      // Check for invite token in URL or localStorage
-      const urlToken = searchParams.get('invite');
-      const storedToken = localStorage.getItem('pending_invite_token');
-      const token = urlToken || storedToken;
+      // Check if user already has an agency (skip onboarding)
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('agency_id, onboarding_completed')
+        .eq('id', session.user.id)
+        .single();
 
-      if (token) {
-        setInviteToken(token);
-        setIsInviteFlow(true);
-        
-        // Store token if from URL
-        if (urlToken) {
-          localStorage.setItem('pending_invite_token', urlToken);
-        }
-
-        // Fetch invitation details for display
-        const { data: invitation, error } = await supabase
-          .from('agency_invitations')
-          .select('agency_id, role')
-          .eq('id', token)
-          .maybeSingle();
-
-        if (invitation && !error) {
-          // Get agency name
-          const { data: agency } = await supabase
-            .from('agencies')
-            .select('name')
-            .eq('id', invitation.agency_id)
-            .single();
-
-          setInvitationData({
-            agency_id: invitation.agency_id,
-            agency_name: agency?.name || 'the agency',
-            role: invitation.role as 'admin' | 'client' | 'editor',
-          });
-
-          // Pre-fill name from user metadata
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user?.user_metadata?.full_name) {
-            setFullName(user.user_metadata.full_name);
-          }
-        } else {
-          // Invalid token, clear it and show normal onboarding
-          localStorage.removeItem('pending_invite_token');
-          setIsInviteFlow(false);
-          toast.error('Invalid or expired invitation');
-        }
+      if (profile?.onboarding_completed && profile?.agency_id) {
+        navigate('/admin/dashboard');
       }
     };
 
-    init();
-  }, [navigate, searchParams]);
+    checkAuth();
+  }, [navigate]);
 
   const addInvite = () => {
     setTeamInvites([...teamInvites, { id: crypto.randomUUID(), email: '', role: 'editor' }]);
@@ -116,76 +66,6 @@ const Onboarding = () => {
     setTeamInvites(teamInvites.map(invite => 
       invite.id === id ? { ...invite, [field]: value } : invite
     ));
-  };
-
-  // Handle accepting invitation and joining agency
-  const handleAcceptInvite = async () => {
-    if (!inviteToken || !invitationData) {
-      toast.error('No valid invitation found');
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      // Update profile with full name first
-      if (fullName.trim()) {
-        await supabase
-          .from('profiles')
-          .update({ full_name: fullName.trim() })
-          .eq('id', user.id);
-      }
-
-      // Accept the invitation using the RPC function
-      const { data, error: acceptError } = await supabase.rpc('accept_agency_invitation', {
-        _token: inviteToken,
-      });
-
-      if (acceptError) {
-        throw acceptError;
-      }
-
-      // Clear the stored token
-      localStorage.removeItem('pending_invite_token');
-
-      // Mark onboarding as complete
-      await supabase
-        .from('profiles')
-        .update({ onboarding_completed: true })
-        .eq('id', user.id);
-
-      toast.success(`Welcome to ${invitationData.agency_name}!`);
-      
-      // Move to completion step
-      setInviteStep(2);
-    } catch (error: any) {
-      console.error('Error accepting invitation:', error);
-      toast.error(error.message || 'Failed to accept invitation');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Redirect based on role after invite acceptance
-  const handleInviteComplete = () => {
-    if (!invitationData) return;
-
-    switch (invitationData.role) {
-      case 'admin':
-        navigate('/admin/dashboard');
-        break;
-      case 'client':
-        navigate('/client/dashboard');
-        break;
-      case 'editor':
-        navigate('/editor/dashboard');
-        break;
-      default:
-        navigate('/');
-    }
   };
 
   const handleCreateAgency = async () => {
@@ -342,127 +222,6 @@ const Onboarding = () => {
     { number: 4, title: 'Get Started', icon: Command },
   ];
 
-  const inviteSteps = [
-    { number: 1, title: 'Your Profile', icon: UserCircle },
-    { number: 2, title: 'Get Started', icon: CheckCircle },
-  ];
-
-  // Render Invite Flow (simplified onboarding for invited users)
-  if (isInviteFlow && invitationData) {
-    return (
-      <>
-        <Helmet>
-          <title>Join {invitationData.agency_name} | Veylodesk</title>
-          <meta name="description" content={`Accept your invitation to join ${invitationData.agency_name} on Veylodesk.`} />
-        </Helmet>
-
-        <div className="min-h-screen bg-background flex items-center justify-center p-6">
-          <div className="w-full max-w-lg">
-            {/* Progress Steps */}
-            <div className="flex items-center justify-center gap-2 mb-12">
-              {inviteSteps.map((s, i) => (
-                <div key={s.number} className="flex items-center">
-                  <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
-                      inviteStep >= s.number
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted text-muted-foreground'
-                    }`}
-                  >
-                    <s.icon className="w-5 h-5" />
-                  </div>
-                  {i < inviteSteps.length - 1 && (
-                    <div
-                      className={`w-16 h-0.5 mx-1 transition-colors ${
-                        inviteStep > s.number ? 'bg-primary' : 'bg-muted'
-                      }`}
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-
-            <div className="glass-card rounded-2xl p-8">
-              {/* Invite Step 1: Profile Setup */}
-              {inviteStep === 1 && (
-                <div className="space-y-6">
-                  <div className="text-center mb-8">
-                    <div className="w-16 h-16 rounded-2xl bg-gradient-primary flex items-center justify-center mx-auto mb-6 shadow-glow">
-                      <UserCircle className="w-8 h-8 text-primary-foreground" />
-                    </div>
-                    <h1 className="text-2xl font-bold text-foreground mb-2">
-                      Join {invitationData.agency_name}
-                    </h1>
-                    <p className="text-muted-foreground">
-                      You've been invited as a <span className="text-primary font-medium capitalize">{invitationData.role}</span>
-                    </p>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="fullName">Your Name</Label>
-                    <Input
-                      id="fullName"
-                      type="text"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      placeholder="John Smith"
-                      className="mt-1"
-                    />
-                  </div>
-
-                  <Button
-                    variant="hero"
-                    size="lg"
-                    className="w-full"
-                    onClick={handleAcceptInvite}
-                    disabled={isLoading || !fullName.trim()}
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Joining...
-                      </>
-                    ) : (
-                      'Accept Invitation'
-                    )}
-                  </Button>
-                </div>
-              )}
-
-              {/* Invite Step 2: Complete */}
-              {inviteStep === 2 && (
-                <div className="space-y-6">
-                  <div className="text-center mb-8">
-                    <div className="w-16 h-16 rounded-2xl bg-gradient-primary flex items-center justify-center mx-auto mb-6 shadow-glow">
-                      <CheckCircle className="w-8 h-8 text-primary-foreground" />
-                    </div>
-                    <h1 className="text-2xl font-bold text-foreground mb-2">You're all set!</h1>
-                    <p className="text-muted-foreground">
-                      Welcome to <strong>{invitationData.agency_name}</strong>. 
-                      {invitationData.role === 'client' && ' You can now view your projects and communicate with the team.'}
-                      {invitationData.role === 'editor' && ' You can now access assigned projects and collaborate with the team.'}
-                      {invitationData.role === 'admin' && ' You have full admin access to the agency.'}
-                    </p>
-                  </div>
-
-                  <Button
-                    variant="hero"
-                    size="lg"
-                    className="w-full"
-                    onClick={handleInviteComplete}
-                  >
-                    Go to Dashboard
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  // Render Normal Agency Creation Flow
   return (
     <>
       <Helmet>
@@ -589,7 +348,7 @@ const Onboarding = () => {
                 </div>
 
                 <div className="space-y-3 max-h-64 overflow-y-auto">
-                  {teamInvites.map((invite, index) => (
+                  {teamInvites.map((invite) => (
                     <div key={invite.id} className="flex items-center gap-2">
                       <div className="flex-1">
                         <div className="relative">
