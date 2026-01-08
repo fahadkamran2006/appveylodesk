@@ -78,8 +78,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // 2. No pending invite (invited users should go through onboarding)
       // 3. Currently in auth/onboarding flow
       const path = window.location.pathname;
+      // Don't redirect away from join pages - they handle their own flow
+      const isJoinPage = path === '/auth/join-client' || path === '/auth/join-team';
       const shouldRedirect =
-        path === '/' || path === '/onboarding' || path.startsWith('/auth/');
+        !isJoinPage && (path === '/' || path === '/onboarding' || path.startsWith('/auth/'));
 
       if (role && !hasPendingInvite && shouldRedirect) {
         redirectByRole(role);
