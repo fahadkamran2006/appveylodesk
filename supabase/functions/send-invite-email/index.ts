@@ -55,8 +55,18 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Sending invite email to ${email} for role ${role} at ${agencyName}`);
 
-    const siteUrl = "https://appveylodesk.lovable.app";
-    
+    const origin = req.headers.get("origin");
+    const forwardedProto = req.headers.get("x-forwarded-proto");
+    const forwardedHost = req.headers.get("x-forwarded-host");
+
+    // Prefer the caller's Origin so invite links work in both Preview and Published environments.
+    const derivedUrl =
+      origin ??
+      (forwardedHost ? `${forwardedProto ?? "https"}://${forwardedHost}` : null);
+
+    const siteUrl = (derivedUrl ?? "https://appveylodesk.lovable.app").replace(/\/$/, "");
+    console.log("Invite link base URL:", siteUrl);
+
     // Generate role-specific invite links
     const invitePath = role === "client" ? "/join-client" : "/join-team";
     const inviteLink = `${siteUrl}${invitePath}?invite=${invitationId}`;
