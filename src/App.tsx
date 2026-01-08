@@ -13,8 +13,8 @@ import NotFound from "./pages/NotFound";
 
 import Login from "./pages/auth/Login";
 import Signup from "./pages/auth/Signup";
-import JoinClient from "./pages/auth/JoinClient";
-import JoinTeam from "./pages/auth/JoinTeam";
+import JoinClient from "./pages/JoinClient";
+import JoinTeam from "./pages/JoinTeam";
 
 import Onboarding from "./pages/Onboarding";
 
@@ -50,8 +50,8 @@ const App = () => (
             <AuthProvider>
               <Routes>
                 {/* Public invite signup routes (must remain unguarded) */}
-                <Route path="/auth/join-client" element={<JoinClient />} />
-                <Route path="/auth/join-team" element={<JoinTeam />} />
+                <Route path="/join-client" element={<JoinClient />} />
+                <Route path="/join-team" element={<JoinTeam />} />
 
                 {/* Other public routes */}
                 <Route path="/auth/login" element={<Login />} />
