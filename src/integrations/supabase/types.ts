@@ -381,8 +381,8 @@ export type Database = {
       accept_agency_invitation: {
         Args: { _token: string }
         Returns: {
-          agency_id: string
-          role: Database["public"]["Enums"]["app_role"]
+          out_agency_id: string
+          out_role: Database["public"]["Enums"]["app_role"]
         }[]
       }
       get_user_agency_id: { Args: { _user_id: string }; Returns: string }
