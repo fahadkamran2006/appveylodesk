@@ -23,8 +23,6 @@ import AdminProjects from "./pages/admin/Projects";
 import AdminClients from "./pages/admin/Clients";
 import AdminTeam from "./pages/admin/Team";
 import AdminInvoices from "./pages/admin/Invoices";
-import AdminMessages from "./pages/admin/Messages";
-import AdminSettings from "./pages/admin/Settings";
 
 import ClientDashboard from "./pages/client/Dashboard";
 import ClientInvoices from "./pages/client/Invoices";
@@ -36,6 +34,10 @@ import Pricing from "./pages/Pricing";
 import Privacy from "./pages/legal/Privacy";
 import Terms from "./pages/legal/Terms";
 import Refund from "./pages/legal/Refund";
+
+// Shared pages
+import SettingsPage from "./pages/settings/Settings";
+import MessagesPage from "./pages/messages/MessagesPage";
 
 const queryClient = new QueryClient();
 
@@ -71,16 +73,20 @@ const App = () => (
                 <Route path="/admin/clients" element={<AdminClients />} />
                 <Route path="/admin/team" element={<AdminTeam />} />
                 <Route path="/admin/invoices" element={<AdminInvoices />} />
-                <Route path="/admin/messages" element={<AdminMessages />} />
-                <Route path="/admin/settings" element={<AdminSettings />} />
+                <Route path="/admin/messages" element={<MessagesPage />} />
+                <Route path="/admin/settings" element={<SettingsPage />} />
 
                 {/* Client */}
                 <Route path="/client/dashboard" element={<ClientDashboard />} />
                 <Route path="/client/invoices" element={<ClientInvoices />} />
+                <Route path="/client/messages" element={<MessagesPage />} />
+                <Route path="/client/settings" element={<SettingsPage />} />
 
                 {/* Editor */}
                 <Route path="/editor/dashboard" element={<EditorDashboard />} />
                 <Route path="/editor/earnings" element={<EditorEarnings />} />
+                <Route path="/editor/messages" element={<MessagesPage />} />
+                <Route path="/editor/settings" element={<SettingsPage />} />
 
                 {/* Catch-all must be last */}
                 <Route path="*" element={<NotFound />} />

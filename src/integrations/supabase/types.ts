@@ -85,6 +85,115 @@ export type Database = {
           },
         ]
       }
+      channel_mutes: {
+        Row: {
+          channel_id: string
+          created_at: string
+          id: string
+          muted_by: string
+          muted_user_id: string
+        }
+        Insert: {
+          channel_id: string
+          created_at?: string
+          id?: string
+          muted_by: string
+          muted_user_id: string
+        }
+        Update: {
+          channel_id?: string
+          created_at?: string
+          id?: string
+          muted_by?: string
+          muted_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_mutes_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      channel_participants: {
+        Row: {
+          channel_id: string
+          id: string
+          joined_at: string
+          user_id: string
+        }
+        Insert: {
+          channel_id: string
+          id?: string
+          joined_at?: string
+          user_id: string
+        }
+        Update: {
+          channel_id?: string
+          id?: string
+          joined_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_participants_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      channels: {
+        Row: {
+          agency_id: string
+          created_at: string
+          id: string
+          is_archived: boolean
+          name: string | null
+          project_id: string | null
+          type: Database["public"]["Enums"]["channel_type"]
+          updated_at: string
+        }
+        Insert: {
+          agency_id: string
+          created_at?: string
+          id?: string
+          is_archived?: boolean
+          name?: string | null
+          project_id?: string | null
+          type: Database["public"]["Enums"]["channel_type"]
+          updated_at?: string
+        }
+        Update: {
+          agency_id?: string
+          created_at?: string
+          id?: string
+          is_archived?: boolean
+          name?: string | null
+          project_id?: string | null
+          type?: Database["public"]["Enums"]["channel_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channels_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channels_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deliverables: {
         Row: {
           created_at: string
@@ -188,30 +297,40 @@ export type Database = {
       }
       messages: {
         Row: {
+          channel_id: string | null
           content: string
           created_at: string
           id: string
           is_internal: boolean | null
-          project_id: string
+          project_id: string | null
           sender_id: string
         }
         Insert: {
+          channel_id?: string | null
           content: string
           created_at?: string
           id?: string
           is_internal?: boolean | null
-          project_id: string
+          project_id?: string | null
           sender_id: string
         }
         Update: {
+          channel_id?: string | null
           content?: string
           created_at?: string
           id?: string
           is_internal?: boolean | null
-          project_id?: string
+          project_id?: string | null
           sender_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "messages_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "messages_project_id_fkey"
             columns: ["project_id"]
@@ -385,6 +504,10 @@ export type Database = {
           out_role: Database["public"]["Enums"]["app_role"]
         }[]
       }
+      get_or_create_dm_channel: {
+        Args: { _agency_id: string; _other_user_id: string }
+        Returns: string
+      }
       get_user_agency_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
@@ -408,6 +531,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "client" | "editor"
+      channel_type: "dm" | "project"
       invoice_status: "unpaid" | "paid" | "overdue" | "pending"
       project_status: "backlog" | "in_progress" | "review" | "done"
     }
@@ -538,6 +662,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "client", "editor"],
+      channel_type: ["dm", "project"],
       invoice_status: ["unpaid", "paid", "overdue", "pending"],
       project_status: ["backlog", "in_progress", "review", "done"],
     },
