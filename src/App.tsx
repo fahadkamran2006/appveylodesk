@@ -10,6 +10,8 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/auth/Login";
 import Signup from "./pages/auth/Signup";
+import JoinClient from "./pages/auth/JoinClient";
+import JoinTeam from "./pages/auth/JoinTeam";
 import Onboarding from "./pages/Onboarding";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminProjects from "./pages/admin/Projects";
@@ -42,6 +44,8 @@ const App = () => (
                 <Route path="/" element={<Index />} />
                 <Route path="/auth/login" element={<Login />} />
                 <Route path="/auth/signup" element={<Signup />} />
+                <Route path="/auth/join-client" element={<JoinClient />} />
+                <Route path="/auth/join-team" element={<JoinTeam />} />
                 <Route path="/onboarding" element={<Onboarding />} />
                 <Route path="/admin/dashboard" element={<AdminDashboard />} />
                 <Route path="/admin/projects" element={<AdminProjects />} />
