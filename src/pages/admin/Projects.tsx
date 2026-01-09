@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Plus, Loader2 } from 'lucide-react';
 
 const COLUMNS: { id: ProjectStatus; title: string }[] = [
+  { id: 'proposal', title: 'Proposals' },
   { id: 'backlog', title: 'Backlog' },
   { id: 'in_progress', title: 'In Progress' },
   { id: 'review', title: 'Review' },

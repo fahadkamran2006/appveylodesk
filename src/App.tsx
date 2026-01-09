@@ -38,6 +38,7 @@ import Refund from "./pages/legal/Refund";
 // Shared pages
 import SettingsPage from "./pages/settings/Settings";
 import MessagesPage from "./pages/messages/MessagesPage";
+import StoragePage from "./pages/storage/StoragePage";
 
 const queryClient = new QueryClient();
 
@@ -73,18 +74,22 @@ const App = () => (
                 <Route path="/admin/clients" element={<AdminClients />} />
                 <Route path="/admin/team" element={<AdminTeam />} />
                 <Route path="/admin/invoices" element={<AdminInvoices />} />
+                <Route path="/admin/storage" element={<StoragePage />} />
                 <Route path="/admin/messages" element={<MessagesPage />} />
                 <Route path="/admin/settings" element={<SettingsPage />} />
 
                 {/* Client */}
                 <Route path="/client/dashboard" element={<ClientDashboard />} />
                 <Route path="/client/invoices" element={<ClientInvoices />} />
+                <Route path="/client/storage" element={<StoragePage />} />
                 <Route path="/client/messages" element={<MessagesPage />} />
                 <Route path="/client/settings" element={<SettingsPage />} />
 
                 {/* Editor */}
                 <Route path="/editor/dashboard" element={<EditorDashboard />} />
+                <Route path="/editor/projects" element={<EditorDashboard />} />
                 <Route path="/editor/earnings" element={<EditorEarnings />} />
+                <Route path="/editor/storage" element={<StoragePage />} />
                 <Route path="/editor/messages" element={<MessagesPage />} />
                 <Route path="/editor/settings" element={<SettingsPage />} />
 
