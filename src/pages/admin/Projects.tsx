@@ -7,6 +7,7 @@ import { AppSidebar } from '@/components/AppSidebar';
 import { Button } from '@/components/ui/button';
 import { KanbanColumn, Project, ProjectStatus } from '@/components/projects/KanbanColumn';
 import { CreateProjectModal } from '@/components/projects/CreateProjectModal';
+import { ProjectDetailSheet } from '@/components/projects/ProjectDetailSheet';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Loader2 } from 'lucide-react';
