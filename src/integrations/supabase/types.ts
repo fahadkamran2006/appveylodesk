@@ -21,6 +21,9 @@ export type Database = {
           id: string
           logo_url: string | null
           name: string
+          storage_limit_bytes: number
+          storage_used_bytes: number
+          subscription_plan: string
           updated_at: string
         }
         Insert: {
@@ -29,6 +32,9 @@ export type Database = {
           id?: string
           logo_url?: string | null
           name: string
+          storage_limit_bytes?: number
+          storage_used_bytes?: number
+          subscription_plan?: string
           updated_at?: string
         }
         Update: {
@@ -37,6 +43,9 @@ export type Database = {
           id?: string
           logo_url?: string | null
           name?: string
+          storage_limit_bytes?: number
+          storage_used_bytes?: number
+          subscription_plan?: string
           updated_at?: string
         }
         Relationships: []
@@ -190,6 +199,53 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deliverable_comments: {
+        Row: {
+          content: string
+          created_at: string
+          deliverable_id: string
+          id: string
+          is_resolved: boolean
+          resolved_at: string | null
+          resolved_by: string | null
+          timestamp_seconds: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          deliverable_id: string
+          id?: string
+          is_resolved?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
+          timestamp_seconds: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          deliverable_id?: string
+          id?: string
+          is_resolved?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
+          timestamp_seconds?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deliverable_comments_deliverable_id_fkey"
+            columns: ["deliverable_id"]
+            isOneToOne: false
+            referencedRelation: "deliverables"
             referencedColumns: ["id"]
           },
         ]
@@ -503,6 +559,10 @@ export type Database = {
           out_agency_id: string
           out_role: Database["public"]["Enums"]["app_role"]
         }[]
+      }
+      check_storage_limit: {
+        Args: { _agency_id: string; _file_size: number }
+        Returns: boolean
       }
       get_or_create_dm_channel: {
         Args: { _agency_id: string; _other_user_id: string }
