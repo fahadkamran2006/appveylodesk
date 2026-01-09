@@ -635,6 +635,17 @@ export type Database = {
         Args: { _agency_id: string; _user_id: string }
         Returns: boolean
       }
+      verify_invitation_token: {
+        Args: { _token: string }
+        Returns: {
+          agency_name: string
+          already_accepted: boolean
+          email: string
+          full_name: string
+          role: Database["public"]["Enums"]["app_role"]
+          valid: boolean
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "client" | "editor"

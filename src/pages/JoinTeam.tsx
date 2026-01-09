@@ -10,16 +10,16 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 
 const joinSchema = z.object({
-  fullName: z.string().min(2, 'Name must be at least 2 characters'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  fullName: z.string().min(2, 'Name must be at least 2 characters').max(100, 'Name must be less than 100 characters'),
+  password: z.string().min(6, 'Password must be at least 6 characters').max(72, 'Password must be less than 72 characters'),
 });
 
 interface InvitationData {
   id: string;
   email: string;
-  agency_id: string;
   agency_name: string;
   role: string;
+  full_name: string | null;
 }
 
 const JoinTeam = () => {
@@ -43,22 +43,35 @@ const JoinTeam = () => {
         return;
       }
 
-      try {
-        // Fetch invitation details
-        const { data: invitation, error } = await supabase
-          .from('agency_invitations')
-          .select('id, email, agency_id, role, full_name, accepted_at')
-          .eq('id', inviteToken)
-          .maybeSingle();
+      // Validate UUID format to prevent injection
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(inviteToken)) {
+        setInviteError('Invalid invitation token format');
+        setIsCheckingInvite(false);
+        return;
+      }
 
-        if (error || !invitation) {
-          setInviteError('Invalid or expired invitation');
+      try {
+        // Use secure RPC function instead of direct table access
+        const { data, error } = await supabase.rpc('verify_invitation_token', {
+          _token: inviteToken,
+        });
+
+        if (error) {
+          console.error('Error verifying invitation:', error);
+          setInviteError('Failed to verify invitation');
           setIsCheckingInvite(false);
           return;
         }
 
-        if (invitation.accepted_at) {
-          setInviteError('This invitation has already been accepted');
+        const invitation = data?.[0];
+
+        if (!invitation || !invitation.valid) {
+          if (invitation?.already_accepted) {
+            setInviteError('This invitation has already been accepted');
+          } else {
+            setInviteError('Invalid or expired invitation');
+          }
           setIsCheckingInvite(false);
           return;
         }
@@ -69,19 +82,12 @@ const JoinTeam = () => {
           return;
         }
 
-        // Get agency name
-        const { data: agency } = await supabase
-          .from('agencies')
-          .select('name')
-          .eq('id', invitation.agency_id)
-          .single();
-
         setInvitationData({
-          id: invitation.id,
+          id: inviteToken,
           email: invitation.email,
-          agency_id: invitation.agency_id,
-          agency_name: agency?.name || 'the agency',
+          agency_name: invitation.agency_name || 'the agency',
           role: invitation.role,
+          full_name: invitation.full_name,
         });
 
         if (invitation.full_name) {
@@ -257,6 +263,7 @@ const JoinTeam = () => {
                       onChange={(e) => setFullName(e.target.value)}
                       placeholder="John Smith"
                       className="mt-1"
+                      maxLength={100}
                       required
                     />
                   </div>
@@ -270,6 +277,7 @@ const JoinTeam = () => {
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Create a password"
                       className="mt-1"
+                      maxLength={72}
                       required
                     />
                     <p className="text-xs text-muted-foreground mt-1">
