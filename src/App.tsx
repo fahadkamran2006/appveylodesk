@@ -26,8 +26,10 @@ import AdminInvoices from "./pages/admin/Invoices";
 
 import ClientDashboard from "./pages/client/Dashboard";
 import ClientInvoices from "./pages/client/Invoices";
+import ClientProjects from "./pages/client/Projects";
 
 import EditorDashboard from "./pages/editor/Dashboard";
+import EditorProjects from "./pages/editor/Projects";
 import EditorEarnings from "./pages/editor/Earnings";
 
 import Pricing from "./pages/Pricing";
@@ -80,6 +82,7 @@ const App = () => (
 
                 {/* Client */}
                 <Route path="/client/dashboard" element={<ClientDashboard />} />
+                <Route path="/client/projects" element={<ClientProjects />} />
                 <Route path="/client/invoices" element={<ClientInvoices />} />
                 <Route path="/client/storage" element={<StoragePage />} />
                 <Route path="/client/messages" element={<MessagesPage />} />
@@ -87,7 +90,7 @@ const App = () => (
 
                 {/* Editor */}
                 <Route path="/editor/dashboard" element={<EditorDashboard />} />
-                <Route path="/editor/projects" element={<EditorDashboard />} />
+                <Route path="/editor/projects" element={<EditorProjects />} />
                 <Route path="/editor/earnings" element={<EditorEarnings />} />
                 <Route path="/editor/storage" element={<StoragePage />} />
                 <Route path="/editor/messages" element={<MessagesPage />} />

@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Command, LayoutDashboard, FolderKanban, Receipt, MessageSquare, LogOut } from 'lucide-react';
+import { Command, LayoutDashboard, FolderKanban, Receipt, MessageSquare, LogOut, HardDrive, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -9,7 +9,9 @@ const navItems = [
   { label: 'Dashboard', icon: LayoutDashboard, href: '/client/dashboard' },
   { label: 'Projects', icon: FolderKanban, href: '/client/projects' },
   { label: 'Invoices', icon: Receipt, href: '/client/invoices' },
+  { label: 'Storage', icon: HardDrive, href: '/client/storage' },
   { label: 'Messages', icon: MessageSquare, href: '/client/messages' },
+  { label: 'Settings', icon: Settings, href: '/client/settings' },
 ];
 
 export const ClientSidebar = () => {
