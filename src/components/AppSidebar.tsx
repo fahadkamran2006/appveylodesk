@@ -15,6 +15,7 @@ import {
   MessageSquare,
   Briefcase,
   FileText,
+  HardDrive,
 } from 'lucide-react';
 
 interface NavItem {
@@ -29,6 +30,7 @@ const adminNavItems: NavItem[] = [
   { label: 'Clients', icon: Users, href: '/admin/clients' },
   { label: 'Team', icon: UsersRound, href: '/admin/team' },
   { label: 'Invoices', icon: Receipt, href: '/admin/invoices' },
+  { label: 'Storage', icon: HardDrive, href: '/admin/storage' },
   { label: 'Messages', icon: MessageSquare, href: '/admin/messages' },
   { label: 'Settings', icon: Settings, href: '/admin/settings' },
 ];
@@ -37,13 +39,15 @@ const clientNavItems: NavItem[] = [
   { label: 'Dashboard', icon: Briefcase, href: '/client/dashboard' },
   { label: 'Projects', icon: FolderKanban, href: '/client/projects' },
   { label: 'Invoices', icon: FileText, href: '/client/invoices' },
+  { label: 'Storage', icon: HardDrive, href: '/client/storage' },
   { label: 'Messages', icon: MessageSquare, href: '/client/messages' },
   { label: 'Settings', icon: Settings, href: '/client/settings' },
 ];
 
 const editorNavItems: NavItem[] = [
   { label: 'Dashboard', icon: LayoutDashboard, href: '/editor/dashboard' },
-  { label: 'My Tasks', icon: FolderKanban, href: '/editor/tasks' },
+  { label: 'My Tasks', icon: FolderKanban, href: '/editor/projects' },
+  { label: 'Storage', icon: HardDrive, href: '/editor/storage' },
   { label: 'Messages', icon: MessageSquare, href: '/editor/messages' },
   { label: 'Earnings', icon: Receipt, href: '/editor/earnings' },
   { label: 'Settings', icon: Settings, href: '/editor/settings' },
