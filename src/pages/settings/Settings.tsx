@@ -10,6 +10,7 @@ import { AppSidebar } from '@/components/AppSidebar';
 import { ClientSidebar } from '@/components/client/ClientSidebar';
 import { EditorSidebar } from '@/components/editor/EditorSidebar';
 import { AvatarUpload } from '@/components/settings/AvatarUpload';
+import { StorageManagement } from '@/components/settings/StorageManagement';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -187,6 +188,11 @@ const SettingsPage = () => {
                 </Form>
               </CardContent>
             </Card>
+
+            {/* Storage Management - Admin Only */}
+            {userRole === 'admin' && (
+              <StorageManagement className="mt-6" />
+            )}
           </div>
         </main>
       </div>

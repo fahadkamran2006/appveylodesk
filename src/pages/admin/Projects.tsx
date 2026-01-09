@@ -25,6 +25,7 @@ const AdminProjects = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -233,8 +234,7 @@ const AdminProjects = () => {
                       title={column.title}
                       projects={getProjectsByStatus(column.id)}
                       onProjectClick={(project) => {
-                        // TODO: Open project detail modal
-                        console.log('Clicked project:', project);
+                        setSelectedProjectId(project.id);
                       }}
                     />
                   ))}
@@ -250,6 +250,12 @@ const AdminProjects = () => {
         open={createModalOpen}
         onOpenChange={setCreateModalOpen}
         onSuccess={fetchProjects}
+      />
+
+      <ProjectDetailSheet
+        projectId={selectedProjectId}
+        open={!!selectedProjectId}
+        onOpenChange={(open) => !open && setSelectedProjectId(null)}
       />
     </>
   );
