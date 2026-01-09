@@ -1,6 +1,7 @@
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
+import DOMPurify from 'dompurify';
 import { Button } from '@/components/ui/button';
 import { Bold, Italic, List, ListOrdered, Undo, Redo } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -12,6 +13,10 @@ interface RichTextEditorProps {
   editable?: boolean;
   className?: string;
 }
+
+// Configure DOMPurify to only allow safe HTML tags
+const ALLOWED_TAGS = ['p', 'br', 'strong', 'em', 'u', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'blockquote', 'code', 'pre'];
+const ALLOWED_ATTR = ['class'];
 
 export function RichTextEditor({
   content,
@@ -129,10 +134,16 @@ export function RichTextEditor({
 }
 
 export function RichTextDisplay({ content }: { content: string }) {
+  // Sanitize HTML content to prevent XSS attacks
+  const sanitizedContent = DOMPurify.sanitize(content, {
+    ALLOWED_TAGS,
+    ALLOWED_ATTR,
+  });
+
   return (
     <div
       className="prose prose-sm dark:prose-invert max-w-none"
-      dangerouslySetInnerHTML={{ __html: content }}
+      dangerouslySetInnerHTML={{ __html: sanitizedContent }}
     />
   );
 }
