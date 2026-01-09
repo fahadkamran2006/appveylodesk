@@ -94,6 +94,53 @@ export type Database = {
           },
         ]
       }
+      cancellation_requests: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          id: string
+          project_id: string
+          reason: string
+          requested_by: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          id?: string
+          project_id: string
+          reason: string
+          requested_by: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          id?: string
+          project_id?: string
+          reason?: string
+          requested_by?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cancellation_requests_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       channel_mutes: {
         Row: {
           channel_id: string
@@ -593,7 +640,13 @@ export type Database = {
       app_role: "admin" | "client" | "editor"
       channel_type: "dm" | "project"
       invoice_status: "unpaid" | "paid" | "overdue" | "pending"
-      project_status: "backlog" | "in_progress" | "review" | "done"
+      project_status:
+        | "backlog"
+        | "in_progress"
+        | "review"
+        | "done"
+        | "proposal"
+        | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -724,7 +777,14 @@ export const Constants = {
       app_role: ["admin", "client", "editor"],
       channel_type: ["dm", "project"],
       invoice_status: ["unpaid", "paid", "overdue", "pending"],
-      project_status: ["backlog", "in_progress", "review", "done"],
+      project_status: [
+        "backlog",
+        "in_progress",
+        "review",
+        "done",
+        "proposal",
+        "cancelled",
+      ],
     },
   },
 } as const
