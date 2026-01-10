@@ -607,9 +607,23 @@ export type Database = {
           out_role: Database["public"]["Enums"]["app_role"]
         }[]
       }
+      add_project_channel_participant: {
+        Args: { _project_id: string; _user_id: string }
+        Returns: undefined
+      }
       check_storage_limit: {
         Args: { _agency_id: string; _file_size: number }
         Returns: boolean
+      }
+      create_project_channel: {
+        Args: {
+          _admin_id: string
+          _agency_id: string
+          _client_id?: string
+          _editor_id?: string
+          _project_id: string
+        }
+        Returns: string
       }
       get_or_create_dm_channel: {
         Args: { _agency_id: string; _other_user_id: string }

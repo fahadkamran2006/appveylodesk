@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/hooks/useAuth';
 import { useMessaging, useChannelMessages } from '@/hooks/useMessaging';
@@ -14,6 +14,7 @@ import { MessageSquare } from 'lucide-react';
 const MessagesPage = () => {
   const { user, userRole, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [showNewDM, setShowNewDM] = useState(false);
 
@@ -38,6 +39,16 @@ const MessagesPage = () => {
       navigate('/auth/login');
     }
   }, [user, authLoading, navigate]);
+
+  // Handle channel query parameter from URL
+  useEffect(() => {
+    const channelParam = searchParams.get('channel');
+    if (channelParam && !channelsLoading) {
+      setSelectedChannelId(channelParam);
+      // Clear the query param after setting
+      setSearchParams({});
+    }
+  }, [searchParams, channelsLoading, setSearchParams]);
 
   // Handle new DM selection
   const handleNewDMSelect = async (userId: string) => {

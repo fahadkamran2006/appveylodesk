@@ -4,7 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MessageSquare, Users, FolderKanban, Lock, Plus } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { MessageSquare, Users, FolderKanban, Lock, Plus, ChevronDown, Archive } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
@@ -56,6 +57,11 @@ export function ChatList({
 }: ChatListProps) {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'dm' | 'project'>('dm');
+  const [showArchived, setShowArchived] = useState(false);
+
+  // Separate active and archived project channels
+  const activeProjectChannels = projectChannels.filter(c => !c.is_archived);
+  const archivedProjectChannels = projectChannels.filter(c => c.is_archived);
 
   const getOtherParticipant = (channel: Channel) => {
     return channel.participants.find(p => p.user_id !== user?.id)?.profile;
@@ -99,7 +105,10 @@ export function ChatList({
             </AvatarFallback>
           </Avatar>
         ) : (
-          <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
+          <div className={cn(
+            "w-10 h-10 rounded-full flex items-center justify-center",
+            channel.is_archived ? "bg-muted" : "bg-secondary"
+          )}>
             <FolderKanban className="w-5 h-5 text-muted-foreground" />
           </div>
         )}
@@ -107,7 +116,12 @@ export function ChatList({
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="font-medium truncate">{displayName}</span>
+            <span className={cn(
+              "font-medium truncate",
+              channel.is_archived && "text-muted-foreground"
+            )}>
+              {displayName}
+            </span>
             {channel.is_archived && (
               <Lock className="w-3 h-3 text-muted-foreground flex-shrink-0" />
             )}
@@ -156,9 +170,9 @@ export function ChatList({
             <TabsTrigger value="project" className="flex-1 gap-2">
               <FolderKanban className="w-4 h-4" />
               Projects
-              {projectChannels.length > 0 && (
+              {activeProjectChannels.length > 0 && (
                 <Badge variant="secondary" className="ml-1">
-                  {projectChannels.length}
+                  {activeProjectChannels.length}
                 </Badge>
               )}
             </TabsTrigger>
@@ -203,7 +217,29 @@ export function ChatList({
               </div>
             ) : (
               <div className="space-y-1">
-                {projectChannels.map(renderChannelItem)}
+                {/* Active project chats */}
+                {activeProjectChannels.map(renderChannelItem)}
+
+                {/* Archived section */}
+                {archivedProjectChannels.length > 0 && (
+                  <Collapsible open={showArchived} onOpenChange={setShowArchived} className="mt-4">
+                    <CollapsibleTrigger asChild>
+                      <Button variant="ghost" size="sm" className="w-full justify-between text-muted-foreground">
+                        <div className="flex items-center gap-2">
+                          <Archive className="w-4 h-4" />
+                          <span>Archived ({archivedProjectChannels.length})</span>
+                        </div>
+                        <ChevronDown className={cn(
+                          "w-4 h-4 transition-transform",
+                          showArchived && "rotate-180"
+                        )} />
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="space-y-1 mt-1">
+                      {archivedProjectChannels.map(renderChannelItem)}
+                    </CollapsibleContent>
+                  </Collapsible>
+                )}
               </div>
             )}
           </ScrollArea>
