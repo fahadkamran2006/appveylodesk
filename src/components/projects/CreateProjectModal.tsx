@@ -184,6 +184,21 @@ export function CreateProjectModal({
         }
       }
 
+      // Create project channel with all participants
+      if (project) {
+        const { error: channelError } = await supabase.rpc('create_project_channel', {
+          _project_id: project.id,
+          _agency_id: agencyId,
+          _admin_id: user.id,
+          _client_id: data.client_id || null,
+          _editor_id: data.editor_id || null,
+        });
+
+        if (channelError) {
+          console.error('Error creating project channel:', channelError);
+        }
+      }
+
       toast({
         title: 'Project created',
         description: `"${data.title}" has been added to Backlog`,

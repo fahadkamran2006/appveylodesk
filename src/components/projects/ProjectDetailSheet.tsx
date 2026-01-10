@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import {
   Sheet,
@@ -18,7 +19,8 @@ import {
   DollarSign,
   Video,
   FolderOpen,
-  ArrowLeft
+  ArrowLeft,
+  MessageSquare
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
@@ -68,11 +70,13 @@ export function ProjectDetailSheet({
 }: ProjectDetailSheetProps) {
   const { user, userRole } = useAuth();
   const { fetchDeliverables, storageInfo, fetchStorageInfo } = useStorage();
+  const navigate = useNavigate();
   
   const [project, setProject] = useState<ProjectDetail | null>(null);
   const [deliverables, setDeliverables] = useState<Deliverable[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('files');
+  const [projectChannelId, setProjectChannelId] = useState<string | null>(null);
   
   // Video review state
   const [selectedVideo, setSelectedVideo] = useState<Deliverable | null>(null);
@@ -131,6 +135,16 @@ export function ProjectDetailSheet({
         editorName = editorProfile?.full_name || editorProfile?.email;
       }
 
+      // Get project channel ID
+      const { data: channelData } = await supabase
+        .from('channels')
+        .select('id')
+        .eq('project_id', projectId)
+        .eq('type', 'project')
+        .maybeSingle();
+      
+      setProjectChannelId(channelData?.id || null);
+
       setProject({
         ...projectData,
         client_name: clientName,
@@ -178,6 +192,13 @@ export function ProjectDetailSheet({
   const handleBackFromVideo = () => {
     setSelectedVideo(null);
     setCurrentTimestamp(null);
+  };
+
+  const handleOpenProjectChat = () => {
+    onOpenChange(false);
+    // Navigate to messages page - the channel will be selected there
+    const basePath = userRole === 'admin' ? '/admin' : userRole === 'client' ? '/client' : '/editor';
+    navigate(`${basePath}/messages?channel=${projectChannelId}`);
   };
 
   if (!project && !loading) return null;
@@ -249,6 +270,17 @@ export function ProjectDetailSheet({
                       <DollarSign className="w-4 h-4" />
                       <span>Budget: <span className="text-foreground">${project.budget.toLocaleString()}</span></span>
                     </div>
+                  )}
+                  {projectChannelId && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleOpenProjectChat}
+                      className="ml-auto"
+                    >
+                      <MessageSquare className="w-4 h-4 mr-2" />
+                      Open Project Chat
+                    </Button>
                   )}
                 </div>
               )}
