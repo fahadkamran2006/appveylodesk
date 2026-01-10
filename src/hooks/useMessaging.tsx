@@ -150,8 +150,13 @@ export function useMessaging() {
       });
 
       setChannels(channelsWithDetails);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching channels:', error);
+      toast({
+        title: 'Messaging unavailable',
+        description: error.message || 'Failed to load conversations. Please try again.',
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }
