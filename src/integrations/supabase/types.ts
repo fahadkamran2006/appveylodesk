@@ -611,6 +611,10 @@ export type Database = {
         Args: { _project_id: string; _user_id: string }
         Returns: undefined
       }
+      channel_belongs_to_agency: {
+        Args: { _agency_id: string; _channel_id: string }
+        Returns: boolean
+      }
       check_storage_limit: {
         Args: { _agency_id: string; _file_size: number }
         Returns: boolean
