@@ -1,7 +1,9 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Command, LayoutDashboard, FolderKanban, MessageSquare, DollarSign, LogOut, HardDrive, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
+import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { cn } from '@/lib/utils';
 
@@ -17,6 +19,7 @@ const navItems = [
 export const EditorSidebar = () => {
   const location = useLocation();
   const { signOut } = useAuth();
+  const { totalUnread } = useUnreadMessages();
 
   return (
     <aside className="w-64 bg-surface-dark border-r border-border/50 flex flex-col">
@@ -35,6 +38,7 @@ export const EditorSidebar = () => {
       <nav className="flex-1 px-4 space-y-1">
         {navItems.map((item) => {
           const isActive = location.pathname === item.href;
+          const isMessages = item.label === 'Messages';
           return (
             <Link
               key={item.href}
@@ -47,7 +51,12 @@ export const EditorSidebar = () => {
               )}
             >
               <item.icon className="w-5 h-5" />
-              {item.label}
+              <span className="flex-1">{item.label}</span>
+              {isMessages && totalUnread > 0 && (
+                <Badge className="bg-primary text-primary-foreground text-xs px-1.5 py-0.5 min-w-[20px] text-center">
+                  {totalUnread > 99 ? '99+' : totalUnread}
+                </Badge>
+              )}
             </Link>
           );
         })}

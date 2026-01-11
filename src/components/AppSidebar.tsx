@@ -1,7 +1,9 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import {
   Command,
@@ -60,6 +62,7 @@ interface AppSidebarProps {
 export function AppSidebar({ role = 'admin' }: AppSidebarProps) {
   const location = useLocation();
   const { signOut } = useAuth();
+  const { totalUnread } = useUnreadMessages();
 
   const navItems = role === 'admin' 
     ? adminNavItems 
@@ -84,6 +87,7 @@ export function AppSidebar({ role = 'admin' }: AppSidebarProps) {
       <nav className="flex-1 px-4 space-y-1">
         {navItems.map((item) => {
           const isActive = location.pathname === item.href;
+          const isMessages = item.label === 'Messages';
           return (
             <Link
               key={item.href}
@@ -96,7 +100,12 @@ export function AppSidebar({ role = 'admin' }: AppSidebarProps) {
               )}
             >
               <item.icon className="w-5 h-5" />
-              {item.label}
+              <span className="flex-1">{item.label}</span>
+              {isMessages && totalUnread > 0 && (
+                <Badge className="bg-primary text-primary-foreground text-xs px-1.5 py-0.5 min-w-[20px] text-center">
+                  {totalUnread > 99 ? '99+' : totalUnread}
+                </Badge>
+              )}
             </Link>
           );
         })}
