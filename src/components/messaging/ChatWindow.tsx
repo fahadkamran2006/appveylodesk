@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
 import { useChannelMutes } from '@/hooks/useMessaging';
+import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 
 interface Sender {
   id: string;
@@ -56,6 +57,7 @@ export function ChatWindow({ channel, messages, loading, onSendMessage }: ChatWi
   const [sending, setSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { mutedUsers, muteUser, unmuteUser, isUserMuted } = useChannelMutes(channel?.id || null);
+  const { typingUsers, onTyping, stopTyping } = useTypingIndicator(channel?.id || null);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -82,11 +84,19 @@ export function ChatWindow({ channel, messages, loading, onSendMessage }: ChatWi
     if (!messageInput.trim() || sending) return;
 
     setSending(true);
+    stopTyping();
     const success = await onSendMessage(messageInput);
     if (success) {
       setMessageInput('');
     }
     setSending(false);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setMessageInput(e.target.value);
+    if (e.target.value.trim()) {
+      onTyping();
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -281,6 +291,27 @@ export function ChatWindow({ channel, messages, loading, onSendMessage }: ChatWi
         )}
       </ScrollArea>
 
+      {/* Typing Indicator */}
+      {typingUsers.length > 0 && (
+        <div className="px-4 py-2 border-t border-border/30">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="flex gap-1">
+              <span className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+              <span className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+              <span className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+            </div>
+            <span>
+              {typingUsers.length === 1 
+                ? `${typingUsers[0].name} is typing...`
+                : typingUsers.length === 2
+                  ? `${typingUsers[0].name} and ${typingUsers[1].name} are typing...`
+                  : `${typingUsers[0].name} and ${typingUsers.length - 1} others are typing...`
+              }
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Input */}
       <div className="p-4 border-t border-border/50">
         {isArchived ? (
@@ -292,7 +323,7 @@ export function ChatWindow({ channel, messages, loading, onSendMessage }: ChatWi
           <div className="flex gap-2">
             <Input
               value={messageInput}
-              onChange={(e) => setMessageInput(e.target.value)}
+              onChange={handleInputChange}
               onKeyDown={handleKeyDown}
               placeholder="Type a message..."
               className="flex-1 bg-surface-elevated border-border/50"
