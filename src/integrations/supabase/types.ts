@@ -202,6 +202,38 @@ export type Database = {
           },
         ]
       }
+      channel_read_receipts: {
+        Row: {
+          channel_id: string
+          created_at: string
+          id: string
+          last_seen_at: string
+          user_id: string
+        }
+        Insert: {
+          channel_id: string
+          created_at?: string
+          id?: string
+          last_seen_at?: string
+          user_id: string
+        }
+        Update: {
+          channel_id?: string
+          created_at?: string
+          id?: string
+          last_seen_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_read_receipts_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       channels: {
         Row: {
           agency_id: string
@@ -628,6 +660,10 @@ export type Database = {
           _project_id: string
         }
         Returns: string
+      }
+      get_channel_unread_count: {
+        Args: { _channel_id: string; _user_id: string }
+        Returns: number
       }
       get_or_create_dm_channel: {
         Args: { _agency_id: string; _other_user_id: string }

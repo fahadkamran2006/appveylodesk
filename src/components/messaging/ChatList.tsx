@@ -45,6 +45,7 @@ interface ChatListProps {
   onSelectChannel: (channelId: string) => void;
   onNewDM?: () => void;
   loading?: boolean;
+  unreadCounts?: { [channelId: string]: number };
 }
 
 export function ChatList({
@@ -54,6 +55,7 @@ export function ChatList({
   onSelectChannel,
   onNewDM,
   loading,
+  unreadCounts = {},
 }: ChatListProps) {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'dm' | 'project'>('dm');
@@ -84,6 +86,7 @@ export function ChatList({
     const displayName = isDM
       ? otherUser?.full_name || otherUser?.email || 'Unknown'
       : channel.project?.title || channel.name || 'Project Chat';
+    const unreadCount = unreadCounts[channel.id] || 0;
 
     return (
       <button
@@ -133,14 +136,21 @@ export function ChatList({
           )}
         </div>
 
-        {/* Time */}
-        {channel.last_message && (
-          <span className="text-xs text-muted-foreground flex-shrink-0">
-            {formatDistanceToNow(new Date(channel.last_message.created_at), {
-              addSuffix: false,
-            })}
-          </span>
-        )}
+        {/* Time & Unread Badge */}
+        <div className="flex flex-col items-end gap-1 flex-shrink-0">
+          {channel.last_message && (
+            <span className="text-xs text-muted-foreground">
+              {formatDistanceToNow(new Date(channel.last_message.created_at), {
+                addSuffix: false,
+              })}
+            </span>
+          )}
+          {unreadCount > 0 && (
+            <Badge className="bg-primary text-primary-foreground text-xs px-1.5 py-0.5 min-w-[20px] text-center">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </Badge>
+          )}
+        </div>
       </button>
     );
   };

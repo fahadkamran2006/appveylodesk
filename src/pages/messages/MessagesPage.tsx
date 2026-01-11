@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/hooks/useAuth';
 import { useMessaging, useChannelMessages } from '@/hooks/useMessaging';
+import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 import { AppSidebar } from '@/components/AppSidebar';
 import { ClientSidebar } from '@/components/client/ClientSidebar';
 import { EditorSidebar } from '@/components/editor/EditorSidebar';
@@ -33,6 +34,8 @@ const MessagesPage = () => {
     sendMessage,
   } = useChannelMessages(selectedChannelId);
 
+  const { unreadCounts, markChannelAsRead } = useUnreadMessages();
+
   // Redirect if not authenticated
   useEffect(() => {
     if (!authLoading && !user) {
@@ -50,11 +53,17 @@ const MessagesPage = () => {
     }
   }, [searchParams, channelsLoading, setSearchParams]);
 
+  // Handle channel selection and mark as read
+  const handleSelectChannel = useCallback((channelId: string) => {
+    setSelectedChannelId(channelId);
+    markChannelAsRead(channelId);
+  }, [markChannelAsRead]);
+
   // Handle new DM selection
   const handleNewDMSelect = async (userId: string) => {
     const channelId = await getOrCreateDM(userId);
     if (channelId) {
-      setSelectedChannelId(channelId);
+      handleSelectChannel(channelId);
     }
   };
 
@@ -102,9 +111,10 @@ const MessagesPage = () => {
                 dmChannels={dmChannels as any}
                 projectChannels={projectChannels as any}
                 selectedChannelId={selectedChannelId}
-                onSelectChannel={setSelectedChannelId}
+                onSelectChannel={handleSelectChannel}
                 onNewDM={() => setShowNewDM(true)}
                 loading={channelsLoading}
+                unreadCounts={unreadCounts}
               />
             </div>
           </div>
