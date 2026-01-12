@@ -7,6 +7,16 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,7 +30,10 @@ import {
   Video,
   FolderOpen,
   ArrowLeft,
-  MessageSquare
+  MessageSquare,
+  Trash2,
+  Loader2,
+  Image as ImageIcon
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
@@ -30,11 +43,14 @@ import { useVideoComments } from '@/hooks/useVideoComments';
 import { FileManager } from './FileManager';
 import { VideoPlayer } from '@/components/video/VideoPlayer';
 import { CommentPanel } from '@/components/video/CommentPanel';
+import { useToast } from '@/hooks/use-toast';
+import { FilePreviewModal } from '@/components/ui/file-preview-modal';
 
 interface ProjectDetailSheetProps {
   projectId: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onProjectDeleted?: () => void;
 }
 
 interface ProjectDetail {
@@ -67,9 +83,11 @@ export function ProjectDetailSheet({
   projectId,
   open,
   onOpenChange,
+  onProjectDeleted,
 }: ProjectDetailSheetProps) {
   const { user, userRole } = useAuth();
   const { fetchDeliverables, storageInfo, fetchStorageInfo } = useStorage();
+  const { toast } = useToast();
   const navigate = useNavigate();
   
   const [project, setProject] = useState<ProjectDetail | null>(null);
@@ -77,6 +95,13 @@ export function ProjectDetailSheet({
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('files');
   const [projectChannelId, setProjectChannelId] = useState<string | null>(null);
+  
+  // Delete state
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  
+  // Image preview state
+  const [previewImage, setPreviewImage] = useState<Deliverable | null>(null);
   
   // Video review state
   const [selectedVideo, setSelectedVideo] = useState<Deliverable | null>(null);
@@ -196,9 +221,45 @@ export function ProjectDetailSheet({
 
   const handleOpenProjectChat = () => {
     onOpenChange(false);
-    // Navigate to messages page - the channel will be selected there
     const basePath = userRole === 'admin' ? '/admin' : userRole === 'client' ? '/client' : '/editor';
     navigate(`${basePath}/messages?channel=${projectChannelId}`);
+  };
+
+  const handleDeleteProject = async () => {
+    if (!projectId) return;
+
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .delete()
+        .eq('id', projectId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Project deleted',
+        description: 'The project has been permanently removed.',
+      });
+
+      onOpenChange(false);
+      onProjectDeleted?.();
+    } catch (error: any) {
+      console.error('Error deleting project:', error);
+      toast({
+        title: 'Delete failed',
+        description: error.message || 'Could not delete the project',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteDialog(false);
+    }
+  };
+
+  const isImageFile = (fileName: string) => {
+    const ext = fileName.split('.').pop()?.toLowerCase();
+    return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext || '');
   };
 
   if (!project && !loading) return null;
@@ -276,10 +337,20 @@ export function ProjectDetailSheet({
                       variant="outline"
                       size="sm"
                       onClick={handleOpenProjectChat}
-                      className="ml-auto"
                     >
                       <MessageSquare className="w-4 h-4 mr-2" />
                       Open Project Chat
+                    </Button>
+                  )}
+                  {userRole === 'admin' && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowDeleteDialog(true)}
+                      className="ml-auto text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete Project
                     </Button>
                   )}
                 </div>
@@ -397,6 +468,35 @@ export function ProjectDetailSheet({
           </>
         ) : null}
       </SheetContent>
+
+      {/* Delete Project Confirmation */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete project?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete "{project?.title}" and all associated files. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteProject}
+              disabled={isDeleting}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete Project'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Sheet>
   );
 }

@@ -216,14 +216,17 @@ export function useStorage() {
       const urlParts = deliverable.file_url.split('/deliverables/');
       if (urlParts.length < 2) throw new Error('Invalid file URL');
       
-      const filePath = urlParts[1];
+      const filePath = decodeURIComponent(urlParts[1]);
 
       // Delete from storage
       const { error: storageError } = await supabase.storage
         .from('deliverables')
         .remove([filePath]);
 
-      if (storageError) throw storageError;
+      if (storageError) {
+        console.warn('Storage delete error (file may not exist):', storageError);
+        // Continue to delete from database even if storage delete fails
+      }
 
       // Delete from database
       const { error: dbError } = await supabase
@@ -253,6 +256,36 @@ export function useStorage() {
     }
   }, [fetchStorageInfo, toast]);
 
+  // Rename deliverable
+  const renameDeliverable = useCallback(async (
+    deliverableId: string,
+    newName: string
+  ): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('deliverables')
+        .update({ file_name: newName })
+        .eq('id', deliverableId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'File renamed',
+        description: `File has been renamed to ${newName}`,
+      });
+
+      return true;
+    } catch (error: any) {
+      console.error('Error renaming deliverable:', error);
+      toast({
+        title: 'Rename failed',
+        description: error.message || 'Please try again',
+        variant: 'destructive',
+      });
+      return false;
+    }
+  }, [toast]);
+
   // Format bytes to human readable
   const formatBytes = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes';
@@ -270,6 +303,7 @@ export function useStorage() {
     uploadDeliverable,
     fetchDeliverables,
     deleteDeliverable,
+    renameDeliverable,
     formatBytes,
     PLAN_LIMITS,
   };

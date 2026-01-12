@@ -258,6 +258,7 @@ const AdminProjects = () => {
         projectId={selectedProjectId}
         open={!!selectedProjectId}
         onOpenChange={(open) => !open && setSelectedProjectId(null)}
+        onProjectDeleted={fetchProjects}
       />
     </>
   );
