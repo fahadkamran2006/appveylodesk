@@ -53,21 +53,29 @@ export function VideoPlayer({
     const getSignedUrl = async () => {
       if (!src) return;
 
-      // Check if this is a storage URL that needs signing
-      if (src.includes('/storage/v1/object/public/deliverables/')) {
-        // Extract file path from URL
-        const urlParts = src.split('/deliverables/');
+      // Check if this is a Supabase storage URL that needs signing
+      // Matches both /object/public/deliverables/ and /object/deliverables/ patterns
+      const storagePattern = /\/storage\/v1\/object\/(?:public\/)?deliverables\//;
+      if (storagePattern.test(src)) {
+        // Extract file path from URL - handle both public and authenticated URL patterns
+        const urlParts = src.split(/\/deliverables\//);
         if (urlParts.length >= 2) {
-          const filePath = decodeURIComponent(urlParts[1]);
+          // The path may have query params, remove them
+          const filePath = decodeURIComponent(urlParts[1].split('?')[0]);
           
-          // Get signed URL for private bucket
+          // Get signed URL for the bucket (works for both public and private)
           const { data, error } = await supabase.storage
             .from('deliverables')
             .createSignedUrl(filePath, 3600); // 1 hour expiry
 
           if (error) {
             console.error('Error getting signed URL:', error);
-            setVideoError('Could not load video. Please try again.');
+            // If the file is not found, show a more helpful error
+            if (error.message?.includes('Object not found') || (error as any).statusCode === '404') {
+              setVideoError('Video file not found. It may have been moved or deleted.');
+            } else {
+              setVideoError('Could not load video. Please try again.');
+            }
             return;
           }
 
