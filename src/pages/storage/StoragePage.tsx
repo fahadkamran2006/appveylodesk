@@ -9,12 +9,16 @@ import { EditorSidebar } from '@/components/editor/EditorSidebar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { FilePreviewModal } from '@/components/ui/file-preview-modal';
 import { useToast } from '@/hooks/use-toast';
 import {
   FolderOpen,
@@ -28,6 +32,8 @@ import {
   HardDrive,
   Loader2,
   ChevronRight,
+  Eye,
+  Pencil,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useStorage } from '@/hooks/useStorage';
@@ -62,17 +68,22 @@ const StoragePage = () => {
   const { user, userRole, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { formatBytes, fetchStorageInfo } = useStorage();
+  const { formatBytes, deleteDeliverable, renameDeliverable } = useStorage();
 
   const [files, setFiles] = useState<StorageFile[]>([]);
   const [groupedFiles, setGroupedFiles] = useState<GroupedFiles>({});
   const [loadingFiles, setLoadingFiles] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedClient, setSelectedClient] = useState<string | null>(null);
-  const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const [storageInfo, setStorageInfo] = useState<{ used: number; limit: number; plan: string } | null>(null);
+  
+  // Preview modal state
+  const [previewFile, setPreviewFile] = useState<StorageFile | null>(null);
+  
+  // Delete state
+  const [deleteTarget, setDeleteTarget] = useState<StorageFile | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -135,13 +146,10 @@ const StoragePage = () => {
         .order('created_at', { ascending: false });
 
       if (userRole === 'admin') {
-        // Admin sees all files in their agency
         deliverableQuery = deliverableQuery.eq('project.agency_id', userRoleData.agency_id);
       } else if (userRole === 'client') {
-        // Client sees files from their projects
         deliverableQuery = deliverableQuery.eq('project.client_id', user.id);
       } else if (userRole === 'editor') {
-        // Editor sees files from assigned projects
         const { data: assignments } = await supabase
           .from('project_editors')
           .select('project_id')
@@ -165,7 +173,6 @@ const StoragePage = () => {
           let clientName = 'Unknown Client';
           let uploaderName = 'Unknown';
 
-          // Get client name
           if (d.project?.client_id) {
             const { data: clientProfile } = await supabase
               .from('profiles')
@@ -175,7 +182,6 @@ const StoragePage = () => {
             clientName = clientProfile?.full_name || clientProfile?.email || 'Unknown Client';
           }
 
-          // Get uploader name
           const { data: uploaderProfile } = await supabase
             .from('profiles')
             .select('full_name, email')
@@ -253,9 +259,16 @@ const StoragePage = () => {
 
   const handleDownload = async (file: StorageFile) => {
     try {
+      const urlParts = file.file_url.split('/deliverables/');
+      if (urlParts.length < 2) {
+        window.open(file.file_url, '_blank');
+        return;
+      }
+
+      const filePath = decodeURIComponent(urlParts[1]);
       const { data, error } = await supabase.storage
         .from('deliverables')
-        .download(file.file_url.replace(/^.*\/deliverables\//, ''));
+        .download(filePath);
 
       if (error) throw error;
 
@@ -275,6 +288,42 @@ const StoragePage = () => {
         variant: 'destructive',
       });
     }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+
+    setIsDeleting(true);
+    const success = await deleteDeliverable({
+      id: deleteTarget.id,
+      project_id: deleteTarget.project_id,
+      file_name: deleteTarget.file_name,
+      file_url: deleteTarget.file_url,
+      file_size: deleteTarget.file_size,
+      version: null,
+      uploaded_by: deleteTarget.uploaded_by,
+      created_at: deleteTarget.created_at,
+    });
+    setIsDeleting(false);
+    setDeleteTarget(null);
+
+    if (success) {
+      fetchFiles();
+    }
+  };
+
+  const handleRename = async (newName: string): Promise<boolean> => {
+    if (!previewFile) return false;
+    
+    const success = await renameDeliverable(previewFile.id, newName);
+    if (success) {
+      // Update local state
+      setFiles(prev => prev.map(f => 
+        f.id === previewFile.id ? { ...f, file_name: newName } : f
+      ));
+      setPreviewFile(prev => prev ? { ...prev, file_name: newName } : null);
+    }
+    return success;
   };
 
   const toggleClient = (clientName: string) => {
@@ -307,7 +356,8 @@ const StoragePage = () => {
     file.client_name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const Sidebar = userRole === 'admin' ? AppSidebar : userRole === 'client' ? ClientSidebar : EditorSidebar;
+  const canDelete = userRole === 'admin' || userRole === 'editor';
+  const canRename = userRole === 'admin' || userRole === 'editor';
 
   if (loading || loadingFiles) {
     return (
@@ -317,6 +367,28 @@ const StoragePage = () => {
     );
   }
 
+  const renderFileActions = (file: StorageFile) => (
+    <div className="flex items-center gap-1">
+      <Button variant="ghost" size="sm" onClick={() => setPreviewFile(file)} title="Preview">
+        <Eye className="w-4 h-4" />
+      </Button>
+      <Button variant="ghost" size="sm" onClick={() => handleDownload(file)} title="Download">
+        <Download className="w-4 h-4" />
+      </Button>
+      {canDelete && (
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={() => setDeleteTarget(file)}
+          className="text-destructive hover:text-destructive"
+          title="Delete"
+        >
+          <Trash2 className="w-4 h-4" />
+        </Button>
+      )}
+    </div>
+  );
+
   return (
     <>
       <Helmet>
@@ -325,7 +397,13 @@ const StoragePage = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background flex">
-        {userRole === 'admin' ? <AppSidebar role="admin" /> : <Sidebar />}
+        {userRole === 'admin' ? (
+          <AppSidebar role="admin" />
+        ) : userRole === 'client' ? (
+          <ClientSidebar />
+        ) : (
+          <EditorSidebar />
+        )}
 
         <main className="flex-1 p-8">
           {/* Header */}
@@ -390,18 +468,19 @@ const StoragePage = () => {
               <div className="divide-y divide-border/50">
                 {filteredFiles.map(file => (
                   <div key={file.id} className="flex items-center justify-between p-4 hover:bg-muted/30">
-                    <div className="flex items-center gap-3">
+                    <div 
+                      className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"
+                      onClick={() => setPreviewFile(file)}
+                    >
                       {getFileIcon(file.file_name)}
-                      <div>
-                        <p className="font-medium text-foreground">{file.file_name}</p>
-                        <p className="text-sm text-muted-foreground">
+                      <div className="min-w-0">
+                        <p className="font-medium text-foreground truncate">{file.file_name}</p>
+                        <p className="text-sm text-muted-foreground truncate">
                           {file.client_name} / {file.project_title} • {formatBytes(file.file_size)}
                         </p>
                       </div>
                     </div>
-                    <Button variant="ghost" size="sm" onClick={() => handleDownload(file)}>
-                      <Download className="w-4 h-4" />
-                    </Button>
+                    {renderFileActions(file)}
                   </div>
                 ))}
               </div>
@@ -461,18 +540,19 @@ const StoragePage = () => {
                                     key={file.id}
                                     className="flex items-center justify-between p-4 pl-16 hover:bg-muted/20"
                                   >
-                                    <div className="flex items-center gap-3">
+                                    <div 
+                                      className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"
+                                      onClick={() => setPreviewFile(file)}
+                                    >
                                       {getFileIcon(file.file_name)}
-                                      <div>
-                                        <p className="text-sm font-medium text-foreground">{file.file_name}</p>
+                                      <div className="min-w-0">
+                                        <p className="text-sm font-medium text-foreground truncate">{file.file_name}</p>
                                         <p className="text-xs text-muted-foreground">
                                           {formatBytes(file.file_size)} • Uploaded by {file.uploader_name}
                                         </p>
                                       </div>
                                     </div>
-                                    <Button variant="ghost" size="sm" onClick={() => handleDownload(file)}>
-                                      <Download className="w-4 h-4" />
-                                    </Button>
+                                    {renderFileActions(file)}
                                   </div>
                                 ))}
                               </div>
@@ -488,6 +568,45 @@ const StoragePage = () => {
           )}
         </main>
       </div>
+
+      {/* File Preview Modal */}
+      <FilePreviewModal
+        open={!!previewFile}
+        onOpenChange={(open) => !open && setPreviewFile(null)}
+        file={previewFile}
+        onDownload={() => previewFile && handleDownload(previewFile)}
+        onRename={canRename ? handleRename : undefined}
+        canRename={canRename}
+      />
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete file?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete "{deleteTarget?.file_name}". This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

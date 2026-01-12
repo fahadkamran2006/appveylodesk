@@ -10,9 +10,11 @@ import {
   Maximize, 
   SkipBack, 
   SkipForward,
-  MessageCircle
+  MessageCircle,
+  AlertCircle
 } from 'lucide-react';
 import { VideoComment } from '@/hooks/useVideoComments';
+import { supabase } from '@/integrations/supabase/client';
 
 interface VideoPlayerProps {
   src: string;
@@ -42,7 +44,46 @@ export function VideoPlayer({
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
+  const [videoError, setVideoError] = useState<string | null>(null);
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout>();
+
+  // Get signed URL for private bucket files
+  useEffect(() => {
+    const getSignedUrl = async () => {
+      if (!src) return;
+
+      // Check if this is a storage URL that needs signing
+      if (src.includes('/storage/v1/object/public/deliverables/')) {
+        // Extract file path from URL
+        const urlParts = src.split('/deliverables/');
+        if (urlParts.length >= 2) {
+          const filePath = decodeURIComponent(urlParts[1]);
+          
+          // Get signed URL for private bucket
+          const { data, error } = await supabase.storage
+            .from('deliverables')
+            .createSignedUrl(filePath, 3600); // 1 hour expiry
+
+          if (error) {
+            console.error('Error getting signed URL:', error);
+            setVideoError('Could not load video. Please try again.');
+            return;
+          }
+
+          setSignedUrl(data.signedUrl);
+          setVideoError(null);
+          return;
+        }
+      }
+
+      // Use the original URL if it's not a storage URL
+      setSignedUrl(src);
+      setVideoError(null);
+    };
+
+    getSignedUrl();
+  }, [src]);
 
   // Format time to MM:SS
   const formatTime = (seconds: number): string => {
@@ -184,6 +225,41 @@ export function VideoPlayer({
     timestamp: c.timestamp_seconds,
   }));
 
+  // Show error state
+  if (videoError) {
+    return (
+      <div
+        className={cn(
+          'relative bg-black rounded-lg overflow-hidden flex items-center justify-center',
+          className
+        )}
+      >
+        <div className="text-center text-white p-8">
+          <AlertCircle className="w-12 h-12 mx-auto mb-4 text-destructive" />
+          <p className="text-lg font-medium mb-2">Video Playback Error</p>
+          <p className="text-sm text-muted-foreground">{videoError}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading state while getting signed URL
+  if (!signedUrl) {
+    return (
+      <div
+        className={cn(
+          'relative bg-black rounded-lg overflow-hidden flex items-center justify-center',
+          className
+        )}
+      >
+        <div className="text-center text-white">
+          <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-sm">Loading video...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       ref={containerRef}
@@ -197,10 +273,14 @@ export function VideoPlayer({
       {/* Video */}
       <video
         ref={videoRef}
-        src={src}
+        src={signedUrl}
         className="w-full h-full object-contain"
         onClick={togglePlay}
         playsInline
+        onError={(e) => {
+          console.error('Video error:', e);
+          setVideoError('Failed to load video. The file may be corrupted or in an unsupported format.');
+        }}
       />
 
       {/* Controls overlay */}
