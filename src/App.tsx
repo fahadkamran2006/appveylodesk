@@ -7,6 +7,7 @@ import { HelmetProvider } from "react-helmet-async";
 
 import { AuthProvider } from "@/hooks/useAuth";
 import { ThemeProvider } from "@/hooks/useTheme";
+import { SidebarProvider } from "@/hooks/useSidebar";
 
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
@@ -49,58 +50,60 @@ const App = () => (
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <AuthProvider>
-              <Routes>
-                {/* Public invite signup routes (must remain unguarded) */}
-                <Route path="/join-client" element={<JoinClient />} />
-                <Route path="/join-team" element={<JoinTeam />} />
+          <SidebarProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <AuthProvider>
+                <Routes>
+                  {/* Public invite signup routes (must remain unguarded) */}
+                  <Route path="/join-client" element={<JoinClient />} />
+                  <Route path="/join-team" element={<JoinTeam />} />
 
-                {/* Other public routes */}
-                <Route path="/auth/login" element={<Login />} />
-                <Route path="/auth/signup" element={<Signup />} />
-                <Route path="/" element={<Index />} />
-                <Route path="/pricing" element={<Pricing />} />
-                <Route path="/privacy" element={<Privacy />} />
-                <Route path="/terms" element={<Terms />} />
-                <Route path="/refund" element={<Refund />} />
+                  {/* Other public routes */}
+                  <Route path="/auth/login" element={<Login />} />
+                  <Route path="/auth/signup" element={<Signup />} />
+                  <Route path="/" element={<Index />} />
+                  <Route path="/pricing" element={<Pricing />} />
+                  <Route path="/privacy" element={<Privacy />} />
+                  <Route path="/terms" element={<Terms />} />
+                  <Route path="/refund" element={<Refund />} />
 
-                {/* Onboarding */}
-                <Route path="/onboarding" element={<Onboarding />} />
+                  {/* Onboarding */}
+                  <Route path="/onboarding" element={<Onboarding />} />
 
-                {/* Admin */}
-                <Route path="/admin/dashboard" element={<AdminDashboard />} />
-                <Route path="/admin/projects" element={<AdminProjects />} />
-                <Route path="/admin/clients" element={<AdminClients />} />
-                <Route path="/admin/team" element={<AdminTeam />} />
-                <Route path="/admin/invoices" element={<AdminInvoices />} />
-                <Route path="/admin/storage" element={<StoragePage />} />
-                <Route path="/admin/messages" element={<MessagesPage />} />
-                <Route path="/admin/settings" element={<SettingsPage />} />
+                  {/* Admin */}
+                  <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                  <Route path="/admin/projects" element={<AdminProjects />} />
+                  <Route path="/admin/clients" element={<AdminClients />} />
+                  <Route path="/admin/team" element={<AdminTeam />} />
+                  <Route path="/admin/invoices" element={<AdminInvoices />} />
+                  <Route path="/admin/storage" element={<StoragePage />} />
+                  <Route path="/admin/messages" element={<MessagesPage />} />
+                  <Route path="/admin/settings" element={<SettingsPage />} />
 
-                {/* Client */}
-                <Route path="/client/dashboard" element={<ClientDashboard />} />
-                <Route path="/client/projects" element={<ClientProjects />} />
-                <Route path="/client/invoices" element={<ClientInvoices />} />
-                <Route path="/client/storage" element={<StoragePage />} />
-                <Route path="/client/messages" element={<MessagesPage />} />
-                <Route path="/client/settings" element={<SettingsPage />} />
+                  {/* Client */}
+                  <Route path="/client/dashboard" element={<ClientDashboard />} />
+                  <Route path="/client/projects" element={<ClientProjects />} />
+                  <Route path="/client/invoices" element={<ClientInvoices />} />
+                  <Route path="/client/storage" element={<StoragePage />} />
+                  <Route path="/client/messages" element={<MessagesPage />} />
+                  <Route path="/client/settings" element={<SettingsPage />} />
 
-                {/* Editor */}
-                <Route path="/editor/dashboard" element={<EditorDashboard />} />
-                <Route path="/editor/projects" element={<EditorProjects />} />
-                <Route path="/editor/earnings" element={<EditorEarnings />} />
-                <Route path="/editor/storage" element={<StoragePage />} />
-                <Route path="/editor/messages" element={<MessagesPage />} />
-                <Route path="/editor/settings" element={<SettingsPage />} />
+                  {/* Editor */}
+                  <Route path="/editor/dashboard" element={<EditorDashboard />} />
+                  <Route path="/editor/projects" element={<EditorProjects />} />
+                  <Route path="/editor/earnings" element={<EditorEarnings />} />
+                  <Route path="/editor/storage" element={<StoragePage />} />
+                  <Route path="/editor/messages" element={<MessagesPage />} />
+                  <Route path="/editor/settings" element={<SettingsPage />} />
 
-                {/* Catch-all must be last */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </AuthProvider>
-          </BrowserRouter>
+                  {/* Catch-all must be last */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </AuthProvider>
+            </BrowserRouter>
+          </SidebarProvider>
         </TooltipProvider>
       </QueryClientProvider>
     </ThemeProvider>

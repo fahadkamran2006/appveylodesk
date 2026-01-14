@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { EditorSidebar } from '@/components/editor/EditorSidebar';
+import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
 import { DollarSign, CheckCircle2, Clock, TrendingUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -115,7 +115,7 @@ const EditorEarnings = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background flex">
-        <EditorSidebar />
+        <CollapsibleSidebar role="editor" />
 
         <main className="flex-1 p-8">
           <div className="mb-8">

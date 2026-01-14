@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/hooks/useAuth';
 import { useDashboardStats, useProjects } from '@/hooks/useProjects';
-import { AppSidebar } from '@/components/AppSidebar';
+import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
 import { Button } from '@/components/ui/button';
 import { CreateProjectModal } from '@/components/projects/CreateProjectModal';
 import { 
@@ -111,7 +111,7 @@ const AdminDashboard = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background flex">
-        <AppSidebar role="admin" />
+        <CollapsibleSidebar role="admin" />
 
         {/* Main Content */}
         <main className="flex-1 p-8 overflow-auto">

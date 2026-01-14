@@ -4,7 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import { FolderKanban, Clock, CheckCircle, AlertCircle, Send } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { ClientSidebar } from '@/components/client/ClientSidebar';
+import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 
@@ -85,7 +85,7 @@ export default function ClientProjects() {
       </Helmet>
 
       <div className="flex min-h-screen bg-background">
-        <ClientSidebar />
+        <CollapsibleSidebar role="client" />
 
         <main className="flex-1 p-8 overflow-auto">
           <div className="max-w-6xl mx-auto">
