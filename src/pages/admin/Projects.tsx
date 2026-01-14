@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 import { useAuth } from '@/hooks/useAuth';
-import { AppSidebar } from '@/components/AppSidebar';
+import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
 import { Button } from '@/components/ui/button';
 import { KanbanColumn, Project, ProjectStatus } from '@/components/projects/KanbanColumn';
 import { CreateProjectModal } from '@/components/projects/CreateProjectModal';
@@ -200,7 +200,7 @@ const AdminProjects = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background flex">
-        <AppSidebar role="admin" />
+        <CollapsibleSidebar role="admin" />
 
         <main className="flex-1 flex flex-col overflow-hidden">
           {/* Header */}

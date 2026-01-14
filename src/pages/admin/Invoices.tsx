@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { AppSidebar } from '@/components/AppSidebar';
+import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -309,7 +309,7 @@ const AdminInvoices = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background flex">
-        <AppSidebar role="admin" />
+        <CollapsibleSidebar role="admin" />
 
         <main className="flex-1 p-8">
           <div className="flex items-center justify-between mb-8">

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/hooks/useAuth';
-import { AppSidebar } from '@/components/AppSidebar';
+import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
 import { Button } from '@/components/ui/button';
 import { PersonCard } from '@/components/PersonCard';
 import { PersonDetailSheet } from '@/components/PersonDetailSheet';
@@ -144,7 +144,7 @@ const AdminClients = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background flex">
-        <AppSidebar role="admin" />
+        <CollapsibleSidebar role="admin" />
 
         <main className="flex-1 p-8">
           {/* Header */}

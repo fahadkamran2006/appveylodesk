@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { ClientSidebar } from '@/components/client/ClientSidebar';
+import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -169,7 +169,7 @@ const ClientInvoices = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background flex">
-        <ClientSidebar />
+        <CollapsibleSidebar role="client" />
 
         <main className="flex-1 p-8">
           <div className="mb-8">

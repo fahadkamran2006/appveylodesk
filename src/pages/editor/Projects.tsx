@@ -5,7 +5,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea
 import { Clock, Upload } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { EditorSidebar } from '@/components/editor/EditorSidebar';
+import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -152,7 +152,7 @@ export default function EditorProjects() {
       </Helmet>
 
       <div className="flex min-h-screen bg-background">
-        <EditorSidebar />
+        <CollapsibleSidebar role="editor" />
 
         <main className="flex-1 p-8 overflow-auto">
           <div className="mb-8">

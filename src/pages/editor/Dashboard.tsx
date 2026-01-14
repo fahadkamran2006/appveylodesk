@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { EditorSidebar } from '@/components/editor/EditorSidebar';
+import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
 import { Button } from '@/components/ui/button';
 import { Clock, CheckCircle2, FolderKanban, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -154,7 +154,7 @@ const EditorDashboard = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background flex">
-        <EditorSidebar />
+        <CollapsibleSidebar role="editor" />
 
         <main className="flex-1 p-8 overflow-x-auto">
           <div className="flex items-center justify-between mb-8">

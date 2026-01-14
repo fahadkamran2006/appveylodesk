@@ -4,9 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/hooks/useAuth';
 import { useMessaging, useChannelMessages } from '@/hooks/useMessaging';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
-import { AppSidebar } from '@/components/AppSidebar';
-import { ClientSidebar } from '@/components/client/ClientSidebar';
-import { EditorSidebar } from '@/components/editor/EditorSidebar';
+import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
 import { ChatList } from '@/components/messaging/ChatList';
 import { ChatWindow } from '@/components/messaging/ChatWindow';
 import { NewDMModal } from '@/components/messaging/NewDMModal';
@@ -67,15 +65,14 @@ const MessagesPage = () => {
     }
   };
 
-  // Render correct sidebar based on role
-  const renderSidebar = () => {
+  const getSidebarRole = (): 'admin' | 'client' | 'editor' => {
     switch (userRole) {
       case 'client':
-        return <ClientSidebar />;
+        return 'client';
       case 'editor':
-        return <EditorSidebar />;
+        return 'editor';
       default:
-        return <AppSidebar role="admin" />;
+        return 'admin';
     }
   };
 
@@ -95,7 +92,7 @@ const MessagesPage = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background flex">
-        {renderSidebar()}
+        <CollapsibleSidebar role={getSidebarRole()} />
 
         <main className="flex-1 flex">
           {/* Chat List Sidebar */}

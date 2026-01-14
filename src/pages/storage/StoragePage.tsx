@@ -3,9 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { AppSidebar } from '@/components/AppSidebar';
-import { ClientSidebar } from '@/components/client/ClientSidebar';
-import { EditorSidebar } from '@/components/editor/EditorSidebar';
+import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -505,13 +503,7 @@ const StoragePage = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background flex">
-        {userRole === 'admin' ? (
-          <AppSidebar role="admin" />
-        ) : userRole === 'client' ? (
-          <ClientSidebar />
-        ) : (
-          <EditorSidebar />
-        )}
+        <CollapsibleSidebar role={userRole === 'admin' ? 'admin' : userRole === 'client' ? 'client' : 'editor'} />
 
         <main className="flex-1 p-8">
           {/* Header */}
