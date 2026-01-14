@@ -33,9 +33,12 @@ import {
   Loader2,
   ChevronRight,
   Eye,
-  Pencil,
+  CheckSquare,
+  Square,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useStorage } from '@/hooks/useStorage';
 
 interface StorageFile {
@@ -84,6 +87,12 @@ const StoragePage = () => {
   // Delete state
   const [deleteTarget, setDeleteTarget] = useState<StorageFile | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  // Bulk selection state
+  const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [isBulkDownloading, setIsBulkDownloading] = useState(false);
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -359,6 +368,105 @@ const StoragePage = () => {
   const canDelete = userRole === 'admin' || userRole === 'editor';
   const canRename = userRole === 'admin' || userRole === 'editor';
 
+  // Bulk selection functions
+  const toggleFileSelection = (fileId: string) => {
+    setSelectedFiles(prev => {
+      const next = new Set(prev);
+      if (next.has(fileId)) {
+        next.delete(fileId);
+      } else {
+        next.add(fileId);
+      }
+      return next;
+    });
+  };
+
+  const selectAllFiles = () => {
+    const allFileIds = (searchQuery ? filteredFiles : files).map(f => f.id);
+    setSelectedFiles(new Set(allFileIds));
+  };
+
+  const clearSelection = () => {
+    setSelectedFiles(new Set());
+  };
+
+  const handleBulkDownload = async () => {
+    if (selectedFiles.size === 0) return;
+    
+    setIsBulkDownloading(true);
+    const selectedFilesArray = files.filter(f => selectedFiles.has(f.id));
+    
+    for (const file of selectedFilesArray) {
+      try {
+        const urlParts = file.file_url.split('/deliverables/');
+        if (urlParts.length >= 2) {
+          const filePath = decodeURIComponent(urlParts[1].split('?')[0]);
+          const { data, error } = await supabase.storage
+            .from('deliverables')
+            .download(filePath);
+
+          if (error) {
+            console.error('Download error for', file.file_name, error);
+            continue;
+          }
+
+          const url = URL.createObjectURL(data);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = file.file_name;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          
+          // Small delay between downloads to prevent browser issues
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
+      } catch (error) {
+        console.error('Download error for', file.file_name, error);
+      }
+    }
+    
+    setIsBulkDownloading(false);
+    toast({
+      title: 'Download complete',
+      description: `Downloaded ${selectedFilesArray.length} file(s)`,
+    });
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedFiles.size === 0) return;
+    
+    setIsBulkDeleting(true);
+    const selectedFilesArray = files.filter(f => selectedFiles.has(f.id));
+    let successCount = 0;
+    
+    for (const file of selectedFilesArray) {
+      const success = await deleteDeliverable({
+        id: file.id,
+        project_id: file.project_id,
+        file_name: file.file_name,
+        file_url: file.file_url,
+        file_size: file.file_size,
+        version: null,
+        uploaded_by: file.uploaded_by,
+        created_at: file.created_at,
+      });
+      if (success) successCount++;
+    }
+    
+    setIsBulkDeleting(false);
+    setShowBulkDeleteConfirm(false);
+    setSelectedFiles(new Set());
+    
+    toast({
+      title: 'Files deleted',
+      description: `Successfully deleted ${successCount} of ${selectedFilesArray.length} file(s)`,
+    });
+    
+    fetchFiles();
+  };
+
   if (loading || loadingFiles) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -436,8 +544,8 @@ const StoragePage = () => {
           </div>
 
           {/* Search */}
-          <div className="mb-6">
-            <div className="relative max-w-md">
+          <div className="mb-6 flex items-center gap-4">
+            <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="Search files, projects, or clients..."
@@ -446,7 +554,70 @@ const StoragePage = () => {
                 className="pl-10 bg-surface-elevated border-border/50"
               />
             </div>
+            {files.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={selectedFiles.size > 0 ? clearSelection : selectAllFiles}
+                className="shrink-0"
+              >
+                {selectedFiles.size > 0 ? (
+                  <>
+                    <X className="w-4 h-4 mr-2" />
+                    Clear ({selectedFiles.size})
+                  </>
+                ) : (
+                  <>
+                    <CheckSquare className="w-4 h-4 mr-2" />
+                    Select All
+                  </>
+                )}
+              </Button>
+            )}
           </div>
+
+          {/* Bulk Actions Bar */}
+          {selectedFiles.size > 0 && (
+            <div className="mb-6 glass-card rounded-xl p-4 flex items-center justify-between border border-primary/30 bg-primary/5">
+              <div className="flex items-center gap-3">
+                <CheckSquare className="w-5 h-5 text-primary" />
+                <span className="font-medium text-foreground">
+                  {selectedFiles.size} file{selectedFiles.size !== 1 ? 's' : ''} selected
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBulkDownload}
+                  disabled={isBulkDownloading}
+                >
+                  {isBulkDownloading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Downloading...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4 mr-2" />
+                      Download All
+                    </>
+                  )}
+                </Button>
+                {canDelete && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setShowBulkDeleteConfirm(true)}
+                    disabled={isBulkDeleting}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete All
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* File Tree View */}
           {files.length === 0 ? (
@@ -467,17 +638,30 @@ const StoragePage = () => {
               </div>
               <div className="divide-y divide-border/50">
                 {filteredFiles.map(file => (
-                  <div key={file.id} className="flex items-center justify-between p-4 hover:bg-muted/30">
-                    <div 
-                      className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"
-                      onClick={() => setPreviewFile(file)}
-                    >
-                      {getFileIcon(file.file_name)}
-                      <div className="min-w-0">
-                        <p className="font-medium text-foreground truncate">{file.file_name}</p>
-                        <p className="text-sm text-muted-foreground truncate">
-                          {file.client_name} / {file.project_title} • {formatBytes(file.file_size)}
-                        </p>
+                  <div 
+                    key={file.id} 
+                    className={cn(
+                      "flex items-center justify-between p-4 hover:bg-muted/30",
+                      selectedFiles.has(file.id) && "bg-primary/10"
+                    )}
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <Checkbox
+                        checked={selectedFiles.has(file.id)}
+                        onCheckedChange={() => toggleFileSelection(file.id)}
+                        className="shrink-0"
+                      />
+                      <div 
+                        className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"
+                        onClick={() => setPreviewFile(file)}
+                      >
+                        {getFileIcon(file.file_name)}
+                        <div className="min-w-0">
+                          <p className="font-medium text-foreground truncate">{file.file_name}</p>
+                          <p className="text-sm text-muted-foreground truncate">
+                            {file.client_name} / {file.project_title} • {formatBytes(file.file_size)}
+                          </p>
+                        </div>
                       </div>
                     </div>
                     {renderFileActions(file)}
@@ -538,18 +722,28 @@ const StoragePage = () => {
                                 {projectData.files.map(file => (
                                   <div
                                     key={file.id}
-                                    className="flex items-center justify-between p-4 pl-16 hover:bg-muted/20"
+                                    className={cn(
+                                      "flex items-center justify-between p-4 pl-12 hover:bg-muted/20",
+                                      selectedFiles.has(file.id) && "bg-primary/10"
+                                    )}
                                   >
-                                    <div 
-                                      className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"
-                                      onClick={() => setPreviewFile(file)}
-                                    >
-                                      {getFileIcon(file.file_name)}
-                                      <div className="min-w-0">
-                                        <p className="text-sm font-medium text-foreground truncate">{file.file_name}</p>
-                                        <p className="text-xs text-muted-foreground">
-                                          {formatBytes(file.file_size)} • Uploaded by {file.uploader_name}
-                                        </p>
+                                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                                      <Checkbox
+                                        checked={selectedFiles.has(file.id)}
+                                        onCheckedChange={() => toggleFileSelection(file.id)}
+                                        className="shrink-0"
+                                      />
+                                      <div 
+                                        className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"
+                                        onClick={() => setPreviewFile(file)}
+                                      >
+                                        {getFileIcon(file.file_name)}
+                                        <div className="min-w-0">
+                                          <p className="text-sm font-medium text-foreground truncate">{file.file_name}</p>
+                                          <p className="text-xs text-muted-foreground">
+                                            {formatBytes(file.file_size)} • Uploaded by {file.uploader_name}
+                                          </p>
+                                        </div>
                                       </div>
                                     </div>
                                     {renderFileActions(file)}
@@ -602,6 +796,35 @@ const StoragePage = () => {
                 </>
               ) : (
                 'Delete'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete Confirmation */}
+      <AlertDialog open={showBulkDeleteConfirm} onOpenChange={setShowBulkDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selectedFiles.size} file{selectedFiles.size !== 1 ? 's' : ''}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete {selectedFiles.size} selected file{selectedFiles.size !== 1 ? 's' : ''}. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isBulkDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDelete}
+              disabled={isBulkDeleting}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {isBulkDeleting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete All'
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
