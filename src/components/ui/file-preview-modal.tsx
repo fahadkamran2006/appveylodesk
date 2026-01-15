@@ -7,7 +7,6 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   X,
   Download,
@@ -18,8 +17,7 @@ import {
   ZoomOut,
   RotateCw,
 } from 'lucide-react';
-import { getDeliverableSignedUrl } from '@/lib/deliverables';
-import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 interface FilePreviewModalProps {
   open: boolean;
@@ -33,6 +31,23 @@ interface FilePreviewModalProps {
   onDownload?: () => void;
   onRename?: (newName: string) => Promise<boolean>;
   canRename?: boolean;
+}
+
+async function getSignedUrl(deliverableId: string): Promise<string | null> {
+  try {
+    const { data, error } = await supabase.functions.invoke('deliverables-ops', {
+      body: { action: 'signed_url', deliverableId, expiresIn: 3600 },
+    });
+
+    if (error) throw error;
+    if (!data) return null;
+    if ((data as any).error) throw new Error((data as any).error);
+
+    return (data as any).signedUrl ?? null;
+  } catch (e) {
+    console.error('Error getting signed URL:', e);
+    return null;
+  }
 }
 
 export function FilePreviewModal({
@@ -51,6 +66,7 @@ export function FilePreviewModal({
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
   const [isResolvingUrl, setIsResolvingUrl] = useState(false);
 
+  // Reset editing state & zoom/rotation when file changes
   useEffect(() => {
     if (file) {
       setNewName(file.file_name);
@@ -60,6 +76,7 @@ export function FilePreviewModal({
     setIsEditing(false);
   }, [file]);
 
+  // Resolve signed URL when file changes
   useEffect(() => {
     let cancelled = false;
 
@@ -71,7 +88,7 @@ export function FilePreviewModal({
 
       setIsResolvingUrl(true);
       try {
-        const signed = await getDeliverableSignedUrl(file.id);
+        const signed = await getSignedUrl(file.id);
         if (!cancelled) {
           setResolvedUrl(signed ?? file.file_url);
         }
@@ -215,10 +232,19 @@ export function FilePreviewModal({
         </DialogHeader>
 
         {/* Content */}
-        <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-muted/30 min-h-[400px]">
+        <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-muted/30 min-h-[400px] relative">
+          {isResolvingUrl && (
+            <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span className="text-sm">Preparing preview…</span>
+              </div>
+            </div>
+          )}
+
           {isImage && (
             <img
-              src={file.file_url}
+              src={previewUrl}
               alt={file.file_name}
               className="max-w-full max-h-full object-contain transition-transform duration-200"
               style={{
@@ -229,10 +255,10 @@ export function FilePreviewModal({
 
           {isVideo && (
             <video
-              src={file.file_url}
+              src={previewUrl}
               controls
+              playsInline
               className="max-w-full max-h-full"
-              autoPlay={false}
             >
               Your browser does not support video playback.
             </video>
@@ -245,7 +271,7 @@ export function FilePreviewModal({
                   <div className="w-8 h-8 rounded-full bg-primary" />
                 </div>
               </div>
-              <audio src={file.file_url} controls className="w-full max-w-md">
+              <audio src={previewUrl} controls className="w-full max-w-md">
                 Your browser does not support audio playback.
               </audio>
             </div>
@@ -253,7 +279,7 @@ export function FilePreviewModal({
 
           {isPdf && (
             <iframe
-              src={file.file_url}
+              src={previewUrl}
               className="w-full h-full min-h-[500px]"
               title={file.file_name}
             />
