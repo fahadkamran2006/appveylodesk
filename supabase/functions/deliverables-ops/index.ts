@@ -144,11 +144,23 @@ const handler = async (req: Request): Promise<Response> => {
         });
       }
 
+      console.log("Creating signed URL for path:", filePath);
+
       const { data, error } = await service.storage
         .from("deliverables")
         .createSignedUrl(filePath, Number.isFinite(expiresIn) ? expiresIn : 3600);
 
-      if (error) throw error;
+      if (error) {
+        // If object not found, the file may have been deleted from storage but DB record remains
+        if (error.message?.includes("Object not found") || (error as any).statusCode === "404") {
+          console.error("File not found in storage:", filePath);
+          return new Response(JSON.stringify({ error: "File not found in storage. It may have been deleted." }), {
+            status: 404,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        throw error;
+      }
 
       return new Response(JSON.stringify({ signedUrl: data.signedUrl }), {
         status: 200,

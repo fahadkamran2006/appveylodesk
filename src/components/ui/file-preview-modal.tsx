@@ -33,20 +33,22 @@ interface FilePreviewModalProps {
   canRename?: boolean;
 }
 
-async function getSignedUrl(deliverableId: string): Promise<string | null> {
+async function getSignedUrl(deliverableId: string): Promise<{ url: string | null; error?: string }> {
   try {
     const { data, error } = await supabase.functions.invoke('deliverables-ops', {
       body: { action: 'signed_url', deliverableId, expiresIn: 3600 },
     });
 
     if (error) throw error;
-    if (!data) return null;
-    if ((data as any).error) throw new Error((data as any).error);
+    if (!data) return { url: null };
+    if ((data as any).error) {
+      return { url: null, error: (data as any).error };
+    }
 
-    return (data as any).signedUrl ?? null;
-  } catch (e) {
+    return { url: (data as any).signedUrl ?? null };
+  } catch (e: any) {
     console.error('Error getting signed URL:', e);
-    return null;
+    return { url: null, error: e?.message ?? 'Failed to load file' };
   }
 }
 
@@ -65,6 +67,7 @@ export function FilePreviewModal({
   const [rotation, setRotation] = useState(0);
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
   const [isResolvingUrl, setIsResolvingUrl] = useState(false);
+  const [urlError, setUrlError] = useState<string | null>(null);
 
   // Reset editing state & zoom/rotation when file changes
   useEffect(() => {
@@ -83,14 +86,21 @@ export function FilePreviewModal({
     const resolveUrl = async () => {
       if (!file) {
         setResolvedUrl(null);
+        setUrlError(null);
         return;
       }
 
       setIsResolvingUrl(true);
+      setUrlError(null);
       try {
-        const signed = await getSignedUrl(file.id);
+        const result = await getSignedUrl(file.id);
         if (!cancelled) {
-          setResolvedUrl(signed ?? file.file_url);
+          if (result.error) {
+            setUrlError(result.error);
+            setResolvedUrl(null);
+          } else {
+            setResolvedUrl(result.url ?? file.file_url);
+          }
         }
       } catch {
         if (!cancelled) {
@@ -242,7 +252,17 @@ export function FilePreviewModal({
             </div>
           )}
 
-          {isImage && (
+          {urlError && !isResolvingUrl && (
+            <div className="flex flex-col items-center gap-3 text-center p-8">
+              <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center">
+                <X className="w-8 h-8 text-destructive" />
+              </div>
+              <h3 className="text-lg font-medium text-foreground">File Unavailable</h3>
+              <p className="text-sm text-muted-foreground max-w-md">{urlError}</p>
+            </div>
+          )}
+
+          {!urlError && isImage && (
             <img
               src={previewUrl}
               alt={file.file_name}
@@ -253,7 +273,7 @@ export function FilePreviewModal({
             />
           )}
 
-          {isVideo && (
+          {!urlError && isVideo && (
             <video
               src={previewUrl}
               controls
@@ -264,7 +284,7 @@ export function FilePreviewModal({
             </video>
           )}
 
-          {isAudio && (
+          {!urlError && isAudio && (
             <div className="flex flex-col items-center gap-4">
               <div className="w-24 h-24 rounded-full bg-primary/20 flex items-center justify-center">
                 <div className="w-16 h-16 rounded-full bg-primary/30 flex items-center justify-center">
@@ -277,7 +297,7 @@ export function FilePreviewModal({
             </div>
           )}
 
-          {isPdf && (
+          {!urlError && isPdf && (
             <iframe
               src={previewUrl}
               className="w-full h-full min-h-[500px]"
@@ -285,7 +305,7 @@ export function FilePreviewModal({
             />
           )}
 
-          {!isImage && !isVideo && !isAudio && !isPdf && (
+          {!urlError && !isImage && !isVideo && !isAudio && !isPdf && (
             <div className="text-center text-muted-foreground">
               <p className="text-lg font-medium mb-2">Preview not available</p>
               <p className="text-sm">Click download to view this file</p>
