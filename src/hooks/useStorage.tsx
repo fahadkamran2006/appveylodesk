@@ -209,32 +209,39 @@ export function useStorage() {
     }
   }, []);
 
-  // Delete deliverable
+  const invokeDeliverablesOps = useCallback(async (payload: any) => {
+    const { data, error } = await supabase.functions.invoke('deliverables-ops', {
+      body: payload,
+    });
+
+    if (error) throw error;
+    if (!data) throw new Error('No response from backend');
+    if ((data as any).error) throw new Error((data as any).error);
+
+    return data as any;
+  }, []);
+
+  const getDeliverableSignedUrl = useCallback(async (deliverableId: string, expiresIn = 3600) => {
+    try {
+      const data = await invokeDeliverablesOps({
+        action: 'signed_url',
+        deliverableId,
+        expiresIn,
+      });
+      return (data as any).signedUrl ?? null;
+    } catch (error) {
+      console.error('Error getting deliverable signed URL:', error);
+      return null;
+    }
+  }, [invokeDeliverablesOps]);
+
+  // Delete deliverable (storage + DB)
   const deleteDeliverable = useCallback(async (deliverable: Deliverable): Promise<boolean> => {
     try {
-      // Extract file path from URL
-      const urlParts = deliverable.file_url.split('/deliverables/');
-      if (urlParts.length < 2) throw new Error('Invalid file URL');
-      
-      const filePath = decodeURIComponent(urlParts[1]);
-
-      // Delete from storage
-      const { error: storageError } = await supabase.storage
-        .from('deliverables')
-        .remove([filePath]);
-
-      if (storageError) {
-        console.warn('Storage delete error (file may not exist):', storageError);
-        // Continue to delete from database even if storage delete fails
-      }
-
-      // Delete from database
-      const { error: dbError } = await supabase
-        .from('deliverables')
-        .delete()
-        .eq('id', deliverable.id);
-
-      if (dbError) throw dbError;
+      await invokeDeliverablesOps({
+        action: 'delete',
+        deliverableId: deliverable.id,
+      });
 
       toast({
         title: 'File deleted',
@@ -254,20 +261,19 @@ export function useStorage() {
       });
       return false;
     }
-  }, [fetchStorageInfo, toast]);
+  }, [fetchStorageInfo, toast, invokeDeliverablesOps]);
 
-  // Rename deliverable
+  // Rename deliverable (DB)
   const renameDeliverable = useCallback(async (
     deliverableId: string,
     newName: string
   ): Promise<boolean> => {
     try {
-      const { error } = await supabase
-        .from('deliverables')
-        .update({ file_name: newName })
-        .eq('id', deliverableId);
-
-      if (error) throw error;
+      await invokeDeliverablesOps({
+        action: 'rename',
+        deliverableId,
+        newName,
+      });
 
       toast({
         title: 'File renamed',
@@ -284,7 +290,7 @@ export function useStorage() {
       });
       return false;
     }
-  }, [toast]);
+  }, [toast, invokeDeliverablesOps]);
 
   // Format bytes to human readable
   const formatBytes = (bytes: number): string => {
@@ -304,6 +310,7 @@ export function useStorage() {
     fetchDeliverables,
     deleteDeliverable,
     renameDeliverable,
+    getDeliverableSignedUrl,
     formatBytes,
     PLAN_LIMITS,
   };

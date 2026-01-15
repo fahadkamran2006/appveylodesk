@@ -321,14 +321,12 @@ const StoragePage = () => {
 
   const handleRename = async (newName: string): Promise<boolean> => {
     if (!previewFile) return false;
-    
+
     const success = await renameDeliverable(previewFile.id, newName);
     if (success) {
-      // Update local state
-      setFiles(prev => prev.map(f => 
-        f.id === previewFile.id ? { ...f, file_name: newName } : f
-      ));
-      setPreviewFile(prev => prev ? { ...prev, file_name: newName } : null);
+      // Refetch to ensure the change actually persisted
+      await fetchFiles();
+      setPreviewFile(prev => (prev ? { ...prev, file_name: newName } : null));
     }
     return success;
   };
