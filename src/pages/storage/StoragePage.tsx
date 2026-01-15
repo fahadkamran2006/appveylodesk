@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, DragEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/hooks/useAuth';
@@ -16,6 +16,21 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { FilePreviewModal } from '@/components/ui/file-preview-modal';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -34,6 +49,8 @@ import {
   CheckSquare,
   Square,
   X,
+  Upload,
+  CloudUpload,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -69,7 +86,7 @@ const StoragePage = () => {
   const { user, userRole, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { formatBytes, deleteDeliverable, renameDeliverable } = useStorage();
+  const { formatBytes, deleteDeliverable, renameDeliverable, uploadDeliverable } = useStorage();
 
   const [files, setFiles] = useState<StorageFile[]>([]);
   const [groupedFiles, setGroupedFiles] = useState<GroupedFiles>({});
@@ -91,6 +108,17 @@ const StoragePage = () => {
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [isBulkDownloading, setIsBulkDownloading] = useState(false);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+
+  // Drag and drop state
+  const [isDragging, setIsDragging] = useState(false);
+  const [droppedFiles, setDroppedFiles] = useState<File[]>([]);
+  const [showProjectSelector, setShowProjectSelector] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('');
+  const [availableProjects, setAvailableProjects] = useState<{ id: string; title: string }[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const dragCounter = useRef(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -249,6 +277,146 @@ const StoragePage = () => {
       fetchFiles();
     }
   }, [user, userRole, fetchFiles]);
+
+  // Fetch available projects for upload
+  const fetchProjects = useCallback(async () => {
+    if (!user || !userRole) return;
+
+    try {
+      const { data: userRoleData } = await supabase
+        .from('user_roles')
+        .select('agency_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (!userRoleData?.agency_id) return;
+
+      let projectQuery = supabase
+        .from('projects')
+        .select('id, title')
+        .eq('agency_id', userRoleData.agency_id)
+        .order('title', { ascending: true });
+
+      if (userRole === 'editor') {
+        const { data: assignments } = await supabase
+          .from('project_editors')
+          .select('project_id')
+          .eq('editor_id', user.id);
+
+        const projectIds = assignments?.map(a => a.project_id) || [];
+        if (projectIds.length === 0) {
+          setAvailableProjects([]);
+          return;
+        }
+        projectQuery = projectQuery.in('id', projectIds);
+      } else if (userRole === 'client') {
+        projectQuery = projectQuery.eq('client_id', user.id);
+      }
+
+      const { data: projects } = await projectQuery;
+      setAvailableProjects(projects || []);
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+    }
+  }, [user, userRole]);
+
+  useEffect(() => {
+    if (user && userRole) {
+      fetchProjects();
+    }
+  }, [user, userRole, fetchProjects]);
+
+  // Drag and drop handlers
+  const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current++;
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current--;
+    if (dragCounter.current === 0) {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    dragCounter.current = 0;
+
+    const droppedItems = e.dataTransfer.files;
+    if (droppedItems && droppedItems.length > 0) {
+      const filesArray = Array.from(droppedItems);
+      setDroppedFiles(filesArray);
+      setShowProjectSelector(true);
+    }
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedItems = e.target.files;
+    if (selectedItems && selectedItems.length > 0) {
+      const filesArray = Array.from(selectedItems);
+      setDroppedFiles(filesArray);
+      setShowProjectSelector(true);
+    }
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleUploadFiles = async () => {
+    if (!selectedProjectId || droppedFiles.length === 0) {
+      toast({
+        title: 'Missing project',
+        description: 'Please select a project to upload files to.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadProgress(0);
+
+    let successCount = 0;
+    for (let i = 0; i < droppedFiles.length; i++) {
+      const file = droppedFiles[i];
+      const result = await uploadDeliverable(selectedProjectId, file);
+      if (result) successCount++;
+      setUploadProgress(Math.round(((i + 1) / droppedFiles.length) * 100));
+    }
+
+    setIsUploading(false);
+    setShowProjectSelector(false);
+    setDroppedFiles([]);
+    setSelectedProjectId('');
+
+    if (successCount > 0) {
+      toast({
+        title: 'Upload complete',
+        description: `Successfully uploaded ${successCount} of ${droppedFiles.length} file(s)`,
+      });
+      fetchFiles();
+    }
+  };
+
+  const cancelUpload = () => {
+    setShowProjectSelector(false);
+    setDroppedFiles([]);
+    setSelectedProjectId('');
+  };
 
   const getFileIcon = (fileName: string) => {
     const ext = fileName.split('.').pop()?.toLowerCase();
@@ -500,7 +668,24 @@ const StoragePage = () => {
         <meta name="description" content="Manage your project files and storage." />
       </Helmet>
 
-      <div className="min-h-screen bg-background flex">
+      <div 
+        className="min-h-screen bg-background flex relative"
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+      >
+        {/* Drag and Drop Overlay */}
+        {isDragging && (
+          <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center pointer-events-none">
+            <div className="border-4 border-dashed border-primary rounded-3xl p-16 bg-primary/5 flex flex-col items-center gap-4 animate-pulse">
+              <CloudUpload className="w-20 h-20 text-primary" />
+              <p className="text-2xl font-semibold text-primary">Drop files here to upload</p>
+              <p className="text-muted-foreground">Files will be uploaded after selecting a project</p>
+            </div>
+          </div>
+        )}
+
         <CollapsibleSidebar role={userRole === 'admin' ? 'admin' : userRole === 'client' ? 'client' : 'editor'} />
 
         <main className="flex-1 p-8">
@@ -533,7 +718,7 @@ const StoragePage = () => {
             )}
           </div>
 
-          {/* Search */}
+          {/* Search and Upload */}
           <div className="mb-6 flex items-center gap-4">
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -544,6 +729,27 @@ const StoragePage = () => {
                 className="pl-10 bg-surface-elevated border-border/50"
               />
             </div>
+            
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              onChange={handleFileInputChange}
+              className="hidden"
+            />
+            
+            {/* Upload Button */}
+            {(userRole === 'admin' || userRole === 'editor') && availableProjects.length > 0 && (
+              <Button
+                onClick={() => fileInputRef.current?.click()}
+                className="shrink-0"
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                Upload Files
+              </Button>
+            )}
+            
             {files.length > 0 && (
               <Button
                 variant="outline"
@@ -820,6 +1026,87 @@ const StoragePage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Project Selector Dialog for Upload */}
+      <Dialog open={showProjectSelector} onOpenChange={(open) => !open && cancelUpload()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Upload Files</DialogTitle>
+            <DialogDescription>
+              Select a project to upload {droppedFiles.length} file{droppedFiles.length !== 1 ? 's' : ''} to.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Project</label>
+              <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a project" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableProjects.map((project) => (
+                    <SelectItem key={project.id} value={project.id}>
+                      {project.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {/* File list preview */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Files to upload</label>
+              <div className="max-h-40 overflow-y-auto space-y-1 rounded-lg border border-border p-2 bg-muted/30">
+                {droppedFiles.map((file, index) => (
+                  <div key={index} className="flex items-center gap-2 text-sm">
+                    <File className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <span className="truncate text-foreground">{file.name}</span>
+                    <span className="text-muted-foreground text-xs ml-auto shrink-0">
+                      {formatBytes(file.size)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Upload progress */}
+            {isUploading && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Uploading...</span>
+                  <span className="font-medium text-foreground">{uploadProgress}%</span>
+                </div>
+                <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-primary transition-all duration-300"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={cancelUpload} disabled={isUploading}>
+              Cancel
+            </Button>
+            <Button onClick={handleUploadFiles} disabled={!selectedProjectId || isUploading}>
+              {isUploading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4 mr-2" />
+                  Upload
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
