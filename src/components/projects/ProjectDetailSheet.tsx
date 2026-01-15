@@ -378,6 +378,7 @@ export function ProjectDetailSheet({
                 <div className="flex-1 flex flex-col bg-black">
                   <VideoPlayer
                     src={selectedVideo.file_url}
+                    deliverableId={selectedVideo.id}
                     comments={comments}
                     onTimeUpdate={setCurrentTimestamp}
                     onSeekToComment={setCurrentTimestamp}

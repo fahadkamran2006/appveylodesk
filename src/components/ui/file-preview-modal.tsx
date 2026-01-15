@@ -8,16 +8,17 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { 
-  X, 
-  Download, 
-  Pencil, 
-  Check, 
+import {
+  X,
+  Download,
+  Pencil,
+  Check,
   Loader2,
   ZoomIn,
   ZoomOut,
-  RotateCw
+  RotateCw,
 } from 'lucide-react';
+import { getDeliverableSignedUrl } from '@/lib/deliverables';
 import { cn } from '@/lib/utils';
 
 interface FilePreviewModalProps {
@@ -47,6 +48,8 @@ export function FilePreviewModal({
   const [isRenaming, setIsRenaming] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
+  const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
+  const [isResolvingUrl, setIsResolvingUrl] = useState(false);
 
   useEffect(() => {
     if (file) {
@@ -57,7 +60,39 @@ export function FilePreviewModal({
     setIsEditing(false);
   }, [file]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const resolveUrl = async () => {
+      if (!file) {
+        setResolvedUrl(null);
+        return;
+      }
+
+      setIsResolvingUrl(true);
+      try {
+        const signed = await getDeliverableSignedUrl(file.id);
+        if (!cancelled) {
+          setResolvedUrl(signed ?? file.file_url);
+        }
+      } catch {
+        if (!cancelled) {
+          setResolvedUrl(file.file_url);
+        }
+      } finally {
+        if (!cancelled) setIsResolvingUrl(false);
+      }
+    };
+
+    resolveUrl();
+    return () => {
+      cancelled = true;
+    };
+  }, [file?.id, file?.file_url]);
+
   if (!file) return null;
+
+  const previewUrl = resolvedUrl ?? file.file_url;
 
   const ext = file.file_name.split('.').pop()?.toLowerCase() || '';
   const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext);
