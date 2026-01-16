@@ -5,11 +5,12 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
 import { Button } from '@/components/ui/button';
-import { Clock, Download, FolderKanban, Receipt, Upload } from 'lucide-react';
+import { Clock, Download, FolderKanban, Receipt, Upload, Plus, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ClientProposalModal } from '@/components/projects/ClientProposalModal';
 
 interface Project {
   id: string;
@@ -37,6 +38,7 @@ const ClientDashboard = () => {
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [proposalModalOpen, setProposalModalOpen] = useState(false);
 
   // Allow admin god mode - only redirect non-admins away
   useEffect(() => {
@@ -113,7 +115,8 @@ const ClientDashboard = () => {
       const { error } = await supabase
         .from('invoices')
         .update({ 
-          payment_proof_url: `payment-proof-${selectedInvoice.id}` 
+          payment_proof_url: `payment-proof-${selectedInvoice.id}`,
+          status: 'pending'
         })
         .eq('id', selectedInvoice.id);
 
@@ -141,6 +144,7 @@ const ClientDashboard = () => {
 
   const getStatusDisplay = (status: string) => {
     const statusMap: Record<string, { label: string; className: string }> = {
+      proposal: { label: 'Proposal', className: 'bg-purple-500/10 text-purple-500 border border-purple-500/20' },
       backlog: { label: 'Pending', className: 'bg-muted text-muted-foreground' },
       in_progress: { label: 'In Progress', className: 'bg-primary/10 text-primary border border-primary/20' },
       review: { label: 'In Review', className: 'bg-warning/10 text-warning border border-warning/20' },
@@ -171,6 +175,31 @@ const ClientDashboard = () => {
           <div className="mb-8">
             <h1 className="text-2xl font-bold text-foreground">Welcome back</h1>
             <p className="text-muted-foreground">Track your projects and manage invoices.</p>
+          </div>
+
+          {/* Hero: Create New Project Card */}
+          <div 
+            onClick={() => setProposalModalOpen(true)}
+            className="mb-8 p-6 rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-2 border-dashed border-primary/30 hover:border-primary/50 hover:bg-primary/10 cursor-pointer transition-all duration-300 group"
+          >
+            <div className="flex items-center gap-6">
+              <div className="w-16 h-16 rounded-2xl bg-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Plus className="w-8 h-8 text-primary" />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
+                  Start a New Project
+                  <Sparkles className="w-5 h-5 text-primary" />
+                </h2>
+                <p className="text-muted-foreground mt-1">
+                  Submit a project proposal and we'll get back to you with a quote
+                </p>
+              </div>
+              <Button variant="hero" size="lg" className="shrink-0">
+                <Plus className="w-5 h-5 mr-2" />
+                New Project
+              </Button>
+            </div>
           </div>
 
           {/* Stats Cards */}
@@ -237,15 +266,31 @@ const ClientDashboard = () => {
 
           {/* Projects - No editor info shown */}
           <div className="glass-card rounded-xl p-6 mb-8">
-            <h2 className="text-lg font-semibold text-foreground mb-6">Your Projects</h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold text-foreground">Your Projects</h2>
+              <Button variant="outline" size="sm" onClick={() => navigate('/client/projects')}>
+                View All
+              </Button>
+            </div>
             {projects.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8">No projects yet.</p>
+              <div className="text-center py-8">
+                <FolderKanban className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />
+                <p className="text-muted-foreground mb-4">No projects yet.</p>
+                <Button variant="hero" onClick={() => setProposalModalOpen(true)}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Start Your First Project
+                </Button>
+              </div>
             ) : (
               <div className="space-y-4">
-                {projects.map((project) => {
+                {projects.slice(0, 5).map((project) => {
                   const statusInfo = getStatusDisplay(project.status);
                   return (
-                    <div key={project.id} className="p-4 rounded-lg bg-muted/30 border border-border/50">
+                    <div 
+                      key={project.id} 
+                      className="p-4 rounded-lg bg-muted/30 border border-border/50 hover:border-primary/30 cursor-pointer transition-colors"
+                      onClick={() => navigate('/client/projects')}
+                    >
                       <div className="flex items-center justify-between">
                         <div>
                           <h3 className="font-medium text-foreground">{project.title}</h3>
@@ -306,14 +351,15 @@ const ClientDashboard = () => {
                       {invoice.status === 'unpaid' && (
                         <Button 
                           variant="hero" 
-                          size="sm"
+                          size="default"
                           onClick={() => {
                             setSelectedInvoice(invoice);
                             setUploadModalOpen(true);
                           }}
+                          className="gap-2"
                         >
-                          <Upload className="w-4 h-4 mr-2" />
-                          Mark as Paid
+                          <Upload className="w-5 h-5" />
+                          Upload Payment Proof
                         </Button>
                       )}
                     </div>
@@ -327,16 +373,22 @@ const ClientDashboard = () => {
 
       {/* Upload Payment Proof Modal */}
       <Dialog open={uploadModalOpen} onOpenChange={setUploadModalOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Upload Payment Proof</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Upload className="w-5 h-5 text-primary" />
+              Upload Payment Proof
+            </DialogTitle>
             <DialogDescription>
               Upload a screenshot or document showing your payment for this invoice.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleUploadPaymentProof} className="space-y-4">
-            <div>
-              <Label htmlFor="proof">Payment Proof</Label>
+            <div className="border-2 border-dashed border-primary/30 rounded-xl p-8 text-center hover:border-primary/50 transition-colors">
+              <Upload className="w-12 h-12 mx-auto text-primary mb-4" />
+              <Label htmlFor="proof" className="text-foreground font-medium block mb-2">
+                Click to select file or drag & drop
+              </Label>
               <Input
                 id="proof"
                 name="proof"
@@ -344,18 +396,28 @@ const ClientDashboard = () => {
                 accept="image/*,.pdf"
                 className="mt-2"
               />
+              <p className="text-xs text-muted-foreground mt-2">
+                Supports: Images, PDF
+              </p>
             </div>
             <div className="flex justify-end gap-3">
               <Button type="button" variant="outline" onClick={() => setUploadModalOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={uploading}>
-                {uploading ? 'Uploading...' : 'Upload'}
+              <Button type="submit" variant="hero" disabled={uploading}>
+                {uploading ? 'Uploading...' : 'Upload Proof'}
               </Button>
             </div>
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Proposal Modal */}
+      <ClientProposalModal
+        open={proposalModalOpen}
+        onOpenChange={setProposalModalOpen}
+        onSuccess={fetchData}
+      />
     </>
   );
 };
