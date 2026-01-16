@@ -277,6 +277,7 @@ const AdminTeam = () => {
         stats={selectedMember ? {
           completedTasks: editorStats[selectedMember.id]?.completedProjects ?? 0,
           totalProjects: editorStats[selectedMember.id]?.projects.length ?? 0,
+          avgDeliveryDays: editorStats[selectedMember.id]?.avgDeliveryDays,
         } : undefined}
         projects={selectedMember ? editorStats[selectedMember.id]?.projects : undefined}
       />

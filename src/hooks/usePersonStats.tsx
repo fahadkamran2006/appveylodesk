@@ -10,6 +10,7 @@ interface ClientStats {
 interface EditorStats {
   currentLoad: number;
   completedProjects: number;
+  avgDeliveryDays: number | null;
   projects: Array<{ id: string; name: string; status: string }>;
 }
 
@@ -50,15 +51,17 @@ export async function fetchClientStats(clientId: string): Promise<ClientStats> {
 }
 
 export async function fetchEditorStats(editorId: string): Promise<EditorStats> {
-  // Fetch current load (active assigned projects)
+  // Fetch current load (active assigned projects) with assignment and completion dates
   const { data: activeData } = await supabase
     .from('project_editors')
     .select(`
       project_id,
+      assigned_at,
       projects!inner (
         id,
         title,
-        status
+        status,
+        completed_at
       )
     `)
     .eq('editor_id', editorId);
@@ -71,6 +74,27 @@ export async function fetchEditorStats(editorId: string): Promise<EditorStats> {
     (pe: any) => pe.projects && pe.projects.status === 'done'
   ) || [];
 
+  // Calculate average delivery time in days
+  let avgDeliveryDays: number | null = null;
+  const deliveryTimes: number[] = [];
+  
+  completedProjects.forEach((pe: any) => {
+    const assignedAt = pe.assigned_at ? new Date(pe.assigned_at) : null;
+    const completedAt = pe.projects?.completed_at ? new Date(pe.projects.completed_at) : null;
+    
+    if (assignedAt && completedAt) {
+      const diffMs = completedAt.getTime() - assignedAt.getTime();
+      const diffDays = diffMs / (1000 * 60 * 60 * 24);
+      if (diffDays >= 0) {
+        deliveryTimes.push(diffDays);
+      }
+    }
+  });
+
+  if (deliveryTimes.length > 0) {
+    avgDeliveryDays = deliveryTimes.reduce((a, b) => a + b, 0) / deliveryTimes.length;
+  }
+
   const allProjects = activeData?.map((pe: any) => ({
     id: pe.projects?.id || '',
     name: pe.projects?.title || '',
@@ -80,6 +104,7 @@ export async function fetchEditorStats(editorId: string): Promise<EditorStats> {
   return {
     currentLoad: activeProjects.length,
     completedProjects: completedProjects.length,
+    avgDeliveryDays,
     projects: allProjects.slice(0, 10),
   };
 }

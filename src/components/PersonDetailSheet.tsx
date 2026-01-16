@@ -26,6 +26,7 @@ interface PersonDetailSheetProps {
     totalProjects?: number;
     totalSpent?: number;
     completedTasks?: number;
+    avgDeliveryDays?: number | null;
   };
   projects?: Array<{ id: string; name: string; status: string }>;
 }
@@ -143,6 +144,21 @@ export function PersonDetailSheet({
                 </p>
               </div>
             </div>
+
+            {/* Average Delivery Time for editors */}
+            {variant === 'team' && stats?.avgDeliveryDays != null && (
+              <div className="glass-card-premium rounded-lg p-4 mt-4">
+                <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                  <Calendar className="w-4 h-4" />
+                  <span className="text-xs">Avg. Delivery Time</span>
+                </div>
+                <p className="text-2xl font-bold text-foreground">
+                  {stats.avgDeliveryDays < 1 
+                    ? `${Math.round(stats.avgDeliveryDays * 24)} hours`
+                    : `${stats.avgDeliveryDays.toFixed(1)} days`}
+                </p>
+              </div>
+            )}
           </div>
 
           <Separator className="bg-border/50" />
