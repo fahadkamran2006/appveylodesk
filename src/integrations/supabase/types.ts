@@ -550,6 +550,7 @@ export type Database = {
           agency_id: string
           budget: number | null
           client_id: string | null
+          completed_at: string | null
           created_at: string
           description: string | null
           due_date: string | null
@@ -563,6 +564,7 @@ export type Database = {
           agency_id: string
           budget?: number | null
           client_id?: string | null
+          completed_at?: string | null
           created_at?: string
           description?: string | null
           due_date?: string | null
@@ -576,6 +578,7 @@ export type Database = {
           agency_id?: string
           budget?: number | null
           client_id?: string | null
+          completed_at?: string | null
           created_at?: string
           description?: string | null
           due_date?: string | null
