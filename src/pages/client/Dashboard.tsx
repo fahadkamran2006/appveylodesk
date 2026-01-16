@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ClientProposalModal } from '@/components/projects/ClientProposalModal';
+import { ProjectDetailSheet } from '@/components/projects/ProjectDetailSheet';
 
 interface Project {
   id: string;
@@ -39,6 +40,7 @@ const ClientDashboard = () => {
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [uploading, setUploading] = useState(false);
   const [proposalModalOpen, setProposalModalOpen] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
 
   // Allow admin god mode - only redirect non-admins away
   useEffect(() => {
@@ -289,7 +291,7 @@ const ClientDashboard = () => {
                     <div 
                       key={project.id} 
                       className="p-4 rounded-lg bg-muted/30 border border-border/50 hover:border-primary/30 cursor-pointer transition-colors"
-                      onClick={() => navigate('/client/projects')}
+                      onClick={() => setSelectedProjectId(project.id)}
                     >
                       <div className="flex items-center justify-between">
                         <div>
@@ -306,7 +308,7 @@ const ClientDashboard = () => {
                             {statusInfo.label}
                           </span>
                           {project.status === 'done' && (
-                            <Button variant="outline" size="sm">
+                            <Button variant="outline" size="sm" onClick={(e) => e.stopPropagation()}>
                               <Download className="w-4 h-4 mr-2" />
                               Download
                             </Button>
@@ -418,8 +420,16 @@ const ClientDashboard = () => {
         onOpenChange={setProposalModalOpen}
         onSuccess={fetchData}
       />
+
+      {/* Project Detail Sheet */}
+      <ProjectDetailSheet
+        projectId={selectedProjectId}
+        open={!!selectedProjectId}
+        onOpenChange={(open) => !open && setSelectedProjectId(null)}
+      />
     </>
   );
 };
 
 export default ClientDashboard;
+

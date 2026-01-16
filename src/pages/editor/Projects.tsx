@@ -9,6 +9,7 @@ import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { ProjectDetailSheet } from '@/components/projects/ProjectDetailSheet';
 
 type ProjectStatus = 'backlog' | 'in_progress' | 'review' | 'done';
 
@@ -41,6 +42,7 @@ export default function EditorProjects() {
   const { toast } = useToast();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
 
   const fetchProjects = useCallback(async () => {
     if (!user) return;
@@ -60,7 +62,7 @@ export default function EditorProjects() {
         return;
       }
 
-      const projectIds = assignments.map(a => a.project_id);
+      const projectIds = assignments.map((a) => a.project_id);
 
       const { data, error } = await supabase
         .from('projects')
@@ -99,11 +101,7 @@ export default function EditorProjects() {
     const newStatus = destination.droppableId as ProjectStatus;
 
     // Optimistic update
-    setProjects(prev =>
-      prev.map(p =>
-        p.id === draggableId ? { ...p, status: newStatus } : p
-      )
-    );
+    setProjects((prev) => prev.map((p) => (p.id === draggableId ? { ...p, status: newStatus } : p)));
 
     try {
       const { error } = await supabase
@@ -115,7 +113,7 @@ export default function EditorProjects() {
 
       toast({
         title: 'Project updated',
-        description: `Moved to ${COLUMNS.find(c => c.id === newStatus)?.title}`,
+        description: `Moved to ${COLUMNS.find((c) => c.id === newStatus)?.title}`,
       });
     } catch (error) {
       console.error('Error updating project:', error);
@@ -128,8 +126,7 @@ export default function EditorProjects() {
     }
   };
 
-  const getProjectsByStatus = (status: ProjectStatus) =>
-    projects.filter(p => p.status === status);
+  const getProjectsByStatus = (status: ProjectStatus) => projects.filter((p) => p.status === status);
 
   const isOverdue = (dueDate: string | null) => {
     if (!dueDate) return false;
@@ -157,9 +154,7 @@ export default function EditorProjects() {
         <main className="flex-1 p-8 overflow-auto">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-foreground">My Projects</h1>
-            <p className="text-muted-foreground mt-1">
-              Manage your assigned projects and upload deliverables
-            </p>
+            <p className="text-muted-foreground mt-1">Manage your assigned projects and upload deliverables</p>
           </div>
 
           {/* Kanban Board */}
@@ -187,25 +182,23 @@ export default function EditorProjects() {
                       >
                         <div className="space-y-3">
                           {getProjectsByStatus(column.id).map((project, index) => (
-                            <Draggable
-                              key={project.id}
-                              draggableId={project.id}
-                              index={index}
-                            >
+                            <Draggable key={project.id} draggableId={project.id} index={index}>
                               {(provided, snapshot) => (
                                 <div
                                   ref={provided.innerRef}
                                   {...provided.draggableProps}
                                   {...provided.dragHandleProps}
-                                  className={`p-4 rounded-lg border bg-card transition-shadow ${
+                                  onClick={() => {
+                                    if (snapshot.isDragging) return;
+                                    setSelectedProjectId(project.id);
+                                  }}
+                                  className={`p-4 rounded-lg border bg-card transition-shadow cursor-pointer ${
                                     snapshot.isDragging
                                       ? 'shadow-lg border-primary'
                                       : 'border-border hover:border-primary/30'
                                   }`}
                                 >
-                                  <h4 className="font-medium text-foreground text-sm">
-                                    {project.title}
-                                  </h4>
+                                  <h4 className="font-medium text-foreground text-sm">{project.title}</h4>
                                   {project.description && (
                                     <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                                       {project.description}
@@ -215,9 +208,7 @@ export default function EditorProjects() {
                                     {project.due_date && (
                                       <span
                                         className={`text-xs flex items-center gap-1 ${
-                                          isOverdue(project.due_date)
-                                            ? 'text-destructive'
-                                            : 'text-muted-foreground'
+                                          isOverdue(project.due_date) ? 'text-destructive' : 'text-muted-foreground'
                                         }`}
                                       >
                                         <Clock className="w-3 h-3" />
@@ -225,9 +216,7 @@ export default function EditorProjects() {
                                       </span>
                                     )}
                                     {project.editor_rate && (
-                                      <span className="text-xs text-emerald-500">
-                                        ${project.editor_rate}
-                                      </span>
+                                      <span className="text-xs text-emerald-500">${project.editor_rate}</span>
                                     )}
                                   </div>
                                   {column.id === 'in_progress' && (
@@ -235,6 +224,10 @@ export default function EditorProjects() {
                                       size="sm"
                                       variant="outline"
                                       className="w-full mt-3 text-xs"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedProjectId(project.id);
+                                      }}
                                     >
                                       <Upload className="w-3 h-3 mr-1" />
                                       Upload Deliverable
@@ -255,6 +248,13 @@ export default function EditorProjects() {
           </DragDropContext>
         </main>
       </div>
+
+      <ProjectDetailSheet
+        projectId={selectedProjectId}
+        open={!!selectedProjectId}
+        onOpenChange={(open) => !open && setSelectedProjectId(null)}
+        onProjectDeleted={fetchProjects}
+      />
     </>
   );
 }
