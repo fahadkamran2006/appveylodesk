@@ -8,6 +8,7 @@ import { PersonCard } from '@/components/PersonCard';
 import { PersonDetailSheet } from '@/components/PersonDetailSheet';
 import { InviteUserModal } from '@/components/InviteUserModal';
 import { PendingInvitationCard } from '@/components/PendingInvitationCard';
+import { EditorLeaderboard } from '@/components/admin/EditorLeaderboard';
 import { supabase } from '@/integrations/supabase/client';
 import { useEditorStats } from '@/hooks/usePersonStats';
 import { UsersRound, UserPlus, Loader2, Clock } from 'lucide-react';
@@ -183,6 +184,13 @@ const AdminTeam = () => {
             </div>
           ) : (
             <div className="space-y-8">
+              {/* Editor Leaderboard */}
+              {teamMembers.length > 0 && Object.keys(editorStats).length > 0 && (
+                <section>
+                  <EditorLeaderboard editors={teamMembers} stats={editorStats} />
+                </section>
+              )}
+
               {/* Pending Invitations */}
               {pendingInvitations.length > 0 && (
                 <section>
