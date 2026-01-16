@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { startOfWeek, startOfMonth, subDays } from 'date-fns';
+
+export type TimePeriod = 'week' | 'month' | 'all';
 
 interface ClientStats {
   activeProjects: number;
@@ -13,6 +16,19 @@ interface EditorStats {
   avgDeliveryDays: number | null;
   projects: Array<{ id: string; name: string; status: string }>;
 }
+
+const getDateRangeStart = (period: TimePeriod): Date | null => {
+  const now = new Date();
+  switch (period) {
+    case 'week':
+      return startOfWeek(now, { weekStartsOn: 1 });
+    case 'month':
+      return startOfMonth(now);
+    case 'all':
+    default:
+      return null;
+  }
+};
 
 export async function fetchClientStats(clientId: string): Promise<ClientStats> {
   // Fetch active projects count
@@ -50,7 +66,9 @@ export async function fetchClientStats(clientId: string): Promise<ClientStats> {
   };
 }
 
-export async function fetchEditorStats(editorId: string): Promise<EditorStats> {
+export async function fetchEditorStats(editorId: string, period: TimePeriod = 'all'): Promise<EditorStats> {
+  const dateStart = getDateRangeStart(period);
+  
   // Fetch current load (active assigned projects) with assignment and completion dates
   const { data: activeData } = await supabase
     .from('project_editors')
@@ -70,11 +88,15 @@ export async function fetchEditorStats(editorId: string): Promise<EditorStats> {
     (pe: any) => pe.projects && !['done', 'cancelled'].includes(pe.projects.status)
   ) || [];
 
-  const completedProjects = activeData?.filter(
-    (pe: any) => pe.projects && pe.projects.status === 'done'
-  ) || [];
+  // Filter completed projects by time period
+  const completedProjects = activeData?.filter((pe: any) => {
+    if (!pe.projects || pe.projects.status !== 'done') return false;
+    if (!dateStart) return true;
+    const completedAt = pe.projects.completed_at ? new Date(pe.projects.completed_at) : null;
+    return completedAt && completedAt >= dateStart;
+  }) || [];
 
-  // Calculate average delivery time in days
+  // Calculate average delivery time in days (only for projects in time period)
   let avgDeliveryDays: number | null = null;
   const deliveryTimes: number[] = [];
   
@@ -137,7 +159,7 @@ export function useClientStats(clientIds: string[]) {
   return { stats, loading };
 }
 
-export function useEditorStats(editorIds: string[]) {
+export function useEditorStats(editorIds: string[], period: TimePeriod = 'all') {
   const [stats, setStats] = useState<Record<string, EditorStats>>({});
   const [loading, setLoading] = useState(false);
 
@@ -150,7 +172,7 @@ export function useEditorStats(editorIds: string[]) {
       
       await Promise.all(
         editorIds.map(async (id) => {
-          const editorStats = await fetchEditorStats(id);
+          const editorStats = await fetchEditorStats(id, period);
           results[id] = editorStats;
         })
       );
@@ -160,7 +182,7 @@ export function useEditorStats(editorIds: string[]) {
     };
 
     fetchAll();
-  }, [editorIds.join(',')]);
+  }, [editorIds.join(','), period]);
 
   return { stats, loading };
 }

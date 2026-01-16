@@ -1,9 +1,17 @@
 import { useMemo } from 'react';
-import { Trophy, Clock, CheckCircle2, Medal } from 'lucide-react';
+import { Trophy, Clock, CheckCircle2, Medal, CalendarDays } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import type { TimePeriod } from '@/hooks/usePersonStats';
 
 interface EditorStats {
   currentLoad: number;
@@ -22,6 +30,8 @@ interface Editor {
 interface EditorLeaderboardProps {
   editors: Editor[];
   stats: Record<string, EditorStats>;
+  period: TimePeriod;
+  onPeriodChange: (period: TimePeriod) => void;
 }
 
 const formatDeliveryTime = (days: number | null): string => {
@@ -100,7 +110,7 @@ const LeaderboardRow = ({
   );
 };
 
-export const EditorLeaderboard = ({ editors, stats }: EditorLeaderboardProps) => {
+export const EditorLeaderboard = ({ editors, stats, period, onPeriodChange }: EditorLeaderboardProps) => {
   // Sort by fastest delivery time (lowest is best)
   const sortedBySpeed = useMemo(() => {
     return editors
@@ -135,9 +145,22 @@ export const EditorLeaderboard = ({ editors, stats }: EditorLeaderboardProps) =>
   return (
     <Card>
       <CardHeader className="pb-3">
-        <div className="flex items-center gap-2">
-          <Trophy className="w-5 h-5 text-primary" />
-          <CardTitle className="text-lg">Editor Leaderboard</CardTitle>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Trophy className="w-5 h-5 text-primary" />
+            <CardTitle className="text-lg">Editor Leaderboard</CardTitle>
+          </div>
+          <Select value={period} onValueChange={(v) => onPeriodChange(v as TimePeriod)}>
+            <SelectTrigger className="w-[140px]">
+              <CalendarDays className="w-4 h-4 mr-2" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="week">This Week</SelectItem>
+              <SelectItem value="month">This Month</SelectItem>
+              <SelectItem value="all">All Time</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </CardHeader>
       <CardContent>
