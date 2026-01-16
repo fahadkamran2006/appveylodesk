@@ -1,12 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { FolderKanban, Clock, CheckCircle, AlertCircle, Send } from 'lucide-react';
+import { FolderKanban, Clock, CheckCircle, AlertCircle, Send, Plus, Search } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
+import { ClientProposalModal } from '@/components/projects/ClientProposalModal';
+import { ProjectDetailSheet } from '@/components/projects/ProjectDetailSheet';
 
 interface Project {
   id: string;
@@ -31,6 +35,9 @@ export default function ClientProjects() {
   const { user, userRole, loading: authLoading } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [proposalModalOpen, setProposalModalOpen] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const fetchProjects = useCallback(async () => {
     if (!user) return;
@@ -54,13 +61,13 @@ export default function ClientProjects() {
   useEffect(() => {
     if (!authLoading && !user) {
       navigate('/auth/login');
-    } else if (!authLoading && userRole && userRole !== 'client') {
+    } else if (!authLoading && userRole && userRole !== 'client' && userRole !== 'admin') {
       navigate(`/${userRole}/dashboard`);
     }
   }, [user, userRole, authLoading, navigate]);
 
   useEffect(() => {
-    if (user && userRole === 'client') {
+    if (user && (userRole === 'client' || userRole === 'admin')) {
       fetchProjects();
     }
   }, [user, userRole, fetchProjects]);
@@ -77,6 +84,11 @@ export default function ClientProjects() {
     return statusConfig[status] || statusConfig.backlog;
   };
 
+  const filteredProjects = projects.filter(project =>
+    project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    project.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <>
       <Helmet>
@@ -89,9 +101,26 @@ export default function ClientProjects() {
 
         <main className="flex-1 p-8 overflow-auto">
           <div className="max-w-6xl mx-auto">
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold text-foreground">My Projects</h1>
-              <p className="text-muted-foreground mt-1">Track the progress of all your projects</p>
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h1 className="text-3xl font-bold text-foreground">My Projects</h1>
+                <p className="text-muted-foreground mt-1">Track the progress of all your projects</p>
+              </div>
+              <Button variant="hero" onClick={() => setProposalModalOpen(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                New Project
+              </Button>
+            </div>
+
+            {/* Search */}
+            <div className="relative mb-6">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search projects..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
             </div>
 
             {/* Stats */}
@@ -150,20 +179,31 @@ export default function ClientProjects() {
 
             {/* Projects List */}
             <div className="space-y-4">
-              {projects.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <FolderKanban className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>No projects yet</p>
+              {filteredProjects.length === 0 ? (
+                <div className="text-center py-12 rounded-xl border border-border bg-card">
+                  <FolderKanban className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
+                  {searchQuery ? (
+                    <p className="text-muted-foreground">No projects match your search</p>
+                  ) : (
+                    <>
+                      <p className="text-muted-foreground mb-4">No projects yet</p>
+                      <Button variant="hero" onClick={() => setProposalModalOpen(true)}>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Start Your First Project
+                      </Button>
+                    </>
+                  )}
                 </div>
               ) : (
-                projects.map((project) => {
+                filteredProjects.map((project) => {
                   const statusInfo = getStatusInfo(project.status);
                   const StatusIcon = statusInfo.icon;
                   
                   return (
                     <div
                       key={project.id}
-                      className="p-4 rounded-xl border border-border bg-card hover:border-primary/30 transition-colors"
+                      onClick={() => setSelectedProjectId(project.id)}
+                      className="p-4 rounded-xl border border-border bg-card hover:border-primary/30 hover:bg-muted/30 transition-colors cursor-pointer"
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
@@ -200,6 +240,21 @@ export default function ClientProjects() {
           </div>
         </main>
       </div>
+
+      {/* Proposal Modal */}
+      <ClientProposalModal
+        open={proposalModalOpen}
+        onOpenChange={setProposalModalOpen}
+        onSuccess={fetchProjects}
+      />
+
+      {/* Project Detail Sheet */}
+      <ProjectDetailSheet
+        projectId={selectedProjectId}
+        open={!!selectedProjectId}
+        onOpenChange={(open) => !open && setSelectedProjectId(null)}
+        onProjectDeleted={fetchProjects}
+      />
     </>
   );
 }

@@ -42,6 +42,7 @@ import Refund from "./pages/legal/Refund";
 import SettingsPage from "./pages/settings/Settings";
 import MessagesPage from "./pages/messages/MessagesPage";
 import StoragePage from "./pages/storage/StoragePage";
+import CalendarPage from "./pages/Calendar";
 
 const queryClient = new QueryClient();
 
@@ -80,6 +81,7 @@ const App = () => (
                   <Route path="/admin/invoices" element={<AdminInvoices />} />
                   <Route path="/admin/storage" element={<StoragePage />} />
                   <Route path="/admin/messages" element={<MessagesPage />} />
+                  <Route path="/admin/calendar" element={<CalendarPage />} />
                   <Route path="/admin/settings" element={<SettingsPage />} />
 
                   {/* Client */}
@@ -88,6 +90,7 @@ const App = () => (
                   <Route path="/client/invoices" element={<ClientInvoices />} />
                   <Route path="/client/storage" element={<StoragePage />} />
                   <Route path="/client/messages" element={<MessagesPage />} />
+                  <Route path="/client/calendar" element={<CalendarPage />} />
                   <Route path="/client/settings" element={<SettingsPage />} />
 
                   {/* Editor */}
@@ -96,6 +99,7 @@ const App = () => (
                   <Route path="/editor/earnings" element={<EditorEarnings />} />
                   <Route path="/editor/storage" element={<StoragePage />} />
                   <Route path="/editor/messages" element={<MessagesPage />} />
+                  <Route path="/editor/calendar" element={<CalendarPage />} />
                   <Route path="/editor/settings" element={<SettingsPage />} />
 
                   {/* Catch-all must be last */}
