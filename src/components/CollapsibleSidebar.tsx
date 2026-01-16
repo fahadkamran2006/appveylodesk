@@ -23,6 +23,7 @@ import {
   DollarSign,
   ChevronLeft,
   ChevronRight,
+  Calendar,
 } from 'lucide-react';
 
 interface NavItem {
@@ -39,6 +40,7 @@ const adminNavItems: NavItem[] = [
   { label: 'Invoices', icon: Receipt, href: '/admin/invoices' },
   { label: 'Storage', icon: HardDrive, href: '/admin/storage' },
   { label: 'Messages', icon: MessageSquare, href: '/admin/messages' },
+  { label: 'Calendar', icon: Calendar, href: '/admin/calendar' },
   { label: 'Settings', icon: Settings, href: '/admin/settings' },
 ];
 
@@ -48,6 +50,7 @@ const clientNavItems: NavItem[] = [
   { label: 'Invoices', icon: FileText, href: '/client/invoices' },
   { label: 'Storage', icon: HardDrive, href: '/client/storage' },
   { label: 'Messages', icon: MessageSquare, href: '/client/messages' },
+  { label: 'Calendar', icon: Calendar, href: '/client/calendar' },
   { label: 'Settings', icon: Settings, href: '/client/settings' },
 ];
 
@@ -57,6 +60,7 @@ const editorNavItems: NavItem[] = [
   { label: 'Earnings', icon: DollarSign, href: '/editor/earnings' },
   { label: 'Storage', icon: HardDrive, href: '/editor/storage' },
   { label: 'Messages', icon: MessageSquare, href: '/editor/messages' },
+  { label: 'Calendar', icon: Calendar, href: '/editor/calendar' },
   { label: 'Settings', icon: Settings, href: '/editor/settings' },
 ];
 
