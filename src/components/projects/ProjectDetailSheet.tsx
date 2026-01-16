@@ -198,7 +198,7 @@ export function ProjectDetailSheet({
   }, [open, projectId, fetchProject]);
 
   // Permissions
-  const canUpload = userRole === 'admin' || userRole === 'editor' || userRole === 'client';
+  const canUpload = userRole === 'admin' || userRole === 'editor';
   const canDelete = userRole === 'admin' || userRole === 'editor';
   const canResolveComments = userRole === 'admin' || userRole === 'editor';
 
