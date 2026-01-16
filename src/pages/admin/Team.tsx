@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/hooks/useAuth';
@@ -9,6 +9,7 @@ import { PersonDetailSheet } from '@/components/PersonDetailSheet';
 import { InviteUserModal } from '@/components/InviteUserModal';
 import { PendingInvitationCard } from '@/components/PendingInvitationCard';
 import { supabase } from '@/integrations/supabase/client';
+import { useEditorStats } from '@/hooks/usePersonStats';
 import { UsersRound, UserPlus, Loader2, Clock } from 'lucide-react';
 
 interface TeamMember {
@@ -38,6 +39,10 @@ const AdminTeam = () => {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+
+  // Fetch real stats for all editors
+  const editorIds = useMemo(() => teamMembers.map(m => m.id), [teamMembers]);
+  const { stats: editorStats } = useEditorStats(editorIds);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -217,22 +222,25 @@ const AdminTeam = () => {
                     </span>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {teamMembers.map((member) => (
-                      <PersonCard
-                        key={member.id}
-                        id={member.id}
-                        name={member.full_name || ''}
-                        email={member.email}
-                        avatarUrl={member.avatar_url}
-                        role="editor"
-                        variant="team"
-                        stats={{
-                          currentLoad: Math.floor(Math.random() * 8),
-                          status: Math.random() > 0.3 ? 'active' : 'offline',
-                        }}
-                        onExpand={handleExpandMember}
-                      />
-                    ))}
+                    {teamMembers.map((member) => {
+                      const stats = editorStats[member.id];
+                      return (
+                        <PersonCard
+                          key={member.id}
+                          id={member.id}
+                          name={member.full_name || ''}
+                          email={member.email}
+                          avatarUrl={member.avatar_url}
+                          role="editor"
+                          variant="team"
+                          stats={{
+                            currentLoad: stats?.currentLoad ?? 0,
+                            status: (stats?.currentLoad ?? 0) > 0 ? 'active' : 'offline',
+                          }}
+                          onExpand={handleExpandMember}
+                        />
+                      );
+                    })}
                   </div>
                 </section>
               )}
@@ -266,6 +274,11 @@ const AdminTeam = () => {
             : null
         }
         variant="team"
+        stats={selectedMember ? {
+          completedTasks: editorStats[selectedMember.id]?.completedProjects ?? 0,
+          totalProjects: editorStats[selectedMember.id]?.projects.length ?? 0,
+        } : undefined}
+        projects={selectedMember ? editorStats[selectedMember.id]?.projects : undefined}
       />
     </>
   );

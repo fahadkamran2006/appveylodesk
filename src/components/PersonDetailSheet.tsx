@@ -8,7 +8,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Mail, Calendar, FolderKanban, DollarSign, Clock } from 'lucide-react';
+import { Mail, Calendar, FolderKanban, DollarSign, CheckCircle } from 'lucide-react';
 
 interface PersonDetailSheetProps {
   open: boolean;
@@ -22,13 +22,30 @@ interface PersonDetailSheetProps {
     createdAt?: string;
   } | null;
   variant?: 'client' | 'team';
+  stats?: {
+    totalProjects?: number;
+    totalSpent?: number;
+    completedTasks?: number;
+  };
+  projects?: Array<{ id: string; name: string; status: string }>;
 }
+
+const STATUS_COLORS: Record<string, string> = {
+  done: 'bg-success/20 text-success',
+  in_progress: 'bg-primary/20 text-primary',
+  review: 'bg-warning/20 text-warning',
+  backlog: 'bg-muted text-muted-foreground',
+  proposal: 'bg-blue-500/20 text-blue-500',
+  cancelled: 'bg-destructive/20 text-destructive',
+};
 
 export function PersonDetailSheet({
   open,
   onOpenChange,
   person,
   variant = 'client',
+  stats,
+  projects = [],
 }: PersonDetailSheetProps) {
   if (!person) return null;
 
@@ -40,13 +57,6 @@ export function PersonDetailSheet({
         .toUpperCase()
         .slice(0, 2)
     : person.email.slice(0, 2).toUpperCase();
-
-  // Mock data for demonstration
-  const mockProjects = [
-    { name: 'Brand Redesign', status: 'in_progress' },
-    { name: 'Marketing Campaign', status: 'completed' },
-    { name: 'Website Update', status: 'backlog' },
-  ];
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -108,24 +118,28 @@ export function PersonDetailSheet({
                 <div className="flex items-center gap-2 text-muted-foreground mb-1">
                   <FolderKanban className="w-4 h-4" />
                   <span className="text-xs">
-                    {variant === 'client' ? 'Total Projects' : 'Completed Tasks'}
+                    {variant === 'client' ? 'Total Projects' : 'Active Projects'}
                   </span>
                 </div>
-                <p className="text-2xl font-bold text-foreground">12</p>
+                <p className="text-2xl font-bold text-foreground">
+                  {stats?.totalProjects ?? 0}
+                </p>
               </div>
               <div className="glass-card-premium rounded-lg p-4">
                 <div className="flex items-center gap-2 text-muted-foreground mb-1">
                   {variant === 'client' ? (
                     <DollarSign className="w-4 h-4" />
                   ) : (
-                    <Clock className="w-4 h-4" />
+                    <CheckCircle className="w-4 h-4" />
                   )}
                   <span className="text-xs">
-                    {variant === 'client' ? 'Total Spent' : 'Avg. Delivery'}
+                    {variant === 'client' ? 'Total Spent' : 'Completed'}
                   </span>
                 </div>
                 <p className="text-2xl font-bold text-foreground">
-                  {variant === 'client' ? '$24,500' : '2.3 days'}
+                  {variant === 'client' 
+                    ? `$${(stats?.totalSpent ?? 0).toLocaleString()}` 
+                    : `${stats?.completedTasks ?? 0} projects`}
                 </p>
               </div>
             </div>
@@ -138,28 +152,28 @@ export function PersonDetailSheet({
             <h4 className="text-sm font-medium text-muted-foreground mb-3">
               {variant === 'client' ? 'Project History' : 'Assigned Projects'}
             </h4>
-            <div className="space-y-2">
-              {mockProjects.map((project, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between p-3 rounded-lg bg-surface-elevated/50"
-                >
-                  <span className="text-sm text-foreground">{project.name}</span>
-                  <Badge
-                    variant="secondary"
-                    className={
-                      project.status === 'completed'
-                        ? 'bg-success/20 text-success'
-                        : project.status === 'in_progress'
-                        ? 'bg-primary/20 text-primary'
-                        : 'bg-muted text-muted-foreground'
-                    }
+            {projects.length === 0 ? (
+              <div className="text-center py-6 text-muted-foreground text-sm">
+                No projects yet
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {projects.map((project) => (
+                  <div
+                    key={project.id}
+                    className="flex items-center justify-between p-3 rounded-lg bg-surface-elevated/50"
                   >
-                    {project.status.replace('_', ' ')}
-                  </Badge>
-                </div>
-              ))}
-            </div>
+                    <span className="text-sm text-foreground">{project.name}</span>
+                    <Badge
+                      variant="secondary"
+                      className={STATUS_COLORS[project.status] || 'bg-muted text-muted-foreground'}
+                    >
+                      {project.status.replace('_', ' ')}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </SheetContent>

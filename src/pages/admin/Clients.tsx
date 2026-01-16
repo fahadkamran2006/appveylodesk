@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/hooks/useAuth';
@@ -9,6 +9,7 @@ import { PersonDetailSheet } from '@/components/PersonDetailSheet';
 import { InviteUserModal } from '@/components/InviteUserModal';
 import { PendingInvitationCard } from '@/components/PendingInvitationCard';
 import { supabase } from '@/integrations/supabase/client';
+import { useClientStats } from '@/hooks/usePersonStats';
 import { Users, UserPlus, Loader2, Clock } from 'lucide-react';
 
 interface ClientProfile {
@@ -38,6 +39,10 @@ const AdminClients = () => {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<ClientProfile | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+
+  // Fetch real stats for all clients
+  const clientIds = useMemo(() => clients.map(c => c.id), [clients]);
+  const { stats: clientStats } = useClientStats(clientIds);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -224,21 +229,24 @@ const AdminClients = () => {
                     </h2>
                   )}
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {clients.map((client) => (
-                      <PersonCard
-                        key={client.id}
-                        id={client.id}
-                        name={client.full_name || ''}
-                        email={client.email}
-                        avatarUrl={client.avatar_url}
-                        variant="client"
-                        stats={{
-                          activeProjects: Math.floor(Math.random() * 5),
-                          totalSpent: Math.floor(Math.random() * 50000),
-                        }}
-                        onExpand={handleExpandClient}
-                      />
-                    ))}
+                    {clients.map((client) => {
+                      const stats = clientStats[client.id];
+                      return (
+                        <PersonCard
+                          key={client.id}
+                          id={client.id}
+                          name={client.full_name || ''}
+                          email={client.email}
+                          avatarUrl={client.avatar_url}
+                          variant="client"
+                          stats={{
+                            activeProjects: stats?.activeProjects ?? 0,
+                            totalSpent: stats?.totalSpent ?? 0,
+                          }}
+                          onExpand={handleExpandClient}
+                        />
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -272,6 +280,11 @@ const AdminClients = () => {
             : null
         }
         variant="client"
+        stats={selectedClient ? {
+          totalProjects: clientStats[selectedClient.id]?.projects.length ?? 0,
+          totalSpent: clientStats[selectedClient.id]?.totalSpent ?? 0,
+        } : undefined}
+        projects={selectedClient ? clientStats[selectedClient.id]?.projects : undefined}
       />
     </>
   );
