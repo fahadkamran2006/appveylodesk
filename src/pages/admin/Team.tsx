@@ -10,7 +10,7 @@ import { InviteUserModal } from '@/components/InviteUserModal';
 import { PendingInvitationCard } from '@/components/PendingInvitationCard';
 import { EditorLeaderboard } from '@/components/admin/EditorLeaderboard';
 import { supabase } from '@/integrations/supabase/client';
-import { useEditorStats } from '@/hooks/usePersonStats';
+import { useEditorStats, type TimePeriod } from '@/hooks/usePersonStats';
 import { UsersRound, UserPlus, Loader2, Clock } from 'lucide-react';
 
 interface TeamMember {
@@ -40,10 +40,11 @@ const AdminTeam = () => {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [leaderboardPeriod, setLeaderboardPeriod] = useState<TimePeriod>('all');
 
   // Fetch real stats for all editors
   const editorIds = useMemo(() => teamMembers.map(m => m.id), [teamMembers]);
-  const { stats: editorStats } = useEditorStats(editorIds);
+  const { stats: editorStats } = useEditorStats(editorIds, leaderboardPeriod);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -187,7 +188,12 @@ const AdminTeam = () => {
               {/* Editor Leaderboard */}
               {teamMembers.length > 0 && Object.keys(editorStats).length > 0 && (
                 <section>
-                  <EditorLeaderboard editors={teamMembers} stats={editorStats} />
+                  <EditorLeaderboard 
+                    editors={teamMembers} 
+                    stats={editorStats} 
+                    period={leaderboardPeriod}
+                    onPeriodChange={setLeaderboardPeriod}
+                  />
                 </section>
               )}
 
