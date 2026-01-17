@@ -3,10 +3,10 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/hooks/useAuth';
 import { useDashboardStats, useProjects } from '@/hooks/useProjects';
-import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { CreateProjectModal } from '@/components/projects/CreateProjectModal';
-import { 
+import {
   Plus,
   Clock,
   DollarSign,
@@ -110,25 +110,21 @@ const AdminDashboard = () => {
         <meta name="description" content="Admin dashboard for managing your video agency." />
       </Helmet>
 
-      <div className="min-h-screen bg-background flex">
-        <CollapsibleSidebar role="admin" />
-
-        {/* Main Content */}
-        <main className="flex-1 p-8 overflow-auto">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">Command Center</h1>
-              <p className="text-muted-foreground">Welcome back! Here's your agency overview.</p>
-            </div>
-            <Button variant="hero" onClick={() => setCreateModalOpen(true)}>
-              <Plus className="w-4 h-4" />
-              New Project
-            </Button>
+      <DashboardLayout role="admin">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 md:mb-8">
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold text-foreground">Command Center</h1>
+            <p className="text-sm md:text-base text-muted-foreground">Welcome back! Here's your agency overview.</p>
           </div>
+          <Button variant="hero" onClick={() => setCreateModalOpen(true)} className="w-full sm:w-auto">
+            <Plus className="w-4 h-4" />
+            New Project
+          </Button>
+        </div>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* Stats Grid - Single column on mobile, 2 on tablet, 4 on desktop */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
             {statsLoading ? (
               Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="glass-card rounded-xl p-6 animate-pulse">
@@ -170,7 +166,7 @@ const AdminDashboard = () => {
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 md:gap-4 overflow-x-auto">
                 {kanbanColumns.map((column) => {
                   const columnProjects = getProjectsByStatus(column.id);
                   return (
@@ -224,8 +220,7 @@ const AdminDashboard = () => {
               </div>
             )}
           </div>
-        </main>
-      </div>
+        </DashboardLayout>
 
       {/* Create Project Modal */}
       <CreateProjectModal

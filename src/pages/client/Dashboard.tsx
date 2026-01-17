@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Clock, Download, FolderKanban, Receipt, Upload, Plus, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -170,42 +170,39 @@ const ClientDashboard = () => {
         <meta name="description" content="View your projects and manage invoices." />
       </Helmet>
 
-      <div className="min-h-screen bg-background flex">
-        <CollapsibleSidebar role="client" />
+      <DashboardLayout role="client">
+        <div className="mb-6 md:mb-8">
+          <h1 className="text-xl md:text-2xl font-bold text-foreground">Welcome back</h1>
+          <p className="text-sm md:text-base text-muted-foreground">Track your projects and manage invoices.</p>
+        </div>
 
-        <main className="flex-1 p-8">
-          <div className="mb-8">
-            <h1 className="text-2xl font-bold text-foreground">Welcome back</h1>
-            <p className="text-muted-foreground">Track your projects and manage invoices.</p>
-          </div>
-
-          {/* Hero: Create New Project Card */}
-          <div 
-            onClick={() => setProposalModalOpen(true)}
-            className="mb-8 p-6 rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-2 border-dashed border-primary/30 hover:border-primary/50 hover:bg-primary/10 cursor-pointer transition-all duration-300 group"
-          >
-            <div className="flex items-center gap-6">
-              <div className="w-16 h-16 rounded-2xl bg-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Plus className="w-8 h-8 text-primary" />
-              </div>
-              <div className="flex-1">
-                <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
-                  Start a New Project
-                  <Sparkles className="w-5 h-5 text-primary" />
-                </h2>
-                <p className="text-muted-foreground mt-1">
-                  Submit a project proposal and we'll get back to you with a quote
-                </p>
-              </div>
-              <Button variant="hero" size="lg" className="shrink-0">
-                <Plus className="w-5 h-5 mr-2" />
-                New Project
-              </Button>
+        {/* Hero: Create New Project Card - Responsive layout */}
+        <div 
+          onClick={() => setProposalModalOpen(true)}
+          className="mb-6 md:mb-8 p-4 md:p-6 rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-2 border-dashed border-primary/30 hover:border-primary/50 hover:bg-primary/10 cursor-pointer transition-all duration-300 group"
+        >
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
+            <div className="w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl bg-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
+              <Plus className="w-6 h-6 md:w-8 md:h-8 text-primary" />
             </div>
+            <div className="flex-1">
+              <h2 className="text-lg md:text-xl font-bold text-foreground flex items-center gap-2">
+                Start a New Project
+                <Sparkles className="w-4 h-4 md:w-5 md:h-5 text-primary" />
+              </h2>
+              <p className="text-sm md:text-base text-muted-foreground mt-1">
+                Submit a project proposal and we'll get back to you with a quote
+              </p>
+            </div>
+            <Button variant="hero" size="default" className="w-full sm:w-auto shrink-0">
+              <Plus className="w-4 h-4 md:w-5 md:h-5 mr-2" />
+              New Project
+            </Button>
           </div>
+        </div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* Stats Cards - Responsive grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-8">
             <div className="glass-card rounded-xl p-6">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -369,9 +366,8 @@ const ClientDashboard = () => {
                 ))}
               </div>
             )}
-          </div>
-        </main>
-      </div>
+        </div>
+      </DashboardLayout>
 
       {/* Upload Payment Proof Modal */}
       <Dialog open={uploadModalOpen} onOpenChange={setUploadModalOpen}>
