@@ -4,7 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import { FolderKanban, Clock, CheckCircle, AlertCircle, Send, Plus, Search } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -96,35 +96,32 @@ export default function ClientProjects() {
         <meta name="description" content="View and track your project progress" />
       </Helmet>
 
-      <div className="flex min-h-screen bg-background">
-        <CollapsibleSidebar role="client" />
-
-        <main className="flex-1 p-8 overflow-auto">
-          <div className="max-w-6xl mx-auto">
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h1 className="text-3xl font-bold text-foreground">My Projects</h1>
-                <p className="text-muted-foreground mt-1">Track the progress of all your projects</p>
-              </div>
-              <Button variant="hero" onClick={() => setProposalModalOpen(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                New Project
-              </Button>
+      <DashboardLayout role="client">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 md:mb-8">
+            <div>
+              <h1 className="text-xl md:text-3xl font-bold text-foreground">My Projects</h1>
+              <p className="text-sm md:text-base text-muted-foreground mt-1">Track the progress of all your projects</p>
             </div>
+            <Button variant="hero" onClick={() => setProposalModalOpen(true)} className="w-full sm:w-auto">
+              <Plus className="w-4 h-4 mr-2" />
+              New Project
+            </Button>
+          </div>
 
-            {/* Search */}
-            <div className="relative mb-6">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search projects..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+          {/* Search */}
+          <div className="relative mb-4 md:mb-6">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search projects..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          {/* Stats - Responsive grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
               <div className="p-4 rounded-xl border border-border bg-card">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-primary/10">
@@ -238,8 +235,7 @@ export default function ClientProjects() {
               )}
             </div>
           </div>
-        </main>
-      </div>
+        </DashboardLayout>
 
       {/* Proposal Modal */}
       <ClientProposalModal

@@ -6,15 +6,16 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
-import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { AvatarUpload } from '@/components/settings/AvatarUpload';
 import { StorageManagement } from '@/components/settings/StorageManagement';
+import { InstallPWAButton } from '@/components/InstallPWAButton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Separator } from '@/components/ui/separator';
-import { Settings as SettingsIcon, User, Loader2 } from 'lucide-react';
+import { Settings as SettingsIcon, User, Loader2, Smartphone } from 'lucide-react';
 
 const profileSchema = z.object({
   full_name: z.string().min(1, 'Name is required'),
@@ -88,26 +89,39 @@ const SettingsPage = () => {
         <meta name="description" content="Manage your profile and preferences." />
       </Helmet>
 
-      <div className="min-h-screen bg-background flex">
-        <CollapsibleSidebar role={getSidebarRole()} />
-
-        <main className="flex-1 p-8">
-          <div className="max-w-2xl mx-auto">
-            {/* Header */}
-            <div className="flex items-center gap-3 mb-8">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <SettingsIcon className="w-6 h-6 text-primary" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-foreground">Settings</h1>
-                <p className="text-muted-foreground">
-                  Manage your profile and preferences
-                </p>
-              </div>
+      <DashboardLayout role={getSidebarRole()}>
+        <div className="max-w-2xl mx-auto">
+          {/* Header */}
+          <div className="flex items-center gap-3 mb-6 md:mb-8">
+            <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+              <SettingsIcon className="w-5 h-5 md:w-6 md:h-6 text-primary" />
             </div>
+            <div>
+              <h1 className="text-xl md:text-2xl font-bold text-foreground">Settings</h1>
+              <p className="text-sm md:text-base text-muted-foreground">
+                Manage your profile and preferences
+              </p>
+            </div>
+          </div>
 
-            {/* Profile Card */}
-            <Card className="glass-card border-border/50">
+          {/* Install App Card */}
+          <Card className="glass-card border-border/50 mb-6">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+                <Smartphone className="w-5 h-5" />
+                Mobile App
+              </CardTitle>
+              <CardDescription>
+                Install Veylodesk on your device for quick access
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <InstallPWAButton variant="default" />
+            </CardContent>
+          </Card>
+
+          {/* Profile Card */}
+          <Card className="glass-card border-border/50">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <User className="w-5 h-5" />
@@ -191,10 +205,9 @@ const SettingsPage = () => {
               <StorageManagement className="mt-6" />
             )}
           </div>
-        </main>
-      </div>
-    </>
-  );
-};
+        </DashboardLayout>
+      </>
+    );
+  };
 
 export default SettingsPage;

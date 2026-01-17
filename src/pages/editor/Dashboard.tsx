@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Clock, CheckCircle2, FolderKanban, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -153,23 +153,20 @@ const EditorDashboard = () => {
         <meta name="description" content="Manage your assigned projects." />
       </Helmet>
 
-      <div className="min-h-screen bg-background flex">
-        <CollapsibleSidebar role="editor" />
-
-        <main className="flex-1 p-8 overflow-x-auto">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">My Projects</h1>
-              <p className="text-muted-foreground">Manage your assigned projects and upload deliverables.</p>
-            </div>
-            <div className="glass-card rounded-xl px-6 py-4">
-              <p className="text-sm text-muted-foreground">Assigned to you</p>
-              <p className="text-2xl font-bold text-primary">{projects.length} projects</p>
-            </div>
+      <DashboardLayout role="editor">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 md:mb-8">
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold text-foreground">My Projects</h1>
+            <p className="text-sm md:text-base text-muted-foreground">Manage your assigned projects and upload deliverables.</p>
           </div>
+          <div className="glass-card rounded-xl px-4 md:px-6 py-3 md:py-4 w-full sm:w-auto">
+            <p className="text-xs md:text-sm text-muted-foreground">Assigned to you</p>
+            <p className="text-xl md:text-2xl font-bold text-primary">{projects.length} projects</p>
+          </div>
+        </div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {/* Stats Cards - Responsive */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
             <div className="glass-card rounded-xl p-6">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -211,11 +208,11 @@ const EditorDashboard = () => {
             </div>
           </div>
 
-          {/* Kanban Board - No client contact info or invoice amounts shown */}
-          <DragDropContext onDragEnd={handleDragEnd}>
-            <div className="flex gap-6 min-w-max pb-4">
-              {COLUMNS.map((column) => {
-                const columnProjects = getProjectsByStatus(column.id);
+        {/* Kanban Board - Horizontal scroll on mobile */}
+        <DragDropContext onDragEnd={handleDragEnd}>
+          <div className="flex gap-4 md:gap-6 overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0 hide-scrollbar-mobile">
+            {COLUMNS.map((column) => {
+              const columnProjects = getProjectsByStatus(column.id);
                 return (
                   <div key={column.id} className="w-72 flex-shrink-0">
                     <div className="flex items-center justify-between mb-4">
@@ -281,10 +278,9 @@ const EditorDashboard = () => {
                   </div>
                 );
               })}
-            </div>
-          </DragDropContext>
-        </main>
-      </div>
+          </div>
+        </DragDropContext>
+      </DashboardLayout>
     </>
   );
 };

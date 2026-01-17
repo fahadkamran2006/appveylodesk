@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 import { useAuth } from '@/hooks/useAuth';
-import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { KanbanColumn, Project, ProjectStatus } from '@/components/projects/KanbanColumn';
 import { CreateProjectModal } from '@/components/projects/CreateProjectModal';
@@ -199,53 +199,49 @@ const AdminProjects = () => {
         <meta name="description" content="Manage your agency projects with Kanban board." />
       </Helmet>
 
-      <div className="min-h-screen bg-background flex">
-        <CollapsibleSidebar role="admin" />
-
-        <main className="flex-1 flex flex-col overflow-hidden">
-          {/* Header */}
-          <div className="flex items-center justify-between px-8 py-6 border-b border-border/50">
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">Projects</h1>
-              <p className="text-muted-foreground text-sm mt-1">
-                Drag and drop to update project status
-              </p>
-            </div>
-            <Button
-              onClick={() => setCreateModalOpen(true)}
-              className="bg-primary hover:bg-primary/90"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              New Project
-            </Button>
+      <DashboardLayout role="admin">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 md:mb-6">
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold text-foreground">Projects</h1>
+            <p className="text-sm md:text-base text-muted-foreground mt-1">
+              Drag and drop to update project status
+            </p>
           </div>
+          <Button
+            onClick={() => setCreateModalOpen(true)}
+            className="bg-primary hover:bg-primary/90 w-full sm:w-auto"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            New Project
+          </Button>
+        </div>
 
-          {/* Kanban Board */}
-          {isLoading ? (
-            <div className="flex-1 flex items-center justify-center">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div>
-          ) : (
-            <div className="flex-1 overflow-x-auto p-6">
-              <DragDropContext onDragEnd={handleDragEnd}>
-                <div className="flex gap-6 min-w-max h-full">
-                  {COLUMNS.map((column) => (
-                    <KanbanColumn
-                      key={column.id}
-                      id={column.id}
-                      title={column.title}
-                      projects={getProjectsByStatus(column.id)}
-                      onProjectClick={(project) => {
-                        setSelectedProjectId(project.id);
-                      }}
-                    />
-                  ))}
-                </div>
-              </DragDropContext>
-            </div>
-          )}
-        </main>
-      </div>
+        {/* Kanban Board */}
+        {isLoading ? (
+          <div className="flex-1 flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
+            <DragDropContext onDragEnd={handleDragEnd}>
+              <div className="flex gap-4 md:gap-6 min-w-max pb-4 hide-scrollbar-mobile">
+                {COLUMNS.map((column) => (
+                  <KanbanColumn
+                    key={column.id}
+                    id={column.id}
+                    title={column.title}
+                    projects={getProjectsByStatus(column.id)}
+                    onProjectClick={(project) => {
+                      setSelectedProjectId(project.id);
+                    }}
+                  />
+                ))}
+              </div>
+            </DragDropContext>
+          </div>
+        )}
+      </DashboardLayout>
 
       {/* Create Project Modal */}
       <CreateProjectModal
