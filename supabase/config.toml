@@ -2,3 +2,9 @@ project_id = "bwfnxidpifugpklczfyo"
 
 [functions.send-invite-email]
 verify_jwt = false
+
+[functions.bunny-ops]
+verify_jwt = false
+
+[functions.deliverables-ops]
+verify_jwt = false
