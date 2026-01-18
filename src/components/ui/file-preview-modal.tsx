@@ -33,6 +33,10 @@ interface FilePreviewModalProps {
   canRename?: boolean;
 }
 
+function isBunnyCdnUrl(url: string): boolean {
+  return url.includes('b-cdn.net') || url.includes('bunnycdn');
+}
+
 async function getSignedUrl(deliverableId: string): Promise<{ url: string | null; error?: string }> {
   try {
     const { data, error } = await supabase.functions.invoke('deliverables-ops', {
@@ -79,7 +83,9 @@ export function FilePreviewModal({
     setIsEditing(false);
   }, [file]);
 
-  // Resolve signed URL when file changes
+  // Resolve URL when file changes
+  // For Bunny CDN URLs: use directly (fast CDN, no signing needed)
+  // For Supabase URLs: get signed URL via backend
   useEffect(() => {
     let cancelled = false;
 
@@ -90,6 +96,15 @@ export function FilePreviewModal({
         return;
       }
 
+      // Bunny CDN URLs can be used directly - they're fast and don't need signing
+      if (isBunnyCdnUrl(file.file_url)) {
+        console.log('Using Bunny CDN URL directly for preview:', file.file_url);
+        setResolvedUrl(file.file_url);
+        setIsResolvingUrl(false);
+        return;
+      }
+
+      // For Supabase storage, get signed URL
       setIsResolvingUrl(true);
       setUrlError(null);
       try {

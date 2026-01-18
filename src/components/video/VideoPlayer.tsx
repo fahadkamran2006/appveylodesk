@@ -4,6 +4,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { AlertCircle } from 'lucide-react';
 import { VideoComment } from '@/hooks/useVideoComments';
 
+function isBunnyCdnUrl(url: string): boolean {
+  return url.includes('b-cdn.net') || url.includes('bunnycdn');
+}
+
 function extractDeliverablesPathFromUrl(fileUrl: string): string | null {
   if (!fileUrl) return null;
 
@@ -48,9 +52,9 @@ async function getDeliverableSignedUrl(
 }
 
 interface VideoPlayerProps {
-  /** Original src (typically deliverable.file_url) */
+  /** Original src (typically deliverable.file_url) - can be Bunny CDN or Supabase URL */
   src: string;
-  /** When provided, we fetch a signed URL via backend (bypasses storage/RLS issues) */
+  /** When provided and NOT a Bunny CDN URL, we fetch a signed URL via backend */
   deliverableId?: string;
   comments: VideoComment[];
   onTimeUpdate?: (time: number) => void;
@@ -80,7 +84,9 @@ export function VideoPlayer({
   const [playbackUrl, setPlaybackUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Resolve playback URL (prefer backend-signed URL when deliverableId is available)
+  // Resolve playback URL
+  // For Bunny CDN URLs: use directly (fast CDN, no signing needed)
+  // For Supabase URLs: use signed URL via backend
   useEffect(() => {
     let cancelled = false;
 
@@ -89,6 +95,14 @@ export function VideoPlayer({
       setPlaybackUrl(null);
 
       try {
+        // Bunny CDN URLs can be used directly - they're fast and don't need signing
+        if (isBunnyCdnUrl(src)) {
+          console.log('Using Bunny CDN URL directly:', src);
+          if (!cancelled) setPlaybackUrl(src);
+          return;
+        }
+
+        // For Supabase storage, get signed URL
         if (deliverableId) {
           const signed = await getDeliverableSignedUrl(deliverableId);
           if (!signed) throw new Error('Could not create a signed URL');
@@ -108,6 +122,7 @@ export function VideoPlayer({
           return;
         }
 
+        // Use URL as-is
         if (!cancelled) setPlaybackUrl(src);
       } catch (e: any) {
         console.error('Video resolve error:', e);

@@ -94,7 +94,7 @@ export function useStorage() {
     return true;
   }, [fetchStorageInfo, toast]);
 
-  // Upload deliverable file
+  // Upload deliverable file to Bunny.net CDN
   const uploadDeliverable = useCallback(async (
     projectId: string,
     file: File,
@@ -111,25 +111,27 @@ export function useStorage() {
         return null;
       }
 
-      // Generate unique file path
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
-      const filePath = `${projectId}/${fileName}`;
+      // Simulate initial progress
+      onProgress?.(10);
 
-      // Upload to storage
-      const { error: uploadError } = await supabase.storage
-        .from('deliverables')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false,
-        });
+      // Upload to Bunny.net via Edge Function
+      const formData = new FormData();
+      formData.append('action', 'upload');
+      formData.append('projectId', projectId);
+      formData.append('file', file);
+
+      onProgress?.(30);
+
+      const { data, error: uploadError } = await supabase.functions.invoke('bunny-ops', {
+        body: formData,
+      });
 
       if (uploadError) throw uploadError;
+      if (!data || data.error) throw new Error(data?.error || 'Upload failed');
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from('deliverables')
-        .getPublicUrl(filePath);
+      onProgress?.(70);
+
+      const cdnUrl = data.cdnUrl;
 
       // Get current version number
       const { data: existingDeliverables } = await supabase
@@ -141,13 +143,13 @@ export function useStorage() {
 
       const nextVersion = (existingDeliverables?.[0]?.version || 0) + 1;
 
-      // Create deliverable record
+      // Create deliverable record with Bunny CDN URL
       const { data: deliverable, error: dbError } = await supabase
         .from('deliverables')
         .insert({
           project_id: projectId,
           file_name: file.name,
-          file_url: urlData.publicUrl,
+          file_url: cdnUrl, // Store Bunny CDN URL
           file_size: file.size,
           version: nextVersion,
           uploaded_by: user.id,
@@ -156,6 +158,8 @@ export function useStorage() {
         .single();
 
       if (dbError) throw dbError;
+
+      onProgress?.(100);
 
       toast({
         title: 'File uploaded',
@@ -235,13 +239,25 @@ export function useStorage() {
     }
   }, [invokeDeliverablesOps]);
 
-  // Delete deliverable (storage + DB)
+  // Delete deliverable (Bunny CDN + DB)
   const deleteDeliverable = useCallback(async (deliverable: Deliverable): Promise<boolean> => {
     try {
-      await invokeDeliverablesOps({
-        action: 'delete',
-        deliverableId: deliverable.id,
-      });
+      // Use bunny-ops for Bunny CDN files, fallback to deliverables-ops for legacy Supabase files
+      const isBunnyCdn = deliverable.file_url.includes('b-cdn.net') || deliverable.file_url.includes('bunnycdn');
+      
+      if (isBunnyCdn) {
+        const { data, error } = await supabase.functions.invoke('bunny-ops', {
+          body: { action: 'delete', deliverableId: deliverable.id },
+        });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+      } else {
+        // Legacy: use deliverables-ops for old Supabase storage files
+        await invokeDeliverablesOps({
+          action: 'delete',
+          deliverableId: deliverable.id,
+        });
+      }
 
       toast({
         title: 'File deleted',
