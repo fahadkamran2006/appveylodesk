@@ -7,13 +7,35 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-type Action = "upload" | "delete";
+type Action = "upload" | "delete" | "stream_status";
 
 // Get Bunny.net configuration from environment
 const BUNNY_API_KEY = Deno.env.get("BUNNY_API_KEY")!;
 const BUNNY_STORAGE_ZONE = Deno.env.get("BUNNY_STORAGE_ZONE")!;
 const BUNNY_CDN_URL = Deno.env.get("BUNNY_CDN_URL")!;
 const BUNNY_STORAGE_HOSTNAME = Deno.env.get("BUNNY_STORAGE_HOSTNAME") || "storage.bunnycdn.com";
+
+// Bunny Stream configuration
+const BUNNY_STREAM_API_KEY = Deno.env.get("BUNNY_STREAM_API_KEY") || "";
+const BUNNY_STREAM_LIBRARY_ID = Deno.env.get("BUNNY_STREAM_LIBRARY_ID") || "";
+
+// Video file extensions that should use Bunny Stream
+const VIDEO_EXTENSIONS = ['mp4', 'mov', 'avi', 'mkv', 'webm', 'wmv', 'm4v', 'flv', 'mpeg', 'mpg'];
+
+function isVideoFile(fileName: string): boolean {
+  const ext = fileName.split('.').pop()?.toLowerCase() || '';
+  return VIDEO_EXTENSIONS.includes(ext);
+}
+
+function isBunnyStreamConfigured(): boolean {
+  return Boolean(BUNNY_STREAM_API_KEY && BUNNY_STREAM_LIBRARY_ID);
+}
+
+// Generate library-specific CDN hostname
+function getStreamCdnHost(): string {
+  // Bunny Stream uses vz-XXXXXXXX.b-cdn.net format where XXXXXXXX is first 8 chars of library ID
+  return `vz-${BUNNY_STREAM_LIBRARY_ID.slice(0, 8)}.b-cdn.net`;
+}
 
 async function getUserIdFromRequest(req: Request): Promise<string | null> {
   const authHeader = req.headers.get("Authorization");
@@ -32,19 +54,141 @@ async function getUserIdFromRequest(req: Request): Promise<string | null> {
   return data.claims.sub as string;
 }
 
+// Upload video to Bunny Stream for HLS transcoding
+async function uploadToBunnyStream(
+  fileName: string,
+  fileBuffer: ArrayBuffer,
+  _projectId: string
+): Promise<{ videoId: string; streamUrl: string; thumbnailUrl: string }> {
+  console.log(`Creating video in Bunny Stream library ${BUNNY_STREAM_LIBRARY_ID}`);
+  
+  // Step 1: Create video entry in Bunny Stream
+  const createResponse = await fetch(
+    `https://video.bunnycdn.com/library/${BUNNY_STREAM_LIBRARY_ID}/videos`,
+    {
+      method: "POST",
+      headers: {
+        "AccessKey": BUNNY_STREAM_API_KEY,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        title: fileName,
+      }),
+    }
+  );
+
+  if (!createResponse.ok) {
+    const errorText = await createResponse.text();
+    console.error("Bunny Stream create error:", errorText);
+    throw new Error(`Bunny Stream create failed: ${createResponse.status} ${errorText}`);
+  }
+
+  const videoData = await createResponse.json();
+  const videoId = videoData.guid;
+  
+  console.log(`Video created with ID: ${videoId}. Uploading file...`);
+
+  // Step 2: Upload the actual video file
+  const uploadResponse = await fetch(
+    `https://video.bunnycdn.com/library/${BUNNY_STREAM_LIBRARY_ID}/videos/${videoId}`,
+    {
+      method: "PUT",
+      headers: {
+        "AccessKey": BUNNY_STREAM_API_KEY,
+        "Content-Type": "application/octet-stream",
+      },
+      body: fileBuffer,
+    }
+  );
+
+  if (!uploadResponse.ok) {
+    const errorText = await uploadResponse.text();
+    console.error("Bunny Stream upload error:", errorText);
+    throw new Error(`Bunny Stream upload failed: ${uploadResponse.status} ${errorText}`);
+  }
+
+  console.log(`Video uploaded successfully. Video ID: ${videoId}`);
+
+  const cdnHost = getStreamCdnHost();
+  const hlsUrl = `https://${cdnHost}/${videoId}/playlist.m3u8`;
+  const thumbnailUrl = `https://${cdnHost}/${videoId}/thumbnail.jpg`;
+
+  return {
+    videoId,
+    streamUrl: hlsUrl,
+    thumbnailUrl,
+  };
+}
+
+// Get Bunny Stream video status and URLs
+async function getBunnyStreamStatus(videoId: string): Promise<any> {
+  const response = await fetch(
+    `https://video.bunnycdn.com/library/${BUNNY_STREAM_LIBRARY_ID}/videos/${videoId}`,
+    {
+      method: "GET",
+      headers: {
+        "AccessKey": BUNNY_STREAM_API_KEY,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to get stream status: ${response.status} ${errorText}`);
+  }
+
+  const data = await response.json();
+  const cdnHost = getStreamCdnHost();
+  
+  return {
+    videoId: data.guid,
+    status: data.status, // 0=created, 1=uploaded, 2=processing, 3=transcoding, 4=finished, 5=error
+    isReady: data.status === 4,
+    hlsUrl: `https://${cdnHost}/${data.guid}/playlist.m3u8`,
+    thumbnailUrl: `https://${cdnHost}/${data.guid}/thumbnail.jpg`,
+    mp4Url: data.mp4Fallback ? `https://${cdnHost}/${data.guid}/play_720p.mp4` : null,
+    iframeUrl: `https://iframe.mediadelivery.net/embed/${BUNNY_STREAM_LIBRARY_ID}/${data.guid}`,
+    duration: data.length,
+    width: data.width,
+    height: data.height,
+  };
+}
+
+// Delete video from Bunny Stream
+async function deleteFromBunnyStream(videoId: string): Promise<void> {
+  console.log(`Deleting video ${videoId} from Bunny Stream`);
+  
+  const response = await fetch(
+    `https://video.bunnycdn.com/library/${BUNNY_STREAM_LIBRARY_ID}/videos/${videoId}`,
+    {
+      method: "DELETE",
+      headers: {
+        "AccessKey": BUNNY_STREAM_API_KEY,
+      },
+    }
+  );
+
+  if (!response.ok && response.status !== 404) {
+    const errorText = await response.text();
+    console.error("Bunny Stream delete error:", errorText);
+    throw new Error(`Bunny Stream delete failed: ${response.status} ${errorText}`);
+  }
+
+  console.log("Video deleted from Bunny Stream successfully");
+}
+
 async function uploadToBunny(
   fileName: string,
   fileBuffer: ArrayBuffer,
   projectId: string
 ): Promise<string> {
-  // Create a unique path: projectId/timestamp-randomstring.ext
   const fileExt = fileName.split('.').pop() || '';
   const uniqueName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
   const storagePath = `${projectId}/${uniqueName}`;
 
   const uploadUrl = `https://${BUNNY_STORAGE_HOSTNAME}/${BUNNY_STORAGE_ZONE}/${storagePath}`;
 
-  console.log(`Uploading to Bunny: ${uploadUrl}`);
+  console.log(`Uploading to Bunny Storage: ${uploadUrl}`);
 
   const response = await fetch(uploadUrl, {
     method: "PUT",
@@ -61,14 +205,12 @@ async function uploadToBunny(
     throw new Error(`Bunny upload failed: ${response.status} ${errorText}`);
   }
 
-  // Return the CDN URL
   const cdnUrl = `${BUNNY_CDN_URL.replace(/\/$/, '')}/${storagePath}`;
   console.log(`File uploaded successfully. CDN URL: ${cdnUrl}`);
   return cdnUrl;
 }
 
 async function deleteFromBunny(fileUrl: string): Promise<void> {
-  // Extract the path from the CDN URL
   const cdnBase = BUNNY_CDN_URL.replace(/\/$/, '');
   if (!fileUrl.startsWith(cdnBase)) {
     console.log("File URL doesn't match Bunny CDN, skipping Bunny delete:", fileUrl);
@@ -94,6 +236,18 @@ async function deleteFromBunny(fileUrl: string): Promise<void> {
   }
 
   console.log("File deleted from Bunny successfully");
+}
+
+// Check if URL is a Bunny Stream HLS URL
+function isBunnyStreamUrl(url: string): boolean {
+  return url.includes('.b-cdn.net/') && url.includes('/playlist.m3u8');
+}
+
+// Extract video ID from Bunny Stream URL
+function extractStreamVideoId(url: string): string | null {
+  // URL format: https://vz-XXXXXXXX.b-cdn.net/{videoId}/playlist.m3u8
+  const match = url.match(/\.b-cdn\.net\/([a-f0-9-]+)\//);
+  return match ? match[1] : null;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -138,6 +292,7 @@ const handler = async (req: Request): Promise<Response> => {
       const action = formData.get("action") as Action;
       const projectId = formData.get("projectId") as string;
       const file = formData.get("file") as File;
+      const useStream = formData.get("useStream") === "true";
 
       if (action !== "upload") {
         return new Response(JSON.stringify({ error: "Invalid action for FormData" }), {
@@ -181,29 +336,90 @@ const handler = async (req: Request): Promise<Response> => {
         });
       }
 
-      // Upload to Bunny.net
       const fileBuffer = await file.arrayBuffer();
-      const cdnUrl = await uploadToBunny(file.name, fileBuffer, projectId);
+      const shouldUseStream = useStream && isVideoFile(file.name) && isBunnyStreamConfigured();
 
-      console.log(`Upload complete. CDN URL: ${cdnUrl}`);
+      if (shouldUseStream) {
+        // Upload to Bunny Stream for HLS transcoding
+        console.log(`Uploading video to Bunny Stream: ${file.name}`);
+        const streamResult = await uploadToBunnyStream(file.name, fileBuffer, projectId);
+        
+        console.log(`Stream upload complete. HLS URL: ${streamResult.streamUrl}`);
 
-      return new Response(
-        JSON.stringify({
-          ok: true,
-          cdnUrl,
-          fileName: file.name,
-          fileSize: file.size,
-        }),
-        {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            cdnUrl: streamResult.streamUrl,
+            videoId: streamResult.videoId,
+            thumbnailUrl: streamResult.thumbnailUrl,
+            isStream: true,
+            fileName: file.name,
+            fileSize: file.size,
+          }),
+          {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      } else {
+        // Upload to Bunny Storage
+        const cdnUrl = await uploadToBunny(file.name, fileBuffer, projectId);
+        console.log(`Upload complete. CDN URL: ${cdnUrl}`);
+
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            cdnUrl,
+            isStream: false,
+            fileName: file.name,
+            fileSize: file.size,
+          }),
+          {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
     }
 
-    // Handle JSON for delete operations
+    // Handle JSON for other operations
     const body = await req.json().catch(() => ({}));
     const action = body?.action as Action;
+
+    if (action === "stream_status") {
+      const videoId = body?.videoId as string;
+      const fileUrl = body?.fileUrl as string;
+
+      if (!videoId && !fileUrl) {
+        return new Response(JSON.stringify({ error: "Missing videoId or fileUrl" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (!isBunnyStreamConfigured()) {
+        return new Response(JSON.stringify({ error: "Bunny Stream not configured" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Extract videoId from URL if not provided
+      const resolvedVideoId = videoId || extractStreamVideoId(fileUrl);
+      if (!resolvedVideoId) {
+        return new Response(JSON.stringify({ error: "Could not determine video ID" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const status = await getBunnyStreamStatus(resolvedVideoId);
+
+      return new Response(JSON.stringify({ ok: true, ...status }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     if (action === "delete") {
       const deliverableId = body?.deliverableId as string;
@@ -214,7 +430,6 @@ const handler = async (req: Request): Promise<Response> => {
         });
       }
 
-      // Get the deliverable
       const { data: deliverable, error: deliverableError } = await service
         .from("deliverables")
         .select("id, file_url, project_id")
@@ -229,7 +444,6 @@ const handler = async (req: Request): Promise<Response> => {
         });
       }
 
-      // Check authorization
       const { data: isEditor } = await service.rpc("is_project_editor", {
         _user_id: userId,
         _project_id: deliverable.project_id,
@@ -242,8 +456,15 @@ const handler = async (req: Request): Promise<Response> => {
         });
       }
 
-      // Delete from Bunny.net (if it's a Bunny URL)
-      await deleteFromBunny(deliverable.file_url);
+      // Check if it's a Bunny Stream URL and delete accordingly
+      if (isBunnyStreamUrl(deliverable.file_url) && isBunnyStreamConfigured()) {
+        const videoId = extractStreamVideoId(deliverable.file_url);
+        if (videoId) {
+          await deleteFromBunnyStream(videoId);
+        }
+      } else {
+        await deleteFromBunny(deliverable.file_url);
+      }
 
       // Delete from database
       const { error: dbError } = await service
