@@ -94,11 +94,19 @@ export function useStorage() {
     return true;
   }, [fetchStorageInfo, toast]);
 
-  // Upload deliverable file to Bunny.net CDN
+  // Check if file is a video that should use Bunny Stream
+  const isVideoFile = useCallback((fileName: string): boolean => {
+    const ext = fileName.split('.').pop()?.toLowerCase() || '';
+    const videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm', 'wmv', 'm4v', 'flv', 'mpeg', 'mpg'];
+    return videoExtensions.includes(ext);
+  }, []);
+
+  // Upload deliverable file to Bunny.net CDN or Bunny Stream
   const uploadDeliverable = useCallback(async (
     projectId: string,
     file: File,
-    onProgress?: (progress: number) => void
+    onProgress?: (progress: number) => void,
+    useStream?: boolean
   ): Promise<Deliverable | null> => {
     if (!user) return null;
 
@@ -114,11 +122,17 @@ export function useStorage() {
       // Simulate initial progress
       onProgress?.(10);
 
+      // Determine if we should use Bunny Stream (for videos)
+      const shouldUseStream = useStream !== false && isVideoFile(file.name);
+
       // Upload to Bunny.net via Edge Function
       const formData = new FormData();
       formData.append('action', 'upload');
       formData.append('projectId', projectId);
       formData.append('file', file);
+      if (shouldUseStream) {
+        formData.append('useStream', 'true');
+      }
 
       onProgress?.(30);
 
@@ -132,6 +146,7 @@ export function useStorage() {
       onProgress?.(70);
 
       const cdnUrl = data.cdnUrl;
+      const isStream = data.isStream === true;
 
       // Get current version number
       const { data: existingDeliverables } = await supabase
@@ -143,13 +158,13 @@ export function useStorage() {
 
       const nextVersion = (existingDeliverables?.[0]?.version || 0) + 1;
 
-      // Create deliverable record with Bunny CDN URL
+      // Create deliverable record with Bunny CDN/Stream URL
       const { data: deliverable, error: dbError } = await supabase
         .from('deliverables')
         .insert({
           project_id: projectId,
           file_name: file.name,
-          file_url: cdnUrl, // Store Bunny CDN URL
+          file_url: cdnUrl, // Store Bunny CDN or HLS URL
           file_size: file.size,
           version: nextVersion,
           uploaded_by: user.id,
@@ -162,8 +177,10 @@ export function useStorage() {
       onProgress?.(100);
 
       toast({
-        title: 'File uploaded',
-        description: `${file.name} has been uploaded successfully`,
+        title: isStream ? 'Video uploaded for processing' : 'File uploaded',
+        description: isStream 
+          ? `${file.name} is being processed for adaptive streaming` 
+          : `${file.name} has been uploaded successfully`,
       });
 
       // Refresh storage info
@@ -181,7 +198,7 @@ export function useStorage() {
     } finally {
       setLoading(false);
     }
-  }, [user, checkStorageLimit, fetchStorageInfo, toast]);
+  }, [user, checkStorageLimit, fetchStorageInfo, toast, isVideoFile]);
 
   // Fetch deliverables for a project
   const fetchDeliverables = useCallback(async (projectId: string): Promise<Deliverable[]> => {
