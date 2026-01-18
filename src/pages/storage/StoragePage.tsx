@@ -86,7 +86,15 @@ const StoragePage = () => {
   const { user, userRole, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { formatBytes, deleteDeliverable, renameDeliverable, uploadDeliverable } = useStorage();
+  const { 
+    formatBytes, 
+    deleteDeliverable, 
+    renameDeliverable, 
+    uploadDeliverable, 
+    uploadProgress: realUploadProgress,
+    formatTimeRemaining,
+    cancelUpload: cancelCurrentUpload 
+  } = useStorage();
 
   const [files, setFiles] = useState<StorageFile[]>([]);
   const [groupedFiles, setGroupedFiles] = useState<GroupedFiles>({});
@@ -117,6 +125,8 @@ const StoragePage = () => {
   const [availableProjects, setAvailableProjects] = useState<{ id: string; title: string }[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [currentUploadIndex, setCurrentUploadIndex] = useState(0);
+  const [currentUploadName, setCurrentUploadName] = useState<string | null>(null);
   const dragCounter = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -389,19 +399,30 @@ const StoragePage = () => {
 
     setIsUploading(true);
     setUploadProgress(0);
+    setCurrentUploadIndex(0);
 
     let successCount = 0;
     for (let i = 0; i < droppedFiles.length; i++) {
       const file = droppedFiles[i];
-      const result = await uploadDeliverable(selectedProjectId, file);
+      setCurrentUploadIndex(i);
+      setCurrentUploadName(file.name);
+      
+      const result = await uploadDeliverable(selectedProjectId, file, (progress) => {
+        // Calculate overall progress: completed files + current file progress
+        const completedProgress = (i / droppedFiles.length) * 100;
+        const currentProgress = (progress / 100) * (1 / droppedFiles.length) * 100;
+        setUploadProgress(Math.round(completedProgress + currentProgress));
+      });
+      
       if (result) successCount++;
-      setUploadProgress(Math.round(((i + 1) / droppedFiles.length) * 100));
     }
 
     setIsUploading(false);
     setShowProjectSelector(false);
     setDroppedFiles([]);
     setSelectedProjectId('');
+    setCurrentUploadIndex(0);
+    setCurrentUploadName(null);
 
     if (successCount > 0) {
       toast({
@@ -412,10 +433,15 @@ const StoragePage = () => {
     }
   };
 
-  const cancelUpload = () => {
+  const cancelUploadDialog = () => {
+    if (isUploading) {
+      cancelCurrentUpload();
+    }
     setShowProjectSelector(false);
     setDroppedFiles([]);
     setSelectedProjectId('');
+    setCurrentUploadIndex(0);
+    setCurrentUploadName(null);
   };
 
   const getFileIcon = (fileName: string) => {
@@ -1028,7 +1054,7 @@ const StoragePage = () => {
       </AlertDialog>
 
       {/* Project Selector Dialog for Upload */}
-      <Dialog open={showProjectSelector} onOpenChange={(open) => !open && cancelUpload()}>
+      <Dialog open={showProjectSelector} onOpenChange={(open) => !open && cancelUploadDialog()}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Upload Files</DialogTitle>
@@ -1072,23 +1098,56 @@ const StoragePage = () => {
 
             {/* Upload progress */}
             {isUploading && (
-              <div className="space-y-2">
+              <div className="space-y-3 p-3 rounded-lg border border-primary/30 bg-primary/5">
+                {/* Current file info */}
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Uploading...</span>
-                  <span className="font-medium text-foreground">{uploadProgress}%</span>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" />
+                    <span className="truncate">
+                      {currentUploadName || 'Uploading...'}
+                    </span>
+                  </div>
+                  <span className="text-muted-foreground shrink-0">
+                    {currentUploadIndex + 1} of {droppedFiles.length}
+                  </span>
                 </div>
+
+                {/* Progress bar */}
                 <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
                   <div 
-                    className="h-full bg-primary transition-all duration-300"
+                    className="h-full bg-primary transition-all duration-150"
                     style={{ width: `${uploadProgress}%` }}
                   />
+                </div>
+
+                {/* Detailed progress */}
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    {realUploadProgress && (
+                      <>
+                        <span>{formatBytes(realUploadProgress.loaded)} / {formatBytes(realUploadProgress.total)}</span>
+                        <span className="text-primary font-medium">
+                          {realUploadProgress.percentage}%
+                        </span>
+                      </>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {realUploadProgress && realUploadProgress.speed > 0 && (
+                      <>
+                        <span>{formatBytes(realUploadProgress.speed)}/s</span>
+                        <span>•</span>
+                        <span>{formatTimeRemaining(realUploadProgress.remainingTime)} left</span>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
           </div>
           
           <DialogFooter>
-            <Button variant="outline" onClick={cancelUpload} disabled={isUploading}>
+            <Button variant="outline" onClick={cancelUploadDialog} disabled={isUploading}>
               Cancel
             </Button>
             <Button onClick={handleUploadFiles} disabled={!selectedProjectId || isUploading}>

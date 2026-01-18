@@ -28,7 +28,7 @@ import {
   Eye,
   Loader2
 } from 'lucide-react';
-import { Deliverable, useStorage } from '@/hooks/useStorage';
+import { Deliverable, useStorage, UploadProgress } from '@/hooks/useStorage';
 import { format } from 'date-fns';
 
 interface FileManagerProps {
@@ -79,8 +79,17 @@ export function FileManager({
   onViewVideo,
   className,
 }: FileManagerProps) {
-  const { uploadDeliverable, deleteDeliverable, formatBytes, loading } = useStorage();
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const { 
+    uploadDeliverable, 
+    deleteDeliverable, 
+    formatBytes, 
+    formatTimeRemaining,
+    loading,
+    uploadProgress,
+    cancelUpload 
+  } = useStorage();
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadFileName, setUploadFileName] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Deliverable | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -90,20 +99,13 @@ export function FileManager({
     if (!files || files.length === 0) return;
 
     const file = files[0];
-    setUploadProgress(0);
-
-    // Simulate progress (actual progress would need XHR)
-    const progressInterval = setInterval(() => {
-      setUploadProgress(prev => {
-        if (prev === null || prev >= 90) return prev;
-        return prev + 10;
-      });
-    }, 200);
+    setIsUploading(true);
+    setUploadFileName(file.name);
 
     const result = await uploadDeliverable(projectId, file);
     
-    clearInterval(progressInterval);
-    setUploadProgress(null);
+    setIsUploading(false);
+    setUploadFileName(null);
 
     if (result) {
       onFileUploaded();
@@ -114,6 +116,15 @@ export function FileManager({
       fileInputRef.current.value = '';
     }
   }, [projectId, uploadDeliverable, onFileUploaded]);
+
+  const handleCancelUpload = useCallback(() => {
+    cancelUpload();
+    setIsUploading(false);
+    setUploadFileName(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, [cancelUpload]);
 
   const handleDelete = useCallback(async () => {
     if (!deleteTarget) return;
@@ -145,13 +156,52 @@ export function FileManager({
             accept="video/*,image/*,audio/*,.pdf,.zip"
           />
           
-          {uploadProgress !== null ? (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Uploading...</span>
+          {isUploading ? (
+            <div className="space-y-3 p-3 rounded-lg border border-primary/30 bg-primary/5">
+              {/* File name and cancel button */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" />
+                  <span className="text-sm font-medium truncate">{uploadFileName}</span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCancelUpload}
+                  className="text-muted-foreground hover:text-destructive shrink-0"
+                >
+                  Cancel
+                </Button>
               </div>
-              <Progress value={uploadProgress} className="h-2" />
+              
+              {/* Progress bar */}
+              <Progress 
+                value={uploadProgress?.percentage ?? 0} 
+                className="h-2" 
+              />
+              
+              {/* Progress details */}
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  {uploadProgress && (
+                    <>
+                      <span>{formatBytes(uploadProgress.loaded)} / {formatBytes(uploadProgress.total)}</span>
+                      <span className="text-primary font-medium">
+                        {uploadProgress.percentage}%
+                      </span>
+                    </>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {uploadProgress && uploadProgress.speed > 0 && (
+                    <>
+                      <span>{formatBytes(uploadProgress.speed)}/s</span>
+                      <span>•</span>
+                      <span>{formatTimeRemaining(uploadProgress.remainingTime)} left</span>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
           ) : (
             <Button
