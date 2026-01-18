@@ -47,7 +47,6 @@ import {
   ChevronRight,
   Eye,
   CheckSquare,
-  Square,
   X,
   Upload,
   CloudUpload,
@@ -55,6 +54,8 @@ import {
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useStorage } from '@/hooks/useStorage';
+import { useUploadQueue } from '@/hooks/useUploadQueue';
+import { UploadQueuePanel } from '@/components/upload/UploadQueuePanel';
 
 interface StorageFile {
   id: string;
@@ -90,11 +91,9 @@ const StoragePage = () => {
     formatBytes, 
     deleteDeliverable, 
     renameDeliverable, 
-    uploadDeliverable, 
-    uploadProgress: realUploadProgress,
-    formatTimeRemaining,
-    cancelUpload: cancelCurrentUpload 
   } = useStorage();
+  
+  const uploadQueue = useUploadQueue();
 
   const [files, setFiles] = useState<StorageFile[]>([]);
   const [groupedFiles, setGroupedFiles] = useState<GroupedFiles>({});
@@ -123,10 +122,6 @@ const StoragePage = () => {
   const [showProjectSelector, setShowProjectSelector] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [availableProjects, setAvailableProjects] = useState<{ id: string; title: string }[]>([]);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [currentUploadIndex, setCurrentUploadIndex] = useState(0);
-  const [currentUploadName, setCurrentUploadName] = useState<string | null>(null);
   const dragCounter = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -387,7 +382,7 @@ const StoragePage = () => {
     }
   };
 
-  const handleUploadFiles = async () => {
+  const handleAddToQueue = () => {
     if (!selectedProjectId || droppedFiles.length === 0) {
       toast({
         title: 'Missing project',
@@ -397,52 +392,27 @@ const StoragePage = () => {
       return;
     }
 
-    setIsUploading(true);
-    setUploadProgress(0);
-    setCurrentUploadIndex(0);
-
-    let successCount = 0;
-    for (let i = 0; i < droppedFiles.length; i++) {
-      const file = droppedFiles[i];
-      setCurrentUploadIndex(i);
-      setCurrentUploadName(file.name);
-      
-      const result = await uploadDeliverable(selectedProjectId, file, (progress) => {
-        // Calculate overall progress: completed files + current file progress
-        const completedProgress = (i / droppedFiles.length) * 100;
-        const currentProgress = (progress / 100) * (1 / droppedFiles.length) * 100;
-        setUploadProgress(Math.round(completedProgress + currentProgress));
-      });
-      
-      if (result) successCount++;
-    }
-
-    setIsUploading(false);
+    const projectTitle = availableProjects.find(p => p.id === selectedProjectId)?.title;
+    uploadQueue.addToQueue(droppedFiles, selectedProjectId, projectTitle);
+    
     setShowProjectSelector(false);
     setDroppedFiles([]);
     setSelectedProjectId('');
-    setCurrentUploadIndex(0);
-    setCurrentUploadName(null);
-
-    if (successCount > 0) {
-      toast({
-        title: 'Upload complete',
-        description: `Successfully uploaded ${successCount} of ${droppedFiles.length} file(s)`,
-      });
-      fetchFiles();
-    }
   };
 
   const cancelUploadDialog = () => {
-    if (isUploading) {
-      cancelCurrentUpload();
-    }
     setShowProjectSelector(false);
     setDroppedFiles([]);
     setSelectedProjectId('');
-    setCurrentUploadIndex(0);
-    setCurrentUploadName(null);
   };
+
+  // Refetch files when uploads complete
+  useEffect(() => {
+    const completedCount = uploadQueue.queue.filter(q => q.status === 'completed').length;
+    if (completedCount > 0) {
+      fetchFiles();
+    }
+  }, [uploadQueue.queue, fetchFiles]);
 
   const getFileIcon = (fileName: string) => {
     const ext = fileName.split('.').pop()?.toLowerCase();
@@ -1093,79 +1063,40 @@ const StoragePage = () => {
                     </span>
                   </div>
                 ))}
-              </div>
             </div>
-
-            {/* Upload progress */}
-            {isUploading && (
-              <div className="space-y-3 p-3 rounded-lg border border-primary/30 bg-primary/5">
-                {/* Current file info */}
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" />
-                    <span className="truncate">
-                      {currentUploadName || 'Uploading...'}
-                    </span>
-                  </div>
-                  <span className="text-muted-foreground shrink-0">
-                    {currentUploadIndex + 1} of {droppedFiles.length}
-                  </span>
-                </div>
-
-                {/* Progress bar */}
-                <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-primary transition-all duration-150"
-                    style={{ width: `${uploadProgress}%` }}
-                  />
-                </div>
-
-                {/* Detailed progress */}
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    {realUploadProgress && (
-                      <>
-                        <span>{formatBytes(realUploadProgress.loaded)} / {formatBytes(realUploadProgress.total)}</span>
-                        <span className="text-primary font-medium">
-                          {realUploadProgress.percentage}%
-                        </span>
-                      </>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {realUploadProgress && realUploadProgress.speed > 0 && (
-                      <>
-                        <span>{formatBytes(realUploadProgress.speed)}/s</span>
-                        <span>•</span>
-                        <span>{formatTimeRemaining(realUploadProgress.remainingTime)} left</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
+            </div>
           </div>
           
           <DialogFooter>
-            <Button variant="outline" onClick={cancelUploadDialog} disabled={isUploading}>
+            <Button variant="outline" onClick={cancelUploadDialog}>
               Cancel
             </Button>
-            <Button onClick={handleUploadFiles} disabled={!selectedProjectId || isUploading}>
-              {isUploading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Uploading...
-                </>
-              ) : (
-                <>
-                  <Upload className="w-4 h-4 mr-2" />
-                  Upload
-                </>
-              )}
+            <Button onClick={handleAddToQueue} disabled={!selectedProjectId}>
+              <Upload className="w-4 h-4 mr-2" />
+              Add to Queue
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Upload Queue Panel */}
+      <UploadQueuePanel
+        queue={uploadQueue.queue}
+        isProcessing={uploadQueue.isProcessing}
+        isPaused={uploadQueue.isPaused}
+        onPauseQueue={uploadQueue.pauseQueue}
+        onResumeQueue={uploadQueue.resumeQueue}
+        onPauseUpload={uploadQueue.pauseUpload}
+        onResumeUpload={uploadQueue.resumeUpload}
+        onRemove={uploadQueue.removeFromQueue}
+        onRetry={uploadQueue.retryUpload}
+        onReorder={uploadQueue.reorderQueue}
+        onClearCompleted={uploadQueue.clearCompleted}
+        onCancelAll={uploadQueue.cancelAll}
+        formatBytes={uploadQueue.formatBytes}
+        formatTimeRemaining={uploadQueue.formatTimeRemaining}
+        stats={uploadQueue.getQueueStats()}
+      />
     </>
   );
 };
