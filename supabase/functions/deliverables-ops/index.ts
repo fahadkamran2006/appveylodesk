@@ -100,20 +100,30 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    const { data: roleRow, error: roleError } = await service
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .eq("agency_id", project.agency_id)
-      .maybeSingle();
+    // Check if user is the project's client (no user_roles row needed for clients)
+    const isProjectClient = project.client_id === userId;
 
-    if (roleError) throw roleError;
+    // Only fetch user_roles if not the project client
+    let roleRow: { role: string } | null = null;
+    if (!isProjectClient) {
+      const { data, error: roleError } = await service
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .eq("agency_id", project.agency_id)
+        .maybeSingle();
 
-    if (!roleRow?.role) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      if (roleError) throw roleError;
+      roleRow = data;
+
+      // If not a client and no role, deny access
+      if (!roleRow?.role) {
+        console.log("Access denied: user is not project client and has no agency role");
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     const { data: isEditor, error: isEditorError } = await service.rpc(
@@ -122,10 +132,12 @@ const handler = async (req: Request): Promise<Response> => {
     );
     if (isEditorError) throw isEditorError;
 
+    // Clients can view, admins can view, editors can view
     const canView =
-      roleRow.role === "admin" || project.client_id === userId || isEditor === true;
+      isProjectClient || roleRow?.role === "admin" || isEditor === true;
 
-    const canManage = roleRow.role === "admin" || isEditor === true;
+    // Only admins and editors can manage (rename/delete)
+    const canManage = roleRow?.role === "admin" || isEditor === true;
 
     if (action === "signed_url") {
       if (!canView) {

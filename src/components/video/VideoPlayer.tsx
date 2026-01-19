@@ -44,17 +44,38 @@ function guessVideoMimeType(fileNameOrUrl: string): string | undefined {
 
 async function getDeliverableSignedUrl(
   deliverableId: string,
+  fileUrl: string,
   expiresIn = 3600
 ): Promise<string | null> {
-  const { data, error } = await supabase.functions.invoke('deliverables-ops', {
-    body: { action: 'signed_url', deliverableId, expiresIn },
-  });
+  try {
+    const { data, error } = await supabase.functions.invoke('deliverables-ops', {
+      body: { action: 'signed_url', deliverableId, expiresIn },
+    });
 
-  if (error) throw error;
-  if (!data) return null;
-  if ((data as any).error) throw new Error((data as any).error);
+    if (error) throw error;
+    if (!data) throw new Error('No response from edge function');
+    if ((data as any).error) throw new Error((data as any).error);
 
-  return (data as any).signedUrl ?? null;
+    return (data as any).signedUrl ?? null;
+  } catch (edgeFnError) {
+    console.warn('Edge function failed, attempting frontend fallback:', edgeFnError);
+    
+    // Fallback: try to create signed URL directly via Supabase client
+    const filePath = extractDeliverablesPathFromUrl(fileUrl);
+    if (filePath) {
+      const { data, error } = await supabase.storage
+        .from('deliverables')
+        .createSignedUrl(filePath, expiresIn);
+      
+      if (!error && data?.signedUrl) {
+        console.log('Fallback signed URL created successfully');
+        return data.signedUrl;
+      }
+    }
+    
+    // Re-throw original error if fallback also fails
+    throw edgeFnError;
+  }
 }
 
 interface StreamStatus {
@@ -229,7 +250,7 @@ export function VideoPlayer({
 
         // For Supabase storage, get signed URL
         if (deliverableId) {
-          const signed = await getDeliverableSignedUrl(deliverableId);
+          const signed = await getDeliverableSignedUrl(deliverableId, src);
           if (!signed) throw new Error('Could not create a signed URL');
           if (!cancelled) {
             setPlaybackUrl(signed);
