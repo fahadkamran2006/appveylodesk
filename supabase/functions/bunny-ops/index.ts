@@ -251,6 +251,16 @@ function extractStreamVideoId(url: string): string | null {
 }
 
 const handler = async (req: Request): Promise<Response> => {
+  // Log environment variables for debugging (redacted for security)
+  console.log("Bunny Config Check:", {
+    BUNNY_STORAGE_HOSTNAME: BUNNY_STORAGE_HOSTNAME || "UNDEFINED",
+    BUNNY_STORAGE_ZONE: BUNNY_STORAGE_ZONE ? `${BUNNY_STORAGE_ZONE.slice(0, 4)}...` : "UNDEFINED",
+    BUNNY_CDN_URL: BUNNY_CDN_URL ? `${BUNNY_CDN_URL.slice(0, 20)}...` : "UNDEFINED",
+    BUNNY_API_KEY: BUNNY_API_KEY ? "SET (length: " + BUNNY_API_KEY.length + ")" : "UNDEFINED",
+    BUNNY_STREAM_LIBRARY_ID: BUNNY_STREAM_LIBRARY_ID ? BUNNY_STREAM_LIBRARY_ID : "UNDEFINED",
+    BUNNY_STREAM_API_KEY: BUNNY_STREAM_API_KEY ? "SET (length: " + BUNNY_STREAM_API_KEY.length + ")" : "UNDEFINED",
+  });
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }

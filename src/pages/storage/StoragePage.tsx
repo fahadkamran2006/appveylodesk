@@ -50,7 +50,9 @@ import {
   X,
   Upload,
   CloudUpload,
+  ExternalLink,
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useStorage } from '@/hooks/useStorage';
@@ -426,6 +428,17 @@ const StoragePage = () => {
       return <FileText className="w-5 h-5 text-warning" />;
     }
     return <File className="w-5 h-5 text-muted-foreground" />;
+  };
+
+  // Helper to determine storage source from file_url
+  const getStorageSource = (fileUrl: string): { label: string; emoji: string; variant: 'default' | 'secondary' } => {
+    if (fileUrl.includes('b-cdn.net') || fileUrl.includes('bunnycdn')) {
+      return { label: 'Bunny', emoji: '🐰', variant: 'default' };
+    }
+    if (fileUrl.includes('supabase')) {
+      return { label: 'Supabase', emoji: '⚡', variant: 'secondary' };
+    }
+    return { label: 'External', emoji: '🔗', variant: 'secondary' };
   };
 
   const handleDownload = async (file: StorageFile) => {
@@ -843,19 +856,35 @@ const StoragePage = () => {
                         onCheckedChange={() => toggleFileSelection(file.id)}
                         className="shrink-0"
                       />
-                      <div 
-                        className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"
-                        onClick={() => setPreviewFile(file)}
-                      >
-                        {getFileIcon(file.file_name)}
-                        <div className="min-w-0">
-                          <p className="font-medium text-foreground truncate">{file.file_name}</p>
-                          <p className="text-sm text-muted-foreground truncate">
-                            {file.client_name} / {file.project_title} • {formatBytes(file.file_size)}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
+                                      <div 
+                                        className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"
+                                        onClick={() => setPreviewFile(file)}
+                                      >
+                                        {getFileIcon(file.file_name)}
+                                        <div className="min-w-0 flex-1">
+                                          <div className="flex items-center gap-2">
+                                            <a 
+                                              href={file.file_url} 
+                                              target="_blank" 
+                                              rel="noopener noreferrer"
+                                              onClick={(e) => e.stopPropagation()}
+                                              className="font-medium text-foreground truncate hover:underline hover:text-primary flex items-center gap-1"
+                                            >
+                                              {file.file_name}
+                                              <ExternalLink className="w-3 h-3 shrink-0" />
+                                            </a>
+                                            {userRole === 'admin' && (
+                                              <Badge variant={getStorageSource(file.file_url).variant} className="shrink-0 text-xs">
+                                                {getStorageSource(file.file_url).emoji} {getStorageSource(file.file_url).label}
+                                              </Badge>
+                                            )}
+                                          </div>
+                                          <p className="text-sm text-muted-foreground truncate">
+                                            {file.client_name} / {file.project_title} • {formatBytes(file.file_size)}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    </div>
                     {renderFileActions(file)}
                   </div>
                 ))}
@@ -930,8 +959,24 @@ const StoragePage = () => {
                                         onClick={() => setPreviewFile(file)}
                                       >
                                         {getFileIcon(file.file_name)}
-                                        <div className="min-w-0">
-                                          <p className="text-sm font-medium text-foreground truncate">{file.file_name}</p>
+                                        <div className="min-w-0 flex-1">
+                                          <div className="flex items-center gap-2">
+                                            <a 
+                                              href={file.file_url} 
+                                              target="_blank" 
+                                              rel="noopener noreferrer"
+                                              onClick={(e) => e.stopPropagation()}
+                                              className="text-sm font-medium text-foreground truncate hover:underline hover:text-primary flex items-center gap-1"
+                                            >
+                                              {file.file_name}
+                                              <ExternalLink className="w-3 h-3 shrink-0" />
+                                            </a>
+                                            {userRole === 'admin' && (
+                                              <Badge variant={getStorageSource(file.file_url).variant} className="shrink-0 text-xs">
+                                                {getStorageSource(file.file_url).emoji} {getStorageSource(file.file_url).label}
+                                              </Badge>
+                                            )}
+                                          </div>
                                           <p className="text-xs text-muted-foreground">
                                             {formatBytes(file.file_size)} • Uploaded by {file.uploader_name}
                                           </p>

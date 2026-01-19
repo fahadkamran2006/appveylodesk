@@ -239,19 +239,38 @@ export function useStorage() {
       const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/bunny-ops`;
 
       // Upload with real progress tracking
-      const data = await uploadWithProgress(
-        functionUrl,
-        formData,
-        session.access_token,
-        (progress) => {
-          setUploadProgress(progress);
-          // Report percentage to callback (0-90% for upload, 90-100% for DB save)
-          onProgress?.(Math.round(progress.percentage * 0.9));
-        },
-        abortControllerRef.current
-      );
+      let data: any;
+      try {
+        data = await uploadWithProgress(
+          functionUrl,
+          formData,
+          session.access_token,
+          (progress) => {
+            setUploadProgress(progress);
+            // Report percentage to callback (0-90% for upload, 90-100% for DB save)
+            onProgress?.(Math.round(progress.percentage * 0.9));
+          },
+          abortControllerRef.current
+        );
+      } catch (uploadError: any) {
+        // Extract specific error message from bunny-ops response
+        const errorMessage = uploadError.message || 'Upload failed';
+        console.error('Bunny upload error:', errorMessage);
+        throw new Error(`Bunny Upload Failed: ${errorMessage}`);
+      }
 
-      if (!data || data.error) throw new Error(data?.error || 'Upload failed');
+      // CRITICAL: Validate bunny-ops response BEFORE creating DB record
+      if (!data) {
+        throw new Error('Bunny Upload Failed: No response from storage service');
+      }
+      
+      if (data.error) {
+        throw new Error(`Bunny Upload Failed: ${data.error}`);
+      }
+      
+      if (!data.cdnUrl) {
+        throw new Error('Bunny Upload Failed: No CDN URL returned');
+      }
 
       onProgress?.(92);
 
@@ -271,6 +290,7 @@ export function useStorage() {
       onProgress?.(95);
 
       // Create deliverable record with Bunny CDN/Stream URL
+      // This only runs if bunny-ops returned successfully
       const { data: deliverable, error: dbError } = await supabase
         .from('deliverables')
         .insert({
