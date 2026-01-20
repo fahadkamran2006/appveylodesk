@@ -3,9 +3,13 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/hooks/useAuth';
 import { useDashboardStats, useProjects } from '@/hooks/useProjects';
+import { useAdminAnalytics } from '@/hooks/useAdminAnalytics';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { CreateProjectModal } from '@/components/projects/CreateProjectModal';
+import { EarningsChart } from '@/components/dashboard/EarningsChart';
+import { ClientAcquisitionChart } from '@/components/dashboard/ClientAcquisitionChart';
+import { PerformanceCard } from '@/components/dashboard/PerformanceCard';
 import {
   Plus,
   Clock,
@@ -13,7 +17,6 @@ import {
   FolderKanban,
   Receipt,
   Users,
-  FileText,
   Loader2
 } from 'lucide-react';
 import { format, isPast, parseISO } from 'date-fns';
@@ -23,6 +26,7 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const { stats, loading: statsLoading, refetch: refetchStats } = useDashboardStats();
   const { projects, loading: projectsLoading, fetchProjects } = useProjects('admin');
+  const { performanceMetrics, monthlyEarnings, clientAcquisition, loading: analyticsLoading } = useAdminAnalytics();
   const [createModalOpen, setCreateModalOpen] = useState(false);
 
   useEffect(() => {
@@ -147,6 +151,17 @@ const AdminDashboard = () => {
                 </div>
               ))
             )}
+          </div>
+
+          {/* Performance & Analytics Section */}
+          <div className="mb-6 md:mb-8">
+            <PerformanceCard metrics={performanceMetrics} loading={analyticsLoading} />
+          </div>
+
+          {/* Charts Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-6 md:mb-8">
+            <EarningsChart data={monthlyEarnings} loading={analyticsLoading} />
+            <ClientAcquisitionChart data={clientAcquisition} loading={analyticsLoading} />
           </div>
 
           {/* Kanban Board Preview */}
