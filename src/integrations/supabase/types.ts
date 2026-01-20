@@ -432,6 +432,8 @@ export type Database = {
       }
       messages: {
         Row: {
+          attachment_type: string | null
+          attachment_url: string | null
           channel_id: string | null
           content: string
           created_at: string
@@ -441,6 +443,8 @@ export type Database = {
           sender_id: string
         }
         Insert: {
+          attachment_type?: string | null
+          attachment_url?: string | null
           channel_id?: string | null
           content: string
           created_at?: string
@@ -450,6 +454,8 @@ export type Database = {
           sender_id: string
         }
         Update: {
+          attachment_type?: string | null
+          attachment_url?: string | null
           channel_id?: string | null
           content?: string
           created_at?: string
@@ -664,9 +670,38 @@ export type Database = {
         }
         Returns: string
       }
+      get_admin_performance_metrics: {
+        Args: { _agency_id: string }
+        Returns: {
+          avg_response_time_display: string
+          avg_response_time_seconds: number
+          reply_rate_percent: number
+          responded_messages: number
+          total_client_messages: number
+        }[]
+      }
       get_channel_unread_count: {
         Args: { _channel_id: string; _user_id: string }
         Returns: number
+      }
+      get_client_acquisition: {
+        Args: { _agency_id: string; _months?: number }
+        Returns: {
+          month: string
+          month_num: number
+          new_clients: number
+          year: number
+        }[]
+      }
+      get_monthly_earnings: {
+        Args: { _agency_id: string; _months?: number }
+        Returns: {
+          earnings: number
+          month: string
+          month_num: number
+          projects_completed: number
+          year: number
+        }[]
       }
       get_or_create_dm_channel: {
         Args: { _agency_id: string; _other_user_id: string }

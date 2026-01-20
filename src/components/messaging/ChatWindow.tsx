@@ -6,10 +6,12 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Send, Lock, MoreVertical, VolumeX, Volume2, FolderKanban, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
 import { useChannelMutes } from '@/hooks/useMessaging';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
+import { useChatAttachments } from '@/hooks/useChatAttachments';
+import { ChatAttachmentButton } from './ChatAttachmentButton';
+import { ChatMessageBubble } from './ChatMessageBubble';
 
 interface Sender {
   id: string;
@@ -24,6 +26,8 @@ interface Message {
   created_at: string;
   sender_id: string;
   sender: Sender;
+  attachment_url?: string | null;
+  attachment_type?: string | null;
 }
 
 interface Participant {
@@ -48,16 +52,18 @@ interface ChatWindowProps {
   channel: Channel | null;
   messages: Message[];
   loading?: boolean;
-  onSendMessage: (content: string) => Promise<boolean>;
+  onSendMessage: (content: string, attachmentUrl?: string, attachmentType?: string) => Promise<boolean>;
 }
 
 export function ChatWindow({ channel, messages, loading, onSendMessage }: ChatWindowProps) {
   const { user, userRole } = useAuth();
   const [messageInput, setMessageInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [pendingAttachment, setPendingAttachment] = useState<{ url: string; type: string } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { mutedUsers, muteUser, unmuteUser, isUserMuted } = useChannelMutes(channel?.id || null);
   const { typingUsers, onTyping, stopTyping } = useTypingIndicator(channel?.id || null);
+  const { uploadChatAttachment, uploadProgress, cancelUpload } = useChatAttachments();
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -81,15 +87,28 @@ export function ChatWindow({ channel, messages, loading, onSendMessage }: ChatWi
   };
 
   const handleSend = async () => {
-    if (!messageInput.trim() || sending) return;
+    if ((!messageInput.trim() && !pendingAttachment) || sending) return;
 
     setSending(true);
     stopTyping();
-    const success = await onSendMessage(messageInput);
+    const success = await onSendMessage(
+      messageInput,
+      pendingAttachment?.url,
+      pendingAttachment?.type
+    );
     if (success) {
       setMessageInput('');
+      setPendingAttachment(null);
     }
     setSending(false);
+  };
+
+  const handleFileSelect = async (file: File) => {
+    if (!channel?.id) return;
+    const result = await uploadChatAttachment(file, channel.id);
+    if (result) {
+      setPendingAttachment(result);
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -231,60 +250,15 @@ export function ChatWindow({ channel, messages, loading, onSendMessage }: ChatWi
                 messages[index - 1].sender_id !== message.sender_id;
               const isMuted = isUserMuted(message.sender_id);
 
-              // For project chats, show sender as "Team" for editors (to clients)
-              let displayName = message.sender.full_name || message.sender.email;
-              if (!isDM && userRole === 'client' && !isOwn) {
-                // Check if sender is an editor (not admin)
-                // For simplicity, we'll show the actual name
-              }
-
               return (
-                <div
+                <ChatMessageBubble
                   key={message.id}
-                  className={cn(
-                    'flex gap-3',
-                    isOwn && 'flex-row-reverse',
-                    isMuted && 'opacity-50'
-                  )}
-                >
-                  {showAvatar && !isOwn ? (
-                    <Avatar className="w-8 h-8 border border-border/50 flex-shrink-0">
-                      <AvatarImage src={message.sender.avatar_url || undefined} />
-                      <AvatarFallback className="bg-primary/20 text-primary text-xs">
-                        {getInitials(message.sender.full_name, message.sender.email)}
-                      </AvatarFallback>
-                    </Avatar>
-                  ) : !isOwn ? (
-                    <div className="w-8 flex-shrink-0" />
-                  ) : null}
-
-                  <div
-                    className={cn(
-                      'max-w-[70%] rounded-2xl px-4 py-2',
-                      isOwn
-                        ? 'bg-primary text-primary-foreground rounded-br-md'
-                        : 'bg-muted text-foreground rounded-bl-md'
-                    )}
-                  >
-                    {showAvatar && !isOwn && (
-                      <p className="text-xs font-medium mb-1 opacity-70">
-                        {displayName}
-                        {isMuted && ' (muted)'}
-                      </p>
-                    )}
-                    <p className="text-sm whitespace-pre-wrap break-words">
-                      {message.content}
-                    </p>
-                    <p
-                      className={cn(
-                        'text-[10px] mt-1',
-                        isOwn ? 'text-primary-foreground/70' : 'text-muted-foreground'
-                      )}
-                    >
-                      {format(new Date(message.created_at), 'h:mm a')}
-                    </p>
-                  </div>
-                </div>
+                  message={message}
+                  isOwn={isOwn}
+                  showAvatar={showAvatar}
+                  isMuted={isMuted}
+                  isDM={isDM}
+                />
               );
             })}
           </div>
@@ -320,18 +294,26 @@ export function ChatWindow({ channel, messages, loading, onSendMessage }: ChatWi
             <span className="text-sm">This chat is archived (project completed)</span>
           </div>
         ) : (
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
+            <ChatAttachmentButton
+              onSelectFile={handleFileSelect}
+              uploading={uploadProgress.uploading}
+              progress={uploadProgress.progress}
+              fileName={uploadProgress.fileName}
+              onCancelUpload={cancelUpload}
+              disabled={sending}
+            />
             <Input
               value={messageInput}
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
-              placeholder="Type a message..."
+              placeholder={pendingAttachment ? "Add a caption..." : "Type a message..."}
               className="flex-1 bg-surface-elevated border-border/50"
-              disabled={sending}
+              disabled={sending || uploadProgress.uploading}
             />
             <Button
               onClick={handleSend}
-              disabled={!messageInput.trim() || sending}
+              disabled={(!messageInput.trim() && !pendingAttachment) || sending || uploadProgress.uploading}
               size="icon"
             >
               <Send className="w-4 h-4" />
