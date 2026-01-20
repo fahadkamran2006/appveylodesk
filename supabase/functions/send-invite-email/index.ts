@@ -55,6 +55,16 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Sending invite email to ${email} for role ${role} at ${agencyName}`);
 
+    // HTML escape function to prevent HTML injection
+    const escapeHtml = (unsafe: string): string => {
+      return unsafe
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    };
+
     const origin = req.headers.get("origin");
     const forwardedProto = req.headers.get("x-forwarded-proto");
     const forwardedHost = req.headers.get("x-forwarded-host");
@@ -69,7 +79,11 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Generate role-specific invite links
     const invitePath = role === "client" ? "/join-client" : "/join-team";
-    const inviteLink = `${siteUrl}${invitePath}?invite=${invitationId}`;
+    const inviteLink = `${siteUrl}${invitePath}?invite=${encodeURIComponent(invitationId)}`;
+
+    // Escape user-controlled content for safe HTML embedding
+    const safeAgencyName = escapeHtml(agencyName);
+    const safeInviteLink = escapeHtml(inviteLink);
 
     const roleLabel = role === "client" ? "client" : "team member";
 
@@ -77,7 +91,7 @@ const handler = async (req: Request): Promise<Response> => {
       from: "Veylodesk <invites@veylodesk.com>",
       reply_to: "hello@veylodesk.com",
       to: [email],
-      subject: `You've been invited to join ${agencyName} on Veylodesk`,
+      subject: `You've been invited to join ${safeAgencyName} on Veylodesk`,
       html: `
         <!DOCTYPE html>
         <html>
@@ -95,7 +109,7 @@ const handler = async (req: Request): Promise<Response> => {
                 </div>
                 
                 <p style="color: #a1a1aa; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
-                  <strong style="color: #ffffff;">${agencyName}</strong> has invited you to join their team as a <strong style="color: #8b5cf6;">${roleLabel}</strong> on Veylodesk.
+                  <strong style="color: #ffffff;">${safeAgencyName}</strong> has invited you to join their team as a <strong style="color: #8b5cf6;">${roleLabel}</strong> on Veylodesk.
                 </p>
                 
                 <p style="color: #a1a1aa; font-size: 16px; line-height: 1.6; margin: 0 0 32px;">
@@ -103,7 +117,7 @@ const handler = async (req: Request): Promise<Response> => {
                 </p>
                 
                 <div style="text-align: center; margin-bottom: 32px;">
-                  <a href="${inviteLink}" style="display: inline-block; background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                  <a href="${safeInviteLink}" style="display: inline-block; background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
                     Accept Invitation
                   </a>
                 </div>
@@ -113,7 +127,7 @@ const handler = async (req: Request): Promise<Response> => {
                 </p>
                 
                 <p style="color: #8b5cf6; font-size: 14px; word-break: break-all; background: rgba(139, 92, 246, 0.1); padding: 12px; border-radius: 8px; margin: 0 0 32px;">
-                  ${inviteLink}
+                  ${safeInviteLink}
                 </p>
                 
                 <hr style="border: none; border-top: 1px solid rgba(255,255,255,0.1); margin: 32px 0;">
