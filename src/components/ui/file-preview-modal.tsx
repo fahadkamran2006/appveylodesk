@@ -19,6 +19,9 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
+// Bunny Stream Library ID
+const BUNNY_STREAM_LIBRARY_ID = '582147';
+
 interface FilePreviewModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -35,6 +38,50 @@ interface FilePreviewModalProps {
 
 function isBunnyCdnUrl(url: string): boolean {
   return url.includes('b-cdn.net') || url.includes('bunnycdn');
+}
+
+// Check if URL/ID is a Bunny Stream video (GUID format)
+function isBunnyStreamVideo(urlOrId: string): boolean {
+  const guidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  
+  if (urlOrId.includes('.b-cdn.net/') && urlOrId.includes('/playlist.m3u8')) {
+    return true;
+  }
+  
+  if (guidPattern.test(urlOrId)) {
+    return true;
+  }
+  
+  const guidMatch = urlOrId.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+  if (guidMatch && (urlOrId.includes('bunny') || urlOrId.includes('b-cdn.net') || urlOrId.includes('mediadelivery'))) {
+    return true;
+  }
+  
+  return false;
+}
+
+// Extract video ID from Bunny Stream URL
+function extractBunnyStreamVideoId(url: string): string | null {
+  const hlsMatch = url.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/playlist\.m3u8/i);
+  if (hlsMatch) return hlsMatch[1];
+  
+  const guidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (guidPattern.test(url)) return url;
+  
+  const guidMatch = url.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
+  if (guidMatch) return guidMatch[1];
+  
+  return null;
+}
+
+// Generate Bunny Stream embed URL
+function getBunnyStreamEmbedUrl(videoId: string): string {
+  return `https://iframe.mediadelivery.net/embed/${BUNNY_STREAM_LIBRARY_ID}/${videoId}?autoplay=false&preload=true`;
+}
+
+// Generate Bunny Stream MP4 download URL
+function getBunnyStreamDownloadUrl(videoId: string): string {
+  return `https://video.bunnycdn.com/play/${BUNNY_STREAM_LIBRARY_ID}/${videoId}/mp4_source`;
 }
 
 async function getSignedUrl(deliverableId: string): Promise<{ url: string | null; error?: string }> {
@@ -56,6 +103,19 @@ async function getSignedUrl(deliverableId: string): Promise<{ url: string | null
   }
 }
 
+async function checkStreamStatus(fileUrl: string): Promise<{ isReady: boolean; status: number } | null> {
+  try {
+    const { data, error } = await supabase.functions.invoke('bunny-ops', {
+      body: { action: 'stream_status', fileUrl },
+    });
+    
+    if (error || !data?.ok) return null;
+    return { isReady: data.isReady, status: data.status };
+  } catch {
+    return null;
+  }
+}
+
 export function FilePreviewModal({
   open,
   onOpenChange,
@@ -72,6 +132,9 @@ export function FilePreviewModal({
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
   const [isResolvingUrl, setIsResolvingUrl] = useState(false);
   const [urlError, setUrlError] = useState<string | null>(null);
+  const [isStreamVideo, setIsStreamVideo] = useState(false);
+  const [streamVideoId, setStreamVideoId] = useState<string | null>(null);
+  const [isVideoProcessing, setIsVideoProcessing] = useState(false);
 
   // Reset editing state & zoom/rotation when file changes
   useEffect(() => {
@@ -84,8 +147,6 @@ export function FilePreviewModal({
   }, [file]);
 
   // Resolve URL when file changes
-  // For Bunny CDN URLs: use directly (fast CDN, no signing needed)
-  // For Supabase URLs: get signed URL via backend
   useEffect(() => {
     let cancelled = false;
 
@@ -93,20 +154,56 @@ export function FilePreviewModal({
       if (!file) {
         setResolvedUrl(null);
         setUrlError(null);
+        setIsStreamVideo(false);
+        setStreamVideoId(null);
+        setIsVideoProcessing(false);
         return;
       }
 
-      // Bunny CDN URLs can be used directly - they're fast and don't need signing
+      // Check if it's a Bunny Stream video
+      if (isBunnyStreamVideo(file.file_url)) {
+        const videoId = extractBunnyStreamVideoId(file.file_url);
+        console.log('Detected Bunny Stream video in preview, ID:', videoId);
+        
+        if (videoId) {
+          setIsResolvingUrl(true);
+          
+          // Check processing status
+          const status = await checkStreamStatus(file.file_url);
+          
+          if (!cancelled) {
+            if (status && !status.isReady && status.status < 4) {
+              setIsVideoProcessing(true);
+              setIsStreamVideo(true);
+              setStreamVideoId(videoId);
+              setResolvedUrl(null);
+            } else {
+              setIsVideoProcessing(false);
+              setIsStreamVideo(true);
+              setStreamVideoId(videoId);
+              setResolvedUrl(getBunnyStreamEmbedUrl(videoId));
+            }
+            setIsResolvingUrl(false);
+          }
+          return;
+        }
+      }
+
+      // Bunny CDN URLs can be used directly
       if (isBunnyCdnUrl(file.file_url)) {
         console.log('Using Bunny CDN URL directly for preview:', file.file_url);
         setResolvedUrl(file.file_url);
         setIsResolvingUrl(false);
+        setIsStreamVideo(false);
+        setStreamVideoId(null);
         return;
       }
 
       // For Supabase storage, get signed URL
       setIsResolvingUrl(true);
       setUrlError(null);
+      setIsStreamVideo(false);
+      setStreamVideoId(null);
       try {
         const result = await getSignedUrl(file.id);
         if (!cancelled) {
@@ -138,7 +235,7 @@ export function FilePreviewModal({
 
   const ext = file.file_name.split('.').pop()?.toLowerCase() || '';
   const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext);
-  const isVideo = ['mp4', 'mov', 'avi', 'webm', 'mkv'].includes(ext);
+  const isVideo = ['mp4', 'mov', 'avi', 'webm', 'mkv'].includes(ext) || isStreamVideo;
   const isAudio = ['mp3', 'wav', 'aac', 'm4a'].includes(ext);
   const isPdf = ext === 'pdf';
 
@@ -164,6 +261,18 @@ export function FilePreviewModal({
       setNewName(file.file_name);
       setIsEditing(false);
     }
+  };
+
+  const handleDownload = () => {
+    // For Bunny Stream videos, use the MP4 download URL
+    if (isStreamVideo && streamVideoId) {
+      const downloadUrl = getBunnyStreamDownloadUrl(streamVideoId);
+      window.open(downloadUrl, '_blank');
+      return;
+    }
+    
+    // For other files, use the provided onDownload handler
+    onDownload?.();
   };
 
   return (
@@ -209,6 +318,11 @@ export function FilePreviewModal({
             ) : (
               <>
                 <DialogTitle className="truncate">{file.file_name}</DialogTitle>
+                {isVideoProcessing && (
+                  <span className="text-xs bg-amber-500/20 text-amber-600 px-2 py-0.5 rounded-full">
+                    Processing...
+                  </span>
+                )}
                 {canRename && (
                   <Button
                     size="icon"
@@ -248,8 +362,8 @@ export function FilePreviewModal({
                 </Button>
               </>
             )}
-            {onDownload && (
-              <Button size="icon" variant="ghost" onClick={onDownload}>
+            {(onDownload || (isStreamVideo && streamVideoId)) && !isVideoProcessing && (
+              <Button size="icon" variant="ghost" onClick={handleDownload}>
                 <Download className="w-4 h-4" />
               </Button>
             )}
@@ -277,7 +391,17 @@ export function FilePreviewModal({
             </div>
           )}
 
-          {!urlError && isImage && (
+          {isVideoProcessing && !isResolvingUrl && (
+            <div className="flex flex-col items-center gap-3 text-center p-8">
+              <Loader2 className="w-12 h-12 text-primary animate-spin" />
+              <h3 className="text-lg font-medium text-foreground">Video Processing</h3>
+              <p className="text-sm text-muted-foreground max-w-md">
+                This video is being transcoded for optimal playback. Please check back in a few minutes.
+              </p>
+            </div>
+          )}
+
+          {!urlError && !isVideoProcessing && isImage && (
             <img
               src={previewUrl}
               alt={file.file_name}
@@ -288,7 +412,18 @@ export function FilePreviewModal({
             />
           )}
 
-          {!urlError && isVideo && (
+          {!urlError && !isVideoProcessing && isVideo && isStreamVideo && streamVideoId && (
+            <iframe
+              src={resolvedUrl || getBunnyStreamEmbedUrl(streamVideoId)}
+              className="w-full h-full min-h-[400px] rounded-lg"
+              loading="lazy"
+              allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
+              allowFullScreen
+              title="Video Player"
+            />
+          )}
+
+          {!urlError && !isVideoProcessing && isVideo && !isStreamVideo && (
             <video
               src={previewUrl}
               controls
@@ -320,12 +455,12 @@ export function FilePreviewModal({
             />
           )}
 
-          {!urlError && !isImage && !isVideo && !isAudio && !isPdf && (
+          {!urlError && !isVideoProcessing && !isImage && !isVideo && !isAudio && !isPdf && (
             <div className="text-center text-muted-foreground">
               <p className="text-lg font-medium mb-2">Preview not available</p>
               <p className="text-sm">Click download to view this file</p>
-              {onDownload && (
-                <Button onClick={onDownload} className="mt-4">
+              {(onDownload || (isStreamVideo && streamVideoId)) && (
+                <Button onClick={handleDownload} className="mt-4">
                   <Download className="w-4 h-4 mr-2" />
                   Download File
                 </Button>
