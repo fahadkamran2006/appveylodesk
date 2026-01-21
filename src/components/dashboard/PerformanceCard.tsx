@@ -31,13 +31,18 @@ export function PerformanceCard({ metrics, loading }: PerformanceCardProps) {
   const responseTime = metrics?.avgResponseTimeDisplay || 'N/A';
 
   // Determine reply rate status
-  const getRateStatus = (rate: number) => {
+  const getRateStatus = (rate: number, hasData: boolean) => {
+    // If no data yet, show neutral state instead of "Needs Improvement"
+    if (!hasData || (metrics?.totalClientMessages === 0)) {
+      return { color: 'text-muted-foreground', bg: 'bg-muted', label: 'No Data Yet' };
+    }
     if (rate >= 90) return { color: 'text-success', bg: 'bg-success/20', label: 'Excellent' };
     if (rate >= 70) return { color: 'text-warning', bg: 'bg-warning/20', label: 'Good' };
     return { color: 'text-destructive', bg: 'bg-destructive/20', label: 'Needs Improvement' };
   };
 
-  const rateStatus = getRateStatus(replyRate);
+  const hasMetricsData = metrics !== null && metrics.totalClientMessages > 0;
+  const rateStatus = getRateStatus(replyRate, hasMetricsData);
 
   return (
     <div className="glass-card rounded-xl p-6">
