@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import {
@@ -45,7 +45,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useStorage, Deliverable } from '@/hooks/useStorage';
 import { useVideoComments } from '@/hooks/useVideoComments';
 import { FileManager } from './FileManager';
-import { VideoPlayer } from '@/components/video/VideoPlayer';
+import { VideoPlayer, VideoPlayerHandle } from '@/components/video/VideoPlayer';
 import { CommentPanel } from '@/components/video/CommentPanel';
 import { useToast } from '@/hooks/use-toast';
 import { FilePreviewModal } from '@/components/ui/file-preview-modal';
@@ -119,6 +119,7 @@ export function ProjectDetailSheet({
   const [previewImage, setPreviewImage] = useState<Deliverable | null>(null);
   
   // Video review state
+  const videoPlayerRef = useRef<VideoPlayerHandle>(null);
   const [selectedVideo, setSelectedVideo] = useState<Deliverable | null>(null);
   const [currentTimestamp, setCurrentTimestamp] = useState<number | null>(null);
 
@@ -242,6 +243,15 @@ export function ProjectDetailSheet({
     setSelectedVideo(null);
     setCurrentTimestamp(null);
   };
+
+  // Pause video and capture timestamp for commenting
+  const handlePauseForComment = useCallback(() => {
+    if (videoPlayerRef.current) {
+      videoPlayerRef.current.pause();
+      const time = videoPlayerRef.current.getCurrentTime();
+      setCurrentTimestamp(time);
+    }
+  }, []);
 
   const handleOpenProjectChat = () => {
     onOpenChange(false);
@@ -450,12 +460,14 @@ export function ProjectDetailSheet({
                 {/* Video player */}
                 <div className="flex-1 flex flex-col bg-black">
                   <VideoPlayer
+                    ref={videoPlayerRef}
                     src={selectedVideo.file_url}
                     deliverableId={selectedVideo.id}
                     comments={comments}
                     onTimeUpdate={setCurrentTimestamp}
                     onSeekToComment={setCurrentTimestamp}
                     onAddComment={(timestamp) => setCurrentTimestamp(timestamp)}
+                    onPause={() => {}}
                     className="flex-1"
                   />
                 </div>
@@ -473,6 +485,7 @@ export function ProjectDetailSheet({
                     onResolveComment={resolveComment}
                     onUnresolveComment={unresolveComment}
                     onSeekToTimestamp={setCurrentTimestamp}
+                    onPauseVideo={handlePauseForComment}
                   />
                 </div>
               </div>
