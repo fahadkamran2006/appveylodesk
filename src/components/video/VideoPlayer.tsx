@@ -1,46 +1,50 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle } from 'react';
 import Hls from 'hls.js';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { VideoComment } from '@/hooks/useVideoComments';
 
-// Bunny Stream Library ID - loaded from env or hardcoded as fallback
+// Bunny Stream Library ID
 const BUNNY_STREAM_LIBRARY_ID = '582147';
 
 // Check if URL/ID is a Bunny Stream video (GUID format)
 function isBunnyStreamVideo(urlOrId: string): boolean {
+  if (!urlOrId) return false;
+  
   // Bunny Stream video IDs are GUIDs like: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
   const guidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  
+  // Check if it's a direct GUID (most common case for Stream videos)
+  if (guidPattern.test(urlOrId)) {
+    return true;
+  }
   
   // Check if the URL contains a Bunny Stream HLS pattern
   if (urlOrId.includes('.b-cdn.net/') && urlOrId.includes('/playlist.m3u8')) {
     return true;
   }
   
-  // Check if it's a direct GUID
-  if (guidPattern.test(urlOrId)) {
-    return true;
-  }
-  
   // Check if URL contains a GUID pattern (e.g., in the path)
   const guidMatch = urlOrId.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
-  if (guidMatch && (urlOrId.includes('bunny') || urlOrId.includes('b-cdn.net') || urlOrId.includes('mediadelivery'))) {
+  if (guidMatch) {
     return true;
   }
   
   return false;
 }
 
-// Extract video ID from Bunny Stream URL
+// Extract video ID from Bunny Stream URL or GUID
 function extractBunnyStreamVideoId(url: string): string | null {
+  if (!url) return null;
+  
+  // Pattern: direct GUID (most common for Stream videos stored in DB)
+  const guidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (guidPattern.test(url)) return url;
+  
   // Pattern: https://xxx.b-cdn.net/{videoId}/playlist.m3u8
   const hlsMatch = url.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/playlist\.m3u8/i);
   if (hlsMatch) return hlsMatch[1];
-  
-  // Pattern: direct GUID
-  const guidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  if (guidPattern.test(url)) return url;
   
   // Pattern: GUID anywhere in URL
   const guidMatch = url.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
@@ -49,7 +53,7 @@ function extractBunnyStreamVideoId(url: string): string | null {
   return null;
 }
 
-// Generate Bunny Stream embed URL
+// Generate Bunny Stream embed URL - ALWAYS use this for Stream videos
 function getBunnyStreamEmbedUrl(videoId: string): string {
   return `https://iframe.mediadelivery.net/embed/${BUNNY_STREAM_LIBRARY_ID}/${videoId}?autoplay=false&preload=true`;
 }
@@ -59,12 +63,11 @@ export function getBunnyStreamDownloadUrl(videoId: string): string {
   return `https://video.bunnycdn.com/play/${BUNNY_STREAM_LIBRARY_ID}/${videoId}/mp4_source`;
 }
 
-function isBunnyCdnUrl(url: string): boolean {
-  return url.includes('b-cdn.net') || url.includes('bunnycdn');
-}
-
-function isBunnyStreamHlsUrl(url: string): boolean {
-  return url.includes('.b-cdn.net/') && url.includes('/playlist.m3u8');
+// Check if URL is a regular file (not a Stream video)
+function isRegularVideoFile(url: string): boolean {
+  if (!url) return false;
+  const ext = url.split('?')[0].split('.').pop()?.toLowerCase();
+  return ['mp4', 'mov', 'webm', 'mkv', 'avi'].includes(ext || '');
 }
 
 function extractDeliverablesPathFromUrl(fileUrl: string): string | null {
@@ -72,6 +75,8 @@ function extractDeliverablesPathFromUrl(fileUrl: string): string | null {
 
   // If we already have a storage path like "projectId/filename.ext"
   if (!/^https?:\/\//i.test(fileUrl)) {
+    // Don't treat GUIDs as storage paths
+    if (isBunnyStreamVideo(fileUrl)) return null;
     return decodeURIComponent(fileUrl.split('?')[0]);
   }
 
@@ -152,29 +157,38 @@ async function checkStreamStatus(fileUrl: string): Promise<StreamStatus | null> 
   }
 }
 
+export interface VideoPlayerHandle {
+  pause: () => void;
+  getCurrentTime: () => number;
+}
+
 interface VideoPlayerProps {
-  /** Original src (typically deliverable.file_url) - can be Bunny CDN, Bunny Stream HLS, or Supabase URL */
+  /** Original src (typically deliverable.file_url) - can be Bunny Stream GUID, HLS URL, or Supabase URL */
   src: string;
-  /** When provided and NOT a Bunny CDN URL, we fetch a signed URL via backend */
+  /** When provided and NOT a Bunny Stream video, we fetch a signed URL via backend */
   deliverableId?: string;
   comments: VideoComment[];
   onTimeUpdate?: (time: number) => void;
   onSeekToComment?: (timestamp: number) => void;
   onAddComment?: (timestamp: number) => void;
+  onPause?: () => void;
+  onPlay?: () => void;
   showCommentMarkers?: boolean;
   className?: string;
 }
 
-export function VideoPlayer({
+export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
   src,
   deliverableId,
   comments,
   onTimeUpdate,
   onSeekToComment,
   onAddComment,
+  onPause,
+  onPlay,
   showCommentMarkers = true,
   className,
-}: VideoPlayerProps) {
+}, ref) => {
   // Suppress unused variable warnings – props kept for API compatibility
   void comments;
   void onSeekToComment;
@@ -183,12 +197,60 @@ export function VideoPlayer({
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const [playbackUrl, setPlaybackUrl] = useState<string | null>(null);
   const [isHls, setIsHls] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [useIframeEmbed, setUseIframeEmbed] = useState(false);
   const [streamVideoId, setStreamVideoId] = useState<string | null>(null);
+  const [iframePaused, setIframePaused] = useState(false);
+  const [iframeTime, setIframeTime] = useState(0);
+
+  // Expose pause and getCurrentTime methods for parent components
+  useImperativeHandle(ref, () => ({
+    pause: () => {
+      if (videoRef.current) {
+        videoRef.current.pause();
+      } else if (iframeRef.current && streamVideoId) {
+        // Send pause message to Bunny iframe
+        iframeRef.current.contentWindow?.postMessage({ event: 'pause' }, '*');
+        setIframePaused(true);
+        onPause?.();
+      }
+    },
+    getCurrentTime: () => {
+      if (videoRef.current) {
+        return videoRef.current.currentTime;
+      }
+      return iframeTime;
+    }
+  }));
+
+  // Listen for messages from Bunny Stream iframe
+  useEffect(() => {
+    if (!useIframeEmbed) return;
+
+    const handleMessage = (event: MessageEvent) => {
+      // Bunny Stream sends progress events
+      if (event.data?.event === 'timeupdate' && typeof event.data?.currentTime === 'number') {
+        const time = event.data.currentTime;
+        setIframeTime(time);
+        onTimeUpdate?.(time);
+      }
+      if (event.data?.event === 'pause') {
+        setIframePaused(true);
+        onPause?.();
+      }
+      if (event.data?.event === 'play') {
+        setIframePaused(false);
+        onPlay?.();
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [useIframeEmbed, onTimeUpdate, onPause, onPlay]);
 
   // Cleanup HLS instance
   const cleanupHls = useCallback(() => {
@@ -206,7 +268,6 @@ export function VideoPlayer({
       const hls = new Hls({
         enableWorker: true,
         lowLatencyMode: false,
-        // Optimize for VOD playback
         maxBufferLength: 30,
         maxMaxBufferLength: 60,
       });
@@ -223,7 +284,6 @@ export function VideoPlayer({
           console.error('Fatal HLS error:', data.type, data.details);
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:
-              // Try to recover network error
               console.log('Attempting to recover from network error...');
               hls.startLoad();
               break;
@@ -241,7 +301,6 @@ export function VideoPlayer({
 
       hlsRef.current = hls;
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      // Native HLS support (Safari)
       video.src = url;
     } else {
       setError('Your browser does not support HLS video playback.');
@@ -262,10 +321,11 @@ export function VideoPlayer({
       setStreamVideoId(null);
 
       try {
-        // Check if it's a Bunny Stream video - use iframe embed for reliable playback
+        // PRIORITY: Check if it's a Bunny Stream video (GUID or Stream URL)
+        // This MUST be checked first to avoid using wrong CDN URLs
         if (isBunnyStreamVideo(src)) {
           const videoId = extractBunnyStreamVideoId(src);
-          console.log('Detected Bunny Stream video, ID:', videoId);
+          console.log('Detected Bunny Stream video, using iframe embed. ID:', videoId);
           
           if (videoId) {
             // Check if video is ready
@@ -292,7 +352,7 @@ export function VideoPlayer({
               return;
             }
             
-            // Video is ready - use iframe embed
+            // Video is ready - use iframe embed (NOT CDN URL)
             if (!cancelled) {
               setUseIframeEmbed(true);
               setStreamVideoId(videoId);
@@ -302,57 +362,8 @@ export function VideoPlayer({
           }
         }
 
-        // Check if it's a Bunny Stream HLS URL (legacy check)
-        if (isBunnyStreamHlsUrl(src)) {
-          const videoId = extractBunnyStreamVideoId(src);
-          console.log('Detected Bunny Stream HLS URL, using iframe embed. ID:', videoId);
-          
-          if (videoId) {
-            // Check if video is ready
-            const status = await checkStreamStatus(src);
-            
-            if (status && !status.isReady) {
-              console.log('Video is still processing, status:', status.status);
-              setIsProcessing(true);
-              
-              // Poll for status updates
-              pollInterval = setInterval(async () => {
-                const newStatus = await checkStreamStatus(src);
-                if (newStatus?.isReady) {
-                  if (pollInterval) clearInterval(pollInterval);
-                  if (!cancelled) {
-                    setIsProcessing(false);
-                    setUseIframeEmbed(true);
-                    setStreamVideoId(videoId);
-                    setPlaybackUrl(getBunnyStreamEmbedUrl(videoId));
-                  }
-                }
-              }, 5000);
-              
-              return;
-            }
-            
-            if (!cancelled) {
-              setUseIframeEmbed(true);
-              setStreamVideoId(videoId);
-              setPlaybackUrl(getBunnyStreamEmbedUrl(videoId));
-            }
-            return;
-          }
-        }
-
-        // Regular Bunny CDN URLs can be used directly
-        if (isBunnyCdnUrl(src)) {
-          console.log('Using Bunny CDN URL directly:', src);
-          if (!cancelled) {
-            setPlaybackUrl(src);
-            setIsHls(false);
-          }
-          return;
-        }
-
-        // For Supabase storage, get signed URL
-        if (deliverableId) {
+        // For regular video files with Supabase storage, get signed URL
+        if (deliverableId && isRegularVideoFile(src)) {
           const signed = await getDeliverableSignedUrl(deliverableId, src);
           if (!signed) throw new Error('Could not create a signed URL');
           if (!cancelled) {
@@ -362,7 +373,7 @@ export function VideoPlayer({
           return;
         }
 
-        // Fallback: attempt to sign based on URL pattern
+        // Fallback: attempt to sign based on URL pattern (for Supabase storage)
         const filePath = extractDeliverablesPathFromUrl(src);
         if (filePath) {
           const { data, error } = await supabase.storage
@@ -377,7 +388,7 @@ export function VideoPlayer({
           return;
         }
 
-        // Use URL as-is
+        // Last resort: Use URL as-is (only for non-Stream URLs)
         if (!cancelled) {
           setPlaybackUrl(src);
           setIsHls(src.endsWith('.m3u8'));
@@ -406,7 +417,6 @@ export function VideoPlayer({
     if (isHls) {
       initializeHls(playbackUrl, videoRef.current);
     } else {
-      // For non-HLS, set src directly
       videoRef.current.src = playbackUrl;
     }
   }, [playbackUrl, isHls, initializeHls, useIframeEmbed]);
@@ -414,6 +424,14 @@ export function VideoPlayer({
   const handleTimeUpdate = () => {
     if (!videoRef.current) return;
     onTimeUpdate?.(videoRef.current.currentTime);
+  };
+
+  const handlePause = () => {
+    onPause?.();
+  };
+
+  const handlePlay = () => {
+    onPlay?.();
   };
 
   if (error) {
@@ -453,11 +471,12 @@ export function VideoPlayer({
     );
   }
 
-  // Use iframe embed for Bunny Stream videos
+  // Use iframe embed for Bunny Stream videos - this is the correct way
   if (useIframeEmbed && streamVideoId) {
     return (
       <div className={cn('w-full h-full', className)}>
         <iframe
+          ref={iframeRef}
           src={playbackUrl}
           className="w-full h-full rounded-lg"
           loading="lazy"
@@ -480,6 +499,8 @@ export function VideoPlayer({
         playsInline
         preload="metadata"
         onTimeUpdate={handleTimeUpdate}
+        onPause={handlePause}
+        onPlay={handlePlay}
         onError={() => {
           if (!isHls) {
             setError('Failed to play this video. Please try downloading it.');
@@ -491,4 +512,4 @@ export function VideoPlayer({
       </video>
     </div>
   );
-}
+});

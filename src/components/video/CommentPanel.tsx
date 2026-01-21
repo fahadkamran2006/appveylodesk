@@ -26,6 +26,7 @@ interface CommentPanelProps {
   onResolveComment: (commentId: string) => void;
   onUnresolveComment: (commentId: string) => void;
   onSeekToTimestamp: (timestamp: number) => void;
+  onPauseVideo?: () => void;
   className?: string;
 }
 
@@ -40,13 +41,22 @@ export function CommentPanel({
   onResolveComment,
   onUnresolveComment,
   onSeekToTimestamp,
+  onPauseVideo,
   className,
 }: CommentPanelProps) {
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // When user focuses on the comment input, pause the video
+  const handleInputFocus = () => {
+    onPauseVideo?.();
+  };
+
   const handleSubmit = async () => {
-    if (!newComment.trim() || currentTimestamp === null) return;
+    if (!newComment.trim()) return;
+    
+    // Use current timestamp, default to 0 if not available
+    const timestamp = currentTimestamp ?? 0;
     
     setIsSubmitting(true);
     try {
@@ -147,31 +157,35 @@ export function CommentPanel({
         )}
       </div>
 
-      {/* Add comment form */}
-      {currentTimestamp !== null && (
-        <div className="p-4 border-b border-border space-y-2">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Clock className="w-4 h-4" />
-            <span>Comment at {formatTimestamp(currentTimestamp)}</span>
-          </div>
-          <div className="flex gap-2">
-            <Textarea
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder="Add feedback..."
-              className="min-h-[60px] resize-none bg-surface-elevated"
-            />
-            <Button
-              size="icon"
-              onClick={handleSubmit}
-              disabled={!newComment.trim() || isSubmitting}
-              className="shrink-0"
-            >
-              <Send className="w-4 h-4" />
-            </Button>
-          </div>
+      {/* Add comment form - ALWAYS VISIBLE */}
+      <div className="p-4 border-b border-border space-y-2">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Clock className="w-4 h-4" />
+          <span>
+            {currentTimestamp !== null 
+              ? `Comment at ${formatTimestamp(currentTimestamp)}`
+              : 'Click to pause video and add comment'
+            }
+          </span>
         </div>
-      )}
+        <div className="flex gap-2">
+          <Textarea
+            value={newComment}
+            onChange={(e) => setNewComment(e.target.value)}
+            onFocus={handleInputFocus}
+            placeholder="Add feedback..."
+            className="min-h-[60px] resize-none bg-surface-elevated"
+          />
+          <Button
+            size="icon"
+            onClick={handleSubmit}
+            disabled={!newComment.trim() || isSubmitting}
+            className="shrink-0"
+          >
+            <Send className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
 
       {/* Comments list */}
       <Tabs defaultValue="open" className="flex-1 flex flex-col overflow-hidden">
