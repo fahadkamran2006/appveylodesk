@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { useLocation } from 'react-router-dom';
 
 type Theme = 'dark' | 'light' | 'system';
 
@@ -10,7 +11,14 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'veylodesk-theme';
+const STORAGE_KEY = 'veylodesk-dashboard-theme';
+
+// Routes that should respect user theme preference (dashboard routes)
+const DASHBOARD_PREFIXES = ['/admin', '/client', '/editor'];
+
+function isDashboardRoute(pathname: string): boolean {
+  return DASHBOARD_PREFIXES.some(prefix => pathname.startsWith(prefix));
+}
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
@@ -21,14 +29,45 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   });
 
   const [resolvedTheme, setResolvedTheme] = useState<'dark' | 'light'>('dark');
+  const [currentPath, setCurrentPath] = useState<string>('');
+
+  // Listen for route changes
+  useEffect(() => {
+    const updatePath = () => {
+      setCurrentPath(window.location.pathname);
+    };
+
+    updatePath();
+
+    // Listen for popstate (back/forward navigation)
+    window.addEventListener('popstate', updatePath);
+    
+    // Use MutationObserver to detect route changes from React Router
+    const observer = new MutationObserver(() => {
+      if (window.location.pathname !== currentPath) {
+        updatePath();
+      }
+    });
+    
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    return () => {
+      window.removeEventListener('popstate', updatePath);
+      observer.disconnect();
+    };
+  }, [currentPath]);
 
   useEffect(() => {
     const root = window.document.documentElement;
+    const isDashboard = isDashboardRoute(currentPath);
 
-    const applyTheme = (newTheme: Theme) => {
+    const applyTheme = (newTheme: Theme, forDashboard: boolean) => {
       let resolved: 'dark' | 'light' = 'dark';
       
-      if (newTheme === 'system') {
+      // Landing page and public routes always stay dark
+      if (!forDashboard) {
+        resolved = 'dark';
+      } else if (newTheme === 'system') {
         resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       } else {
         resolved = newTheme;
@@ -45,19 +84,19 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    applyTheme(theme);
+    applyTheme(theme, isDashboard);
 
     // Listen for system theme changes
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const handleChange = () => {
-      if (theme === 'system') {
-        applyTheme('system');
+      if (theme === 'system' && isDashboard) {
+        applyTheme('system', true);
       }
     };
 
     mediaQuery.addEventListener('change', handleChange);
     return () => mediaQuery.removeEventListener('change', handleChange);
-  }, [theme]);
+  }, [theme, currentPath]);
 
   const setTheme = (newTheme: Theme) => {
     localStorage.setItem(STORAGE_KEY, newTheme);
