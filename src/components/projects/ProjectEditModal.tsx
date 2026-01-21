@@ -275,6 +275,10 @@ export function ProjectEditModal({
     }
   };
 
+  if (!project) {
+    return null;
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="glass-card border-border/50 sm:max-w-2xl max-h-[90vh] overflow-y-auto">
