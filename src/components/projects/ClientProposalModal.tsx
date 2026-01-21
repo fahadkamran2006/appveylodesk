@@ -113,7 +113,9 @@ export function ClientProposalModal({
             setSelectedFiles(prev => prev.map((f, idx) => 
               idx === i ? { ...f, progress } : f
             ));
-          }
+          },
+          undefined, // useStream
+          'asset'    // file_type - client uploads are assets
         );
         
         // Update status to complete

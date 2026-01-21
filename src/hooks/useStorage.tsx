@@ -20,6 +20,7 @@ export interface Deliverable {
   uploaded_by: string;
   created_at: string;
   uploader_name?: string;
+  file_type: 'asset' | 'deliverable';
 }
 
 export interface UploadProgress {
@@ -207,7 +208,8 @@ export function useStorage() {
     projectId: string,
     file: File,
     onProgress?: (progress: number) => void,
-    useStream?: boolean
+    useStream?: boolean,
+    fileType: 'asset' | 'deliverable' = 'deliverable'
   ): Promise<Deliverable | null> => {
     if (!user || !session?.access_token) return null;
 
@@ -300,6 +302,7 @@ export function useStorage() {
           file_size: file.size,
           version: nextVersion,
           uploaded_by: user.id,
+          file_type: fileType,
         })
         .select()
         .single();
@@ -319,7 +322,10 @@ export function useStorage() {
       // Refresh storage info
       await fetchStorageInfo();
 
-      return deliverable;
+      return {
+        ...deliverable,
+        file_type: deliverable.file_type as 'asset' | 'deliverable',
+      };
     } catch (error: any) {
       console.error('Error uploading deliverable:', error);
       if (error.message !== 'Upload cancelled') {
@@ -360,6 +366,7 @@ export function useStorage() {
       return (deliverables || []).map(d => ({
         ...d,
         uploader_name: profileMap.get(d.uploaded_by) || 'Unknown',
+        file_type: (d as any).file_type || 'deliverable',
       }));
     } catch (error) {
       console.error('Error fetching deliverables:', error);

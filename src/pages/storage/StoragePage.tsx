@@ -487,6 +487,7 @@ const StoragePage = () => {
       version: null,
       uploaded_by: deleteTarget.uploaded_by,
       created_at: deleteTarget.created_at,
+      file_type: (deleteTarget as any).file_type || 'deliverable',
     });
     setIsDeleting(false);
     setDeleteTarget(null);
@@ -624,6 +625,7 @@ const StoragePage = () => {
         version: null,
         uploaded_by: file.uploaded_by,
         created_at: file.created_at,
+        file_type: (file as any).file_type || 'deliverable',
       });
       if (success) successCount++;
     }

@@ -36,7 +36,8 @@ import {
   Image as ImageIcon,
   Edit3,
   Link as LinkIcon,
-  ExternalLink
+  ExternalLink,
+  Package
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
@@ -104,7 +105,7 @@ export function ProjectDetailSheet({
   const [project, setProject] = useState<ProjectDetail | null>(null);
   const [deliverables, setDeliverables] = useState<Deliverable[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('files');
+  const [activeTab, setActiveTab] = useState('assets');
   const [projectChannelId, setProjectChannelId] = useState<string | null>(null);
   
   // Delete state
@@ -212,13 +213,18 @@ export function ProjectDetailSheet({
   }, [open, projectId, fetchProject]);
 
   // Permissions
-  const canUpload = userRole === 'admin' || userRole === 'editor';
+  const canUploadDeliverables = userRole === 'admin' || userRole === 'editor';
+  const canUploadAssets = userRole === 'admin' || userRole === 'editor' || (userRole === 'client' && project?.client_id === user?.id);
   const canDelete = userRole === 'admin' || userRole === 'editor';
   const canResolveComments = userRole === 'admin' || userRole === 'editor';
   const canEdit = userRole === 'admin';
   
   // Budget visibility: hide from editors, show to admin and project's client only
   const canSeeBudget = userRole === 'admin' || (userRole === 'client' && project?.client_id === user?.id);
+
+  // Filter deliverables by type
+  const assetFiles = deliverables.filter(d => d.file_type === 'asset');
+  const deliverableFiles = deliverables.filter(d => d.file_type === 'deliverable');
 
   const handleViewVideo = (deliverable: Deliverable) => {
     setSelectedVideo(deliverable);
@@ -474,9 +480,13 @@ export function ProjectDetailSheet({
               // File management mode
               <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
                 <TabsList className="mx-6 mt-4 w-auto">
+                  <TabsTrigger value="assets" className="gap-2">
+                    <Package className="w-4 h-4" />
+                    Assets ({assetFiles.length})
+                  </TabsTrigger>
                   <TabsTrigger value="files" className="gap-2">
                     <FolderOpen className="w-4 h-4" />
-                    Files ({deliverables.length})
+                    Deliverables ({deliverableFiles.length})
                   </TabsTrigger>
                   <TabsTrigger value="review" className="gap-2">
                     <Video className="w-4 h-4" />
@@ -484,32 +494,52 @@ export function ProjectDetailSheet({
                   </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="files" className="flex-1 overflow-hidden m-0">
+                <TabsContent value="assets" className="flex-1 overflow-hidden m-0">
                   <FileManager
                     projectId={project.id}
-                    deliverables={deliverables}
-                    canUpload={canUpload}
+                    deliverables={assetFiles}
+                    canUpload={canUploadAssets}
                     canDelete={canDelete}
                     onFileUploaded={fetchProject}
                     onFileDeleted={fetchProject}
                     onViewVideo={handleViewVideo}
+                    fileType="asset"
+                    emptyTitle="No project assets"
+                    emptyDescription="Upload raw footage, scripts, or reference materials"
+                    uploadLabel="Upload raw assets"
+                  />
+                </TabsContent>
+
+                <TabsContent value="files" className="flex-1 overflow-hidden m-0">
+                  <FileManager
+                    projectId={project.id}
+                    deliverables={deliverableFiles}
+                    canUpload={canUploadDeliverables}
+                    canDelete={canDelete}
+                    onFileUploaded={fetchProject}
+                    onFileDeleted={fetchProject}
+                    onViewVideo={handleViewVideo}
+                    fileType="deliverable"
+                    emptyTitle="No deliverables yet"
+                    emptyDescription="Editors will upload finished versions here"
+                    uploadLabel="Upload deliverable"
                   />
                 </TabsContent>
 
                 <TabsContent value="review" className="flex-1 overflow-hidden m-0">
                   <div className="p-6">
-                    {deliverables.filter(d => {
+                    {deliverableFiles.filter(d => {
                       const ext = d.file_name.split('.').pop()?.toLowerCase();
                       return ['mp4', 'mov', 'avi', 'webm', 'mkv'].includes(ext || '');
                     }).length === 0 ? (
                       <div className="text-center py-12 text-muted-foreground">
                         <Video className="w-10 h-10 mx-auto mb-3 opacity-50" />
                         <p className="text-sm font-medium">No videos to review</p>
-                        <p className="text-xs">Upload a video file to start reviewing</p>
+                        <p className="text-xs">Upload a video deliverable to start reviewing</p>
                       </div>
                     ) : (
                       <div className="grid grid-cols-2 gap-4">
-                        {deliverables
+                        {deliverableFiles
                           .filter(d => {
                             const ext = d.file_name.split('.').pop()?.toLowerCase();
                             return ['mp4', 'mov', 'avi', 'webm', 'mkv'].includes(ext || '');

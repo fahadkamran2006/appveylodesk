@@ -334,6 +334,7 @@ export type Database = {
           created_at: string
           file_name: string
           file_size: number | null
+          file_type: string
           file_url: string
           id: string
           project_id: string
@@ -344,6 +345,7 @@ export type Database = {
           created_at?: string
           file_name: string
           file_size?: number | null
+          file_type?: string
           file_url: string
           id?: string
           project_id: string
@@ -354,6 +356,7 @@ export type Database = {
           created_at?: string
           file_name?: string
           file_size?: number | null
+          file_type?: string
           file_url?: string
           id?: string
           project_id?: string

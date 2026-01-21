@@ -40,6 +40,10 @@ interface FileManagerProps {
   onFileDeleted: () => void;
   onViewVideo: (deliverable: Deliverable) => void;
   className?: string;
+  fileType?: 'asset' | 'deliverable';
+  emptyTitle?: string;
+  emptyDescription?: string;
+  uploadLabel?: string;
 }
 
 const getFileIcon = (fileName: string) => {
@@ -78,6 +82,10 @@ export function FileManager({
   onFileDeleted,
   onViewVideo,
   className,
+  fileType = 'deliverable',
+  emptyTitle = 'No files yet',
+  emptyDescription,
+  uploadLabel = 'Click to upload files',
 }: FileManagerProps) {
   const { 
     uploadDeliverable, 
@@ -102,7 +110,7 @@ export function FileManager({
     setIsUploading(true);
     setUploadFileName(file.name);
 
-    const result = await uploadDeliverable(projectId, file);
+    const result = await uploadDeliverable(projectId, file, undefined, undefined, fileType);
     
     setIsUploading(false);
     setUploadFileName(null);
@@ -212,7 +220,7 @@ export function FileManager({
             >
               <div className="flex flex-col items-center gap-1">
                 <Upload className="w-5 h-5" />
-                <span className="text-sm">Click to upload files</span>
+                <span className="text-sm">{uploadLabel}</span>
                 <span className="text-xs text-muted-foreground">
                   Video, images, audio, PDF, or ZIP
                 </span>
@@ -228,9 +236,9 @@ export function FileManager({
           {deliverables.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <File className="w-10 h-10 mx-auto mb-3 opacity-50" />
-              <p className="text-sm font-medium">No files yet</p>
+              <p className="text-sm font-medium">{emptyTitle}</p>
               <p className="text-xs">
-                {canUpload ? 'Upload your first file' : 'No files have been uploaded'}
+                {emptyDescription || (canUpload ? 'Upload your first file' : 'No files have been uploaded')}
               </p>
             </div>
           ) : (
