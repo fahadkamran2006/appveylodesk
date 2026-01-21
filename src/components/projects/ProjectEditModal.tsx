@@ -470,14 +470,17 @@ export function ProjectEditModal({
                     <User className="w-4 h-4" />
                     Assigned Client
                   </FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value || ''}>
+                  <Select 
+                    onValueChange={(value) => field.onChange(value === '__none__' ? '' : value)} 
+                    value={field.value || '__none__'}
+                  >
                     <FormControl>
                       <SelectTrigger className="bg-surface-elevated border-border/50">
                         <SelectValue placeholder="Select a client" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="">No client assigned</SelectItem>
+                      <SelectItem value="__none__">No client assigned</SelectItem>
                       {clients.map(client => (
                         <SelectItem key={client.id} value={client.id}>
                           {client.name}
