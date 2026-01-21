@@ -215,8 +215,8 @@ export function ClientProposalModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="glass-card border-border/50 sm:max-w-xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="glass-card border-border/50 sm:max-w-xl max-h-[90vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2 text-foreground">
             <FileText className="w-5 h-5 text-primary" />
             Submit Project Proposal
@@ -227,7 +227,7 @@ export function ClientProposalModal({
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 overflow-y-auto space-y-5 pr-1">
             <FormField
               control={form.control}
               name="title"
@@ -248,11 +248,13 @@ export function ClientProposalModal({
 
             <FormItem>
               <FormLabel className="text-foreground">Project Details</FormLabel>
-              <RichTextEditor
-                content={richDescription}
-                onChange={setRichDescription}
-                placeholder="Describe your project requirements, goals, and any specific details..."
-              />
+              <div className="min-h-[120px]">
+                <RichTextEditor
+                  content={richDescription}
+                  onChange={setRichDescription}
+                  placeholder="Describe your project requirements, goals, and any specific details..."
+                />
+              </div>
             </FormItem>
 
             {/* Reference Links */}
@@ -283,16 +285,16 @@ export function ClientProposalModal({
                 <Upload className="w-4 h-4" />
                 Project Assets <span className="text-muted-foreground font-normal">(optional)</span>
               </FormLabel>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <div
                   onClick={() => fileInputRef.current?.click()}
-                  className="border-2 border-dashed border-border/50 rounded-lg p-4 text-center cursor-pointer hover:border-primary/50 hover:bg-muted/20 transition-colors"
+                  className="border-2 border-dashed border-border/50 rounded-lg p-3 text-center cursor-pointer hover:border-primary/50 hover:bg-muted/20 transition-colors"
                 >
-                  <Upload className="w-6 h-6 mx-auto mb-2 text-muted-foreground" />
+                  <Upload className="w-5 h-5 mx-auto mb-1.5 text-muted-foreground" />
                   <p className="text-sm text-muted-foreground">
-                    Click to upload raw footage, scripts, voiceovers, or other assets
+                    Click to upload raw footage, scripts, voiceovers
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground">
                     Supports video, audio, images, PDFs, and documents
                   </p>
                 </div>
@@ -307,19 +309,19 @@ export function ClientProposalModal({
                 
                 {/* Selected Files List */}
                 {selectedFiles.length > 0 && (
-                  <div className="space-y-2">
+                  <div className="space-y-1.5 max-h-[120px] overflow-y-auto">
                     {selectedFiles.map((fileItem, index) => (
                       <div
                         key={index}
-                        className="flex items-center gap-3 p-2 rounded-lg bg-muted/30 border border-border/30"
+                        className="flex items-center gap-2 p-2 rounded-lg bg-muted/30 border border-border/30"
                       >
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">{fileItem.file.name}</p>
                           <p className="text-xs text-muted-foreground">
                             {formatFileSize(fileItem.file.size)}
-                            {fileItem.status === 'uploading' && ` • Uploading ${fileItem.progress}%`}
+                            {fileItem.status === 'uploading' && ` • ${fileItem.progress}%`}
                             {fileItem.status === 'complete' && ' • Uploaded'}
-                            {fileItem.status === 'error' && ` • ${fileItem.error}`}
+                            {fileItem.status === 'error' && ` • Error`}
                           </p>
                           {fileItem.status === 'uploading' && (
                             <Progress value={fileItem.progress} className="h-1 mt-1" />
@@ -330,7 +332,7 @@ export function ClientProposalModal({
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="h-6 w-6"
+                            className="h-6 w-6 flex-shrink-0"
                             onClick={() => removeFile(index)}
                           >
                             <X className="w-4 h-4" />

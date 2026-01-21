@@ -321,7 +321,7 @@ const handler = async (req: Request): Promise<Response> => {
       // Verify project exists and user has access
       const { data: project, error: projectError } = await service
         .from("projects")
-        .select("id, agency_id")
+        .select("id, agency_id, client_id, status")
         .eq("id", projectId)
         .maybeSingle();
 
@@ -333,14 +333,17 @@ const handler = async (req: Request): Promise<Response> => {
         });
       }
 
-      // Check authorization: must be admin or editor on this project
+      // Check authorization: must be admin, editor on this project, or client who owns this project
       const { data: isEditor } = await service.rpc("is_project_editor", {
         _user_id: userId,
         _project_id: projectId,
       });
 
-      if (roleRow.role !== "admin" && !isEditor) {
-        return new Response(JSON.stringify({ error: "Forbidden - only admins and editors can upload" }), {
+      // Check if user is the client who owns this project
+      const isClientOwner = roleRow.role === "client" && project.client_id === userId;
+
+      if (roleRow.role !== "admin" && !isEditor && !isClientOwner) {
+        return new Response(JSON.stringify({ error: "Forbidden - you don't have permission to upload to this project" }), {
           status: 403,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
