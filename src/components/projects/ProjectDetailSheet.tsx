@@ -33,7 +33,10 @@ import {
   MessageSquare,
   Trash2,
   Loader2,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Edit3,
+  Link as LinkIcon,
+  ExternalLink
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
@@ -45,6 +48,7 @@ import { VideoPlayer } from '@/components/video/VideoPlayer';
 import { CommentPanel } from '@/components/video/CommentPanel';
 import { useToast } from '@/hooks/use-toast';
 import { FilePreviewModal } from '@/components/ui/file-preview-modal';
+import { ProjectEditModal } from './ProjectEditModal';
 
 interface ProjectDetailSheetProps {
   projectId: string | null;
@@ -61,22 +65,29 @@ interface ProjectDetail {
   due_date: string | null;
   budget: number | null;
   editor_rate: number | null;
+  reference_links: string | null;
+  client_id: string | null;
+  agency_id: string;
   client_name?: string;
   editor_name?: string;
 }
 
 const STATUS_COLORS: Record<string, string> = {
+  proposal: 'bg-amber-500/20 text-amber-500',
   backlog: 'bg-muted text-muted-foreground',
   in_progress: 'bg-primary/20 text-primary',
   review: 'bg-warning/20 text-warning',
   done: 'bg-accent/20 text-accent',
+  cancelled: 'bg-destructive/20 text-destructive',
 };
 
 const STATUS_LABELS: Record<string, string> = {
+  proposal: 'Proposal',
   backlog: 'Backlog',
   in_progress: 'In Progress',
   review: 'Review',
   done: 'Delivered',
+  cancelled: 'Cancelled',
 };
 
 export function ProjectDetailSheet({
@@ -99,6 +110,9 @@ export function ProjectDetailSheet({
   // Delete state
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  // Edit modal state
+  const [showEditModal, setShowEditModal] = useState(false);
   
   // Image preview state
   const [previewImage, setPreviewImage] = useState<Deliverable | null>(null);
@@ -201,6 +215,10 @@ export function ProjectDetailSheet({
   const canUpload = userRole === 'admin' || userRole === 'editor';
   const canDelete = userRole === 'admin' || userRole === 'editor';
   const canResolveComments = userRole === 'admin' || userRole === 'editor';
+  const canEdit = userRole === 'admin';
+  
+  // Budget visibility: hide from editors, show to admin and project's client only
+  const canSeeBudget = userRole === 'admin' || (userRole === 'client' && project?.client_id === user?.id);
 
   const handleViewVideo = (deliverable: Deliverable) => {
     setSelectedVideo(deliverable);
@@ -257,10 +275,20 @@ export function ProjectDetailSheet({
     }
   };
 
+  const handleEditSuccess = () => {
+    fetchProject();
+    onProjectDeleted?.(); // Refresh parent list too
+  };
+
   const isImageFile = (fileName: string) => {
     const ext = fileName.split('.').pop()?.toLowerCase();
     return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext || '');
   };
+
+  // Parse reference links (newline separated)
+  const referenceLinks = project?.reference_links
+    ? project.reference_links.split('\n').filter(link => link.trim())
+    : [];
 
   if (!project && !loading) return null;
 
@@ -295,10 +323,22 @@ export function ProjectDetailSheet({
                     </div>
                   ) : (
                     <>
-                      <SheetTitle className="text-xl">{project.title}</SheetTitle>
+                      <div className="flex items-center gap-3">
+                        <SheetTitle className="text-xl">{project.title}</SheetTitle>
+                        {canEdit && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setShowEditModal(true)}
+                            className="h-8 w-8"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
                       <div className="flex items-center gap-2 mt-2">
                         <Badge className={cn('text-xs', STATUS_COLORS[project.status])}>
-                          {STATUS_LABELS[project.status]}
+                          {STATUS_LABELS[project.status] || project.status}
                         </Badge>
                         {project.due_date && (
                           <span className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -313,47 +353,74 @@ export function ProjectDetailSheet({
               </div>
 
               {!selectedVideo && (
-                <div className="flex flex-wrap gap-4 mt-4 text-sm">
-                  {project.client_name && (
-                    <div className="flex items-center gap-1.5 text-muted-foreground">
-                      <User className="w-4 h-4" />
-                      <span>Client: <span className="text-foreground">{project.client_name}</span></span>
+                <>
+                  <div className="flex flex-wrap gap-4 mt-4 text-sm">
+                    {project.client_name && (
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <User className="w-4 h-4" />
+                        <span>Client: <span className="text-foreground">{project.client_name}</span></span>
+                      </div>
+                    )}
+                    {project.editor_name && (
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <Users className="w-4 h-4" />
+                        <span>Editor: <span className="text-foreground">{project.editor_name}</span></span>
+                      </div>
+                    )}
+                    {/* Budget - only visible to admin and client */}
+                    {canSeeBudget && project.budget && (
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <DollarSign className="w-4 h-4" />
+                        <span>Budget: <span className="text-foreground">${project.budget.toLocaleString()}</span></span>
+                      </div>
+                    )}
+                    {projectChannelId && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleOpenProjectChat}
+                      >
+                        <MessageSquare className="w-4 h-4 mr-2" />
+                        Open Project Chat
+                      </Button>
+                    )}
+                    {userRole === 'admin' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowDeleteDialog(true)}
+                        className="ml-auto text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete Project
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Reference Links */}
+                  {referenceLinks.length > 0 && (
+                    <div className="mt-4 p-3 rounded-lg bg-muted/30 border border-border">
+                      <div className="flex items-center gap-2 text-sm font-medium mb-2">
+                        <LinkIcon className="w-4 h-4" />
+                        Reference Links
+                      </div>
+                      <div className="space-y-1">
+                        {referenceLinks.map((link, index) => (
+                          <a
+                            key={index}
+                            href={link.startsWith('http') ? link : `https://${link}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 text-sm text-primary hover:underline truncate"
+                          >
+                            <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                            <span className="truncate">{link}</span>
+                          </a>
+                        ))}
+                      </div>
                     </div>
                   )}
-                  {project.editor_name && (
-                    <div className="flex items-center gap-1.5 text-muted-foreground">
-                      <Users className="w-4 h-4" />
-                      <span>Editor: <span className="text-foreground">{project.editor_name}</span></span>
-                    </div>
-                  )}
-                  {project.budget && userRole === 'admin' && (
-                    <div className="flex items-center gap-1.5 text-muted-foreground">
-                      <DollarSign className="w-4 h-4" />
-                      <span>Budget: <span className="text-foreground">${project.budget.toLocaleString()}</span></span>
-                    </div>
-                  )}
-                  {projectChannelId && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleOpenProjectChat}
-                    >
-                      <MessageSquare className="w-4 h-4 mr-2" />
-                      Open Project Chat
-                    </Button>
-                  )}
-                  {userRole === 'admin' && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowDeleteDialog(true)}
-                      className="ml-auto text-destructive hover:text-destructive hover:bg-destructive/10"
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Delete Project
-                    </Button>
-                  )}
-                </div>
+                </>
               )}
 
               {/* Storage usage for admin */}
@@ -498,6 +565,16 @@ export function ProjectDetailSheet({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit Project Modal */}
+      {project && (
+        <ProjectEditModal
+          project={project}
+          open={showEditModal}
+          onOpenChange={setShowEditModal}
+          onSuccess={handleEditSuccess}
+        />
+      )}
     </Sheet>
   );
 }
