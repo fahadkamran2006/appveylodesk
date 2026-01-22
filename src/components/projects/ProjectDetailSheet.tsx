@@ -230,13 +230,13 @@ export function ProjectDetailSheet({
   const handleViewVideo = (deliverable: Deliverable) => {
     setSelectedVideo(deliverable);
     setActiveTab('review');
-    setCurrentTimestamp(null);
+    setCurrentTimestamp(0);
   };
 
   const handleAddComment = async (content: string) => {
-    if (currentTimestamp !== null) {
-      await addComment(currentTimestamp, content);
-    }
+    // Always use the current timestamp (default to 0 if somehow null)
+    const timestamp = currentTimestamp ?? videoPlayerRef.current?.getCurrentTime() ?? 0;
+    await addComment(timestamp, content);
   };
 
   const handleBackFromVideo = () => {
@@ -251,6 +251,19 @@ export function ProjectDetailSheet({
       const time = videoPlayerRef.current.getCurrentTime();
       setCurrentTimestamp(time);
     }
+  }, []);
+
+  // Handle seeking to a timestamp from the comment panel
+  const handleSeekToTimestamp = useCallback((timestamp: number) => {
+    if (videoPlayerRef.current) {
+      videoPlayerRef.current.seekTo(timestamp);
+      setCurrentTimestamp(timestamp);
+    }
+  }, []);
+
+  // Handle time updates from the video player
+  const handleTimeUpdate = useCallback((time: number) => {
+    setCurrentTimestamp(time);
   }, []);
 
   const handleOpenProjectChat = () => {
@@ -464,8 +477,8 @@ export function ProjectDetailSheet({
                     src={selectedVideo.file_url}
                     deliverableId={selectedVideo.id}
                     comments={comments}
-                    onTimeUpdate={setCurrentTimestamp}
-                    onSeekToComment={setCurrentTimestamp}
+                    onTimeUpdate={handleTimeUpdate}
+                    onSeekToComment={handleSeekToTimestamp}
                     onAddComment={(timestamp) => setCurrentTimestamp(timestamp)}
                     onPause={() => {}}
                     className="flex-1"
@@ -484,7 +497,7 @@ export function ProjectDetailSheet({
                     onAddComment={handleAddComment}
                     onResolveComment={resolveComment}
                     onUnresolveComment={unresolveComment}
-                    onSeekToTimestamp={setCurrentTimestamp}
+                    onSeekToTimestamp={handleSeekToTimestamp}
                     onPauseVideo={handlePauseForComment}
                   />
                 </div>

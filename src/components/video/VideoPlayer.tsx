@@ -12,58 +12,37 @@ const BUNNY_STREAM_LIBRARY_ID = '582147';
 function isBunnyStreamVideo(urlOrId: string): boolean {
   if (!urlOrId) return false;
   
-  // Bunny Stream video IDs are GUIDs like: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
   const guidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   
-  // Check if it's a direct GUID (most common case for Stream videos)
-  if (guidPattern.test(urlOrId)) {
-    return true;
-  }
+  if (guidPattern.test(urlOrId)) return true;
+  if (urlOrId.includes('.b-cdn.net/') && urlOrId.includes('/playlist.m3u8')) return true;
   
-  // Check if the URL contains a Bunny Stream HLS pattern
-  if (urlOrId.includes('.b-cdn.net/') && urlOrId.includes('/playlist.m3u8')) {
-    return true;
-  }
-  
-  // Check if URL contains a GUID pattern (e.g., in the path)
   const guidMatch = urlOrId.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
-  if (guidMatch) {
-    return true;
-  }
-  
-  return false;
+  return !!guidMatch;
 }
 
-// Extract video ID from Bunny Stream URL or GUID
 function extractBunnyStreamVideoId(url: string): string | null {
   if (!url) return null;
   
-  // Pattern: direct GUID (most common for Stream videos stored in DB)
   const guidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (guidPattern.test(url)) return url;
   
-  // Pattern: https://xxx.b-cdn.net/{videoId}/playlist.m3u8
   const hlsMatch = url.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/playlist\.m3u8/i);
   if (hlsMatch) return hlsMatch[1];
   
-  // Pattern: GUID anywhere in URL
   const guidMatch = url.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
-  if (guidMatch) return guidMatch[1];
-  
-  return null;
+  return guidMatch ? guidMatch[1] : null;
 }
 
-// Generate Bunny Stream embed URL - ALWAYS use this for Stream videos
 function getBunnyStreamEmbedUrl(videoId: string): string {
-  return `https://iframe.mediadelivery.net/embed/${BUNNY_STREAM_LIBRARY_ID}/${videoId}?autoplay=false&preload=true`;
+  // Enable responsive mode and disable autoplay
+  return `https://iframe.mediadelivery.net/embed/${BUNNY_STREAM_LIBRARY_ID}/${videoId}?autoplay=false&preload=true&responsive=true`;
 }
 
-// Generate Bunny Stream MP4 download URL
 export function getBunnyStreamDownloadUrl(videoId: string): string {
   return `https://video.bunnycdn.com/play/${BUNNY_STREAM_LIBRARY_ID}/${videoId}/mp4_source`;
 }
 
-// Check if URL is a regular file (not a Stream video)
 function isRegularVideoFile(url: string): boolean {
   if (!url) return false;
   const ext = url.split('?')[0].split('.').pop()?.toLowerCase();
@@ -73,9 +52,7 @@ function isRegularVideoFile(url: string): boolean {
 function extractDeliverablesPathFromUrl(fileUrl: string): string | null {
   if (!fileUrl) return null;
 
-  // If we already have a storage path like "projectId/filename.ext"
   if (!/^https?:\/\//i.test(fileUrl)) {
-    // Don't treat GUIDs as storage paths
     if (isBunnyStreamVideo(fileUrl)) return null;
     return decodeURIComponent(fileUrl.split('?')[0]);
   }
@@ -119,7 +96,6 @@ async function getDeliverableSignedUrl(
   } catch (edgeFnError) {
     console.warn('Edge function failed, attempting frontend fallback:', edgeFnError);
     
-    // Fallback: try to create signed URL directly via Supabase client
     const filePath = extractDeliverablesPathFromUrl(fileUrl);
     if (filePath) {
       const { data, error } = await supabase.storage
@@ -127,12 +103,10 @@ async function getDeliverableSignedUrl(
         .createSignedUrl(filePath, expiresIn);
       
       if (!error && data?.signedUrl) {
-        console.log('Fallback signed URL created successfully');
         return data.signedUrl;
       }
     }
     
-    // Re-throw original error if fallback also fails
     throw edgeFnError;
   }
 }
@@ -160,12 +134,11 @@ async function checkStreamStatus(fileUrl: string): Promise<StreamStatus | null> 
 export interface VideoPlayerHandle {
   pause: () => void;
   getCurrentTime: () => number;
+  seekTo: (seconds: number) => void;
 }
 
 interface VideoPlayerProps {
-  /** Original src (typically deliverable.file_url) - can be Bunny Stream GUID, HLS URL, or Supabase URL */
   src: string;
-  /** When provided and NOT a Bunny Stream video, we fetch a signed URL via backend */
   deliverableId?: string;
   comments: VideoComment[];
   onTimeUpdate?: (time: number) => void;
@@ -189,33 +162,54 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
   showCommentMarkers = true,
   className,
 }, ref) => {
-  // Suppress unused variable warnings – props kept for API compatibility
-  void comments;
-  void onSeekToComment;
-  void onAddComment;
-  void showCommentMarkers;
-
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  
   const [playbackUrl, setPlaybackUrl] = useState<string | null>(null);
   const [isHls, setIsHls] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [useIframeEmbed, setUseIframeEmbed] = useState(false);
   const [streamVideoId, setStreamVideoId] = useState<string | null>(null);
-  const [iframePaused, setIframePaused] = useState(false);
-  const [iframeTime, setIframeTime] = useState(0);
+  
+  // Video state tracking
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [isPaused, setIsPaused] = useState(true);
 
-  // Expose pause and getCurrentTime methods for parent components
+  // Refs to track current time for imperative access
+  const currentTimeRef = useRef(0);
+
+  // Seek to a specific timestamp
+  const seekTo = useCallback((seconds: number) => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = seconds;
+      setCurrentTime(seconds);
+      currentTimeRef.current = seconds;
+      onSeekToComment?.(seconds);
+    } else if (iframeRef.current && streamVideoId) {
+      // Send seek command to Bunny iframe
+      iframeRef.current.contentWindow?.postMessage({
+        event: 'seek',
+        time: seconds
+      }, '*');
+      setCurrentTime(seconds);
+      currentTimeRef.current = seconds;
+      onSeekToComment?.(seconds);
+    }
+  }, [streamVideoId, onSeekToComment]);
+
+  // Expose methods for parent components
   useImperativeHandle(ref, () => ({
     pause: () => {
       if (videoRef.current) {
         videoRef.current.pause();
+        setIsPaused(true);
       } else if (iframeRef.current && streamVideoId) {
-        // Send pause message to Bunny iframe
         iframeRef.current.contentWindow?.postMessage({ event: 'pause' }, '*');
-        setIframePaused(true);
+        setIsPaused(true);
         onPause?.();
       }
     },
@@ -223,34 +217,72 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
       if (videoRef.current) {
         return videoRef.current.currentTime;
       }
-      return iframeTime;
-    }
+      return currentTimeRef.current;
+    },
+    seekTo
   }));
 
-  // Listen for messages from Bunny Stream iframe
+  // Listen for Bunny Stream iframe messages
   useEffect(() => {
     if (!useIframeEmbed) return;
 
     const handleMessage = (event: MessageEvent) => {
-      // Bunny Stream sends progress events
-      if (event.data?.event === 'timeupdate' && typeof event.data?.currentTime === 'number') {
-        const time = event.data.currentTime;
-        setIframeTime(time);
-        onTimeUpdate?.(time);
+      // Bunny Stream sends various events via postMessage
+      const data = event.data;
+      
+      if (typeof data !== 'object' || !data) return;
+      
+      // Handle time updates from Bunny player
+      if (data.event === 'timeupdate' || data.type === 'timeupdate') {
+        const time = data.currentTime ?? data.time ?? data.seconds ?? 0;
+        if (typeof time === 'number') {
+          setCurrentTime(time);
+          currentTimeRef.current = time;
+          onTimeUpdate?.(time);
+        }
       }
-      if (event.data?.event === 'pause') {
-        setIframePaused(true);
+      
+      // Handle duration info
+      if (data.event === 'durationchange' || data.type === 'durationchange' || data.duration) {
+        const dur = data.duration ?? 0;
+        if (typeof dur === 'number' && dur > 0) {
+          setDuration(dur);
+        }
+      }
+      
+      // Handle play/pause events
+      if (data.event === 'pause' || data.type === 'pause') {
+        setIsPaused(true);
         onPause?.();
       }
-      if (event.data?.event === 'play') {
-        setIframePaused(false);
+      if (data.event === 'play' || data.type === 'play' || data.event === 'playing') {
+        setIsPaused(false);
         onPlay?.();
+      }
+      
+      // Handle loaded metadata
+      if (data.event === 'loadedmetadata' && data.duration) {
+        setDuration(data.duration);
       }
     };
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
   }, [useIframeEmbed, onTimeUpdate, onPause, onPlay]);
+
+  // Poll for time updates when using iframe (fallback for iframes that don't send events)
+  useEffect(() => {
+    if (!useIframeEmbed || !streamVideoId) return;
+    
+    // Request current time from iframe periodically
+    const pollInterval = setInterval(() => {
+      if (iframeRef.current?.contentWindow) {
+        iframeRef.current.contentWindow.postMessage({ event: 'getCurrentTime' }, '*');
+      }
+    }, 500);
+    
+    return () => clearInterval(pollInterval);
+  }, [useIframeEmbed, streamVideoId]);
 
   // Cleanup HLS instance
   const cleanupHls = useCallback(() => {
@@ -260,7 +292,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
     }
   }, []);
 
-  // Initialize HLS.js for adaptive streaming
+  // Initialize HLS.js
   const initializeHls = useCallback((url: string, video: HTMLVideoElement) => {
     cleanupHls();
 
@@ -276,7 +308,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
       hls.attachMedia(video);
 
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        console.log('HLS manifest loaded, quality levels:', hls.levels.length);
+        console.log('HLS manifest loaded');
       });
 
       hls.on(Hls.Events.ERROR, (_, data) => {
@@ -284,11 +316,9 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
           console.error('Fatal HLS error:', data.type, data.details);
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:
-              console.log('Attempting to recover from network error...');
               hls.startLoad();
               break;
             case Hls.ErrorTypes.MEDIA_ERROR:
-              console.log('Attempting to recover from media error...');
               hls.recoverMediaError();
               break;
             default:
@@ -319,23 +349,22 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
       setIsProcessing(false);
       setUseIframeEmbed(false);
       setStreamVideoId(null);
+      setCurrentTime(0);
+      setDuration(0);
+      currentTimeRef.current = 0;
 
       try {
-        // PRIORITY: Check if it's a Bunny Stream video (GUID or Stream URL)
-        // This MUST be checked first to avoid using wrong CDN URLs
+        // Check if it's a Bunny Stream video
         if (isBunnyStreamVideo(src)) {
           const videoId = extractBunnyStreamVideoId(src);
-          console.log('Detected Bunny Stream video, using iframe embed. ID:', videoId);
+          console.log('Detected Bunny Stream video, ID:', videoId);
           
           if (videoId) {
-            // Check if video is ready
             const status = await checkStreamStatus(src);
             
             if (status && !status.isReady && status.status < 4) {
-              console.log('Video is still processing, status:', status.status);
               setIsProcessing(true);
               
-              // Poll for status updates
               pollInterval = setInterval(async () => {
                 const newStatus = await checkStreamStatus(src);
                 if (newStatus?.isReady || (newStatus?.status ?? 0) >= 4) {
@@ -352,7 +381,6 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
               return;
             }
             
-            // Video is ready - use iframe embed (NOT CDN URL)
             if (!cancelled) {
               setUseIframeEmbed(true);
               setStreamVideoId(videoId);
@@ -362,7 +390,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
           }
         }
 
-        // For regular video files with Supabase storage, get signed URL
+        // For regular video files with Supabase storage
         if (deliverableId && isRegularVideoFile(src)) {
           const signed = await getDeliverableSignedUrl(deliverableId, src);
           if (!signed) throw new Error('Could not create a signed URL');
@@ -373,7 +401,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
           return;
         }
 
-        // Fallback: attempt to sign based on URL pattern (for Supabase storage)
+        // Fallback: attempt to sign based on URL pattern
         const filePath = extractDeliverablesPathFromUrl(src);
         if (filePath) {
           const { data, error } = await supabase.storage
@@ -388,7 +416,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
           return;
         }
 
-        // Last resort: Use URL as-is (only for non-Stream URLs)
+        // Last resort: Use URL as-is
         if (!cancelled) {
           setPlaybackUrl(src);
           setIsHls(src.endsWith('.m3u8'));
@@ -410,7 +438,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
     };
   }, [src, deliverableId, cleanupHls]);
 
-  // Setup HLS or native playback when URL is ready (only for non-iframe mode)
+  // Setup HLS or native playback
   useEffect(() => {
     if (!playbackUrl || !videoRef.current || useIframeEmbed) return;
 
@@ -423,15 +451,76 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
 
   const handleTimeUpdate = () => {
     if (!videoRef.current) return;
-    onTimeUpdate?.(videoRef.current.currentTime);
+    const time = videoRef.current.currentTime;
+    setCurrentTime(time);
+    currentTimeRef.current = time;
+    onTimeUpdate?.(time);
+  };
+
+  const handleLoadedMetadata = () => {
+    if (!videoRef.current) return;
+    setDuration(videoRef.current.duration);
   };
 
   const handlePause = () => {
+    setIsPaused(true);
     onPause?.();
   };
 
   const handlePlay = () => {
+    setIsPaused(false);
     onPlay?.();
+  };
+
+  // Handle clicking on timeline markers
+  const handleMarkerClick = (timestamp: number) => {
+    seekTo(timestamp);
+    onSeekToComment?.(timestamp);
+  };
+
+  // Render comment markers on timeline
+  const renderCommentMarkers = () => {
+    if (!showCommentMarkers || !comments || comments.length === 0 || duration <= 0) {
+      return null;
+    }
+
+    // Get unique timestamps (dedupe comments at same second)
+    const uniqueTimestamps = [...new Set(comments.map(c => Math.floor(c.timestamp_seconds)))];
+
+    return (
+      <div className="absolute bottom-0 left-0 right-0 h-8 pointer-events-none z-10">
+        {uniqueTimestamps.map((timestamp) => {
+          const position = (timestamp / duration) * 100;
+          const commentsAtTime = comments.filter(c => Math.floor(c.timestamp_seconds) === timestamp);
+          const hasUnresolved = commentsAtTime.some(c => !c.is_resolved);
+          
+          return (
+            <button
+              key={timestamp}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleMarkerClick(timestamp);
+              }}
+              className={cn(
+                "absolute bottom-1 w-3 h-3 rounded-full transform -translate-x-1/2 pointer-events-auto transition-all hover:scale-150 z-20",
+                hasUnresolved 
+                  ? "bg-primary shadow-lg shadow-primary/50" 
+                  : "bg-muted-foreground/50"
+              )}
+              style={{ left: `${position}%` }}
+              title={`${commentsAtTime.length} comment${commentsAtTime.length > 1 ? 's' : ''} at ${formatTime(timestamp)}`}
+            />
+          );
+        })}
+      </div>
+    );
+  };
+
+  // Format time for display
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   if (error) {
@@ -453,7 +542,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
           <Loader2 className="w-10 h-10 mx-auto mb-3 text-primary animate-spin" />
           <p className="text-sm font-medium text-foreground">Processing Video</p>
           <p className="text-xs text-muted-foreground mt-1">
-            This video is being transcoded for optimal playback. This may take a few minutes.
+            This video is being transcoded. This may take a few minutes.
           </p>
         </div>
       </div>
@@ -471,10 +560,10 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
     );
   }
 
-  // Use iframe embed for Bunny Stream videos - this is the correct way
+  // Bunny Stream iframe embed
   if (useIframeEmbed && streamVideoId) {
     return (
-      <div className={cn('w-full h-full', className)}>
+      <div ref={containerRef} className={cn('w-full h-full relative', className)}>
         <iframe
           ref={iframeRef}
           src={playbackUrl}
@@ -484,14 +573,21 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
           allowFullScreen
           title="Video Player"
         />
+        {/* Comment markers overlay */}
+        {renderCommentMarkers()}
+        {/* Current time display for debugging/visibility */}
+        <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+          {formatTime(currentTime)} / {formatTime(duration || 0)}
+        </div>
       </div>
     );
   }
 
   const mimeType = isHls ? 'application/vnd.apple.mpegurl' : guessVideoMimeType(src);
 
+  // Native video player
   return (
-    <div className={cn('w-full h-full', className)}>
+    <div ref={containerRef} className={cn('w-full h-full relative', className)}>
       <video
         ref={videoRef}
         className="w-full h-full object-contain rounded-lg"
@@ -499,6 +595,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
         playsInline
         preload="metadata"
         onTimeUpdate={handleTimeUpdate}
+        onLoadedMetadata={handleLoadedMetadata}
         onPause={handlePause}
         onPlay={handlePlay}
         onError={() => {
@@ -510,6 +607,8 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
         {!isHls && <source src={playbackUrl} type={mimeType} />}
         Your browser does not support video playback.
       </video>
+      {/* Comment markers overlay for native video */}
+      {renderCommentMarkers()}
     </div>
   );
 });
