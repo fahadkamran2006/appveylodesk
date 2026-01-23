@@ -3,10 +3,8 @@ import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import Navbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
-
 const Terms = () => {
-  return (
-    <>
+  return <>
       <Helmet>
         <title>Terms of Service | Veylodesk</title>
         <meta name="description" content="Veylodesk terms of service - the agreement between you and Veylodesk." />
@@ -83,7 +81,7 @@ const Terms = () => {
                 <section>
                   <h2 className="text-2xl font-semibold text-foreground mb-4">7. Contact</h2>
                   <p className="text-muted-foreground">
-                    For questions about these Terms, contact us at legal@veylodesk.com.
+                    For questions about these Terms, contact us at support@veylodesk.com.
                   </p>
                 </section>
               </div>
@@ -93,8 +91,6 @@ const Terms = () => {
 
         <Footer />
       </div>
-    </>
-  );
+    </>;
 };
-
 export default Terms;
