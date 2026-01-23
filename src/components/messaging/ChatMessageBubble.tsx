@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { Play, Pause, Maximize2 } from 'lucide-react';
+import { Play, Pause, Maximize2, Check, CheckCheck } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import DOMPurify from 'dompurify';
 
@@ -29,6 +29,8 @@ interface ChatMessageBubbleProps {
   showAvatar: boolean;
   isMuted: boolean;
   isDM: boolean;
+  isDelivered?: boolean;
+  isRead?: boolean;
 }
 
 // Safely render HTML content or plain text
@@ -60,6 +62,8 @@ export function ChatMessageBubble({
   showAvatar,
   isMuted,
   isDM,
+  isDelivered = true,
+  isRead = false,
 }: ChatMessageBubbleProps) {
   const [videoPlaying, setVideoPlaying] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -179,9 +183,9 @@ export function ChatMessageBubble({
             </div>
           )}
 
-          {/* Timestamp */}
+          {/* Timestamp and Read Status */}
           <div className={cn(
-            'px-4 pb-2',
+            'px-4 pb-2 flex items-center justify-end gap-1',
             !message.content && hasAttachment && 'pt-1'
           )}>
             <p
@@ -192,6 +196,21 @@ export function ChatMessageBubble({
             >
               {format(new Date(message.created_at), 'h:mm a')}
             </p>
+            {/* Read status ticks - only show for own messages in DMs */}
+            {isOwn && isDM && (
+              <span className={cn(
+                'flex items-center',
+                isRead 
+                  ? 'text-blue-400' 
+                  : isOwn ? 'text-primary-foreground/70' : 'text-muted-foreground'
+              )}>
+                {isRead ? (
+                  <CheckCheck className="w-3.5 h-3.5" />
+                ) : isDelivered ? (
+                  <Check className="w-3.5 h-3.5" />
+                ) : null}
+              </span>
+            )}
           </div>
         </div>
       </div>

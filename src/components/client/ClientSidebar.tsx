@@ -23,7 +23,7 @@ export const ClientSidebar = () => {
   const { totalUnread } = useUnreadMessages();
 
   return (
-    <aside className="w-64 bg-surface-dark border-r border-border/50 flex flex-col">
+    <aside className="w-64 bg-surface-dark border-r border-border/50 flex flex-col sticky top-0 h-screen overflow-y-auto">
       <div className="p-6 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
           <div className="w-9 h-9 rounded-lg bg-gradient-primary flex items-center justify-center">
