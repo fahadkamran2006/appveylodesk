@@ -169,8 +169,12 @@ const handler = async (req: Request): Promise<Response> => {
         const cdnHost = getStreamCdnHost();
 
         // Generate TUS upload URL for resumable uploads
+        // Use a single expiration timestamp to prevent mismatch
         const tusUploadUrl = `https://video.bunnycdn.com/tusupload`;
-        const authorizationSignature = await generateTusSignature(BUNNY_STREAM_LIBRARY_ID, BUNNY_STREAM_API_KEY, videoId, Math.floor(Date.now() / 1000) + 3600);
+        const expirationTime = Math.floor(Date.now() / 1000) + 3600;
+        const authorizationSignature = await generateTusSignature(BUNNY_STREAM_LIBRARY_ID, BUNNY_STREAM_API_KEY, videoId, expirationTime);
+
+        console.log(`TUS upload prepared for video ${videoId}, expires at ${expirationTime}`);
 
         return new Response(JSON.stringify({
           ok: true,
@@ -179,7 +183,7 @@ const handler = async (req: Request): Promise<Response> => {
           uploadUrl: tusUploadUrl,
           libraryId: BUNNY_STREAM_LIBRARY_ID,
           authorizationSignature,
-          authorizationExpire: Math.floor(Date.now() / 1000) + 3600,
+          authorizationExpire: expirationTime,
           cdnUrl: `https://${cdnHost}/${videoId}/playlist.m3u8`,
           thumbnailUrl: `https://${cdnHost}/${videoId}/thumbnail.jpg`,
         }), {
