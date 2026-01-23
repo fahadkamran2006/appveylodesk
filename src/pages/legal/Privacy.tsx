@@ -3,10 +3,8 @@ import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import Navbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
-
 const Privacy = () => {
-  return (
-    <>
+  return <>
       <Helmet>
         <title>Privacy Policy | Veylodesk</title>
         <meta name="description" content="Veylodesk privacy policy - how we collect, use, and protect your data." />
@@ -70,7 +68,7 @@ const Privacy = () => {
                 <section>
                   <h2 className="text-2xl font-semibold text-foreground mb-4">5. Contact Us</h2>
                   <p className="text-muted-foreground">
-                    If you have any questions about this Privacy Policy, please contact us at privacy@veylodesk.com.
+                    If you have any questions about this Privacy Policy, please contact us at support@veylodesk.com.
                   </p>
                 </section>
               </div>
@@ -80,8 +78,6 @@ const Privacy = () => {
 
         <Footer />
       </div>
-    </>
-  );
+    </>;
 };
-
 export default Privacy;
