@@ -6,51 +6,44 @@ const PricingSection = () => {
   const plans = [
     {
       name: "Starter",
-      price: "$49",
-      period: "/month",
-      description: "Perfect for solo operators and small teams",
+      price: "$29",
+      period: "/mo",
+      description: "For Freelancers",
       features: [
-        "Up to 3 team members",
-        "10 active projects",
-        "5GB storage",
-        "Basic invoicing",
-        "Email support",
+        { text: "Unlimited Team Members", highlight: true },
+        { text: "Manage 5 Active Clients", highlight: false },
+        { text: "200GB Storage", highlight: false },
+        { text: "Standard Support", highlight: false },
       ],
       cta: "Start Free Trial",
       popular: false,
     },
     {
-      name: "Professional",
-      price: "$99",
-      period: "/month",
-      description: "For growing agencies ready to scale",
+      name: "Growth",
+      price: "$79",
+      period: "/mo",
+      description: "For Growing Agencies",
       features: [
-        "Up to 10 team members",
-        "Unlimited projects",
-        "50GB storage",
-        "Advanced invoicing & payments",
-        "Client portal customization",
-        "Priority support",
-        "API access",
+        { text: "Unlimited Team Members", highlight: true },
+        { text: "Manage 25 Active Clients", highlight: false },
+        { text: "1TB Storage", highlight: false },
+        { text: "White-label Sharing", highlight: false },
       ],
       cta: "Start Free Trial",
       popular: true,
     },
     {
-      name: "Enterprise",
-      price: "Custom",
-      period: "",
-      description: "For large agencies with complex needs",
+      name: "Scale",
+      price: "$149",
+      period: "/mo",
+      description: "For Production Houses",
       features: [
-        "Unlimited team members",
-        "Unlimited everything",
-        "500GB storage",
-        "White-label options",
-        "Dedicated account manager",
-        "Custom integrations",
-        "SLA guarantee",
+        { text: "Unlimited Team Members", highlight: true },
+        { text: "Unlimited Clients", highlight: false },
+        { text: "3TB Storage", highlight: false },
+        { text: "Priority Support", highlight: false },
       ],
-      cta: "Contact Sales",
+      cta: "Start Free Trial",
       popular: false,
     },
   ];
@@ -65,12 +58,12 @@ const PricingSection = () => {
         <div className="max-w-4xl mx-auto text-center mb-16">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-6">
             <Sparkles className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium text-primary">Founders Program</span>
+            <span className="text-sm font-medium text-primary">Simple Pricing</span>
           </div>
 
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6">
-            Simple Pricing.{" "}
-            <span className="text-gradient">Serious Results.</span>
+            Choose Your Plan.{" "}
+            <span className="text-gradient">Scale Without Limits.</span>
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             No hidden fees. No per-seat surprises. Just one flat rate for your entire agency.
@@ -79,7 +72,7 @@ const PricingSection = () => {
 
         {/* Pricing Cards */}
         <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
-          {plans.map((plan, index) => (
+          {plans.map((plan) => (
             <div
               key={plan.name}
               className={`relative glass-card rounded-2xl p-8 flex flex-col ${
@@ -107,9 +100,11 @@ const PricingSection = () => {
 
               <ul className="space-y-3 mb-8 flex-1">
                 {plan.features.map((feature) => (
-                  <li key={feature} className="flex items-start gap-3">
-                    <Check className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
-                    <span className="text-sm text-foreground">{feature}</span>
+                  <li key={feature.text} className="flex items-start gap-3">
+                    <Check className={`w-5 h-5 mt-0.5 flex-shrink-0 ${feature.highlight ? 'text-primary' : 'text-success'}`} />
+                    <span className={`text-sm ${feature.highlight ? 'font-bold text-foreground' : 'text-foreground'}`}>
+                      {feature.text}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -129,26 +124,16 @@ const PricingSection = () => {
           ))}
         </div>
 
-        {/* Founders Badge */}
+        {/* Guarantee Badge */}
         <div className="mt-16 max-w-2xl mx-auto text-center">
           <div className="glass-card rounded-2xl p-8 border-primary/30">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-warning/10 border border-warning/20 text-warning text-sm font-medium mb-4">
-              <Sparkles className="w-4 h-4" />
-              Limited Time
-            </div>
             <h3 className="text-2xl font-bold mb-3 text-foreground">
-              Founders Lifetime Access
+              14-Day Money-Back Guarantee
             </h3>
-            <p className="text-muted-foreground mb-6">
-              Lock in lifetime access at our launch price. First 100 agencies get 50% off forever.
-              <span className="block mt-2 text-foreground font-medium">Only 23 spots remaining.</span>
+            <p className="text-muted-foreground">
+              Try Veylodesk risk-free. If you're not completely satisfied within the first 14 days, 
+              we'll refund your payment—no questions asked.
             </p>
-            <Button variant="hero" size="xl" asChild>
-              <Link to="/auth/signup">
-                Claim Your Spot
-                <ArrowRight className="w-5 h-5" />
-              </Link>
-            </Button>
           </div>
         </div>
       </div>
