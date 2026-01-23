@@ -58,8 +58,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useStorage } from '@/hooks/useStorage';
-import { useUploadQueue } from '@/hooks/useUploadQueue';
-import { UploadQueuePanel } from '@/components/upload/UploadQueuePanel';
+import { useUploadContext } from '@/contexts/UploadContext';
 
 interface StorageFile {
   id: string;
@@ -97,7 +96,7 @@ const StoragePage = () => {
     renameDeliverable, 
   } = useStorage();
   
-  const uploadQueue = useUploadQueue();
+  const { addToQueue, queue } = useUploadContext();
 
   const [files, setFiles] = useState<StorageFile[]>([]);
   const [groupedFiles, setGroupedFiles] = useState<GroupedFiles>({});
@@ -429,7 +428,7 @@ const StoragePage = () => {
     }
 
     const projectTitle = availableProjects.find(p => p.id === selectedProjectId)?.title;
-    uploadQueue.addToQueue(droppedFiles, selectedProjectId, projectTitle);
+    addToQueue(droppedFiles, selectedProjectId, projectTitle);
     
     setShowProjectSelector(false);
     setDroppedFiles([]);
@@ -546,11 +545,11 @@ const StoragePage = () => {
 
   // Refetch files when uploads complete
   useEffect(() => {
-    const completedCount = uploadQueue.queue.filter(q => q.status === 'completed').length;
+    const completedCount = queue.filter(q => q.status === 'completed').length;
     if (completedCount > 0) {
       fetchFiles();
     }
-  }, [uploadQueue.queue, fetchFiles]);
+  }, [queue, fetchFiles]);
 
   const getFileIcon = (fileName: string) => {
     const ext = fileName.split('.').pop()?.toLowerCase();
@@ -1352,24 +1351,7 @@ const StoragePage = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Upload Queue Panel */}
-      <UploadQueuePanel
-        queue={uploadQueue.queue}
-        isProcessing={uploadQueue.isProcessing}
-        isPaused={uploadQueue.isPaused}
-        onPauseQueue={uploadQueue.pauseQueue}
-        onResumeQueue={uploadQueue.resumeQueue}
-        onPauseUpload={uploadQueue.pauseUpload}
-        onResumeUpload={uploadQueue.resumeUpload}
-        onRemove={uploadQueue.removeFromQueue}
-        onRetry={uploadQueue.retryUpload}
-        onReorder={uploadQueue.reorderQueue}
-        onClearCompleted={uploadQueue.clearCompleted}
-        onCancelAll={uploadQueue.cancelAll}
-        formatBytes={uploadQueue.formatBytes}
-        formatTimeRemaining={uploadQueue.formatTimeRemaining}
-        stats={uploadQueue.getQueueStats()}
-      />
+      {/* Upload queue handled by GlobalUploadTray in App.tsx */}
     </>
   );
 };
