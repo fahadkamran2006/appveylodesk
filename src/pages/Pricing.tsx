@@ -9,51 +9,44 @@ const Pricing = () => {
   const plans = [
     {
       name: "Starter",
-      price: "$49",
-      period: "/month",
-      description: "For solo operators",
+      price: "$29",
+      period: "/mo",
+      description: "For Freelancers",
       features: [
-        "Up to 3 team members",
-        "10 active projects",
-        "5GB storage",
-        "Basic invoicing",
-        "Email support",
+        { text: "Unlimited Team Members", highlight: true },
+        { text: "Manage 5 Active Clients", highlight: false },
+        { text: "200GB Storage", highlight: false },
+        { text: "Standard Support", highlight: false },
       ],
       cta: "Start Free Trial",
       popular: false,
     },
     {
-      name: "Professional",
-      price: "$99",
-      period: "/month",
-      description: "For growing agencies",
+      name: "Growth",
+      price: "$79",
+      period: "/mo",
+      description: "For Growing Agencies",
       features: [
-        "Up to 10 team members",
-        "Unlimited projects",
-        "50GB storage",
-        "Advanced invoicing",
-        "Client portal customization",
-        "Priority support",
-        "API access",
+        { text: "Unlimited Team Members", highlight: true },
+        { text: "Manage 25 Active Clients", highlight: false },
+        { text: "1TB Storage", highlight: false },
+        { text: "White-label Sharing", highlight: false },
       ],
       cta: "Start Free Trial",
       popular: true,
     },
     {
-      name: "Enterprise",
-      price: "Custom",
-      period: "",
-      description: "For large agencies",
+      name: "Scale",
+      price: "$149",
+      period: "/mo",
+      description: "For Production Houses",
       features: [
-        "Unlimited team members",
-        "Unlimited everything",
-        "500GB storage",
-        "White-label options",
-        "Dedicated account manager",
-        "Custom integrations",
-        "SLA guarantee",
+        { text: "Unlimited Team Members", highlight: true },
+        { text: "Unlimited Clients", highlight: false },
+        { text: "3TB Storage", highlight: false },
+        { text: "Priority Support", highlight: false },
       ],
-      cta: "Contact Sales",
+      cta: "Start Free Trial",
       popular: false,
     },
   ];
@@ -110,9 +103,11 @@ const Pricing = () => {
 
                   <ul className="space-y-4 mb-8 flex-1">
                     {plan.features.map((feature) => (
-                      <li key={feature} className="flex items-start gap-3">
-                        <Check className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
-                        <span className="text-foreground">{feature}</span>
+                      <li key={feature.text} className="flex items-start gap-3">
+                        <Check className={`w-5 h-5 mt-0.5 flex-shrink-0 ${feature.highlight ? 'text-primary' : 'text-success'}`} />
+                        <span className={`${feature.highlight ? 'font-bold text-foreground' : 'text-foreground'}`}>
+                          {feature.text}
+                        </span>
                       </li>
                     ))}
                   </ul>
