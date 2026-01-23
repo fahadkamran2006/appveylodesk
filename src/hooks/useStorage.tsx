@@ -400,15 +400,15 @@ export function useStorage() {
     }
   }, [invokeDeliverablesOps]);
 
-  // Delete deliverable (Bunny CDN + DB)
+  // Delete deliverable (Bunny CDN/Stream + DB) - uses delete-asset edge function
   const deleteDeliverable = useCallback(async (deliverable: Deliverable): Promise<boolean> => {
     try {
-      // Use bunny-ops for Bunny CDN files, fallback to deliverables-ops for legacy Supabase files
       const isBunnyCdn = deliverable.file_url.includes('b-cdn.net') || deliverable.file_url.includes('bunnycdn');
       
       if (isBunnyCdn) {
-        const { data, error } = await supabase.functions.invoke('bunny-ops', {
-          body: { action: 'delete', deliverableId: deliverable.id },
+        // Use new delete-asset function for proper Bunny cleanup
+        const { data, error } = await supabase.functions.invoke('delete-asset', {
+          body: { action: 'delete_file', deliverableId: deliverable.id },
         });
         if (error) throw error;
         if (data?.error) throw new Error(data.error);
@@ -439,6 +439,23 @@ export function useStorage() {
       return false;
     }
   }, [fetchStorageInfo, toast, invokeDeliverablesOps]);
+
+  // Delete all project files (for project deletion - prevents zombie files)
+  const deleteProjectFiles = useCallback(async (projectId: string): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('delete-asset', {
+        body: { action: 'delete_project_files', projectId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      console.log(`Deleted ${data?.deletedCount || 0} files for project ${projectId}`);
+      return true;
+    } catch (error: any) {
+      console.error('Error deleting project files:', error);
+      return false;
+    }
+  }, []);
 
   // Rename deliverable (DB)
   const renameDeliverable = useCallback(async (
@@ -495,6 +512,7 @@ export function useStorage() {
     cancelUpload,
     fetchDeliverables,
     deleteDeliverable,
+    deleteProjectFiles,
     renameDeliverable,
     getDeliverableSignedUrl,
     formatBytes,

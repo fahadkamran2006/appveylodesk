@@ -8,3 +8,9 @@ verify_jwt = false
 
 [functions.deliverables-ops]
 verify_jwt = false
+
+[functions.presigned-upload]
+verify_jwt = false
+
+[functions.delete-asset]
+verify_jwt = false
