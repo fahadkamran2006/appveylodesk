@@ -282,6 +282,35 @@ export type Database = {
           },
         ]
       }
+      cleared_chats: {
+        Row: {
+          channel_id: string
+          cleared_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          channel_id: string
+          cleared_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          channel_id?: string
+          cleared_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cleared_chats_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deliverable_comments: {
         Row: {
           content: string
@@ -429,6 +458,35 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      message_read_receipts: {
+        Row: {
+          id: string
+          message_id: string
+          read_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          message_id: string
+          read_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          message_id?: string
+          read_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_read_receipts_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
             referencedColumns: ["id"]
           },
         ]

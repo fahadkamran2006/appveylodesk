@@ -61,9 +61,19 @@ export function ChatList({
   const [activeTab, setActiveTab] = useState<'dm' | 'project'>('dm');
   const [showArchived, setShowArchived] = useState(false);
 
-  // Separate active and archived project channels
-  const activeProjectChannels = projectChannels.filter(c => !c.is_archived);
-  const archivedProjectChannels = projectChannels.filter(c => c.is_archived);
+  // Sort channels by last message time (most recent first)
+  const sortByRecency = (a: Channel, b: Channel) => {
+    const aTime = a.last_message?.created_at || a.updated_at;
+    const bTime = b.last_message?.created_at || b.updated_at;
+    return new Date(bTime).getTime() - new Date(aTime).getTime();
+  };
+
+  // Sort DM channels by recency
+  const sortedDmChannels = [...dmChannels].sort(sortByRecency);
+
+  // Separate active and archived project channels, sorted by recency
+  const activeProjectChannels = projectChannels.filter(c => !c.is_archived).sort(sortByRecency);
+  const archivedProjectChannels = projectChannels.filter(c => c.is_archived).sort(sortByRecency);
 
   const getOtherParticipant = (channel: Channel) => {
     return channel.participants.find(p => p.user_id !== user?.id)?.profile;
@@ -204,14 +214,14 @@ export function ChatList({
             )}
           </div>
           <ScrollArea className="flex-1 px-2">
-            {dmChannels.length === 0 ? (
+            {sortedDmChannels.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
                 <p className="text-sm">No direct messages yet</p>
               </div>
             ) : (
               <div className="space-y-1">
-                {dmChannels.map(renderChannelItem)}
+                {sortedDmChannels.map(renderChannelItem)}
               </div>
             )}
           </ScrollArea>

@@ -83,7 +83,7 @@ export function CollapsibleSidebar({ role = 'admin' }: CollapsibleSidebarProps) 
   return (
     <aside 
       className={cn(
-        "bg-surface-dark border-r border-border/50 flex flex-col transition-all duration-300 ease-in-out flex-shrink-0",
+        "bg-surface-dark border-r border-border/50 flex flex-col transition-all duration-300 ease-in-out flex-shrink-0 sticky top-0 h-screen overflow-y-auto",
         isCollapsed ? "w-16" : "w-64"
       )}
     >
