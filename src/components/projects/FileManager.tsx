@@ -1,9 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   AlertDialog,
@@ -28,9 +26,10 @@ import {
   Eye,
   Loader2
 } from 'lucide-react';
-import { Deliverable, useStorage, UploadProgress } from '@/hooks/useStorage';
+import { Deliverable, useStorage } from '@/hooks/useStorage';
+import { useUploadContext } from '@/contexts/UploadContext';
 import { format } from 'date-fns';
-import { extractBunnyStreamVideoId, isBunnyStreamGuid, buildBunnyStreamDownloadUrl } from '@/lib/bunnyStream';
+import { extractBunnyStreamVideoId, buildBunnyStreamDownloadUrl } from '@/lib/bunnyStream';
 
 // Bunny Stream Library ID
 const BUNNY_STREAM_LIBRARY_ID = '582147';
@@ -91,52 +90,27 @@ export function FileManager({
   emptyDescription,
   uploadLabel = 'Click to upload files',
 }: FileManagerProps) {
-  const { 
-    uploadDeliverable, 
-    deleteDeliverable, 
-    formatBytes, 
-    formatTimeRemaining,
-    loading,
-    uploadProgress,
-    cancelUpload 
-  } = useStorage();
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadFileName, setUploadFileName] = useState<string | null>(null);
+  const { deleteDeliverable, formatBytes, loading } = useStorage();
+  const { addToQueue } = useUploadContext();
   const [deleteTarget, setDeleteTarget] = useState<Deliverable | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    const file = files[0];
-    setIsUploading(true);
-    setUploadFileName(file.name);
-
-    const result = await uploadDeliverable(projectId, file, undefined, undefined, fileType);
+    // Use the global upload queue (presigned/TUS flow) for reliable large file uploads
+    addToQueue(Array.from(files), projectId, undefined, fileType);
     
-    setIsUploading(false);
-    setUploadFileName(null);
-
-    if (result) {
-      onFileUploaded();
-    }
+    // Notify parent that files were queued (they'll appear when upload completes)
+    onFileUploaded();
 
     // Reset input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-  }, [projectId, uploadDeliverable, onFileUploaded]);
-
-  const handleCancelUpload = useCallback(() => {
-    cancelUpload();
-    setIsUploading(false);
-    setUploadFileName(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  }, [cancelUpload]);
+  }, [projectId, addToQueue, onFileUploaded, fileType]);
 
   const handleDelete = useCallback(async () => {
     if (!deleteTarget) return;
@@ -167,80 +141,32 @@ export function FileManager({
 
   return (
     <div className={cn('flex flex-col h-full', className)}>
-      {/* Upload area */}
+      {/* Upload area - simplified since uploads go to global queue */}
       {canUpload && (
         <div className="p-4 border-b border-border">
           <input
             ref={fileInputRef}
             type="file"
+            multiple
             onChange={handleFileSelect}
             className="hidden"
             accept="video/*,image/*,audio/*,.pdf,.zip"
           />
           
-          {isUploading ? (
-            <div className="space-y-3 p-3 rounded-lg border border-primary/30 bg-primary/5">
-              {/* File name and cancel button */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 min-w-0">
-                  <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" />
-                  <span className="text-sm font-medium truncate">{uploadFileName}</span>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleCancelUpload}
-                  className="text-muted-foreground hover:text-destructive shrink-0"
-                >
-                  Cancel
-                </Button>
-              </div>
-              
-              {/* Progress bar */}
-              <Progress 
-                value={uploadProgress?.percentage ?? 0} 
-                className="h-2" 
-              />
-              
-              {/* Progress details */}
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  {uploadProgress && (
-                    <>
-                      <span>{formatBytes(uploadProgress.loaded)} / {formatBytes(uploadProgress.total)}</span>
-                      <span className="text-primary font-medium">
-                        {uploadProgress.percentage}%
-                      </span>
-                    </>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  {uploadProgress && uploadProgress.speed > 0 && (
-                    <>
-                      <span>{formatBytes(uploadProgress.speed)}/s</span>
-                      <span>•</span>
-                      <span>{formatTimeRemaining(uploadProgress.remainingTime)} left</span>
-                    </>
-                  )}
-                </div>
-              </div>
+          <Button
+            variant="outline"
+            className="w-full h-20 border-dashed"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={loading}
+          >
+            <div className="flex flex-col items-center gap-1">
+              <Upload className="w-5 h-5" />
+              <span className="text-sm">{uploadLabel}</span>
+              <span className="text-xs text-muted-foreground">
+                Video, images, audio, PDF, or ZIP
+              </span>
             </div>
-          ) : (
-            <Button
-              variant="outline"
-              className="w-full h-20 border-dashed"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={loading}
-            >
-              <div className="flex flex-col items-center gap-1">
-                <Upload className="w-5 h-5" />
-                <span className="text-sm">{uploadLabel}</span>
-                <span className="text-xs text-muted-foreground">
-                  Video, images, audio, PDF, or ZIP
-                </span>
-              </div>
-            </Button>
-          )}
+          </Button>
         </div>
       )}
 

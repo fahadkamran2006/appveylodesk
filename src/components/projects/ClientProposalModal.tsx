@@ -5,7 +5,7 @@ import * as z from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { useStorage } from '@/hooks/useStorage';
+import { useUploadContext } from '@/contexts/UploadContext';
 import {
   Dialog,
   DialogContent,
@@ -26,7 +26,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Progress } from '@/components/ui/progress';
 import { Loader2, CalendarIcon, FileText, Upload, X, Link as LinkIcon, DollarSign } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -42,11 +41,8 @@ const proposalSchema = z.object({
 
 type ProposalFormData = z.infer<typeof proposalSchema>;
 
-interface UploadedFile {
+interface SelectedFile {
   file: File;
-  progress: number;
-  status: 'pending' | 'uploading' | 'complete' | 'error';
-  error?: string;
 }
 
 interface ClientProposalModalProps {
@@ -62,12 +58,11 @@ export function ClientProposalModal({
 }: ClientProposalModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [richDescription, setRichDescription] = useState('');
-  const [selectedFiles, setSelectedFiles] = useState<UploadedFile[]>([]);
-  const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { user, session } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
-  const { uploadDeliverable } = useStorage();
+  const { addToQueue } = useUploadContext();
 
   const form = useForm<ProposalFormData>({
     resolver: zodResolver(proposalSchema),
@@ -81,11 +76,7 @@ export function ClientProposalModal({
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    const newFiles = files.map(file => ({
-      file,
-      progress: 0,
-      status: 'pending' as const,
-    }));
+    const newFiles = files.map(file => ({ file }));
     setSelectedFiles(prev => [...prev, ...newFiles]);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -96,38 +87,12 @@ export function ClientProposalModal({
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const uploadFilesToProject = async (projectId: string) => {
-    for (let i = 0; i < selectedFiles.length; i++) {
-      const fileItem = selectedFiles[i];
-      
-      // Update status to uploading
-      setSelectedFiles(prev => prev.map((f, idx) => 
-        idx === i ? { ...f, status: 'uploading' as const } : f
-      ));
-
-      try {
-        await uploadDeliverable(
-          projectId,
-          fileItem.file,
-          (progress) => {
-            setSelectedFiles(prev => prev.map((f, idx) => 
-              idx === i ? { ...f, progress } : f
-            ));
-          },
-          undefined, // useStream
-          'asset'    // file_type - client uploads are assets
-        );
-        
-        // Update status to complete
-        setSelectedFiles(prev => prev.map((f, idx) => 
-          idx === i ? { ...f, status: 'complete' as const, progress: 100 } : f
-        ));
-      } catch (error: any) {
-        setSelectedFiles(prev => prev.map((f, idx) => 
-          idx === i ? { ...f, status: 'error' as const, error: error.message } : f
-        ));
-      }
-    }
+  const queueFilesForProject = (projectId: string, projectTitle: string) => {
+    if (selectedFiles.length === 0) return;
+    
+    // Queue all files through the global upload context (uses presigned/TUS flow)
+    const files = selectedFiles.map(f => f.file);
+    addToQueue(files, projectId, projectTitle, 'asset');
   };
 
   const onSubmit = async (data: ProposalFormData) => {
@@ -169,22 +134,21 @@ export function ClientProposalModal({
 
       if (projectError) throw projectError;
 
-      setCreatedProjectId(newProject.id);
-
-      // Upload files if any selected
+      // Queue files for upload via global context (uses presigned/TUS flow)
       if (selectedFiles.length > 0) {
-        await uploadFilesToProject(newProject.id);
+        queueFilesForProject(newProject.id, data.title);
       }
 
       toast({
         title: 'Proposal submitted',
-        description: 'Your project proposal has been sent to the agency for review.',
+        description: selectedFiles.length > 0 
+          ? 'Your proposal has been sent. Files are uploading in the background.'
+          : 'Your project proposal has been sent to the agency for review.',
       });
 
       form.reset();
       setRichDescription('');
       setSelectedFiles([]);
-      setCreatedProjectId(null);
       onOpenChange(false);
       onSuccess?.();
     } catch (error: any) {
@@ -210,7 +174,6 @@ export function ClientProposalModal({
       form.reset();
       setRichDescription('');
       setSelectedFiles([]);
-      setCreatedProjectId(null);
       onOpenChange(false);
     }
   };
@@ -321,25 +284,17 @@ export function ClientProposalModal({
                           <p className="text-sm font-medium truncate">{fileItem.file.name}</p>
                           <p className="text-xs text-muted-foreground">
                             {formatFileSize(fileItem.file.size)}
-                            {fileItem.status === 'uploading' && ` • ${fileItem.progress}%`}
-                            {fileItem.status === 'complete' && ' • Uploaded'}
-                            {fileItem.status === 'error' && ` • Error`}
                           </p>
-                          {fileItem.status === 'uploading' && (
-                            <Progress value={fileItem.progress} className="h-1 mt-1" />
-                          )}
                         </div>
-                        {fileItem.status === 'pending' && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 flex-shrink-0"
-                            onClick={() => removeFile(index)}
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
-                        )}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 flex-shrink-0"
+                          onClick={() => removeFile(index)}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
                       </div>
                     ))}
                   </div>
