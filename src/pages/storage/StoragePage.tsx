@@ -51,6 +51,8 @@ import {
   Upload,
   CloudUpload,
   ExternalLink,
+  RefreshCw,
+  AlertTriangle,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -105,6 +107,17 @@ const StoragePage = () => {
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const [storageInfo, setStorageInfo] = useState<{ used: number; limit: number; plan: string } | null>(null);
   
+  // Admin tools state
+  const [loadingStorageInfo, setLoadingStorageInfo] = useState(false);
+  const [orphanData, setOrphanData] = useState<{ 
+    storageFiles: any[]; 
+    streamVideos: any[]; 
+    totalSize: number 
+  } | null>(null);
+  const [scanningOrphans, setScanningOrphans] = useState(false);
+  const [deletingOrphans, setDeletingOrphans] = useState(false);
+  const [recalculating, setRecalculating] = useState(false);
+  
   // Preview modal state
   const [previewFile, setPreviewFile] = useState<StorageFile | null>(null);
   
@@ -150,20 +163,41 @@ const StoragePage = () => {
         return;
       }
 
-      // Fetch storage info for admin
+      // Fetch provider-based storage info for admin
       if (userRole === 'admin') {
-        const { data: agencyData } = await supabase
-          .from('agencies')
-          .select('storage_used_bytes, storage_limit_bytes, subscription_plan')
-          .eq('id', userRoleData.agency_id)
-          .single();
-
-        if (agencyData) {
-          setStorageInfo({
-            used: agencyData.storage_used_bytes,
-            limit: agencyData.storage_limit_bytes,
-            plan: agencyData.subscription_plan,
+        setLoadingStorageInfo(true);
+        try {
+          const { data: usageData, error: usageError } = await supabase.functions.invoke('storage-ops', {
+            body: { action: 'get_usage' },
           });
+
+          if (!usageError && usageData?.ok) {
+            setStorageInfo({
+              used: usageData.totalBytes,
+              limit: usageData.limitBytes,
+              plan: usageData.plan,
+            });
+          } else {
+            // Fallback to database values if edge function fails
+            console.warn('storage-ops failed, falling back to DB:', usageError || usageData?.error);
+            const { data: agencyData } = await supabase
+              .from('agencies')
+              .select('storage_used_bytes, storage_limit_bytes, subscription_plan')
+              .eq('id', userRoleData.agency_id)
+              .single();
+
+            if (agencyData) {
+              setStorageInfo({
+                used: agencyData.storage_used_bytes,
+                limit: agencyData.storage_limit_bytes,
+                plan: agencyData.subscription_plan,
+              });
+            }
+          }
+        } catch (err) {
+          console.error('Error fetching storage info:', err);
+        } finally {
+          setLoadingStorageInfo(false);
         }
       }
 
@@ -406,6 +440,108 @@ const StoragePage = () => {
     setShowProjectSelector(false);
     setDroppedFiles([]);
     setSelectedProjectId('');
+  };
+
+  // Admin tools: Scan for orphans
+  const handleScanOrphans = async () => {
+    setScanningOrphans(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('storage-ops', {
+        body: { action: 'list_orphans' },
+      });
+
+      if (error || !data?.ok) {
+        throw new Error(error?.message || data?.error || 'Scan failed');
+      }
+
+      setOrphanData({
+        storageFiles: data.orphanStorageFiles || [],
+        streamVideos: data.orphanStreamVideos || [],
+        totalSize: data.totalOrphanSize || 0,
+      });
+
+      toast({
+        title: 'Scan complete',
+        description: `Found ${data.totalOrphanCount || 0} orphan file(s)`,
+      });
+    } catch (err: any) {
+      console.error('Orphan scan error:', err);
+      toast({
+        title: 'Scan failed',
+        description: err.message || 'Could not scan for orphan files',
+        variant: 'destructive',
+      });
+    } finally {
+      setScanningOrphans(false);
+    }
+  };
+
+  // Admin tools: Delete orphans
+  const handleDeleteOrphans = async () => {
+    if (!orphanData) return;
+
+    setDeletingOrphans(true);
+    try {
+      const storagePaths = orphanData.storageFiles.map((f) => f.path);
+      const streamVideoIds = orphanData.streamVideos.map((v) => v.id);
+
+      const { data, error } = await supabase.functions.invoke('storage-ops', {
+        body: { action: 'delete_orphans', storagePaths, streamVideoIds },
+      });
+
+      if (error || !data?.ok) {
+        throw new Error(error?.message || data?.error || 'Delete failed');
+      }
+
+      setOrphanData(null);
+      toast({
+        title: 'Orphans deleted',
+        description: `Deleted ${data.totalDeleted || 0} orphan file(s)`,
+      });
+
+      // Refresh storage info
+      fetchFiles();
+    } catch (err: any) {
+      console.error('Delete orphans error:', err);
+      toast({
+        title: 'Delete failed',
+        description: err.message || 'Could not delete orphan files',
+        variant: 'destructive',
+      });
+    } finally {
+      setDeletingOrphans(false);
+    }
+  };
+
+  // Admin tools: Recalculate storage
+  const handleRecalculateStorage = async () => {
+    setRecalculating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('storage-ops', {
+        body: { action: 'recalculate' },
+      });
+
+      if (error || !data?.ok) {
+        throw new Error(error?.message || data?.error || 'Recalculate failed');
+      }
+
+      toast({
+        title: 'Storage recalculated',
+        description: 'Storage counters have been synced with actual usage',
+      });
+
+      // Refresh storage info
+      fetchFiles();
+    } catch (err: any) {
+      console.error('Recalculate error:', err);
+      toast({
+        title: 'Recalculate failed',
+        description: err.message || 'Could not recalculate storage',
+        variant: 'destructive',
+      });
+    } finally {
+      setRecalculating(false);
+    }
   };
 
   // Refetch files when uploads complete
@@ -710,24 +846,114 @@ const StoragePage = () => {
                   : 'View files from your projects'}
               </p>
             </div>
-            {storageInfo && userRole === 'admin' && (
-              <div className="glass-card rounded-xl p-4 flex items-center gap-4">
-                <HardDrive className="w-6 h-6 text-primary" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Storage Used</p>
-                  <p className="text-lg font-semibold text-foreground">
-                    {formatBytes(storageInfo.used)} / {formatBytes(storageInfo.limit)}
-                  </p>
-                  <div className="w-40 h-2 bg-muted rounded-full mt-1">
-                    <div
-                      className="h-full bg-primary rounded-full"
-                      style={{ width: `${Math.min((storageInfo.used / storageInfo.limit) * 100, 100)}%` }}
-                    />
+            {userRole === 'admin' && (
+              <div className="flex items-center gap-3">
+                {/* Storage Usage Card */}
+                {storageInfo && (
+                  <div className="glass-card rounded-xl p-4 flex items-center gap-4">
+                    <HardDrive className="w-6 h-6 text-primary" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">
+                        Storage Used {loadingStorageInfo && <Loader2 className="w-3 h-3 inline animate-spin ml-1" />}
+                      </p>
+                      <p className="text-lg font-semibold text-foreground">
+                        {formatBytes(storageInfo.used)} / {formatBytes(storageInfo.limit)}
+                      </p>
+                      <div className="w-40 h-2 bg-muted rounded-full mt-1">
+                        <div
+                          className="h-full bg-primary rounded-full"
+                          style={{ width: `${Math.min((storageInfo.used / storageInfo.limit) * 100, 100)}%` }}
+                        />
+                      </div>
+                    </div>
                   </div>
+                )}
+
+                {/* Admin Storage Tools */}
+                <div className="flex flex-col gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleScanOrphans}
+                    disabled={scanningOrphans}
+                  >
+                    {scanningOrphans ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <AlertTriangle className="w-4 h-4 mr-2" />
+                    )}
+                    Scan Orphans
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRecalculateStorage}
+                    disabled={recalculating}
+                  >
+                    {recalculating ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                    )}
+                    Recalculate
+                  </Button>
                 </div>
               </div>
             )}
           </div>
+
+          {/* Orphan Files Alert */}
+          {orphanData && orphanData.storageFiles.length + orphanData.streamVideos.length > 0 && (
+            <div className="mb-6 glass-card rounded-xl p-4 border border-warning/50 bg-warning/5">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <AlertTriangle className="w-5 h-5 text-warning shrink-0" />
+                  <div>
+                    <p className="font-medium text-foreground">
+                      Found {orphanData.storageFiles.length + orphanData.streamVideos.length} orphan file(s)
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      These files exist on Bunny but have no database record. 
+                      Size: {formatBytes(orphanData.totalSize)}
+                    </p>
+                    <div className="mt-2 text-xs text-muted-foreground space-y-1 max-h-24 overflow-y-auto">
+                      {orphanData.storageFiles.slice(0, 5).map((f, i) => (
+                        <div key={i}>📁 {f.path}</div>
+                      ))}
+                      {orphanData.streamVideos.slice(0, 5).map((v, i) => (
+                        <div key={i}>🎬 {v.title || v.id}</div>
+                      ))}
+                      {orphanData.storageFiles.length + orphanData.streamVideos.length > 10 && (
+                        <div>...and {orphanData.storageFiles.length + orphanData.streamVideos.length - 10} more</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setOrphanData(null)}
+                  >
+                    Dismiss
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleDeleteOrphans}
+                    disabled={deletingOrphans}
+                  >
+                    {deletingOrphans ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-4 h-4 mr-2" />
+                    )}
+                    Delete All
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Search and Upload */}
           <div className="mb-6 flex items-center gap-4">

@@ -198,6 +198,22 @@ export function useProjects(role: 'admin' | 'editor' | 'client') {
 
   const deleteProject = async (projectId: string) => {
     try {
+      // Step 1: Clean up Bunny assets (fail-safe - block if cleanup fails)
+      const { data: assetResult, error: assetError } = await supabase.functions.invoke('delete-asset', {
+        body: { action: 'delete_project_files', projectId },
+      });
+
+      if (assetError || assetResult?.error) {
+        console.error('Asset cleanup failed:', assetError || assetResult?.error);
+        toast({
+          title: 'Cleanup failed',
+          description: 'Could not remove files from storage. Project deletion blocked.',
+          variant: 'destructive',
+        });
+        return false;
+      }
+
+      // Step 2: Delete the project from database
       const { error } = await supabase
         .from('projects')
         .delete()
@@ -208,7 +224,7 @@ export function useProjects(role: 'admin' | 'editor' | 'client') {
       setProjects(prev => prev.filter(p => p.id !== projectId));
       toast({
         title: 'Project deleted',
-        description: 'The project has been permanently removed.',
+        description: 'All files and data have been permanently removed.',
       });
       return true;
     } catch (error) {

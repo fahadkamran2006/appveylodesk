@@ -277,6 +277,24 @@ export function ProjectDetailSheet({
 
     setIsDeleting(true);
     try {
+      // Step 1: Clean up Bunny assets (fail-safe - block if cleanup fails)
+      const { data: assetResult, error: assetError } = await supabase.functions.invoke('delete-asset', {
+        body: { action: 'delete_project_files', projectId },
+      });
+
+      if (assetError || assetResult?.error) {
+        console.error('Asset cleanup failed:', assetError || assetResult?.error);
+        toast({
+          title: 'Cleanup failed',
+          description: 'Could not remove files from storage. Project deletion blocked.',
+          variant: 'destructive',
+        });
+        setIsDeleting(false);
+        setShowDeleteDialog(false);
+        return;
+      }
+
+      // Step 2: Delete the project from database
       const { error } = await supabase
         .from('projects')
         .delete()
@@ -286,7 +304,7 @@ export function ProjectDetailSheet({
 
       toast({
         title: 'Project deleted',
-        description: 'The project has been permanently removed.',
+        description: 'All files and data have been permanently removed.',
       });
 
       onOpenChange(false);
