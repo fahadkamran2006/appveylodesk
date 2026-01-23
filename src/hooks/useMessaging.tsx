@@ -106,13 +106,21 @@ export function useMessaging() {
       // Get unique user IDs
       const userIds = [...new Set(allParticipants?.map(p => p.user_id) || [])];
 
-      // Get profiles for all participants
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, full_name, email, avatar_url')
-        .in('id', userIds);
+      // Get profiles for all participants (guard against empty array)
+      let profiles: { id: string; full_name: string | null; email: string; avatar_url: string | null; }[] = [];
+      if (userIds.length > 0) {
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, full_name, email, avatar_url')
+          .in('id', userIds);
 
-      if (profilesError) throw profilesError;
+        if (profilesError) {
+          console.error('Error fetching profiles:', profilesError);
+          // Don't throw - continue with empty profiles to show channels at least
+        } else {
+          profiles = profilesData || [];
+        }
+      }
 
       // Get last message for each channel
       const { data: lastMessages, error: messagesError } = await supabase
@@ -263,16 +271,26 @@ export function useChannelMessages(channelId: string | null) {
 
         const userIds = participants?.map(p => p.user_id) || [];
 
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, full_name, email, avatar_url')
-          .in('id', userIds);
+        // Fetch profiles with guard against empty array
+        let profiles: { id: string; full_name: string | null; email: string; avatar_url: string | null; }[] = [];
+        if (userIds.length > 0) {
+          const { data: profilesData, error: profilesError } = await supabase
+            .from('profiles')
+            .select('id, full_name, email, avatar_url')
+            .in('id', userIds);
+          
+          if (!profilesError && profilesData) {
+            profiles = profilesData;
+          } else if (profilesError) {
+            console.error('Error fetching channel profiles:', profilesError);
+          }
+        }
 
         setChannel({
           ...data,
           participants: participants?.map(p => ({
             user_id: p.user_id,
-            profile: profiles?.find(pr => pr.id === p.user_id) || {
+            profile: profiles.find(pr => pr.id === p.user_id) || {
               id: p.user_id,
               full_name: null,
               email: '',
@@ -306,17 +324,26 @@ export function useChannelMessages(channelId: string | null) {
 
       if (error) throw error;
 
-      // Get sender profiles
+      // Get sender profiles with guard against empty array
       const senderIds = [...new Set(messagesData?.map(m => m.sender_id) || [])];
       
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, full_name, email, avatar_url')
-        .in('id', senderIds);
+      let profiles: { id: string; full_name: string | null; email: string; avatar_url: string | null; }[] = [];
+      if (senderIds.length > 0) {
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, full_name, email, avatar_url')
+          .in('id', senderIds);
+        
+        if (!profilesError && profilesData) {
+          profiles = profilesData;
+        } else if (profilesError) {
+          console.error('Error fetching message sender profiles:', profilesError);
+        }
+      }
 
       const messagesWithSenders: MessageWithSender[] = (messagesData || []).map(msg => ({
         ...msg,
-        sender: profiles?.find(p => p.id === msg.sender_id) || {
+        sender: profiles.find(p => p.id === msg.sender_id) || {
           id: msg.sender_id,
           full_name: null,
           email: '',
