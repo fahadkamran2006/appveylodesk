@@ -285,6 +285,12 @@ export function GlobalUploadTray() {
                       </div>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <span>{formatBytes(item.file.size)}</span>
+                        {item.tusController && (
+                          <>
+                            <span>•</span>
+                            <span className="text-primary font-medium">Resumable</span>
+                          </>
+                        )}
                         {item.projectTitle && (
                           <>
                             <span>•</span>
