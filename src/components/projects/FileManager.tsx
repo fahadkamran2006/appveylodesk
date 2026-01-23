@@ -30,6 +30,10 @@ import {
 } from 'lucide-react';
 import { Deliverable, useStorage, UploadProgress } from '@/hooks/useStorage';
 import { format } from 'date-fns';
+import { extractBunnyStreamVideoId, isBunnyStreamGuid, buildBunnyStreamDownloadUrl } from '@/lib/bunnyStream';
+
+// Bunny Stream Library ID
+const BUNNY_STREAM_LIBRARY_ID = '582147';
 
 interface FileManagerProps {
   projectId: string;
@@ -148,6 +152,16 @@ export function FileManager({
   }, [deleteTarget, deleteDeliverable, onFileDeleted]);
 
   const handleDownload = useCallback((deliverable: Deliverable) => {
+    // Check if it's a Bunny Stream video
+    const videoId = extractBunnyStreamVideoId(deliverable.file_url);
+    if (videoId) {
+      // Use the correct MP4 download URL for Stream videos
+      const downloadUrl = buildBunnyStreamDownloadUrl(BUNNY_STREAM_LIBRARY_ID, videoId);
+      window.open(downloadUrl, '_blank');
+      return;
+    }
+    
+    // For other files, open the file_url directly
     window.open(deliverable.file_url, '_blank');
   }, []);
 

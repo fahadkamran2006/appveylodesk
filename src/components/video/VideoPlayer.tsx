@@ -35,8 +35,8 @@ function extractBunnyStreamVideoId(url: string): string | null {
 }
 
 function getBunnyStreamEmbedUrl(videoId: string): string {
-  // Enable responsive mode and disable autoplay
-  return `https://iframe.mediadelivery.net/embed/${BUNNY_STREAM_LIBRARY_ID}/${videoId}?autoplay=false&preload=true&responsive=true`;
+  // Enable responsive mode, disable autoplay, enable postMessage API for time tracking
+  return `https://iframe.mediadelivery.net/embed/${BUNNY_STREAM_LIBRARY_ID}/${videoId}?autoplay=false&preload=true&responsive=true&loop=false`;
 }
 
 export function getBunnyStreamDownloadUrl(videoId: string): string {
@@ -232,10 +232,11 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
       
       if (typeof data !== 'object' || !data) return;
       
-      // Handle time updates from Bunny player
-      if (data.event === 'timeupdate' || data.type === 'timeupdate') {
-        const time = data.currentTime ?? data.time ?? data.seconds ?? 0;
-        if (typeof time === 'number') {
+      // Handle time updates from Bunny player - check all possible formats
+      if (data.event === 'timeupdate' || data.type === 'timeupdate' || 
+          data.name === 'timeupdate' || data.currentTime !== undefined) {
+        const time = data.currentTime ?? data.time ?? data.seconds ?? data.position ?? 0;
+        if (typeof time === 'number' && time >= 0) {
           setCurrentTime(time);
           currentTimeRef.current = time;
           onTimeUpdate?.(time);
@@ -243,7 +244,8 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
       }
       
       // Handle duration info
-      if (data.event === 'durationchange' || data.type === 'durationchange' || data.duration) {
+      if (data.event === 'durationchange' || data.type === 'durationchange' || 
+          data.name === 'durationchange' || data.duration !== undefined) {
         const dur = data.duration ?? 0;
         if (typeof dur === 'number' && dur > 0) {
           setDuration(dur);
@@ -251,18 +253,27 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
       }
       
       // Handle play/pause events
-      if (data.event === 'pause' || data.type === 'pause') {
+      if (data.event === 'pause' || data.type === 'pause' || data.name === 'pause') {
         setIsPaused(true);
         onPause?.();
       }
-      if (data.event === 'play' || data.type === 'play' || data.event === 'playing') {
+      if (data.event === 'play' || data.type === 'play' || 
+          data.event === 'playing' || data.name === 'play') {
         setIsPaused(false);
         onPlay?.();
       }
       
       // Handle loaded metadata
-      if (data.event === 'loadedmetadata' && data.duration) {
+      if ((data.event === 'loadedmetadata' || data.name === 'loadedmetadata') && data.duration) {
         setDuration(data.duration);
+      }
+
+      // Handle ready event - request initial time
+      if (data.event === 'ready' || data.name === 'ready') {
+        if (iframeRef.current?.contentWindow) {
+          iframeRef.current.contentWindow.postMessage({ event: 'getCurrentTime' }, '*');
+          iframeRef.current.contentWindow.postMessage({ event: 'getDuration' }, '*');
+        }
       }
     };
 
@@ -272,14 +283,19 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
 
   // Poll for time updates when using iframe (fallback for iframes that don't send events)
   useEffect(() => {
-    if (!useIframeEmbed || !streamVideoId) return;
+    if (!useIframeEmbed || !streamVideoId || !iframeRef.current) return;
     
     // Request current time from iframe periodically
     const pollInterval = setInterval(() => {
       if (iframeRef.current?.contentWindow) {
-        iframeRef.current.contentWindow.postMessage({ event: 'getCurrentTime' }, '*');
+        try {
+          iframeRef.current.contentWindow.postMessage({ event: 'getCurrentTime' }, '*');
+          iframeRef.current.contentWindow.postMessage({ event: 'getTime' }, '*');
+        } catch (e) {
+          // Ignore cross-origin errors
+        }
       }
-    }, 500);
+    }, 250); // Poll more frequently for better timestamp accuracy
     
     return () => clearInterval(pollInterval);
   }, [useIframeEmbed, streamVideoId]);

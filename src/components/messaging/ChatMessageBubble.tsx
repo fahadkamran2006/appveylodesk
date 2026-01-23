@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Play, Pause, Maximize2 } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import DOMPurify from 'dompurify';
 
 interface Sender {
   id: string;
@@ -30,6 +31,29 @@ interface ChatMessageBubbleProps {
   isDM: boolean;
 }
 
+// Safely render HTML content or plain text
+function renderMessageContent(content: string) {
+  // Check if content contains HTML tags
+  const hasHtml = /<[^>]+>/.test(content);
+  
+  if (hasHtml) {
+    // Sanitize and render as HTML
+    const sanitized = DOMPurify.sanitize(content, {
+      ALLOWED_TAGS: ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 'a', 'ul', 'ol', 'li'],
+      ALLOWED_ATTR: ['href', 'target', 'rel'],
+    });
+    return (
+      <div 
+        className="text-sm whitespace-pre-wrap break-words prose prose-sm max-w-none dark:prose-invert"
+        dangerouslySetInnerHTML={{ __html: sanitized }}
+      />
+    );
+  }
+  
+  // Plain text
+  return <p className="text-sm whitespace-pre-wrap break-words">{content}</p>;
+}
+
 export function ChatMessageBubble({
   message,
   isOwn,
@@ -41,16 +65,16 @@ export function ChatMessageBubble({
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
   const getInitials = (name: string | null, email: string) => {
-    const displayName = name || email;
+    const displayName = name || email || 'U';
     return displayName
       .split(' ')
       .map((n) => n[0])
       .join('')
       .toUpperCase()
-      .slice(0, 2);
+      .slice(0, 2) || 'U';
   };
 
-  const displayName = message.sender.full_name || message.sender.email;
+  const displayName = message.sender.full_name || message.sender.email || 'Unknown User';
 
   const handleVideoToggle = (video: HTMLVideoElement) => {
     if (video.paused) {
@@ -148,10 +172,10 @@ export function ChatMessageBubble({
             </div>
           )}
 
-          {/* Text Content */}
+          {/* Text Content - with HTML sanitization */}
           {message.content && (
             <div className="px-4 py-2">
-              <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+              {renderMessageContent(message.content)}
             </div>
           )}
 
