@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useRef, useEff
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { createTusUpload, TusUploadController } from '@/lib/tusUploader';
 
 export interface QueuedUpload {
   id: string;
@@ -15,6 +16,10 @@ export interface QueuedUpload {
   error?: string;
   addedAt: number;
   fileType?: 'asset' | 'deliverable';
+  // TUS-specific fields for resume capability
+  tusController?: TusUploadController;
+  videoId?: string;
+  cdnUrl?: string;
 }
 
 export interface UploadQueueState {
@@ -123,75 +128,40 @@ async function directUploadToStorage(
   });
 }
 
-// Direct upload to Bunny Stream using TUS protocol
-async function directUploadToStream(
+// TUS-based upload to Bunny Stream with resume capability
+function tusUploadToStream(
   file: File,
   videoId: string,
   libraryId: string,
   authorizationSignature: string,
   authorizationExpire: number,
   onProgress: (loaded: number, total: number, speed: number, remainingTime: number) => void,
-  abortSignal?: AbortController
-): Promise<void> {
-  // Simple PUT upload for Stream (TUS is complex, use simple upload for now)
-  const BUNNY_STREAM_API_KEY = await getStreamApiKey();
-  
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    const startTime = Date.now();
-    let lastLoaded = 0;
-    let lastTime = startTime;
-
-    xhr.upload.addEventListener('progress', (event) => {
-      if (event.lengthComputable) {
-        const now = Date.now();
-        const timeDiff = (now - lastTime) / 1000;
-        const loadedDiff = event.loaded - lastLoaded;
-        
-        const instantSpeed = timeDiff > 0 ? loadedDiff / timeDiff : 0;
-        const avgSpeed = event.loaded / ((now - startTime) / 1000);
-        const speed = (instantSpeed + avgSpeed) / 2;
-        
-        const remaining = event.total - event.loaded;
-        const remainingTime = speed > 0 ? remaining / speed : 0;
-        
-        onProgress(event.loaded, event.total, speed, remainingTime);
-        
-        lastLoaded = event.loaded;
-        lastTime = now;
-      }
+): Promise<{ controller: TusUploadController; promise: Promise<void> }> {
+  return new Promise((resolve) => {
+    let resolveUpload: () => void;
+    let rejectUpload: (error: Error) => void;
+    
+    const uploadPromise = new Promise<void>((res, rej) => {
+      resolveUpload = res;
+      rejectUpload = rej;
     });
 
-    xhr.addEventListener('load', () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        resolve();
-      } else {
-        reject(new Error(`Stream upload failed with status ${xhr.status}`));
-      }
+    const controller = createTusUpload({
+      file,
+      videoId,
+      libraryId,
+      authorizationSignature,
+      authorizationExpire,
+      onProgress,
+      onSuccess: () => resolveUpload(),
+      onError: (error) => rejectUpload(error),
     });
 
-    xhr.addEventListener('error', () => reject(new Error('Network error during stream upload')));
-    xhr.addEventListener('abort', () => reject(new Error('Upload cancelled')));
-
-    if (abortSignal) {
-      abortSignal.signal.addEventListener('abort', () => xhr.abort());
-    }
-
-    // Use TUS-style headers for resumable upload
-    xhr.open('PUT', `https://video.bunnycdn.com/library/${libraryId}/videos/${videoId}`);
-    xhr.setRequestHeader('AuthorizationSignature', authorizationSignature);
-    xhr.setRequestHeader('AuthorizationExpire', authorizationExpire.toString());
-    xhr.setRequestHeader('VideoId', videoId);
-    xhr.setRequestHeader('LibraryId', libraryId);
-    xhr.setRequestHeader('Content-Type', 'application/octet-stream');
-    xhr.send(file);
+    // Start the upload immediately
+    controller.start();
+    
+    resolve({ controller, promise: uploadPromise });
   });
-}
-
-// Helper to get stream API key from backend (we don't expose it to frontend)
-async function getStreamApiKey(): Promise<string> {
-  // This is handled by the presigned-upload function
-  return '';
 }
 
 export function UploadProvider({ children }: { children: React.ReactNode }) {
@@ -207,6 +177,7 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
   const [isMinimized, setIsMinimized] = useState(false);
   
   const abortControllerRef = useRef<AbortController | null>(null);
+  const tusControllerRef = useRef<TusUploadController | null>(null);
   const processingRef = useRef(false);
 
   const generateId = () => `upload-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -285,6 +256,14 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
 
   const pauseUpload = useCallback((uploadId: string) => {
     setState(prev => {
+      const item = prev.queue.find(q => q.id === uploadId);
+      
+      // Handle TUS upload pause
+      if (item?.tusController) {
+        item.tusController.pause();
+      }
+      
+      // Handle regular upload pause
       if (prev.currentUploadId === uploadId && abortControllerRef.current) {
         abortControllerRef.current.abort();
         abortControllerRef.current = null;
@@ -303,17 +282,41 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const resumeUpload = useCallback((uploadId: string) => {
-    setState(prev => ({
-      ...prev,
-      queue: prev.queue.map(q =>
-        q.id === uploadId && q.status === 'paused'
-          ? { ...q, status: 'pending' as const }
-          : q
-      ),
-    }));
+    setState(prev => {
+      const item = prev.queue.find(q => q.id === uploadId);
+      
+      // If this is a TUS upload with a controller, resume it
+      if (item?.tusController && item.videoId) {
+        item.tusController.resume();
+        return {
+          ...prev,
+          queue: prev.queue.map(q =>
+            q.id === uploadId && q.status === 'paused'
+              ? { ...q, status: 'uploading' as const }
+              : q
+          ),
+          currentUploadId: uploadId,
+        };
+      }
+      
+      // For regular uploads, mark as pending to restart
+      return {
+        ...prev,
+        queue: prev.queue.map(q =>
+          q.id === uploadId && q.status === 'paused'
+            ? { ...q, status: 'pending' as const }
+            : q
+        ),
+      };
+    });
   }, []);
 
   const pauseQueue = useCallback(() => {
+    // Pause TUS controller if active
+    if (tusControllerRef.current) {
+      tusControllerRef.current.pause();
+    }
+    
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
@@ -351,16 +354,30 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const cancelAll = useCallback(() => {
+    // Abort TUS upload if active
+    if (tusControllerRef.current) {
+      tusControllerRef.current.abort();
+      tusControllerRef.current = null;
+    }
+    
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
     
-    setState({
-      queue: [],
-      isProcessing: false,
-      isPaused: false,
-      currentUploadId: null,
+    // Abort all queued TUS uploads
+    setState(prev => {
+      prev.queue.forEach(q => {
+        if (q.tusController) {
+          q.tusController.abort();
+        }
+      });
+      return {
+        queue: [],
+        isProcessing: false,
+        isPaused: false,
+        currentUploadId: null,
+      };
     });
   }, []);
 
@@ -407,7 +424,8 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
           abortControllerRef.current
         );
       } else if (initData.uploadType === 'stream') {
-        await directUploadToStream(
+        // Use TUS resumable upload for videos
+        const { controller, promise } = await tusUploadToStream(
           item.file,
           initData.videoId,
           initData.libraryId,
@@ -419,13 +437,26 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
               ...prev,
               queue: prev.queue.map(q =>
                 q.id === item.id
-                  ? { ...q, progress: percentage, speed, remainingTime }
+                  ? { 
+                      ...q, 
+                      progress: percentage, 
+                      speed, 
+                      remainingTime,
+                      tusController: controller,
+                      videoId: initData.videoId,
+                      cdnUrl: initData.cdnUrl,
+                    }
                   : q
               ),
             }));
           },
-          abortControllerRef.current
         );
+        
+        // Store the controller for pause/resume
+        tusControllerRef.current = controller;
+        
+        // Wait for upload to complete
+        await promise;
       }
 
       // Step 3: Finalize - save to database
