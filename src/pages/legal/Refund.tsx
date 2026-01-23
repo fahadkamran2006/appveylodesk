@@ -3,10 +3,8 @@ import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import Navbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
-
 const Refund = () => {
-  return (
-    <>
+  return <>
       <Helmet>
         <title>Refund Policy | Veylodesk</title>
         <meta name="description" content="Veylodesk refund policy - our commitment to your satisfaction." />
@@ -40,7 +38,7 @@ const Refund = () => {
                     To request a refund:
                   </p>
                   <ul className="list-disc list-inside text-muted-foreground space-y-2">
-                    <li>Email us at billing@veylodesk.com within 14 days of your purchase</li>
+                    <li>Email us at support@veylodesk.com within 14 days of your purchase</li>
                     <li>Include your account email and the reason for your refund request</li>
                     <li>Refunds are processed within 5-10 business days</li>
                   </ul>
@@ -69,9 +67,7 @@ const Refund = () => {
 
                 <section>
                   <h2 className="text-2xl font-semibold text-foreground mb-4">Contact Us</h2>
-                  <p className="text-muted-foreground">
-                    For any questions about our refund policy, please contact billing@veylodesk.com.
-                  </p>
+                  <p className="text-muted-foreground">For any questions about our refund policy, please contact support@veylodesk.com.</p>
                 </section>
               </div>
             </div>
@@ -80,8 +76,6 @@ const Refund = () => {
 
         <Footer />
       </div>
-    </>
-  );
+    </>;
 };
-
 export default Refund;
