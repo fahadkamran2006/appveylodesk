@@ -733,6 +733,7 @@ export type Database = {
         Args: { _agency_id: string; _project_id: string }
         Returns: boolean
       }
+      recalculate_agency_storage: { Args: never; Returns: undefined }
       user_belongs_to_agency: {
         Args: { _agency_id: string; _user_id: string }
         Returns: boolean
