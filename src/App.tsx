@@ -8,6 +8,8 @@ import { HelmetProvider } from "react-helmet-async";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ThemeProvider } from "@/hooks/useTheme";
 import { SidebarProvider } from "@/hooks/useSidebar";
+import { UploadProvider } from "@/contexts/UploadContext";
+import { GlobalUploadTray } from "@/components/upload/GlobalUploadTray";
 
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
@@ -56,6 +58,8 @@ const App = () => (
             <Sonner />
             <BrowserRouter>
               <AuthProvider>
+                <UploadProvider>
+                  <GlobalUploadTray />
                 <Routes>
                   {/* Public invite signup routes (must remain unguarded) */}
                   <Route path="/join-client" element={<JoinClient />} />
@@ -105,6 +109,7 @@ const App = () => (
                   {/* Catch-all must be last */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
+                </UploadProvider>
               </AuthProvider>
             </BrowserRouter>
           </SidebarProvider>
