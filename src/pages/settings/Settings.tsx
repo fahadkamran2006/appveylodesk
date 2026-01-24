@@ -15,7 +15,8 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Separator } from '@/components/ui/separator';
-import { Settings as SettingsIcon, User, Loader2, Smartphone } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Settings as SettingsIcon, User, Loader2, Smartphone, UserCircle } from 'lucide-react';
 
 const profileSchema = z.object({
   full_name: z.string().min(1, 'Name is required'),
@@ -103,6 +104,16 @@ const SettingsPage = () => {
               </p>
             </div>
           </div>
+
+          {/* Missing Name Prompt */}
+          {!loading && profile && !profile.full_name && (
+            <Alert className="mb-6 border-primary/30 bg-primary/5">
+              <UserCircle className="h-4 w-4 text-primary" />
+              <AlertDescription className="text-foreground">
+                <span className="font-medium">Complete your profile!</span> Add your display name so teammates and clients can identify you in messages.
+              </AlertDescription>
+            </Alert>
+          )}
 
           {/* Install App Card */}
           <Card className="glass-card border-border/50 mb-6">
