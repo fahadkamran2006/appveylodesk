@@ -78,7 +78,7 @@ export function ChatMessageBubble({
       .slice(0, 2) || 'U';
   };
 
-  const displayName = message.sender.full_name || message.sender.email || 'Unknown User';
+  const displayName = message.sender.full_name || 'User';
 
   const handleVideoToggle = (video: HTMLVideoElement) => {
     if (video.paused) {

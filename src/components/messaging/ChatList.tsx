@@ -94,7 +94,7 @@ export function ChatList({
     const isDM = channel.type === 'dm';
     const otherUser = isDM ? getOtherParticipant(channel) : null;
     const displayName = isDM
-      ? otherUser?.full_name || otherUser?.email || 'Unknown'
+      ? otherUser?.full_name || 'User'
       : channel.project?.title || channel.name || 'Project Chat';
     const unreadCount = unreadCounts[channel.id] || 0;
 
