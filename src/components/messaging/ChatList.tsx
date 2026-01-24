@@ -46,6 +46,7 @@ interface ChatListProps {
   onNewDM?: () => void;
   loading?: boolean;
   unreadCounts?: { [channelId: string]: number };
+  isUserOnline?: (userId: string) => boolean;
 }
 
 export function ChatList({
@@ -56,6 +57,7 @@ export function ChatList({
   onNewDM,
   loading,
   unreadCounts = {},
+  isUserOnline,
 }: ChatListProps) {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'dm' | 'project'>('dm');
@@ -109,14 +111,26 @@ export function ChatList({
             : 'hover:bg-muted/50 text-foreground'
         )}
       >
-        {/* Avatar */}
+        {/* Avatar with presence indicator */}
         {isDM ? (
-          <Avatar className="w-10 h-10 border border-border/50">
-            <AvatarImage src={otherUser?.avatar_url || undefined} />
-            <AvatarFallback className="bg-primary/20 text-primary text-sm">
-              {getInitials(otherUser?.full_name || null, otherUser?.email || '')}
-            </AvatarFallback>
-          </Avatar>
+          <div className="relative">
+            <Avatar className="w-10 h-10 border border-border/50">
+              <AvatarImage src={otherUser?.avatar_url || undefined} />
+              <AvatarFallback className="bg-primary/20 text-primary text-sm">
+                {getInitials(otherUser?.full_name || null, otherUser?.email || '')}
+              </AvatarFallback>
+            </Avatar>
+            {/* Online indicator */}
+            {otherUser && isUserOnline && (
+              <span
+                className={cn(
+                  "absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-background",
+                  isUserOnline(otherUser.id) ? "bg-green-500" : "bg-muted-foreground/50"
+                )}
+                title={isUserOnline(otherUser.id) ? "Online" : "Offline"}
+              />
+            )}
+          </div>
         ) : (
           <div className={cn(
             "w-10 h-10 rounded-full flex items-center justify-center",

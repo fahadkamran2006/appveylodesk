@@ -4,6 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/hooks/useAuth';
 import { useMessaging, useChannelMessages } from '@/hooks/useMessaging';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
+import { usePresence } from '@/hooks/usePresence';
 import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
 import { ChatList } from '@/components/messaging/ChatList';
 import { ChatWindow } from '@/components/messaging/ChatWindow';
@@ -33,6 +34,7 @@ const MessagesPage = () => {
   } = useChannelMessages(selectedChannelId);
 
   const { unreadCounts, markChannelAsRead } = useUnreadMessages();
+  const { isOnline } = usePresence(agencyId);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -112,6 +114,7 @@ const MessagesPage = () => {
                 onNewDM={() => setShowNewDM(true)}
                 loading={channelsLoading}
                 unreadCounts={unreadCounts}
+                isUserOnline={isOnline}
               />
             </div>
           </div>
