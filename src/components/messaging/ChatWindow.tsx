@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Send, Lock, MoreVertical, VolumeX, Volume2, FolderKanban, MessageSquare, Trash2 } from 'lucide-react';
@@ -64,7 +63,7 @@ export function ChatWindow({ channel, messages, loading, onSendMessage }: ChatWi
   const [sending, setSending] = useState(false);
   const [pendingAttachment, setPendingAttachment] = useState<{ url: string; type: string } | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const { mutedUsers, muteUser, unmuteUser, isUserMuted } = useChannelMutes(channel?.id || null);
   const { typingUsers, onTyping, stopTyping } = useTypingIndicator(channel?.id || null);
   const { uploadChatAttachment, uploadProgress, cancelUpload } = useChatAttachments();
@@ -77,12 +76,10 @@ export function ChatWindow({ channel, messages, loading, onSendMessage }: ChatWi
     ? messages.filter(m => new Date(m.created_at) > new Date(clearedAt))
     : messages;
 
-  // Auto-scroll to bottom on new messages
+  // Auto-scroll to bottom on new messages and channel change
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [visibleMessages]);
+    messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
+  }, [visibleMessages, channel?.id]);
 
   // Mark messages as read when viewing channel (for DMs)
   useEffect(() => {
@@ -271,7 +268,7 @@ export function ChatWindow({ channel, messages, loading, onSendMessage }: ChatWi
         </div>
 
         {/* Messages */}
-        <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+        <div className="flex-1 overflow-y-auto p-4">
           {loading ? (
             <div className="h-full flex items-center justify-center">
               <div className="animate-pulse text-muted-foreground">Loading messages...</div>
@@ -312,9 +309,11 @@ export function ChatWindow({ channel, messages, loading, onSendMessage }: ChatWi
                   />
                 );
               })}
+              {/* Scroll anchor */}
+              <div ref={messagesEndRef} />
             </div>
           )}
-        </ScrollArea>
+        </div>
 
         {/* Typing Indicator */}
         {typingUsers.length > 0 && (
