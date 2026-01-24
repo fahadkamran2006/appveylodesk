@@ -36,6 +36,46 @@ interface MessageWithSender extends Message {
   };
 }
 
+// Shared helper to fetch profiles with retry logic for RLS timing issues
+async function fetchProfilesWithRetry(
+  userIds: string[],
+  retries = 3,
+  delayMs = 500
+): Promise<{ id: string; full_name: string | null; email: string; avatar_url: string | null; }[]> {
+  if (userIds.length === 0) return [];
+
+  for (let attempt = 0; attempt < retries; attempt++) {
+    // Verify session is active before each attempt
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      console.warn('No active session, skipping profile fetch');
+      return [];
+    }
+
+    const { data: profilesData, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, full_name, email, avatar_url')
+      .in('id', userIds);
+
+    if (profilesError) {
+      console.error(`Error fetching profiles (attempt ${attempt + 1}):`, profilesError);
+    } else if (profilesData && profilesData.length > 0) {
+      // Check if we got all profiles with full_name populated
+      const resolvedProfiles = profilesData.filter(p => p.full_name !== null);
+      if (resolvedProfiles.length === profilesData.length || attempt === retries - 1) {
+        return profilesData;
+      }
+    }
+
+    // Wait before retry (unless last attempt)
+    if (attempt < retries - 1) {
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+  }
+
+  return [];
+}
+
 export function useMessaging() {
   const { user, userRole } = useAuth();
   const { toast } = useToast();
@@ -65,6 +105,13 @@ export function useMessaging() {
   // Fetch all channels for the user
   const fetchChannels = useCallback(async () => {
     if (!user) return;
+
+    // Ensure session is valid before fetching
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      console.warn('No active session, skipping channel fetch');
+      return;
+    }
 
     try {
       setLoading(true);
@@ -106,21 +153,8 @@ export function useMessaging() {
       // Get unique user IDs
       const userIds = [...new Set(allParticipants?.map(p => p.user_id) || [])];
 
-      // Get profiles for all participants (guard against empty array)
-      let profiles: { id: string; full_name: string | null; email: string; avatar_url: string | null; }[] = [];
-      if (userIds.length > 0) {
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, full_name, email, avatar_url')
-          .in('id', userIds);
-
-        if (profilesError) {
-          console.error('Error fetching profiles:', profilesError);
-          // Don't throw - continue with empty profiles to show channels at least
-        } else {
-          profiles = profilesData || [];
-        }
-      }
+      // Get profiles with retry logic for RLS timing issues
+      const profiles = await fetchProfilesWithRetry(userIds);
 
       // Get last message for each channel
       const { data: lastMessages, error: messagesError } = await supabase
@@ -253,6 +287,13 @@ export function useChannelMessages(channelId: string | null) {
         return;
       }
 
+      // Verify session before fetch
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.warn('No active session, skipping channel fetch');
+        return;
+      }
+
       const { data, error } = await supabase
         .from('channels')
         .select(`
@@ -271,20 +312,8 @@ export function useChannelMessages(channelId: string | null) {
 
         const userIds = participants?.map(p => p.user_id) || [];
 
-        // Fetch profiles with guard against empty array
-        let profiles: { id: string; full_name: string | null; email: string; avatar_url: string | null; }[] = [];
-        if (userIds.length > 0) {
-          const { data: profilesData, error: profilesError } = await supabase
-            .from('profiles')
-            .select('id, full_name, email, avatar_url')
-            .in('id', userIds);
-          
-          if (!profilesError && profilesData) {
-            profiles = profilesData;
-          } else if (profilesError) {
-            console.error('Error fetching channel profiles:', profilesError);
-          }
-        }
+        // Fetch profiles with retry logic for RLS timing issues
+        const profiles = await fetchProfilesWithRetry(userIds);
 
         setChannel({
           ...data,
@@ -313,6 +342,14 @@ export function useChannelMessages(channelId: string | null) {
       return;
     }
 
+    // Verify session before fetch
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      console.warn('No active session, skipping messages fetch');
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -324,22 +361,9 @@ export function useChannelMessages(channelId: string | null) {
 
       if (error) throw error;
 
-      // Get sender profiles with guard against empty array
+      // Get sender profiles with retry logic for RLS timing issues
       const senderIds = [...new Set(messagesData?.map(m => m.sender_id) || [])];
-      
-      let profiles: { id: string; full_name: string | null; email: string; avatar_url: string | null; }[] = [];
-      if (senderIds.length > 0) {
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, full_name, email, avatar_url')
-          .in('id', senderIds);
-        
-        if (!profilesError && profilesData) {
-          profiles = profilesData;
-        } else if (profilesError) {
-          console.error('Error fetching message sender profiles:', profilesError);
-        }
-      }
+      const profiles = await fetchProfilesWithRetry(senderIds);
 
       const messagesWithSenders: MessageWithSender[] = (messagesData || []).map(msg => ({
         ...msg,
@@ -378,12 +402,9 @@ export function useChannelMessages(channelId: string | null) {
           filter: `channel_id=eq.${channelId}`,
         },
         async (payload) => {
-          // Fetch sender profile for new message
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('id, full_name, email, avatar_url')
-            .eq('id', payload.new.sender_id)
-            .maybeSingle();
+          // Fetch sender profile with retry for new message
+          const profiles = await fetchProfilesWithRetry([payload.new.sender_id], 2, 300);
+          const profile = profiles.find(p => p.id === payload.new.sender_id);
 
           const newMessage: MessageWithSender = {
             ...(payload.new as Message),
