@@ -27,9 +27,7 @@ const Terms = () => {
               <div className="prose prose-invert max-w-none space-y-8">
                 <section>
                   <h2 className="text-2xl font-semibold text-foreground mb-4">1. Acceptance of Terms</h2>
-                  <p className="text-muted-foreground">
-                    By accessing or using Veylodesk, you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use our services.
-                  </p>
+                  <p className="text-muted-foreground">These Terms of Service constitute a legally binding agreement between you and VeyloDesk. By accessing or using the Veylodesk platform and website (veylodesk.com), you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use our services.</p>
                 </section>
 
                 <section>
