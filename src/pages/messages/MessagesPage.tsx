@@ -91,19 +91,19 @@ const MessagesPage = () => {
         <meta name="description" content="Communicate with your team and clients." />
       </Helmet>
 
-      <div className="min-h-screen bg-background flex">
+      <div className="h-screen bg-background flex overflow-hidden">
         <CollapsibleSidebar role={getSidebarRole()} />
 
-        <main className="flex-1 flex">
+        <main className="flex-1 flex h-full overflow-hidden">
           {/* Chat List Sidebar */}
-          <div className="w-80 border-r border-border/50 bg-surface-dark flex flex-col">
-            <div className="p-4 border-b border-border/50">
+          <div className="w-80 h-full border-r border-border/50 bg-surface-dark flex flex-col">
+            <div className="shrink-0 p-4 border-b border-border/50">
               <div className="flex items-center gap-2">
                 <MessageSquare className="w-5 h-5 text-primary" />
                 <h1 className="text-lg font-semibold text-foreground">Messages</h1>
               </div>
             </div>
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 overflow-y-auto">
               <ChatList
                 dmChannels={dmChannels as any}
                 projectChannels={projectChannels as any}
@@ -117,7 +117,7 @@ const MessagesPage = () => {
           </div>
 
           {/* Chat Window */}
-          <div className="flex-1">
+          <div className="flex-1 h-full overflow-hidden">
             <ChatWindow
               channel={selectedChannel as any}
               messages={messages as any}
