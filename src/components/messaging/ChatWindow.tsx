@@ -159,7 +159,7 @@ export function ChatWindow({ channel, messages, loading, onSendMessage }: ChatWi
     if (!channel) return '';
     if (channel.type === 'dm') {
       const other = getOtherParticipant();
-      return other?.full_name || other?.email || 'Unknown';
+      return other?.full_name || 'User';
     }
     return channel.project?.title || channel.name || 'Project Chat';
   };
