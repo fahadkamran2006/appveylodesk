@@ -796,6 +796,10 @@ export type Database = {
         Args: { _agency_id: string; _user_id: string }
         Returns: boolean
       }
+      users_share_agency: {
+        Args: { _user_a: string; _user_b: string }
+        Returns: boolean
+      }
       verify_invitation_token: {
         Args: { _token: string }
         Returns: {
