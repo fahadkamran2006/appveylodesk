@@ -131,7 +131,6 @@ export function ProjectDetailSheet({
     addComment,
     resolveComment,
     unresolveComment,
-    formatTimestamp,
   } = useVideoComments(selectedVideo?.id || null);
 
   // Fetch project details
@@ -234,9 +233,7 @@ export function ProjectDetailSheet({
   };
 
   const handleAddComment = async (content: string) => {
-    // Always use the current timestamp (default to 0 if somehow null)
-    const timestamp = currentTimestamp ?? videoPlayerRef.current?.getCurrentTime() ?? 0;
-    await addComment(timestamp, content);
+    await addComment(content);
   };
 
   const handleBackFromVideo = () => {
@@ -515,14 +512,10 @@ export function ProjectDetailSheet({
                     comments={comments}
                     unresolvedComments={unresolvedComments}
                     resolvedComments={resolvedComments}
-                    currentTimestamp={currentTimestamp}
                     canResolve={canResolveComments}
-                    formatTimestamp={formatTimestamp}
                     onAddComment={handleAddComment}
                     onResolveComment={resolveComment}
                     onUnresolveComment={unresolveComment}
-                    onSeekToTimestamp={handleSeekToTimestamp}
-                    onPauseVideo={handlePauseForComment}
                   />
                 </div>
               </div>
