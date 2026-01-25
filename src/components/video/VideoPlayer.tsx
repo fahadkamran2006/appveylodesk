@@ -36,7 +36,8 @@ function extractBunnyStreamVideoId(url: string): string | null {
 
 function getBunnyStreamEmbedUrl(videoId: string): string {
   // Enable responsive mode, disable autoplay, enable postMessage API for time tracking
-  return `https://iframe.mediadelivery.net/embed/${BUNNY_STREAM_LIBRARY_ID}/${videoId}?autoplay=false&preload=true&responsive=true&loop=false`;
+  // Add preload and showControls to ensure player is interactive
+  return `https://iframe.mediadelivery.net/embed/${BUNNY_STREAM_LIBRARY_ID}/${videoId}?autoplay=false&preload=true&responsive=true&loop=false&showControls=true`;
 }
 
 export function getBunnyStreamDownloadUrl(videoId: string): string {
@@ -190,7 +191,12 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
       currentTimeRef.current = seconds;
       onSeekToComment?.(seconds);
     } else if (iframeRef.current && streamVideoId) {
-      // Send seek command to Bunny iframe
+      // Send seek command to Bunny iframe using Player.js standard
+      // Try both formats for compatibility
+      iframeRef.current.contentWindow?.postMessage({
+        method: 'setCurrentTime',
+        value: seconds
+      }, '*');
       iframeRef.current.contentWindow?.postMessage({
         event: 'seek',
         time: seconds
@@ -207,14 +213,26 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
       if (videoRef.current) {
         videoRef.current.pause();
         setIsPaused(true);
+        // Update currentTimeRef with latest value from video element
+        const time = videoRef.current.currentTime;
+        currentTimeRef.current = time;
+        setCurrentTime(time);
+        onTimeUpdate?.(time);
       } else if (iframeRef.current && streamVideoId) {
-        iframeRef.current.contentWindow?.postMessage({ event: 'pause' }, '*');
+        // Use Player.js standard with 'method' key
+        iframeRef.current.contentWindow?.postMessage({ method: 'pause' }, '*');
         setIsPaused(true);
+        // Request current time immediately after pause using Player.js standard
+        iframeRef.current.contentWindow?.postMessage({ method: 'getCurrentTime' }, '*');
+        // The current time from currentTimeRef should be fairly accurate due to polling
+        // Notify parent of the current time
+        onTimeUpdate?.(currentTimeRef.current);
         onPause?.();
       }
     },
     getCurrentTime: () => {
       if (videoRef.current) {
+        // Always get fresh value from video element
         return videoRef.current.currentTime;
       }
       return currentTimeRef.current;
@@ -227,14 +245,54 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
     if (!useIframeEmbed) return;
 
     const handleMessage = (event: MessageEvent) => {
-      // Bunny Stream sends various events via postMessage
+      // Bunny Stream uses Player.js standard - sends various message formats
       const data = event.data;
       
       if (typeof data !== 'object' || !data) return;
       
-      // Handle time updates from Bunny player - check all possible formats
-      if (data.event === 'timeupdate' || data.type === 'timeupdate' || 
-          data.name === 'timeupdate' || data.currentTime !== undefined) {
+      // Log all messages for debugging (helps troubleshoot iframe communication)
+      if (data.event || data.method || data.name || data.seconds !== undefined || data.value !== undefined) {
+        console.log('[BunnyStream Message]', data);
+      }
+      
+      // Handle Player.js method responses: { method: 'getCurrentTime', value: X }
+      if (data.method === 'getCurrentTime' && typeof data.value === 'number') {
+        setCurrentTime(data.value);
+        currentTimeRef.current = data.value;
+        onTimeUpdate?.(data.value);
+        return;
+      }
+      
+      if (data.method === 'getDuration' && typeof data.value === 'number') {
+        setDuration(data.value);
+        return;
+      }
+      
+      // Handle Player.js event responses: { event: 'timeupdate', data: { seconds: X, duration: Y } }
+      if (data.event === 'timeupdate' && data.data) {
+        const time = data.data.seconds ?? data.data.currentTime ?? 0;
+        const dur = data.data.duration;
+        if (typeof time === 'number' && time >= 0) {
+          setCurrentTime(time);
+          currentTimeRef.current = time;
+          onTimeUpdate?.(time);
+        }
+        if (typeof dur === 'number' && dur > 0) {
+          setDuration(dur);
+        }
+        return;
+      }
+      
+      // Handle time updates from Bunny player - check all possible legacy formats
+      const hasTimeData = 
+        data.event === 'timeupdate' || 
+        data.type === 'timeupdate' || 
+        data.name === 'timeupdate' ||
+        typeof data.currentTime === 'number' ||
+        typeof data.time === 'number' ||
+        typeof data.seconds === 'number';
+        
+      if (hasTimeData) {
         const time = data.currentTime ?? data.time ?? data.seconds ?? data.position ?? 0;
         if (typeof time === 'number' && time >= 0) {
           setCurrentTime(time);
@@ -245,20 +303,27 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
       
       // Handle duration info
       if (data.event === 'durationchange' || data.type === 'durationchange' || 
-          data.name === 'durationchange' || data.duration !== undefined) {
+          data.name === 'durationchange' || typeof data.duration === 'number') {
         const dur = data.duration ?? 0;
         if (typeof dur === 'number' && dur > 0) {
           setDuration(dur);
         }
       }
       
-      // Handle play/pause events
+      // Handle play/pause events from Bunny
       if (data.event === 'pause' || data.type === 'pause' || data.name === 'pause') {
         setIsPaused(true);
+        // When paused, capture the current time and notify parent
+        const time = data.currentTime ?? currentTimeRef.current;
+        if (typeof time === 'number') {
+          currentTimeRef.current = time;
+          setCurrentTime(time);
+          onTimeUpdate?.(time);
+        }
         onPause?.();
       }
       if (data.event === 'play' || data.type === 'play' || 
-          data.event === 'playing' || data.name === 'play') {
+          data.event === 'playing' || data.name === 'play' || data.name === 'playing') {
         setIsPaused(false);
         onPlay?.();
       }
@@ -268,11 +333,15 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
         setDuration(data.duration);
       }
 
-      // Handle ready event - request initial time
+      // Handle ready event - request initial time using Player.js standard
       if (data.event === 'ready' || data.name === 'ready') {
         if (iframeRef.current?.contentWindow) {
-          iframeRef.current.contentWindow.postMessage({ event: 'getCurrentTime' }, '*');
-          iframeRef.current.contentWindow.postMessage({ event: 'getDuration' }, '*');
+          iframeRef.current.contentWindow.postMessage({ method: 'getCurrentTime' }, '*');
+          iframeRef.current.contentWindow.postMessage({ method: 'getDuration' }, '*');
+          // Also listen for events by subscribing
+          iframeRef.current.contentWindow.postMessage({ method: 'addEventListener', value: 'timeupdate' }, '*');
+          iframeRef.current.contentWindow.postMessage({ method: 'addEventListener', value: 'pause' }, '*');
+          iframeRef.current.contentWindow.postMessage({ method: 'addEventListener', value: 'play' }, '*');
         }
       }
     };
@@ -285,17 +354,18 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
   useEffect(() => {
     if (!useIframeEmbed || !streamVideoId || !iframeRef.current) return;
     
-    // Request current time from iframe periodically
+    // Request current time from iframe periodically using Player.js standard
     const pollInterval = setInterval(() => {
       if (iframeRef.current?.contentWindow) {
         try {
-          iframeRef.current.contentWindow.postMessage({ event: 'getCurrentTime' }, '*');
-          iframeRef.current.contentWindow.postMessage({ event: 'getTime' }, '*');
+          // Use Player.js standard 'method' key
+          iframeRef.current.contentWindow.postMessage({ method: 'getCurrentTime' }, '*');
+          iframeRef.current.contentWindow.postMessage({ method: 'getDuration' }, '*');
         } catch (e) {
           // Ignore cross-origin errors
         }
       }
-    }, 250); // Poll more frequently for better timestamp accuracy
+    }, 200); // Poll frequently for better timestamp accuracy
     
     return () => clearInterval(pollInterval);
   }, [useIframeEmbed, streamVideoId]);
@@ -576,6 +646,33 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
     );
   }
 
+  // Handle iframe load - request initial data and subscribe to events
+  const handleIframeLoad = useCallback(() => {
+    if (iframeRef.current?.contentWindow) {
+      // Give the player a moment to initialize, then request time/duration and subscribe to events
+      setTimeout(() => {
+        try {
+          const win = iframeRef.current?.contentWindow;
+          if (!win) return;
+          
+          // Player.js standard - request current state
+          win.postMessage({ method: 'getCurrentTime' }, '*');
+          win.postMessage({ method: 'getDuration' }, '*');
+          
+          // Subscribe to events using Player.js standard
+          win.postMessage({ method: 'addEventListener', value: 'timeupdate' }, '*');
+          win.postMessage({ method: 'addEventListener', value: 'pause' }, '*');
+          win.postMessage({ method: 'addEventListener', value: 'play' }, '*');
+          win.postMessage({ method: 'addEventListener', value: 'ended' }, '*');
+          
+          console.log('[VideoPlayer] Subscribed to Bunny iframe events');
+        } catch (e) {
+          console.log('Could not send initial postMessage to iframe:', e);
+        }
+      }, 500);
+    }
+  }, []);
+
   // Bunny Stream iframe embed
   if (useIframeEmbed && streamVideoId) {
     return (
@@ -588,6 +685,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
           allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
           allowFullScreen
           title="Video Player"
+          onLoad={handleIframeLoad}
         />
         {/* Comment markers overlay */}
         {renderCommentMarkers()}

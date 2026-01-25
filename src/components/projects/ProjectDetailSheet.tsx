@@ -247,11 +247,17 @@ export function ProjectDetailSheet({
   // Pause video and capture timestamp for commenting
   const handlePauseForComment = useCallback(() => {
     if (videoPlayerRef.current) {
-      videoPlayerRef.current.pause();
+      // First get the current time BEFORE pausing (more accurate for iframe)
       const time = videoPlayerRef.current.getCurrentTime();
-      setCurrentTimestamp(time);
+      // Then pause the video
+      videoPlayerRef.current.pause();
+      // Update the timestamp state - use the captured time
+      // Only update if we got a valid time (> 0 means video has been played)
+      if (time > 0 || currentTimestamp === null) {
+        setCurrentTimestamp(time);
+      }
     }
-  }, []);
+  }, [currentTimestamp]);
 
   // Handle seeking to a timestamp from the comment panel
   const handleSeekToTimestamp = useCallback((timestamp: number) => {
