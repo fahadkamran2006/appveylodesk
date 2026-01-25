@@ -8,7 +8,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   CheckCircle2, 
-  Clock, 
   MessageSquare, 
   Send,
   Undo2
@@ -19,14 +18,10 @@ interface CommentPanelProps {
   comments: VideoComment[];
   unresolvedComments: VideoComment[];
   resolvedComments: VideoComment[];
-  currentTimestamp: number | null;
   canResolve: boolean;
-  formatTimestamp: (seconds: number) => string;
   onAddComment: (content: string) => void;
   onResolveComment: (commentId: string) => void;
   onUnresolveComment: (commentId: string) => void;
-  onSeekToTimestamp: (timestamp: number) => void;
-  onPauseVideo?: () => void;
   className?: string;
 }
 
@@ -34,29 +29,17 @@ export function CommentPanel({
   comments,
   unresolvedComments,
   resolvedComments,
-  currentTimestamp,
   canResolve,
-  formatTimestamp,
   onAddComment,
   onResolveComment,
   onUnresolveComment,
-  onSeekToTimestamp,
-  onPauseVideo,
   className,
 }: CommentPanelProps) {
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // When user focuses on the comment input, pause the video
-  const handleInputFocus = () => {
-    onPauseVideo?.();
-  };
-
   const handleSubmit = async () => {
     if (!newComment.trim()) return;
-    
-    // Use current timestamp, default to 0 if not available
-    const timestamp = currentTimestamp ?? 0;
     
     setIsSubmitting(true);
     try {
@@ -98,13 +81,9 @@ export function CommentPanel({
             <span className="font-medium text-sm text-foreground truncate">
               {comment.user_name}
             </span>
-            <button
-              onClick={() => onSeekToTimestamp(comment.timestamp_seconds)}
-              className="flex items-center gap-1 text-xs text-primary hover:underline"
-            >
-              <Clock className="w-3 h-3" />
-              {formatTimestamp(comment.timestamp_seconds)}
-            </button>
+            <span className="text-xs text-muted-foreground">
+              {new Date(comment.created_at).toLocaleDateString()}
+            </span>
           </div>
 
           <p className={cn(
@@ -149,7 +128,7 @@ export function CommentPanel({
       {/* Header */}
       <div className="flex items-center gap-2 p-4 border-b border-border">
         <MessageSquare className="w-5 h-5 text-primary" />
-        <h3 className="font-semibold text-foreground">Comments</h3>
+        <h3 className="font-semibold text-foreground">Feedback</h3>
         {unresolvedComments.length > 0 && (
           <Badge variant="secondary" className="ml-auto">
             {unresolvedComments.length} open
@@ -157,24 +136,20 @@ export function CommentPanel({
         )}
       </div>
 
-      {/* Add comment form - ALWAYS VISIBLE */}
-      <div className="p-4 border-b border-border space-y-2">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Clock className="w-4 h-4" />
-          <span>
-            {currentTimestamp !== null 
-              ? `Comment at ${formatTimestamp(currentTimestamp)}`
-              : 'Click to pause video and add comment'
-            }
-          </span>
-        </div>
+      {/* Add comment form */}
+      <div className="p-4 border-b border-border">
         <div className="flex gap-2">
           <Textarea
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
-            onFocus={handleInputFocus}
             placeholder="Add feedback..."
             className="min-h-[60px] resize-none bg-surface-elevated"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmit();
+              }
+            }}
           />
           <Button
             size="icon"
@@ -204,8 +179,8 @@ export function CommentPanel({
               {unresolvedComments.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No open comments</p>
-                  <p className="text-xs">Pause the video to add feedback</p>
+                  <p className="text-sm">No open feedback</p>
+                  <p className="text-xs">Add feedback above</p>
                 </div>
               ) : (
                 unresolvedComments.map(comment => (
@@ -226,7 +201,7 @@ export function CommentPanel({
               {resolvedComments.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <CheckCircle2 className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No resolved comments</p>
+                  <p className="text-sm">No resolved feedback</p>
                 </div>
               ) : (
                 resolvedComments.map(comment => (

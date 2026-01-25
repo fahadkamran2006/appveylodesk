@@ -19,7 +19,7 @@ export interface VideoComment {
 }
 
 export function useVideoComments(deliverableId: string | null) {
-  const { user, userRole } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [comments, setComments] = useState<VideoComment[]>([]);
   const [loading, setLoading] = useState(false);
@@ -34,7 +34,7 @@ export function useVideoComments(deliverableId: string | null) {
         .from('deliverable_comments')
         .select('*')
         .eq('deliverable_id', deliverableId)
-        .order('timestamp_seconds', { ascending: true });
+        .order('created_at', { ascending: true });
 
       if (error) throw error;
 
@@ -60,9 +60,8 @@ export function useVideoComments(deliverableId: string | null) {
     }
   }, [deliverableId]);
 
-  // Add a new comment
+  // Add a new comment (no timestamp)
   const addComment = useCallback(async (
-    timestampSeconds: number,
     content: string
   ): Promise<VideoComment | null> => {
     if (!user || !deliverableId) return null;
@@ -74,7 +73,7 @@ export function useVideoComments(deliverableId: string | null) {
           deliverable_id: deliverableId,
           user_id: user.id,
           content,
-          timestamp_seconds: timestampSeconds,
+          timestamp_seconds: 0, // Default to 0, not used for display
         })
         .select()
         .single();
@@ -83,22 +82,22 @@ export function useVideoComments(deliverableId: string | null) {
 
       const newComment: VideoComment = {
         ...data,
-        timestamp_seconds: Number(data.timestamp_seconds),
+        timestamp_seconds: 0,
         user_name: 'You',
       };
 
-      setComments(prev => [...prev, newComment].sort((a, b) => a.timestamp_seconds - b.timestamp_seconds));
+      setComments(prev => [...prev, newComment]);
 
       toast({
-        title: 'Comment added',
-        description: `Comment at ${formatTimestamp(timestampSeconds)}`,
+        title: 'Feedback added',
+        description: 'Your comment has been saved',
       });
 
       return newComment;
     } catch (error: any) {
       console.error('Error adding comment:', error);
       toast({
-        title: 'Failed to add comment',
+        title: 'Failed to add feedback',
         description: error.message || 'Please try again',
         variant: 'destructive',
       });
@@ -129,7 +128,7 @@ export function useVideoComments(deliverableId: string | null) {
       ));
 
       toast({
-        title: 'Comment resolved',
+        title: 'Feedback resolved',
         description: 'The feedback has been marked as addressed',
       });
 
@@ -172,13 +171,6 @@ export function useVideoComments(deliverableId: string | null) {
     }
   }, []);
 
-  // Format timestamp to MM:SS
-  const formatTimestamp = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
   // Get unresolved comments only
   const unresolvedComments = comments.filter(c => !c.is_resolved);
   const resolvedComments = comments.filter(c => c.is_resolved);
@@ -218,7 +210,6 @@ export function useVideoComments(deliverableId: string | null) {
     addComment,
     resolveComment,
     unresolveComment,
-    formatTimestamp,
     refetch: fetchComments,
   };
 }

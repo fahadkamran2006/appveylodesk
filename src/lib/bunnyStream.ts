@@ -42,7 +42,8 @@ export function buildBunnyStreamEmbedUrl(libraryId: string, videoId: string): st
 }
 
 export function buildBunnyStreamDownloadUrl(libraryId: string, videoId: string): string {
-  return `https://video.bunnycdn.com/play/${libraryId}/${videoId}/mp4_source`;
+  // Use Pull Zone CDN format for downloads (requires "Keep Original Files" enabled)
+  return `https://vz-${libraryId}.b-cdn.net/${videoId}/original`;
 }
 
 export function extractBunnyStreamLibraryIdFromEmbedUrl(embedUrl: string): string | null {

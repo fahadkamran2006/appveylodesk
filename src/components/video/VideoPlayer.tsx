@@ -41,7 +41,8 @@ function getBunnyStreamEmbedUrl(videoId: string): string {
 }
 
 export function getBunnyStreamDownloadUrl(videoId: string): string {
-  return `https://video.bunnycdn.com/play/${BUNNY_STREAM_LIBRARY_ID}/${videoId}/mp4_source`;
+  // Use Pull Zone CDN format for downloads (requires "Keep Original Files" enabled)
+  return `https://vz-${BUNNY_STREAM_LIBRARY_ID}.b-cdn.net/${videoId}/original`;
 }
 
 function isRegularVideoFile(url: string): boolean {
