@@ -609,6 +609,34 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Handle iframe load - request initial data and subscribe to events
+  // MUST be defined before any early returns to satisfy React hooks rules
+  const handleIframeLoad = useCallback(() => {
+    if (iframeRef.current?.contentWindow) {
+      // Give the player a moment to initialize, then request time/duration and subscribe to events
+      setTimeout(() => {
+        try {
+          const win = iframeRef.current?.contentWindow;
+          if (!win) return;
+          
+          // Player.js standard - request current state
+          win.postMessage({ method: 'getCurrentTime' }, '*');
+          win.postMessage({ method: 'getDuration' }, '*');
+          
+          // Subscribe to events using Player.js standard
+          win.postMessage({ method: 'addEventListener', value: 'timeupdate' }, '*');
+          win.postMessage({ method: 'addEventListener', value: 'pause' }, '*');
+          win.postMessage({ method: 'addEventListener', value: 'play' }, '*');
+          win.postMessage({ method: 'addEventListener', value: 'ended' }, '*');
+          
+          console.log('[VideoPlayer] Subscribed to Bunny iframe events');
+        } catch (e) {
+          console.log('Could not send initial postMessage to iframe:', e);
+        }
+      }, 500);
+    }
+  }, []);
+
   if (error) {
     return (
       <div className={cn('w-full h-full flex items-center justify-center bg-muted rounded-lg', className)}>
@@ -645,33 +673,6 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
       </div>
     );
   }
-
-  // Handle iframe load - request initial data and subscribe to events
-  const handleIframeLoad = useCallback(() => {
-    if (iframeRef.current?.contentWindow) {
-      // Give the player a moment to initialize, then request time/duration and subscribe to events
-      setTimeout(() => {
-        try {
-          const win = iframeRef.current?.contentWindow;
-          if (!win) return;
-          
-          // Player.js standard - request current state
-          win.postMessage({ method: 'getCurrentTime' }, '*');
-          win.postMessage({ method: 'getDuration' }, '*');
-          
-          // Subscribe to events using Player.js standard
-          win.postMessage({ method: 'addEventListener', value: 'timeupdate' }, '*');
-          win.postMessage({ method: 'addEventListener', value: 'pause' }, '*');
-          win.postMessage({ method: 'addEventListener', value: 'play' }, '*');
-          win.postMessage({ method: 'addEventListener', value: 'ended' }, '*');
-          
-          console.log('[VideoPlayer] Subscribed to Bunny iframe events');
-        } catch (e) {
-          console.log('Could not send initial postMessage to iframe:', e);
-        }
-      }, 500);
-    }
-  }, []);
 
   // Bunny Stream iframe embed
   if (useIframeEmbed && streamVideoId) {
