@@ -309,27 +309,95 @@ async function handleDownloadStream(
   
   console.log(`Extracted video ID: ${videoId}`);
   
-  // Build Bunny Storage API URL for the original file
-  // Format: https://storage.bunnycdn.com/{LIBRARY_ID}/__videos/{videoId}/original
-  const storageUrl = `https://storage.bunnycdn.com/${BUNNY_STREAM_LIBRARY_ID}/__videos/${videoId}/original`;
+  // Use Bunny Stream Video API to get the video download
+  // First, try to fetch the original file using the Video API's direct storage path
+  // The Stream Video API endpoint provides authenticated access
+  const videoApiUrl = `https://video.bunnycdn.com/library/${BUNNY_STREAM_LIBRARY_ID}/videos/${videoId}`;
   
-  console.log(`Fetching from Bunny Storage: ${storageUrl}`);
+  console.log(`Checking video status from: ${videoApiUrl}`);
   
-  // Fetch from Bunny Storage with API key
-  const bunnyResponse = await fetch(storageUrl, {
+  // First get video info to confirm it exists and is ready
+  const videoInfoResponse = await fetch(videoApiUrl, {
     method: "GET",
     headers: {
       "AccessKey": BUNNY_STREAM_API_KEY,
     },
   });
   
-  if (!bunnyResponse.ok) {
-    console.error(`Bunny Storage fetch failed: ${bunnyResponse.status}`);
+  if (!videoInfoResponse.ok) {
+    console.error(`Video API fetch failed: ${videoInfoResponse.status}`);
     return new Response(JSON.stringify({ 
-      error: `Failed to fetch video from storage: ${bunnyResponse.status}` 
+      error: `Video not found: ${videoInfoResponse.status}` 
     }), {
-      status: bunnyResponse.status,
+      status: videoInfoResponse.status,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  
+  const videoInfo = await videoInfoResponse.json();
+  console.log(`Video status: ${videoInfo.status}, Original stored: ${videoInfo.storageSize}`);
+  
+  // Build the CDN download URL for the original file
+  // Use the Pull Zone format which should work with "Keep Original Files" enabled
+  const cdnHost = `vz-${BUNNY_STREAM_LIBRARY_ID}.b-cdn.net`;
+  const originalUrl = `https://${cdnHost}/${videoId}/original`;
+  
+  console.log(`Fetching original from CDN: ${originalUrl}`);
+  
+  // Fetch the original file from CDN
+  const bunnyResponse = await fetch(originalUrl, {
+    method: "GET",
+  });
+  
+  if (!bunnyResponse.ok) {
+    // If original fails, try the 720p MP4 fallback
+    console.log(`Original not available (${bunnyResponse.status}), trying 720p fallback...`);
+    
+    const fallbackUrl = `https://${cdnHost}/${videoId}/play_720p.mp4`;
+    const fallbackResponse = await fetch(fallbackUrl, { method: "GET" });
+    
+    if (!fallbackResponse.ok) {
+      // Try 480p as last resort
+      const fallback480Url = `https://${cdnHost}/${videoId}/play_480p.mp4`;
+      const fallback480Response = await fetch(fallback480Url, { method: "GET" });
+      
+      if (!fallback480Response.ok) {
+        console.error(`All download attempts failed`);
+        return new Response(JSON.stringify({ 
+          error: `Video file not available for download. Please ensure MP4 Fallback is enabled in Stream settings.` 
+        }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      
+      // Use 480p fallback
+      const filename480 = sanitizeFilename(fileName || `video-${videoId}`);
+      console.log(`Streaming 480p fallback as: ${filename480}`);
+      
+      return new Response(fallback480Response.body, {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "video/mp4",
+          "Content-Disposition": `attachment; filename="${filename480}"`,
+          "Content-Length": fallback480Response.headers.get("Content-Length") || "",
+        },
+      });
+    }
+    
+    // Use 720p fallback
+    const filename720 = sanitizeFilename(fileName || `video-${videoId}`);
+    console.log(`Streaming 720p fallback as: ${filename720}`);
+    
+    return new Response(fallbackResponse.body, {
+      status: 200,
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "video/mp4",
+        "Content-Disposition": `attachment; filename="${filename720}"`,
+        "Content-Length": fallbackResponse.headers.get("Content-Length") || "",
+      },
     });
   }
   
