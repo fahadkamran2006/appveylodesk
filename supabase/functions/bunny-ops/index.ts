@@ -18,6 +18,7 @@ const BUNNY_STORAGE_HOSTNAME = Deno.env.get("BUNNY_STORAGE_HOSTNAME") || "storag
 // Bunny Stream configuration
 const BUNNY_STREAM_API_KEY = Deno.env.get("BUNNY_STREAM_API_KEY") || "";
 const BUNNY_STREAM_LIBRARY_ID = Deno.env.get("BUNNY_STREAM_LIBRARY_ID") || "";
+const BUNNY_STREAM_TOKEN_AUTH_KEY = Deno.env.get("BUNNY_STREAM_TOKEN_AUTH_KEY") || "";
 
 // Video file extensions that should use Bunny Stream
 const VIDEO_EXTENSIONS = ['mp4', 'mov', 'avi', 'mkv', 'webm', 'wmv', 'm4v', 'flv', 'mpeg', 'mpg'];
@@ -35,6 +36,43 @@ function isBunnyStreamConfigured(): boolean {
 function getStreamCdnHost(): string {
   // Bunny Stream uses vz-XXXXXXXX.b-cdn.net format where XXXXXXXX is first 8 chars of library ID
   return `vz-${BUNNY_STREAM_LIBRARY_ID.slice(0, 8)}.b-cdn.net`;
+}
+
+// Sign a Bunny CDN URL using Token Authentication
+// Based on Bunny.net's signing algorithm: SHA256(security_key + url_path + expiration_time) encoded as base64url
+async function signBunnyCdnUrl(url: string, expiresInSeconds: number = 3600): Promise<string> {
+  if (!BUNNY_STREAM_TOKEN_AUTH_KEY) {
+    console.log("No Token Auth Key configured, returning unsigned URL");
+    return url;
+  }
+  
+  const urlObj = new URL(url);
+  const path = urlObj.pathname;
+  const expirationTime = Math.floor(Date.now() / 1000) + expiresInSeconds;
+  
+  // Bunny's signing format: SHA256(securityKey + signedPath + expirationTime)
+  // The signedPath is the URL path (not including query params)
+  const hashableBase = BUNNY_STREAM_TOKEN_AUTH_KEY + path + expirationTime;
+  
+  // Hash using SHA-256
+  const encoder = new TextEncoder();
+  const data = encoder.encode(hashableBase);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  
+  // Convert to base64url (Bunny uses URL-safe base64 without padding)
+  const hashArray = new Uint8Array(hashBuffer);
+  let base64 = btoa(String.fromCharCode(...hashArray));
+  // Convert to base64url: replace + with -, / with _, remove padding =
+  const token = base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  
+  // Add token and expires to URL
+  urlObj.searchParams.set("token", token);
+  urlObj.searchParams.set("expires", expirationTime.toString());
+  
+  const signedUrl = urlObj.toString();
+  console.log(`Signed URL (expires in ${expiresInSeconds}s): ${signedUrl.substring(0, 80)}...`);
+  
+  return signedUrl;
 }
 
 async function getUserIdFromRequest(req: Request): Promise<string | null> {
@@ -376,22 +414,25 @@ async function handleDownloadStream(
       downloadSucceeded = true;
       console.log(`Video API direct download succeeded`);
     } else {
-      console.log(`Video API direct failed (${bunnyResponse.status}), trying Pull Zone CDN...`);
+      console.log(`Video API direct failed (${bunnyResponse.status}), trying Pull Zone CDN with signed URL...`);
       
-      // Strategy 3: Try the standard Pull Zone CDN (vz-{libraryId}.b-cdn.net)
+      // Strategy 3: Try the standard Pull Zone CDN with signed URL (vz-{libraryId}.b-cdn.net)
       const cdnHost = `vz-${BUNNY_STREAM_LIBRARY_ID}.b-cdn.net`;
       const originalUrl = `https://${cdnHost}/${videoId}/original`;
-      console.log(`Trying Pull Zone CDN: ${originalUrl}`);
       
-      bunnyResponse = await fetch(originalUrl);
+      // Sign the URL for Token Authentication
+      const signedOriginalUrl = await signBunnyCdnUrl(originalUrl, 3600);
+      console.log(`Trying signed Pull Zone CDN: ${signedOriginalUrl.substring(0, 80)}...`);
+      
+      bunnyResponse = await fetch(signedOriginalUrl);
       
       if (bunnyResponse.ok) {
         downloadSucceeded = true;
-        console.log(`Pull Zone CDN download succeeded`);
+        console.log(`Signed Pull Zone CDN download succeeded`);
       } else {
-        console.log(`Pull Zone CDN original failed (${bunnyResponse.status}), trying MP4 fallbacks...`);
+        console.log(`Signed Pull Zone CDN original failed (${bunnyResponse.status}), trying signed MP4 fallbacks...`);
         
-        // Strategy 4: Try MP4 fallbacks if enabled
+        // Strategy 4: Try signed MP4 fallbacks if enabled
         if (videoInfo.mp4Fallback) {
           // Try resolutions in order of quality
           const resolutionsToTry = ['1080', '720', '480', '360'];
@@ -399,13 +440,14 @@ async function handleDownloadStream(
           for (const res of resolutionsToTry) {
             if (availableResolutions.includes(res) || availableResolutions.length === 0) {
               const fallbackUrl = `https://${cdnHost}/${videoId}/play_${res}p.mp4`;
-              console.log(`Trying MP4 fallback ${res}p: ${fallbackUrl}`);
+              const signedFallbackUrl = await signBunnyCdnUrl(fallbackUrl, 3600);
+              console.log(`Trying signed MP4 fallback ${res}p: ${signedFallbackUrl.substring(0, 80)}...`);
               
-              const fallbackResponse = await fetch(fallbackUrl);
+              const fallbackResponse = await fetch(signedFallbackUrl);
               if (fallbackResponse.ok) {
                 bunnyResponse = fallbackResponse;
                 downloadSucceeded = true;
-                console.log(`MP4 fallback ${res}p succeeded`);
+                console.log(`Signed MP4 fallback ${res}p succeeded`);
                 break;
               }
             }
