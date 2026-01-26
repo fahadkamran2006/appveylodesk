@@ -34,13 +34,185 @@ function isBunnyStreamConfigured(): boolean {
 
 // Generate library-specific CDN hostname
 function getStreamCdnHost(): string {
-  // Bunny Stream uses vz-XXXXXXXX.b-cdn.net format where XXXXXXXX is first 8 chars of library ID
-  return `vz-${BUNNY_STREAM_LIBRARY_ID.slice(0, 8)}.b-cdn.net`;
+  // NOTE: Bunny Stream pull zone hostnames are NOT derived from the library id.
+  // They are typically `vz-<pullZoneId>.b-cdn.net` (see the deliverable's playlist.m3u8 URL).
+  // Keep this as a last-resort fallback only.
+  return `vz-${BUNNY_STREAM_LIBRARY_ID}.b-cdn.net`;
 }
 
-// Sign a Bunny CDN URL using Token Authentication
-// Based on Bunny.net's signing algorithm: SHA256(security_key + url_path + expiration_time) encoded as base64url
-async function signBunnyCdnUrl(url: string, expiresInSeconds: number = 3600): Promise<string> {
+function getStreamPullZoneHostFromFileUrl(fileUrl: string): string | null {
+  try {
+    const url = new URL(fileUrl);
+    // Expected: https://vz-<pullzone>.b-cdn.net/<videoId>/playlist.m3u8
+    if (url.host.includes(".b-cdn.net") && url.pathname.includes("/playlist.m3u8")) {
+      return url.host;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function toBase64Url(bytes: Uint8Array): string {
+  const base64 = btoa(String.fromCharCode(...bytes));
+  return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+// Minimal MD5 (hex) implementation for Deno Edge runtime (no external deps)
+// Based on a small public-domain JS implementation pattern.
+function md5Hex(input: string): string {
+  function add32(a: number, b: number) {
+    return (a + b) & 0xffffffff;
+  }
+
+  function cmn(q: number, a: number, b: number, x: number, s: number, t: number) {
+    a = add32(add32(a, q), add32(x, t));
+    return add32((a << s) | (a >>> (32 - s)), b);
+  }
+
+  function ff(a: number, b: number, c: number, d: number, x: number, s: number, t: number) {
+    return cmn((b & c) | (~b & d), a, b, x, s, t);
+  }
+  function gg(a: number, b: number, c: number, d: number, x: number, s: number, t: number) {
+    return cmn((b & d) | (c & ~d), a, b, x, s, t);
+  }
+  function hh(a: number, b: number, c: number, d: number, x: number, s: number, t: number) {
+    return cmn(b ^ c ^ d, a, b, x, s, t);
+  }
+  function ii(a: number, b: number, c: number, d: number, x: number, s: number, t: number) {
+    return cmn(c ^ (b | ~d), a, b, x, s, t);
+  }
+
+  function md5cycle(state: number[], k: number[]) {
+    let [a, b, c, d] = state;
+
+    a = ff(a, b, c, d, k[0], 7, -680876936);
+    d = ff(d, a, b, c, k[1], 12, -389564586);
+    c = ff(c, d, a, b, k[2], 17, 606105819);
+    b = ff(b, c, d, a, k[3], 22, -1044525330);
+    a = ff(a, b, c, d, k[4], 7, -176418897);
+    d = ff(d, a, b, c, k[5], 12, 1200080426);
+    c = ff(c, d, a, b, k[6], 17, -1473231341);
+    b = ff(b, c, d, a, k[7], 22, -45705983);
+    a = ff(a, b, c, d, k[8], 7, 1770035416);
+    d = ff(d, a, b, c, k[9], 12, -1958414417);
+    c = ff(c, d, a, b, k[10], 17, -42063);
+    b = ff(b, c, d, a, k[11], 22, -1990404162);
+    a = ff(a, b, c, d, k[12], 7, 1804603682);
+    d = ff(d, a, b, c, k[13], 12, -40341101);
+    c = ff(c, d, a, b, k[14], 17, -1502002290);
+    b = ff(b, c, d, a, k[15], 22, 1236535329);
+
+    a = gg(a, b, c, d, k[1], 5, -165796510);
+    d = gg(d, a, b, c, k[6], 9, -1069501632);
+    c = gg(c, d, a, b, k[11], 14, 643717713);
+    b = gg(b, c, d, a, k[0], 20, -373897302);
+    a = gg(a, b, c, d, k[5], 5, -701558691);
+    d = gg(d, a, b, c, k[10], 9, 38016083);
+    c = gg(c, d, a, b, k[15], 14, -660478335);
+    b = gg(b, c, d, a, k[4], 20, -405537848);
+    a = gg(a, b, c, d, k[9], 5, 568446438);
+    d = gg(d, a, b, c, k[14], 9, -1019803690);
+    c = gg(c, d, a, b, k[3], 14, -187363961);
+    b = gg(b, c, d, a, k[8], 20, 1163531501);
+    a = gg(a, b, c, d, k[13], 5, -1444681467);
+    d = gg(d, a, b, c, k[2], 9, -51403784);
+    c = gg(c, d, a, b, k[7], 14, 1735328473);
+    b = gg(b, c, d, a, k[12], 20, -1926607734);
+
+    a = hh(a, b, c, d, k[5], 4, -378558);
+    d = hh(d, a, b, c, k[8], 11, -2022574463);
+    c = hh(c, d, a, b, k[11], 16, 1839030562);
+    b = hh(b, c, d, a, k[14], 23, -35309556);
+    a = hh(a, b, c, d, k[1], 4, -1530992060);
+    d = hh(d, a, b, c, k[4], 11, 1272893353);
+    c = hh(c, d, a, b, k[7], 16, -155497632);
+    b = hh(b, c, d, a, k[10], 23, -1094730640);
+    a = hh(a, b, c, d, k[13], 4, 681279174);
+    d = hh(d, a, b, c, k[0], 11, -358537222);
+    c = hh(c, d, a, b, k[3], 16, -722521979);
+    b = hh(b, c, d, a, k[6], 23, 76029189);
+    a = hh(a, b, c, d, k[9], 4, -640364487);
+    d = hh(d, a, b, c, k[12], 11, -421815835);
+    c = hh(c, d, a, b, k[15], 16, 530742520);
+    b = hh(b, c, d, a, k[2], 23, -995338651);
+
+    a = ii(a, b, c, d, k[0], 6, -198630844);
+    d = ii(d, a, b, c, k[7], 10, 1126891415);
+    c = ii(c, d, a, b, k[14], 15, -1416354905);
+    b = ii(b, c, d, a, k[5], 21, -57434055);
+    a = ii(a, b, c, d, k[12], 6, 1700485571);
+    d = ii(d, a, b, c, k[3], 10, -1894986606);
+    c = ii(c, d, a, b, k[10], 15, -1051523);
+    b = ii(b, c, d, a, k[1], 21, -2054922799);
+    a = ii(a, b, c, d, k[8], 6, 1873313359);
+    d = ii(d, a, b, c, k[15], 10, -30611744);
+    c = ii(c, d, a, b, k[6], 15, -1560198380);
+    b = ii(b, c, d, a, k[13], 21, 1309151649);
+    a = ii(a, b, c, d, k[4], 6, -145523070);
+    d = ii(d, a, b, c, k[11], 10, -1120210379);
+    c = ii(c, d, a, b, k[2], 15, 718787259);
+    b = ii(b, c, d, a, k[9], 21, -343485551);
+
+    state[0] = add32(state[0], a);
+    state[1] = add32(state[1], b);
+    state[2] = add32(state[2], c);
+    state[3] = add32(state[3], d);
+  }
+
+  function md5blk(s: string) {
+    const blocks: number[] = [];
+    for (let i = 0; i < 64; i += 4) {
+      blocks[i >> 2] =
+        s.charCodeAt(i) |
+        (s.charCodeAt(i + 1) << 8) |
+        (s.charCodeAt(i + 2) << 16) |
+        (s.charCodeAt(i + 3) << 24);
+    }
+    return blocks;
+  }
+
+  function md51(s: string) {
+    const n = s.length;
+    const state = [1732584193, -271733879, -1732584194, 271733878];
+    let i: number;
+    for (i = 64; i <= n; i += 64) {
+      md5cycle(state, md5blk(s.substring(i - 64, i)));
+    }
+    s = s.substring(i - 64);
+    const tail = new Array(16).fill(0);
+    for (i = 0; i < s.length; i++) tail[i >> 2] |= s.charCodeAt(i) << ((i % 4) << 3);
+    tail[i >> 2] |= 0x80 << ((i % 4) << 3);
+    if (i > 55) {
+      md5cycle(state, tail);
+      for (i = 0; i < 16; i++) tail[i] = 0;
+    }
+    tail[14] = n * 8;
+    md5cycle(state, tail);
+    return state;
+  }
+
+  function rhex(n: number) {
+    const s = "0123456789abcdef";
+    let j = 0;
+    let out = "";
+    for (; j < 4; j++) out += s.charAt((n >> (j * 8 + 4)) & 0x0f) + s.charAt((n >> (j * 8)) & 0x0f);
+    return out;
+  }
+
+  const x = md51(input);
+  return rhex(x[0]) + rhex(x[1]) + rhex(x[2]) + rhex(x[3]);
+}
+
+type BunnyTokenAlgo = "sha256" | "md5";
+
+// Sign a Bunny CDN URL using Token Authentication.
+// NOTE: Pull Zones can be configured for MD5 *or* SHA256; we support both.
+async function signBunnyCdnUrl(
+  url: string,
+  expiresInSeconds: number = 3600,
+  algo: BunnyTokenAlgo = "sha256"
+): Promise<string> {
   if (!BUNNY_STREAM_TOKEN_AUTH_KEY) {
     console.log("No Token Auth Key configured, returning unsigned URL");
     return url;
@@ -50,27 +222,29 @@ async function signBunnyCdnUrl(url: string, expiresInSeconds: number = 3600): Pr
   const path = urlObj.pathname;
   const expirationTime = Math.floor(Date.now() / 1000) + expiresInSeconds;
   
-  // Bunny's signing format: SHA256(securityKey + signedPath + expirationTime)
-  // The signedPath is the URL path (not including query params)
+  // Hashable base (query params intentionally excluded; token auth uses path + expires)
   const hashableBase = BUNNY_STREAM_TOKEN_AUTH_KEY + path + expirationTime;
+
+  let token: string;
+  if (algo === "md5") {
+    token = md5Hex(hashableBase);
+  } else {
+    const data = new TextEncoder().encode(hashableBase);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+    token = toBase64Url(new Uint8Array(hashBuffer));
+  }
   
-  // Hash using SHA-256
-  const encoder = new TextEncoder();
-  const data = encoder.encode(hashableBase);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  
-  // Convert to base64url (Bunny uses URL-safe base64 without padding)
-  const hashArray = new Uint8Array(hashBuffer);
-  let base64 = btoa(String.fromCharCode(...hashArray));
-  // Convert to base64url: replace + with -, / with _, remove padding =
-  const token = base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-  
-  // Add token and expires to URL
+  // Add token and expires to URL.
+  // Bunny supports configurable token parameter names; many setups expect `bcdn_token`.
+  // We set both to be compatible across configurations.
   urlObj.searchParams.set("token", token);
+  urlObj.searchParams.set("bcdn_token", token);
   urlObj.searchParams.set("expires", expirationTime.toString());
   
   const signedUrl = urlObj.toString();
-  console.log(`Signed URL (expires in ${expiresInSeconds}s): ${signedUrl.substring(0, 80)}...`);
+  console.log(
+    `Signed URL (${algo}, expires in ${expiresInSeconds}s): ${signedUrl.substring(0, 90)}...`
+  );
   
   return signedUrl;
 }
@@ -346,6 +520,14 @@ async function handleDownloadStream(
   }
   
   console.log(`Extracted video ID: ${videoId}`);
+
+  const pullZoneHostFromUrl = getStreamPullZoneHostFromFileUrl(fileUrl);
+  const pullZoneHost = pullZoneHostFromUrl || getStreamCdnHost();
+  if (pullZoneHostFromUrl) {
+    console.log(`Detected Stream Pull Zone host from file_url: ${pullZoneHostFromUrl}`);
+  } else {
+    console.log(`No Pull Zone host detected from file_url; falling back to: ${pullZoneHost}`);
+  }
   
   // Use Bunny Stream Video API to get the video download
   // First, try to fetch the original file using the Video API's direct storage path
@@ -414,25 +596,79 @@ async function handleDownloadStream(
       downloadSucceeded = true;
       console.log(`Video API direct download succeeded`);
     } else {
-      console.log(`Video API direct failed (${bunnyResponse.status}), trying Pull Zone CDN with signed URL...`);
-      
-      // Strategy 3: Try the standard Pull Zone CDN with signed URL (vz-{libraryId}.b-cdn.net)
-      const cdnHost = `vz-${BUNNY_STREAM_LIBRARY_ID}.b-cdn.net`;
-      const originalUrl = `https://${cdnHost}/${videoId}/original`;
-      
-      // Sign the URL for Token Authentication
-      const signedOriginalUrl = await signBunnyCdnUrl(originalUrl, 3600);
-      console.log(`Trying signed Pull Zone CDN: ${signedOriginalUrl.substring(0, 80)}...`);
-      
-      bunnyResponse = await fetch(signedOriginalUrl);
-      
-      if (bunnyResponse.ok) {
+      console.log(`Video API direct failed (${bunnyResponse.status}), trying mp4_source redirect discovery...`);
+
+      // Strategy 2b: Use the public player endpoint to discover the MP4 source.
+      // This often responds with a redirect to the actual CDN mp4 file (which may be token-protected).
+      const mp4SourceUrl = `https://video.bunnycdn.com/play/${BUNNY_STREAM_LIBRARY_ID}/${videoId}/mp4_source`;
+      console.log(`Trying mp4_source discovery: ${mp4SourceUrl}`);
+
+      const mp4SourceResp = await fetch(mp4SourceUrl, { redirect: "manual" });
+      const redirectStatuses = new Set([301, 302, 303, 307, 308]);
+      const location = redirectStatuses.has(mp4SourceResp.status)
+        ? mp4SourceResp.headers.get("location")
+        : null;
+
+      if (location) {
+        console.log(`mp4_source redirected to: ${location}`);
+        const signedSha = await signBunnyCdnUrl(location, 3600, "sha256");
+        console.log(`Trying signed mp4_source redirect (sha256): ${signedSha.substring(0, 80)}...`);
+        bunnyResponse = await fetch(signedSha);
+        if (!bunnyResponse.ok && bunnyResponse.status === 403) {
+          try { await bunnyResponse.text(); } catch { /* ignore */ }
+          const signedMd5 = await signBunnyCdnUrl(location, 3600, "md5");
+          console.log(`SHA256 signed mp4_source redirect returned 403; retrying MD5: ${signedMd5.substring(0, 80)}...`);
+          bunnyResponse = await fetch(signedMd5);
+        }
+
+        if (bunnyResponse.ok && bunnyResponse.headers.get("content-type")?.includes("video")) {
+          downloadSucceeded = true;
+          console.log(`mp4_source redirect download succeeded`);
+        } else {
+          console.log(`mp4_source redirect download failed (${bunnyResponse.status}), trying Pull Zone CDN with signed URL...`);
+        }
+      } else if (mp4SourceResp.ok && mp4SourceResp.headers.get("content-type")?.includes("video")) {
+        // In some setups this might return a video body directly.
+        bunnyResponse = mp4SourceResp;
         downloadSucceeded = true;
-        console.log(`Signed Pull Zone CDN download succeeded`);
+        console.log(`mp4_source direct download succeeded`);
       } else {
-        console.log(`Signed Pull Zone CDN original failed (${bunnyResponse.status}), trying signed MP4 fallbacks...`);
+        try { await mp4SourceResp.text(); } catch { /* ignore */ }
+        console.log(`mp4_source discovery failed (${mp4SourceResp.status}), trying Pull Zone CDN with signed URL...`);
+      }
+
+      if (downloadSucceeded) {
+        // Skip remaining fallback attempts
+      }
+
+      if (!downloadSucceeded) {
+        console.log(`Trying Pull Zone CDN with signed URL...`);
+      
+        // Strategy 3: Try the Stream Pull Zone CDN with signed URL
+        // IMPORTANT: use the real pull zone hostname (from the deliverable's playlist URL)
+        const cdnHost = pullZoneHost;
+        const originalUrl = `https://${cdnHost}/${videoId}/original`;
+      
+        // Sign the URL for Token Authentication.
+        // Pull Zones can be configured for SHA256 or MD5. We'll try SHA256 first, then fallback to MD5 if 403.
+        const signedOriginalUrlSha = await signBunnyCdnUrl(originalUrl, 3600, "sha256");
+        console.log(`Trying signed Pull Zone CDN (sha256): ${signedOriginalUrlSha.substring(0, 80)}...`);
         
-        // Strategy 4: Try signed MP4 fallbacks if enabled
+        bunnyResponse = await fetch(signedOriginalUrlSha);
+        if (!bunnyResponse.ok && bunnyResponse.status === 403) {
+          try { await bunnyResponse.text(); } catch { /* ignore */ }
+          const signedOriginalUrlMd5 = await signBunnyCdnUrl(originalUrl, 3600, "md5");
+          console.log(`SHA256 signed URL returned 403; retrying with MD5: ${signedOriginalUrlMd5.substring(0, 80)}...`);
+          bunnyResponse = await fetch(signedOriginalUrlMd5);
+        }
+      
+        if (bunnyResponse.ok) {
+          downloadSucceeded = true;
+          console.log(`Signed Pull Zone CDN download succeeded`);
+        } else {
+          console.log(`Signed Pull Zone CDN original failed (${bunnyResponse.status}), trying signed MP4 fallbacks...`);
+        
+          // Strategy 4: Try signed MP4 fallbacks if enabled
         if (videoInfo.mp4Fallback) {
           // Try resolutions in order of quality
           const resolutionsToTry = ['1080', '720', '480', '360'];
@@ -440,10 +676,16 @@ async function handleDownloadStream(
           for (const res of resolutionsToTry) {
             if (availableResolutions.includes(res) || availableResolutions.length === 0) {
               const fallbackUrl = `https://${cdnHost}/${videoId}/play_${res}p.mp4`;
-              const signedFallbackUrl = await signBunnyCdnUrl(fallbackUrl, 3600);
-              console.log(`Trying signed MP4 fallback ${res}p: ${signedFallbackUrl.substring(0, 80)}...`);
-              
-              const fallbackResponse = await fetch(signedFallbackUrl);
+               const signedFallbackUrlSha = await signBunnyCdnUrl(fallbackUrl, 3600, "sha256");
+               console.log(`Trying signed MP4 fallback ${res}p (sha256): ${signedFallbackUrlSha.substring(0, 80)}...`);
+               
+               let fallbackResponse = await fetch(signedFallbackUrlSha);
+               if (!fallbackResponse.ok && fallbackResponse.status === 403) {
+                 try { await fallbackResponse.text(); } catch { /* ignore */ }
+                 const signedFallbackUrlMd5 = await signBunnyCdnUrl(fallbackUrl, 3600, "md5");
+                 console.log(`SHA256 MP4 fallback returned 403; retrying MD5: ${signedFallbackUrlMd5.substring(0, 80)}...`);
+                 fallbackResponse = await fetch(signedFallbackUrlMd5);
+               }
               if (fallbackResponse.ok) {
                 bunnyResponse = fallbackResponse;
                 downloadSucceeded = true;
@@ -454,9 +696,9 @@ async function handleDownloadStream(
           }
         }
         
-        // Strategy 5: Try iframe embed source extraction (last resort)
-        if (!downloadSucceeded) {
-          console.log(`All standard methods failed. Trying embed page extraction...`);
+          // Strategy 5: Try iframe embed source extraction (last resort)
+          if (!downloadSucceeded) {
+            console.log(`All standard methods failed. Trying embed page extraction...`);
           
           // The embed page might have a direct source URL we can parse
           const embedUrl = `https://iframe.mediadelivery.net/embed/${BUNNY_STREAM_LIBRARY_ID}/${videoId}`;
@@ -470,6 +712,7 @@ async function handleDownloadStream(
               console.log(`Found HLS source: ${sourceMatch[0]}`);
               // HLS files can't be downloaded directly, inform user
             }
+          }
           }
         }
       }
