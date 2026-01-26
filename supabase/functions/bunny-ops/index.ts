@@ -335,76 +335,132 @@ async function handleDownloadStream(
   }
   
   const videoInfo = await videoInfoResponse.json();
-  console.log(`Video status: ${videoInfo.status}, Original stored: ${videoInfo.storageSize}`);
+  console.log(`Video status: ${videoInfo.status}, Original stored: ${videoInfo.storageSize}, MP4 Fallback: ${videoInfo.mp4Fallback}`);
   
-  // Build the CDN download URL for the original file
-  // Use the Pull Zone format which should work with "Keep Original Files" enabled
-  const cdnHost = `vz-${BUNNY_STREAM_LIBRARY_ID}.b-cdn.net`;
-  const originalUrl = `https://${cdnHost}/${videoId}/original`;
+  // Get available resolutions from the video info
+  const availableResolutions = videoInfo.availableResolutions?.split(',') || [];
+  console.log(`Available resolutions: ${availableResolutions.join(', ')}`);
   
-  console.log(`Fetching original from CDN: ${originalUrl}`);
+  // Strategy 1: Use Bunny Storage API directly with the Stream API key
+  // For Bunny Stream, storage access uses: https://video.bunnycdn.com/library/{libraryId}/videos/{videoId}
+  // But for direct file access, we need the storage URL with proper auth
+  // The storage path for Stream is under the library ID as a pseudo-storage-zone
   
-  // Fetch the original file from CDN
-  const bunnyResponse = await fetch(originalUrl, {
-    method: "GET",
-  });
+  // First, try to get the direct download URL from video info if available
+  let bunnyResponse: Response | null = null;
+  let downloadSucceeded = false;
   
-  if (!bunnyResponse.ok) {
-    // If original fails, try the 720p MP4 fallback
-    console.log(`Original not available (${bunnyResponse.status}), trying 720p fallback...`);
+  // Strategy 1: Try HLS origin download (authenticated via API)
+  // Bunny Stream stores originals at: /{libraryId}/{videoId}/original
+  const storageUrl = `https://${BUNNY_STREAM_LIBRARY_ID}.b-cdn.net/${videoId}/original`;
+  console.log(`Trying Stream CDN storage: ${storageUrl}`);
+  
+  bunnyResponse = await fetch(storageUrl);
+  
+  if (bunnyResponse.ok) {
+    downloadSucceeded = true;
+    console.log(`Stream CDN storage download succeeded`);
+  } else {
+    console.log(`Stream CDN storage failed (${bunnyResponse.status}), trying direct storage API...`);
     
-    const fallbackUrl = `https://${cdnHost}/${videoId}/play_720p.mp4`;
-    const fallbackResponse = await fetch(fallbackUrl, { method: "GET" });
+    // Strategy 2: Try direct Bunny Video API download endpoint
+    // Some Bunny Stream setups allow direct download through the API
+    const directDownloadUrl = `https://video.bunnycdn.com/library/${BUNNY_STREAM_LIBRARY_ID}/videos/${videoId}/play`;
+    console.log(`Trying Video API direct: ${directDownloadUrl}`);
     
-    if (!fallbackResponse.ok) {
-      // Try 480p as last resort
-      const fallback480Url = `https://${cdnHost}/${videoId}/play_480p.mp4`;
-      const fallback480Response = await fetch(fallback480Url, { method: "GET" });
+    bunnyResponse = await fetch(directDownloadUrl, {
+      headers: { "AccessKey": BUNNY_STREAM_API_KEY },
+    });
+    
+    if (bunnyResponse.ok && bunnyResponse.headers.get("content-type")?.includes("video")) {
+      downloadSucceeded = true;
+      console.log(`Video API direct download succeeded`);
+    } else {
+      console.log(`Video API direct failed (${bunnyResponse.status}), trying Pull Zone CDN...`);
       
-      if (!fallback480Response.ok) {
-        console.error(`All download attempts failed`);
-        return new Response(JSON.stringify({ 
-          error: `Video file not available for download. Please ensure MP4 Fallback is enabled in Stream settings.` 
-        }), {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+      // Strategy 3: Try the standard Pull Zone CDN (vz-{libraryId}.b-cdn.net)
+      const cdnHost = `vz-${BUNNY_STREAM_LIBRARY_ID}.b-cdn.net`;
+      const originalUrl = `https://${cdnHost}/${videoId}/original`;
+      console.log(`Trying Pull Zone CDN: ${originalUrl}`);
+      
+      bunnyResponse = await fetch(originalUrl);
+      
+      if (bunnyResponse.ok) {
+        downloadSucceeded = true;
+        console.log(`Pull Zone CDN download succeeded`);
+      } else {
+        console.log(`Pull Zone CDN original failed (${bunnyResponse.status}), trying MP4 fallbacks...`);
+        
+        // Strategy 4: Try MP4 fallbacks if enabled
+        if (videoInfo.mp4Fallback) {
+          // Try resolutions in order of quality
+          const resolutionsToTry = ['1080', '720', '480', '360'];
+          
+          for (const res of resolutionsToTry) {
+            if (availableResolutions.includes(res) || availableResolutions.length === 0) {
+              const fallbackUrl = `https://${cdnHost}/${videoId}/play_${res}p.mp4`;
+              console.log(`Trying MP4 fallback ${res}p: ${fallbackUrl}`);
+              
+              const fallbackResponse = await fetch(fallbackUrl);
+              if (fallbackResponse.ok) {
+                bunnyResponse = fallbackResponse;
+                downloadSucceeded = true;
+                console.log(`MP4 fallback ${res}p succeeded`);
+                break;
+              }
+            }
+          }
+        }
+        
+        // Strategy 5: Try iframe embed source extraction (last resort)
+        if (!downloadSucceeded) {
+          console.log(`All standard methods failed. Trying embed page extraction...`);
+          
+          // The embed page might have a direct source URL we can parse
+          const embedUrl = `https://iframe.mediadelivery.net/embed/${BUNNY_STREAM_LIBRARY_ID}/${videoId}`;
+          const embedResponse = await fetch(embedUrl);
+          
+          if (embedResponse.ok) {
+            const embedHtml = await embedResponse.text();
+            // Try to extract the HLS or MP4 source from the embed page
+            const sourceMatch = embedHtml.match(/https:\/\/[^"'\s]+\.m3u8/);
+            if (sourceMatch) {
+              console.log(`Found HLS source: ${sourceMatch[0]}`);
+              // HLS files can't be downloaded directly, inform user
+            }
+          }
+        }
       }
-      
-      // Use 480p fallback
-      const filename480 = sanitizeFilename(fileName || `video-${videoId}`);
-      console.log(`Streaming 480p fallback as: ${filename480}`);
-      
-      return new Response(fallback480Response.body, {
-        status: 200,
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "video/mp4",
-          "Content-Disposition": `attachment; filename="${filename480}"`,
-          "Content-Length": fallback480Response.headers.get("Content-Length") || "",
-        },
-      });
     }
+  }
+  
+  if (!downloadSucceeded || !bunnyResponse || !bunnyResponse.ok) {
+    console.error(`All download attempts failed`);
     
-    // Use 720p fallback
-    const filename720 = sanitizeFilename(fileName || `video-${videoId}`);
-    console.log(`Streaming 720p fallback as: ${filename720}`);
+    // Provide detailed error with configuration suggestions
+    const errorDetails = {
+      error: `Unable to download video file.`,
+      details: `The video exists (status: ${videoInfo.status}) but download access is restricted.`,
+      suggestions: [
+        "Enable 'MP4 Fallback' in your Bunny Stream library settings",
+        "Disable 'Token Authentication' on the Stream Pull Zone, OR",
+        "Ensure 'Keep Original Files' is enabled in Stream settings"
+      ],
+      videoStatus: videoInfo.status,
+      mp4FallbackEnabled: videoInfo.mp4Fallback || false,
+      originalStored: videoInfo.storageSize > 0
+    };
     
-    return new Response(fallbackResponse.body, {
-      status: 200,
-      headers: {
-        ...corsHeaders,
-        "Content-Type": "video/mp4",
-        "Content-Disposition": `attachment; filename="${filename720}"`,
-        "Content-Length": fallbackResponse.headers.get("Content-Length") || "",
-      },
+    return new Response(JSON.stringify(errorDetails), {
+      status: 403,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
   
   // Sanitize filename
   const downloadFilename = sanitizeFilename(fileName || `video-${videoId}`);
   
-  console.log(`Streaming video as: ${downloadFilename}`);
+  console.log(`Streaming video as: ${downloadFilename}, size: ${bunnyResponse.headers.get("Content-Length")}`);
   
   // Stream the response back with proper headers
   return new Response(bunnyResponse.body, {
