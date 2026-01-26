@@ -29,10 +29,8 @@ import {
 import { Deliverable, useStorage } from '@/hooks/useStorage';
 import { useUploadContext } from '@/contexts/UploadContext';
 import { format } from 'date-fns';
-import { extractBunnyStreamVideoId, buildBunnyStreamDownloadUrl } from '@/lib/bunnyStream';
-
-// Bunny Stream Library ID
-const BUNNY_STREAM_LIBRARY_ID = '582147';
+import { extractBunnyStreamVideoId } from '@/lib/bunnyStream';
+import { supabase } from '@/integrations/supabase/client';
 
 interface FileManagerProps {
   projectId: string;
@@ -125,13 +123,65 @@ export function FileManager({
     }
   }, [deleteTarget, deleteDeliverable, onFileDeleted]);
 
-  const handleDownload = useCallback((deliverable: Deliverable) => {
+  const handleDownload = useCallback(async (deliverable: Deliverable) => {
     // Check if it's a Bunny Stream video
     const videoId = extractBunnyStreamVideoId(deliverable.file_url);
     if (videoId) {
-      // Use the correct MP4 download URL for Stream videos
-      const downloadUrl = buildBunnyStreamDownloadUrl(BUNNY_STREAM_LIBRARY_ID, videoId);
-      window.open(downloadUrl, '_blank');
+      // Use the edge function proxy for proper filename download
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      
+      if (!accessToken) {
+        console.error('No access token for download');
+        window.open(deliverable.file_url, '_blank');
+        return;
+      }
+      
+      // Call the edge function and let browser handle the download
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const downloadUrl = `${supabaseUrl}/functions/v1/bunny-ops`;
+      
+      // Use fetch to get the file with auth, then trigger download
+      try {
+        const response = await fetch(downloadUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            action: 'download_stream',
+            deliverableId: deliverable.id,
+          }),
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Download failed: ${response.status}`);
+        }
+        
+        // Get filename from Content-Disposition header
+        const disposition = response.headers.get('Content-Disposition');
+        let filename = deliverable.file_name || 'video.mp4';
+        if (disposition) {
+          const match = disposition.match(/filename="(.+)"/);
+          if (match) filename = match[1];
+        }
+        
+        // Create blob and trigger download
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error('Download error:', error);
+        // Fallback to direct URL
+        window.open(deliverable.file_url, '_blank');
+      }
       return;
     }
     

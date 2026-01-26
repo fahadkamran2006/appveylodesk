@@ -79,10 +79,62 @@ function getBunnyStreamEmbedUrl(videoId: string): string {
   return `https://iframe.mediadelivery.net/embed/${BUNNY_STREAM_LIBRARY_ID}/${videoId}?autoplay=false&preload=true`;
 }
 
-// Generate Bunny Stream download URL using Pull Zone CDN
-function getBunnyStreamDownloadUrl(videoId: string): string {
-  // Use Pull Zone CDN format for downloads (requires "Keep Original Files" enabled)
-  return `https://vz-${BUNNY_STREAM_LIBRARY_ID}.b-cdn.net/${videoId}/original`;
+// Download stream video via edge function proxy for proper filename
+async function downloadStreamVideo(deliverableId: string, fileName: string): Promise<void> {
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData?.session?.access_token;
+    
+    if (!accessToken) {
+      console.error('No access token for download');
+      return;
+    }
+    
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const downloadUrl = `${supabaseUrl}/functions/v1/bunny-ops`;
+    
+    const response = await fetch(downloadUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'download_stream',
+        deliverableId,
+      }),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Download failed: ${response.status}`);
+    }
+    
+    // Get filename from Content-Disposition header
+    const disposition = response.headers.get('Content-Disposition');
+    let downloadName = fileName || 'video.mp4';
+    if (disposition) {
+      const match = disposition.match(/filename="(.+)"/);
+      if (match) downloadName = match[1];
+    }
+    
+    // Ensure .mp4 extension
+    if (!downloadName.toLowerCase().endsWith('.mp4')) {
+      downloadName = downloadName.replace(/\.[^.]+$/, '') + '.mp4';
+    }
+    
+    // Create blob and trigger download
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = downloadName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error('Download error:', error);
+  }
 }
 
 async function getSignedUrl(deliverableId: string): Promise<{ url: string | null; error?: string }> {
@@ -264,11 +316,10 @@ export function FilePreviewModal({
     }
   };
 
-  const handleDownload = () => {
-    // For Bunny Stream videos, use the MP4 download URL
-    if (isStreamVideo && streamVideoId) {
-      const downloadUrl = getBunnyStreamDownloadUrl(streamVideoId);
-      window.open(downloadUrl, '_blank');
+  const handleDownload = async () => {
+    // For Bunny Stream videos, use the edge function proxy for proper filename
+    if (isStreamVideo && streamVideoId && file) {
+      await downloadStreamVideo(file.id, file.file_name);
       return;
     }
     
