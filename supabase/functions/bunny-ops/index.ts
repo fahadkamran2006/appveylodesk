@@ -7,7 +7,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-type Action = "upload" | "delete" | "stream_status";
+type Action = "upload" | "delete" | "stream_status" | "download_stream";
 
 // Get Bunny.net configuration from environment
 const BUNNY_API_KEY = Deno.env.get("BUNNY_API_KEY")!;
@@ -247,7 +247,107 @@ function isBunnyStreamUrl(url: string): boolean {
 function extractStreamVideoId(url: string): string | null {
   // URL format: https://vz-XXXXXXXX.b-cdn.net/{videoId}/playlist.m3u8
   const match = url.match(/\.b-cdn\.net\/([a-f0-9-]+)\//);
-  return match ? match[1] : null;
+  if (match) return match[1];
+  
+  // Also try to match GUID directly
+  const guidMatch = url.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
+  return guidMatch ? guidMatch[1] : null;
+}
+
+// Sanitize filename for download (remove invalid characters)
+function sanitizeFilename(filename: string): string {
+  // Remove characters that are invalid in filenames
+  let sanitized = filename.replace(/[/\\:*?"<>|]/g, '_');
+  
+  // Ensure it ends with .mp4
+  if (!sanitized.toLowerCase().endsWith('.mp4')) {
+    // Remove any existing extension and add .mp4
+    const lastDot = sanitized.lastIndexOf('.');
+    if (lastDot > 0) {
+      sanitized = sanitized.substring(0, lastDot);
+    }
+    sanitized = sanitized + '.mp4';
+  }
+  
+  return sanitized || 'video.mp4';
+}
+
+// Proxy download for Bunny Stream videos with proper filename
+async function handleDownloadStream(
+  deliverableId: string,
+  // deno-lint-ignore no-explicit-any
+  service: any
+): Promise<Response> {
+  console.log(`Downloading stream video for deliverable: ${deliverableId}`);
+  
+  // Fetch deliverable details
+  const { data: deliverable, error: deliverableError } = await service
+    .from("deliverables")
+    .select("id, file_url, file_name, project_id")
+    .eq("id", deliverableId)
+    .maybeSingle();
+  
+  if (deliverableError) throw deliverableError;
+  if (!deliverable) {
+    return new Response(JSON.stringify({ error: "Deliverable not found" }), {
+      status: 404,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  
+  // Extract video ID
+  const fileUrl = deliverable.file_url as string;
+  const fileName = deliverable.file_name as string;
+  
+  const videoId = extractStreamVideoId(fileUrl);
+  if (!videoId) {
+    return new Response(JSON.stringify({ error: "Could not extract video ID from URL" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  
+  console.log(`Extracted video ID: ${videoId}`);
+  
+  // Build Bunny Storage API URL for the original file
+  // Format: https://storage.bunnycdn.com/{LIBRARY_ID}/__videos/{videoId}/original
+  const storageUrl = `https://storage.bunnycdn.com/${BUNNY_STREAM_LIBRARY_ID}/__videos/${videoId}/original`;
+  
+  console.log(`Fetching from Bunny Storage: ${storageUrl}`);
+  
+  // Fetch from Bunny Storage with API key
+  const bunnyResponse = await fetch(storageUrl, {
+    method: "GET",
+    headers: {
+      "AccessKey": BUNNY_STREAM_API_KEY,
+    },
+  });
+  
+  if (!bunnyResponse.ok) {
+    console.error(`Bunny Storage fetch failed: ${bunnyResponse.status}`);
+    return new Response(JSON.stringify({ 
+      error: `Failed to fetch video from storage: ${bunnyResponse.status}` 
+    }), {
+      status: bunnyResponse.status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  
+  // Sanitize filename
+  const downloadFilename = sanitizeFilename(fileName || `video-${videoId}`);
+  
+  console.log(`Streaming video as: ${downloadFilename}`);
+  
+  // Stream the response back with proper headers
+  return new Response(bunnyResponse.body, {
+    status: 200,
+    headers: {
+      ...corsHeaders,
+      "Content-Type": "video/mp4",
+      "Content-Disposition": `attachment; filename="${downloadFilename}"`,
+      "Content-Length": bunnyResponse.headers.get("Content-Length") || "",
+    },
+  });
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -432,6 +532,68 @@ const handler = async (req: Request): Promise<Response> => {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // Handle download_stream action - proxy download with proper filename
+    if (action === "download_stream") {
+      const deliverableId = body?.deliverableId as string;
+      if (!deliverableId) {
+        return new Response(JSON.stringify({ error: "Missing deliverableId" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (!isBunnyStreamConfigured()) {
+        return new Response(JSON.stringify({ error: "Bunny Stream not configured" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Verify user has access to the deliverable's project
+      const { data: deliverable } = await service
+        .from("deliverables")
+        .select("project_id")
+        .eq("id", deliverableId)
+        .maybeSingle();
+
+      if (!deliverable) {
+        return new Response(JSON.stringify({ error: "Deliverable not found" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Check authorization
+      const { data: project } = await service
+        .from("projects")
+        .select("id, agency_id, client_id")
+        .eq("id", deliverable.project_id)
+        .maybeSingle();
+
+      if (!project) {
+        return new Response(JSON.stringify({ error: "Project not found" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data: isEditor } = await service.rpc("is_project_editor", {
+        _user_id: userId,
+        _project_id: deliverable.project_id,
+      });
+
+      const isClientOwner = roleRow.role === "client" && project.client_id === userId;
+
+      if (roleRow.role !== "admin" && !isEditor && !isClientOwner) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return handleDownloadStream(deliverableId, service);
     }
 
     if (action === "delete") {
