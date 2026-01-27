@@ -40,24 +40,39 @@ function isBunnyCdnUrl(url: string): boolean {
   return url.includes('b-cdn.net') || url.includes('bunnycdn');
 }
 
-// Check if URL/ID is a Bunny Stream video (GUID format)
+/**
+ * Strict detection for Bunny Stream URLs.
+ * Returns TRUE only for actual Stream videos (not regular CDN files).
+ */
 function isBunnyStreamVideo(urlOrId: string): boolean {
-  const guidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!urlOrId) return false;
   
-  if (urlOrId.includes('.b-cdn.net/') && urlOrId.includes('/playlist.m3u8')) {
-    return true;
+  try {
+    const urlObj = new URL(urlOrId);
+    const host = urlObj.host.toLowerCase();
+    const path = urlObj.pathname.toLowerCase();
+    
+    // Stream HLS URLs: host starts with "vz-" and path has playlist.m3u8
+    if (host.startsWith('vz-') && host.includes('.b-cdn.net') && path.includes('/playlist.m3u8')) {
+      return true;
+    }
+    
+    // Stream embed URLs
+    if (host.includes('iframe.mediadelivery.net')) {
+      return true;
+    }
+    
+    return false;
+  } catch {
+    // Fallback for non-URL strings
+    if (urlOrId.includes('iframe.mediadelivery.net')) {
+      return true;
+    }
+    if (/vz-[a-z0-9]+\.b-cdn\.net.*\/playlist\.m3u8/i.test(urlOrId)) {
+      return true;
+    }
+    return false;
   }
-  
-  if (guidPattern.test(urlOrId)) {
-    return true;
-  }
-  
-  const guidMatch = urlOrId.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
-  if (guidMatch && (urlOrId.includes('bunny') || urlOrId.includes('b-cdn.net') || urlOrId.includes('mediadelivery'))) {
-    return true;
-  }
-  
-  return false;
 }
 
 // Extract video ID from Bunny Stream URL

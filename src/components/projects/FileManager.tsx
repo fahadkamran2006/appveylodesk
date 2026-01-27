@@ -29,7 +29,7 @@ import {
 import { Deliverable, useStorage } from '@/hooks/useStorage';
 import { useUploadContext } from '@/contexts/UploadContext';
 import { format } from 'date-fns';
-import { extractBunnyStreamVideoId } from '@/lib/bunnyStream';
+import { isDefinitelyBunnyStreamUrl } from '@/lib/bunnyStream';
 import { supabase } from '@/integrations/supabase/client';
 
 interface FileManagerProps {
@@ -124,10 +124,11 @@ export function FileManager({
   }, [deleteTarget, deleteDeliverable, onFileDeleted]);
 
   const handleDownload = useCallback(async (deliverable: Deliverable) => {
-    // Check if it's a Bunny Stream video
-    const videoId = extractBunnyStreamVideoId(deliverable.file_url);
-    if (videoId) {
-      // Use the edge function proxy for proper filename download
+    // Use strict check: only route to edge function for actual Bunny Stream videos
+    const isBunnyStream = isDefinitelyBunnyStreamUrl(deliverable.file_url);
+    
+    if (isBunnyStream) {
+      // Use the edge function Storage API proxy for proper filename download
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData?.session?.access_token;
       
@@ -137,11 +138,9 @@ export function FileManager({
         return;
       }
       
-      // Call the edge function and let browser handle the download
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const downloadUrl = `${supabaseUrl}/functions/v1/bunny-ops`;
       
-      // Use fetch to get the file with auth, then trigger download
       try {
         const response = await fetch(downloadUrl, {
           method: 'POST',
@@ -159,7 +158,6 @@ export function FileManager({
           throw new Error(`Download failed: ${response.status}`);
         }
         
-        // Get filename from Content-Disposition header
         const disposition = response.headers.get('Content-Disposition');
         let filename = deliverable.file_name || 'video.mp4';
         if (disposition) {
@@ -167,7 +165,6 @@ export function FileManager({
           if (match) filename = match[1];
         }
         
-        // Create blob and trigger download
         const blob = await response.blob();
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -179,13 +176,13 @@ export function FileManager({
         URL.revokeObjectURL(url);
       } catch (error) {
         console.error('Download error:', error);
-        // Fallback to direct URL
         window.open(deliverable.file_url, '_blank');
       }
       return;
     }
     
-    // For other files, open the file_url directly
+    // For regular CDN files (images, PDFs, etc.), use direct download
+    // This works because Token Auth is only on Stream, not the regular CDN
     window.open(deliverable.file_url, '_blank');
   }, []);
 
