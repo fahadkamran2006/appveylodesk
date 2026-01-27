@@ -5,6 +5,49 @@ export function isBunnyStreamGuid(value: string): boolean {
 }
 
 /**
+ * Strict detection for Bunny Stream URLs.
+ * Returns TRUE only for actual Stream videos (not regular CDN files).
+ * 
+ * Matches:
+ * - HLS URLs: https://vz-*.b-cdn.net/{guid}/playlist.m3u8
+ * - Embed URLs: https://iframe.mediadelivery.net/embed/{lib}/{guid}
+ * 
+ * Does NOT match:
+ * - Regular CDN URLs like veylodesk.b-cdn.net (even if they contain GUIDs)
+ */
+export function isDefinitelyBunnyStreamUrl(url: string): boolean {
+  if (!url) return false;
+  
+  try {
+    const urlObj = new URL(url);
+    const host = urlObj.host.toLowerCase();
+    const path = urlObj.pathname.toLowerCase();
+    
+    // Stream HLS URLs: host starts with "vz-" and contains ".b-cdn.net", path has playlist.m3u8
+    if (host.startsWith('vz-') && host.includes('.b-cdn.net') && path.includes('/playlist.m3u8')) {
+      return true;
+    }
+    
+    // Stream embed URLs: iframe.mediadelivery.net
+    if (host.includes('iframe.mediadelivery.net')) {
+      return true;
+    }
+    
+    return false;
+  } catch {
+    // Fallback regex checks for non-URL strings
+    if (url.includes('iframe.mediadelivery.net')) {
+      return true;
+    }
+    // Check for vz-*.b-cdn.net pattern with playlist.m3u8
+    if (/vz-[a-z0-9]+\.b-cdn\.net.*\/playlist\.m3u8/i.test(url)) {
+      return true;
+    }
+    return false;
+  }
+}
+
+/**
  * Supports:
  * - direct GUID
  * - HLS url: https://vz-XXXX.b-cdn.net/{guid}/playlist.m3u8
