@@ -1,38 +1,79 @@
 
 
-# Fix Downloads: Images Immediately + Video Storage Proxy
+# Fix Constant Reloading + Download Button Issues
 
 ## Overview
 
-This plan fixes two issues:
-1. **Image/PDF downloads broken** - Regular files are incorrectly detected as Stream videos due to overly liberal GUID matching
-2. **Video downloads failing with 403** - Token Authentication on the Pull Zone is blocking downloads; we'll bypass this using the Bunny Storage API directly
+This plan addresses two issues:
+1. **UX: Constant reloading** - App fetches data every time window gains focus
+2. **Download buttons may fail** - Both image 403s and ensuring video downloads use the proxy
 
-## What Will Change
+## Issue 1: Stop Constant Reloading
 
-### Part 1: Fix Image Downloads (Stricter Detection)
-
-The current `extractBunnyStreamVideoId` function matches ANY GUID in a URL. This means regular files like `https://veylodesk.b-cdn.net/abc-123-def/image.jpg` get treated as Stream videos if the path contains a GUID-like pattern.
-
-**Fix**: Create a new strict detection function that only identifies true Bunny Stream videos by checking for:
-- Host contains `vz-` prefix (Stream Pull Zone pattern)
-- Path contains `/playlist.m3u8`
-- OR URL is from `iframe.mediadelivery.net`
-
-Regular CDN files on `veylodesk.b-cdn.net` will use direct `window.open()` download (no Token Auth needed there).
-
-### Part 2: Video Downloads via Storage API Proxy
-
-Instead of trying to sign Pull Zone URLs, we'll fetch directly from Bunny's Storage API which uses a simpler API key authentication:
-
-```text
-Storage URL: https://storage.bunnycdn.com/vz-b78eeeb2-7b9/{VIDEO_ID}/original
-AccessKey: a32ab757-90c7-41b3-868dbd75ccf2-95cc-40d0
+### Current State
+In `App.tsx` (line 49), the QueryClient is created with no configuration:
+```typescript
+const queryClient = new QueryClient();
 ```
 
-The edge function will:
-1. Fetch the video from Storage API with the access key
-2. Stream it back to the browser with `Content-Disposition: attachment; filename="[Title].mp4"`
+By default, React Query refetches all queries when the window regains focus, which causes spinners and data refreshes every time the user switches tabs.
+
+### Solution
+Configure QueryClient with `refetchOnWindowFocus: false`:
+```typescript
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+```
+
+---
+
+## Issue 2: Download Buttons Analysis
+
+### Current FileManager.tsx Logic (Already Implemented)
+Looking at lines 126-187 of `FileManager.tsx`, the download logic is:
+1. Check if URL is a Bunny Stream video using `isDefinitelyBunnyStreamUrl()`
+2. If Stream video: Call `bunny-ops` edge function with `action: download_stream`
+3. If not Stream: Use `window.open(file_url, '_blank')`
+
+### Current Detection Logic
+The `isDefinitelyBunnyStreamUrl()` function (lines 18-48 in `bunnyStream.ts`) correctly identifies:
+- **Stream videos**: URLs starting with `vz-` and containing `playlist.m3u8` (e.g., `https://vz-582147.b-cdn.net/{guid}/playlist.m3u8`)
+- **Regular CDN files**: URLs on `veylodesk.b-cdn.net` are correctly NOT matched
+
+### Database Verification
+Queried the database and confirmed:
+- Videos have URLs like: `https://vz-582147.b-cdn.net/{guid}/playlist.m3u8`
+- Images have URLs like: `https://veylodesk.b-cdn.net/{projectId}/{filename}`
+
+The detection logic correctly differentiates these.
+
+### Potential Image 403 Issue
+If images on `veylodesk.b-cdn.net` are failing with 403:
+- This could be a Bunny CDN configuration issue (Hotlink Protection or Geo-blocking)
+- Or browser popup blocking
+- The code itself appears correct
+
+### Recommended Enhancement
+To ensure downloads work reliably, change `window.open()` to use the anchor tag download method which provides better cross-browser support:
+
+```typescript
+// Instead of: window.open(deliverable.file_url, '_blank');
+// Use:
+const a = document.createElement('a');
+a.href = deliverable.file_url;
+a.download = deliverable.file_name;
+a.target = '_blank';
+document.body.appendChild(a);
+a.click();
+document.body.removeChild(a);
+```
+
+This triggers the browser's native download behavior rather than opening a new tab.
 
 ---
 
@@ -40,73 +81,58 @@ The edge function will:
 
 | File | Changes |
 |------|---------|
-| `src/lib/bunnyStream.ts` | Add `isDefinitelyBunnyStreamUrl()` function for strict Stream detection |
-| `src/components/projects/FileManager.tsx` | Use strict check; regular files use direct `window.open()` |
-| `src/components/ui/file-preview-modal.tsx` | Use strict check for download routing |
-| `supabase/functions/bunny-ops/index.ts` | Replace download logic with Storage API proxy |
+| `src/App.tsx` | Add `refetchOnWindowFocus: false` to QueryClient configuration |
+| `src/components/projects/FileManager.tsx` | Replace `window.open()` for regular files with anchor download method |
 
 ---
 
 ## Technical Details
 
-### 1. New Detection Function (`bunnyStream.ts`)
+### App.tsx Changes
 
-```text
-isDefinitelyBunnyStreamUrl(url):
-  - Returns TRUE if:
-    - URL host starts with "vz-" AND includes ".b-cdn.net" AND path includes "playlist.m3u8"
-    - OR URL includes "iframe.mediadelivery.net"
-  - Returns FALSE for everything else (including regular CDN files)
+**Before (line 49):**
+```typescript
+const queryClient = new QueryClient();
 ```
 
-### 2. FileManager.tsx Download Logic
-
-```text
-handleDownload(deliverable):
-  |
-  +--> Is file_url a definite Bunny Stream URL? (new strict check)
-  |      |
-  |      YES --> Call download_stream edge function
-  |
-  |      NO --> Direct window.open(file_url) - works immediately
+**After:**
+```typescript
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 ```
 
-### 3. Edge Function Storage API Proxy
+### FileManager.tsx Changes
 
-The `download_stream` action will be simplified to:
-
-```text
-1. Get deliverable from database (file_url, file_name)
-2. Extract video ID from file_url
-3. Fetch from: https://storage.bunnycdn.com/vz-b78eeeb2-7b9/{videoId}/original
-   Headers: { AccessKey: "a32ab757-90c7-41b3-868dbd75ccf2-95cc-40d0" }
-4. Stream response with:
-   - Content-Type: video/mp4
-   - Content-Disposition: attachment; filename="{sanitized_filename}.mp4"
+**Replace lines 184-186** (regular CDN file download):
+```typescript
+// For regular CDN files (images, PDFs, etc.), use anchor download method
+// This works better than window.open for triggering actual downloads
+const a = document.createElement('a');
+a.href = deliverable.file_url;
+a.download = deliverable.file_name;
+a.target = '_blank';
+a.rel = 'noopener noreferrer';
+document.body.appendChild(a);
+a.click();
+document.body.removeChild(a);
 ```
 
-### 4. New Secret Required
-
-A new Supabase secret will store the Stream Storage API key:
-- Name: `BUNNY_STREAM_STORAGE_KEY`
-- Value: `a32ab757-90c7-41b3-868dbd75ccf2-95cc-40d0`
+This approach:
+- Uses the `download` attribute to suggest the filename
+- Falls back to opening in new tab if CORS prevents download
+- Works more reliably across browsers than `window.open()`
 
 ---
 
 ## Expected Results
 
 After implementation:
-- **Images/PDFs**: Download immediately via direct browser navigation (no auth needed)
-- **Videos**: Download via Storage API proxy with correct `.mp4` filename
-- **No more 403 errors**: Storage API uses simple API key auth, not Token Authentication
-
----
-
-## Implementation Sequence
-
-1. Add the `BUNNY_STREAM_STORAGE_KEY` secret to Supabase
-2. Update `src/lib/bunnyStream.ts` with stricter detection
-3. Update `FileManager.tsx` to route correctly
-4. Update `file-preview-modal.tsx` to match
-5. Simplify `bunny-ops` to use Storage API for video downloads
+- **No more constant reloading**: App won't refetch data on window focus
+- **Reliable video downloads**: Already working via Storage API proxy
+- **Better image downloads**: Anchor method is more reliable than `window.open()`
 
