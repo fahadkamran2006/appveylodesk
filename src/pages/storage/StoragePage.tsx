@@ -264,11 +264,12 @@ const StoragePage = () => {
             .maybeSingle();
           uploaderName = uploaderProfile?.full_name || uploaderProfile?.email || 'Unknown';
 
+          const fileSize = d.file_size || 0;
           return {
             id: d.id,
             file_name: d.file_name,
             file_url: d.file_url,
-            file_size: d.file_size || 0,
+            file_size: fileSize,
             project_id: d.project_id,
             project_title: d.project?.title || 'Unknown Project',
             client_name: clientName,
@@ -281,6 +282,25 @@ const StoragePage = () => {
       );
 
       setFiles(enrichedFiles);
+      
+      // Calculate storage from files for non-admin users or as fallback
+      if (!storageInfo || userRole !== 'admin') {
+        const totalUsedBytes = enrichedFiles.reduce((sum, f) => sum + (f.file_size || 0), 0);
+        // Get agency storage limit
+        const { data: agencyData } = await supabase
+          .from('agencies')
+          .select('storage_limit_bytes, subscription_plan')
+          .eq('id', userRoleData.agency_id)
+          .single();
+        
+        if (agencyData) {
+          setStorageInfo({
+            used: totalUsedBytes,
+            limit: agencyData.storage_limit_bytes,
+            plan: agencyData.subscription_plan,
+          });
+        }
+      }
 
       // Group files by client > project
       const grouped: GroupedFiles = {};
@@ -565,16 +585,6 @@ const StoragePage = () => {
     return <File className="w-5 h-5 text-muted-foreground" />;
   };
 
-  // Helper to determine storage source from file_url
-  const getStorageSource = (fileUrl: string): { label: string; emoji: string; variant: 'default' | 'secondary' } => {
-    if (fileUrl.includes('b-cdn.net') || fileUrl.includes('bunnycdn')) {
-      return { label: 'Bunny', emoji: '🐰', variant: 'default' };
-    }
-    if (fileUrl.includes('supabase')) {
-      return { label: 'Supabase', emoji: '⚡', variant: 'secondary' };
-    }
-    return { label: 'External', emoji: '🔗', variant: 'secondary' };
-  };
 
   const handleDownload = async (file: StorageFile) => {
     try {
@@ -845,30 +855,30 @@ const StoragePage = () => {
                   : 'View files from your projects'}
               </p>
             </div>
-            {userRole === 'admin' && (
-              <div className="flex items-center gap-3">
-                {/* Storage Usage Card */}
-                {storageInfo && (
-                  <div className="glass-card rounded-xl p-4 flex items-center gap-4">
-                    <HardDrive className="w-6 h-6 text-primary" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">
-                        Storage Used {loadingStorageInfo && <Loader2 className="w-3 h-3 inline animate-spin ml-1" />}
-                      </p>
-                      <p className="text-lg font-semibold text-foreground">
-                        {formatBytes(storageInfo.used)} / {formatBytes(storageInfo.limit)}
-                      </p>
-                      <div className="w-40 h-2 bg-muted rounded-full mt-1">
-                        <div
-                          className="h-full bg-primary rounded-full"
-                          style={{ width: `${Math.min((storageInfo.used / storageInfo.limit) * 100, 100)}%` }}
-                        />
-                      </div>
+            <div className="flex items-center gap-3">
+              {/* Storage Usage Card - shown for all users */}
+              {storageInfo && (
+                <div className="glass-card rounded-xl p-4 flex items-center gap-4">
+                  <HardDrive className="w-6 h-6 text-primary" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      Storage Used {loadingStorageInfo && <Loader2 className="w-3 h-3 inline animate-spin ml-1" />}
+                    </p>
+                    <p className="text-lg font-semibold text-foreground">
+                      {formatBytes(storageInfo.used)} / {formatBytes(storageInfo.limit)}
+                    </p>
+                    <div className="w-40 h-2 bg-muted rounded-full mt-1">
+                      <div
+                        className="h-full bg-primary rounded-full"
+                        style={{ width: `${Math.min((storageInfo.used / storageInfo.limit) * 100, 100)}%` }}
+                      />
                     </div>
                   </div>
-                )}
-
-                {/* Admin Storage Tools */}
+                </div>
+              )}
+              
+              {/* Admin-only tools */}
+              {userRole === 'admin' && (
                 <div className="flex flex-col gap-2">
                   <Button
                     variant="outline"
@@ -897,8 +907,8 @@ const StoragePage = () => {
                     Recalculate
                   </Button>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
           {/* Orphan Files Alert */}
@@ -1089,23 +1099,16 @@ const StoragePage = () => {
                                       >
                                         {getFileIcon(file.file_name)}
                                         <div className="min-w-0 flex-1">
-                                          <div className="flex items-center gap-2">
-                                            <a 
-                                              href={file.file_url} 
-                                              target="_blank" 
-                                              rel="noopener noreferrer"
-                                              onClick={(e) => e.stopPropagation()}
-                                              className="font-medium text-foreground truncate hover:underline hover:text-primary flex items-center gap-1"
-                                            >
-                                              {file.file_name}
-                                              <ExternalLink className="w-3 h-3 shrink-0" />
-                                            </a>
-                                            {userRole === 'admin' && (
-                                              <Badge variant={getStorageSource(file.file_url).variant} className="shrink-0 text-xs">
-                                                {getStorageSource(file.file_url).emoji} {getStorageSource(file.file_url).label}
-                                              </Badge>
-                                            )}
-                                          </div>
+                                          <a 
+                                            href={file.file_url} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="font-medium text-foreground truncate hover:underline hover:text-primary flex items-center gap-1"
+                                          >
+                                            {file.file_name}
+                                            <ExternalLink className="w-3 h-3 shrink-0" />
+                                          </a>
                                           <p className="text-sm text-muted-foreground truncate">
                                             {file.client_name} / {file.project_title} • {formatBytes(file.file_size)}
                                           </p>
@@ -1187,23 +1190,16 @@ const StoragePage = () => {
                                       >
                                         {getFileIcon(file.file_name)}
                                         <div className="min-w-0 flex-1">
-                                          <div className="flex items-center gap-2">
-                                            <a 
-                                              href={file.file_url} 
-                                              target="_blank" 
-                                              rel="noopener noreferrer"
-                                              onClick={(e) => e.stopPropagation()}
-                                              className="text-sm font-medium text-foreground truncate hover:underline hover:text-primary flex items-center gap-1"
-                                            >
-                                              {file.file_name}
-                                              <ExternalLink className="w-3 h-3 shrink-0" />
-                                            </a>
-                                            {userRole === 'admin' && (
-                                              <Badge variant={getStorageSource(file.file_url).variant} className="shrink-0 text-xs">
-                                                {getStorageSource(file.file_url).emoji} {getStorageSource(file.file_url).label}
-                                              </Badge>
-                                            )}
-                                          </div>
+                                          <a 
+                                            href={file.file_url} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="text-sm font-medium text-foreground truncate hover:underline hover:text-primary flex items-center gap-1"
+                                          >
+                                            {file.file_name}
+                                            <ExternalLink className="w-3 h-3 shrink-0" />
+                                          </a>
                                           <p className="text-xs text-muted-foreground">
                                             {formatBytes(file.file_size)} • Uploaded by {file.uploader_name}
                                           </p>
