@@ -346,7 +346,8 @@ async function handleDownloadStream(
   
   // Fetch directly from Bunny Storage API (bypasses Pull Zone Token Authentication)
   // Storage URL format: https://storage.bunnycdn.com/{storage-zone}/{videoId}/original
-  const storageUrl = `https://storage.bunnycdn.com/${BUNNY_STREAM_STORAGE_ZONE}/${videoId}/original`;
+  // Hardcoded storage zone for reliability (matches manually verified path)
+  const storageUrl = `https://storage.bunnycdn.com/vz-b78eeeb2-7b9/${videoId}/original`;
   console.log(`Fetching from Storage API: ${storageUrl}`);
   
   const storageResponse = await fetch(storageUrl, {
@@ -377,7 +378,7 @@ async function handleDownloadStream(
         // Try fetching MP4 from storage
         const resolutions = ['1080', '720', '480', '360'];
         for (const res of resolutions) {
-          const mp4StorageUrl = `https://storage.bunnycdn.com/${BUNNY_STREAM_STORAGE_ZONE}/${videoId}/play_${res}p.mp4`;
+          const mp4StorageUrl = `https://storage.bunnycdn.com/vz-b78eeeb2-7b9/${videoId}/play_${res}p.mp4`;
           console.log(`Trying MP4 fallback ${res}p from storage...`);
           
           const mp4Response = await fetch(mp4StorageUrl, {
