@@ -46,7 +46,13 @@ import MessagesPage from "./pages/messages/MessagesPage";
 import StoragePage from "./pages/storage/StoragePage";
 import CalendarPage from "./pages/Calendar";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const App = () => (
   <HelmetProvider>

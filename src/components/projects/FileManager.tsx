@@ -181,9 +181,16 @@ export function FileManager({
       return;
     }
     
-    // For regular CDN files (images, PDFs, etc.), use direct download
-    // This works because Token Auth is only on Stream, not the regular CDN
-    window.open(deliverable.file_url, '_blank');
+    // For regular CDN files (images, PDFs, etc.), use anchor download method
+    // This works better than window.open for triggering actual downloads
+    const a = document.createElement('a');
+    a.href = deliverable.file_url;
+    a.download = deliverable.file_name;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   }, []);
 
   return (
