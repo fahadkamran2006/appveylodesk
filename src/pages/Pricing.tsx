@@ -1,55 +1,86 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { Button } from "@/components/ui/button";
-import { Check, ArrowRight, ArrowLeft, Command } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Check, ArrowRight, Sparkles } from "lucide-react";
 import Navbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
 
+interface PlanFeature {
+  text: string;
+  highlight: boolean;
+}
+
+interface Plan {
+  name: string;
+  monthlyPrice: number;
+  yearlyPrice: number;
+  description: string;
+  features: PlanFeature[];
+  popular: boolean;
+}
+
 const Pricing = () => {
-  const plans = [
+  const [isYearly, setIsYearly] = useState(true);
+
+  const plans: Plan[] = [
     {
       name: "Starter",
-      price: "$29",
-      period: "/mo",
+      monthlyPrice: 29,
+      yearlyPrice: 290,
       description: "For Freelancers",
       features: [
         { text: "Unlimited Team Members", highlight: true },
-        { text: "Manage 5 Active Clients", highlight: false },
+        { text: "5 Active Clients", highlight: false },
         { text: "200GB Storage", highlight: false },
         { text: "Standard Support", highlight: false },
       ],
-      cta: "Start Free Trial",
       popular: false,
     },
     {
       name: "Growth",
-      price: "$79",
-      period: "/mo",
+      monthlyPrice: 79,
+      yearlyPrice: 790,
       description: "For Growing Agencies",
       features: [
         { text: "Unlimited Team Members", highlight: true },
-        { text: "Manage 25 Active Clients", highlight: false },
+        { text: "25 Active Clients", highlight: false },
         { text: "1TB Storage", highlight: false },
-        { text: "White-label Sharing", highlight: false },
+        { text: "White-label Branding", highlight: false },
       ],
-      cta: "Start Free Trial",
       popular: true,
     },
     {
       name: "Scale",
-      price: "$149",
-      period: "/mo",
+      monthlyPrice: 149,
+      yearlyPrice: 1490,
       description: "For Production Houses",
       features: [
         { text: "Unlimited Team Members", highlight: true },
         { text: "Unlimited Clients", highlight: false },
         { text: "3TB Storage", highlight: false },
-        { text: "Priority Support", highlight: false },
+        { text: "White-label + Priority Support", highlight: false },
       ],
-      cta: "Start Free Trial",
       popular: false,
     },
   ];
+
+  const getDisplayPrice = (plan: Plan) => {
+    if (isYearly) {
+      const monthlyEquivalent = Math.round(plan.yearlyPrice / 12);
+      return {
+        main: `$${monthlyEquivalent}`,
+        period: "/mo",
+        subtext: `Billed $${plan.yearlyPrice}/year`,
+      };
+    }
+    return {
+      main: `$${plan.monthlyPrice}`,
+      period: "/mo",
+      subtext: "Billed monthly",
+    };
+  };
 
   return (
     <>
@@ -63,7 +94,7 @@ const Pricing = () => {
 
         <main className="pt-32 pb-24">
           <div className="container mx-auto px-6">
-            <div className="max-w-4xl mx-auto text-center mb-20">
+            <div className="max-w-4xl mx-auto text-center mb-12">
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
                 Simple Pricing.{" "}
                 <span className="text-gradient">Serious Results.</span>
@@ -73,58 +104,82 @@ const Pricing = () => {
               </p>
             </div>
 
+            {/* Billing Toggle */}
+            <div className="flex items-center justify-center gap-4 mb-12">
+              <span className={`text-sm font-medium transition-colors ${!isYearly ? 'text-foreground' : 'text-muted-foreground'}`}>
+                Monthly
+              </span>
+              <Switch
+                checked={isYearly}
+                onCheckedChange={setIsYearly}
+                className="data-[state=checked]:bg-primary"
+              />
+              <span className={`text-sm font-medium transition-colors ${isYearly ? 'text-foreground' : 'text-muted-foreground'}`}>
+                Yearly
+              </span>
+              {isYearly && (
+                <span className="ml-2 px-3 py-1 rounded-full bg-success/10 text-success text-sm font-medium">
+                  Save 17% — 2 Months Free!
+                </span>
+              )}
+            </div>
+
             {/* Pricing Cards */}
             <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-              {plans.map((plan) => (
-                <div
-                  key={plan.name}
-                  className={`relative glass-card rounded-2xl p-8 flex flex-col ${
-                    plan.popular
-                      ? "border-primary/50 shadow-glow scale-105 z-10"
-                      : "border-border/30"
-                  }`}
-                >
-                  {plan.popular && (
-                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full bg-gradient-primary text-primary-foreground text-sm font-medium shadow-lg">
-                      Most Popular
-                    </div>
-                  )}
-
-                  <div className="mb-8">
-                    <h3 className="text-xl font-semibold text-foreground mb-2">
-                      {plan.name}
-                    </h3>
-                    <div className="flex items-baseline gap-1 mb-2">
-                      <span className="text-4xl font-bold text-foreground">{plan.price}</span>
-                      <span className="text-muted-foreground">{plan.period}</span>
-                    </div>
-                    <p className="text-muted-foreground">{plan.description}</p>
-                  </div>
-
-                  <ul className="space-y-4 mb-8 flex-1">
-                    {plan.features.map((feature) => (
-                      <li key={feature.text} className="flex items-start gap-3">
-                        <Check className={`w-5 h-5 mt-0.5 flex-shrink-0 ${feature.highlight ? 'text-primary' : 'text-success'}`} />
-                        <span className={`${feature.highlight ? 'font-bold text-foreground' : 'text-foreground'}`}>
-                          {feature.text}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  <Button
-                    variant={plan.popular ? "hero" : "outline"}
-                    size="lg"
-                    className="w-full"
-                    asChild
+              {plans.map((plan) => {
+                const price = getDisplayPrice(plan);
+                return (
+                  <div
+                    key={plan.name}
+                    className={`relative glass-card rounded-2xl p-8 flex flex-col ${
+                      plan.popular
+                        ? "border-primary/50 shadow-glow scale-105 z-10"
+                        : "border-border/30"
+                    }`}
                   >
-                    <Link to="/auth/signup">
-                      {plan.cta}
-                      <ArrowRight className="w-4 h-4" />
-                    </Link>
-                  </Button>
-                </div>
-              ))}
+                    {plan.popular && (
+                      <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full bg-gradient-primary text-primary-foreground text-sm font-medium shadow-lg">
+                        Most Popular
+                      </div>
+                    )}
+
+                    <div className="mb-8">
+                      <h3 className="text-xl font-semibold text-foreground mb-2">
+                        {plan.name}
+                      </h3>
+                      <div className="flex items-baseline gap-1 mb-1">
+                        <span className="text-4xl font-bold text-foreground">{price.main}</span>
+                        <span className="text-muted-foreground">{price.period}</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{price.subtext}</p>
+                      <p className="text-muted-foreground mt-2">{plan.description}</p>
+                    </div>
+
+                    <ul className="space-y-4 mb-8 flex-1">
+                      {plan.features.map((feature) => (
+                        <li key={feature.text} className="flex items-start gap-3">
+                          <Check className={`w-5 h-5 mt-0.5 flex-shrink-0 ${feature.highlight ? 'text-primary' : 'text-success'}`} />
+                          <span className={`${feature.highlight ? 'font-bold text-foreground' : 'text-foreground'}`}>
+                            {feature.text}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    <Button
+                      variant={plan.popular ? "hero" : "outline"}
+                      size="lg"
+                      className="w-full"
+                      asChild
+                    >
+                      <Link to="/auth/signup">
+                        Start Free Trial
+                        <ArrowRight className="w-4 h-4" />
+                      </Link>
+                    </Button>
+                  </div>
+                );
+              })}
             </div>
 
             {/* FAQ or Guarantee */}

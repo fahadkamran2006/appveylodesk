@@ -83,6 +83,24 @@ export function InviteUserModal({
 
       const agencyId = userRole.agency_id;
 
+      // Check client limit if inviting a client
+      if (data.role === 'client') {
+        const { data: canAdd, error: limitError } = await supabase
+          .rpc('check_client_limit', { _agency_id: agencyId });
+
+        if (limitError) {
+          console.error('Error checking client limit:', limitError);
+        } else if (canAdd === false) {
+          toast({
+            title: 'Client limit reached',
+            description: 'Upgrade to Growth or Scale to invite more clients.',
+            variant: 'destructive',
+          });
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
       // Create an invitation (don't create placeholder auth users)
       const { data: invitation, error: inviteError } = await supabase
         .from('agency_invitations')

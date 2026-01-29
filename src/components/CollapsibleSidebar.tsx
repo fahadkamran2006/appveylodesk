@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 import { useSidebar } from '@/hooks/useSidebar';
@@ -7,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Command,
   LayoutDashboard,
@@ -30,6 +32,12 @@ interface NavItem {
   label: string;
   icon: React.ElementType;
   href: string;
+}
+
+interface AgencyBranding {
+  logo_url?: string;
+  primary_color?: string;
+  agency_name?: string;
 }
 
 const adminNavItems: NavItem[] = [
@@ -70,15 +78,59 @@ interface CollapsibleSidebarProps {
 
 export function CollapsibleSidebar({ role = 'admin' }: CollapsibleSidebarProps) {
   const location = useLocation();
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const { totalUnread } = useUnreadMessages();
   const { isCollapsed, toggleSidebar } = useSidebar();
+  const [branding, setBranding] = useState<AgencyBranding | null>(null);
+  const [canWhiteLabel, setCanWhiteLabel] = useState(false);
 
   const navItems = role === 'admin' 
     ? adminNavItems 
     : role === 'client' 
       ? clientNavItems 
       : editorNavItems;
+
+  // Fetch agency branding for white-label support
+  useEffect(() => {
+    const fetchBranding = async () => {
+      if (!user) return;
+
+      try {
+        // Get user's agency
+        const { data: userRole } = await supabase
+          .from('user_roles')
+          .select('agency_id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (!userRole?.agency_id) return;
+
+        // Get agency with plan tier and branding
+        const { data: agency } = await supabase
+          .from('agencies')
+          .select('plan_tier, branding')
+          .eq('id', userRole.agency_id)
+          .single();
+
+        if (agency) {
+          // Only enable white-label for growth and scale tiers
+          const tier = agency.plan_tier as string;
+          if (tier === 'growth' || tier === 'scale') {
+            setCanWhiteLabel(true);
+            if (agency.branding) {
+              setBranding(agency.branding as AgencyBranding);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching branding:', error);
+      }
+    };
+
+    fetchBranding();
+  }, [user]);
+
+  const showCustomLogo = canWhiteLabel && branding?.logo_url;
 
   return (
     <aside 
@@ -93,12 +145,24 @@ export function CollapsibleSidebar({ role = 'admin' }: CollapsibleSidebarProps) 
         isCollapsed ? "p-3 justify-center" : "p-4 justify-between"
       )}>
         <Link to="/" className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-lg bg-gradient-primary flex items-center justify-center flex-shrink-0">
-            <Command className="w-5 h-5 text-primary-foreground" />
-          </div>
+          {showCustomLogo ? (
+            <img 
+              src={branding.logo_url} 
+              alt={branding.agency_name || 'Agency'} 
+              className="w-9 h-9 rounded-lg object-cover flex-shrink-0"
+            />
+          ) : (
+            <div className="w-9 h-9 rounded-lg bg-gradient-primary flex items-center justify-center flex-shrink-0">
+              <Command className="w-5 h-5 text-primary-foreground" />
+            </div>
+          )}
           {!isCollapsed && (
             <span className="text-xl font-bold text-foreground whitespace-nowrap">
-              Veylo<span className="text-gradient">desk</span>
+              {showCustomLogo && branding?.agency_name ? (
+                branding.agency_name
+              ) : (
+                <>Veylo<span className="text-gradient">desk</span></>
+              )}
             </span>
           )}
         </Link>
