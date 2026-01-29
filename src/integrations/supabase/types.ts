@@ -16,35 +16,53 @@ export type Database = {
     Tables: {
       agencies: {
         Row: {
+          billing_interval: string | null
+          branding: Json | null
           created_at: string
           created_by: string | null
           id: string
+          lemon_squeezy_customer_id: string | null
           logo_url: string | null
+          max_clients: number
           name: string
+          plan_tier: string
           storage_limit_bytes: number
           storage_used_bytes: number
+          subscription_ends_at: string | null
           subscription_plan: string
           updated_at: string
         }
         Insert: {
+          billing_interval?: string | null
+          branding?: Json | null
           created_at?: string
           created_by?: string | null
           id?: string
+          lemon_squeezy_customer_id?: string | null
           logo_url?: string | null
+          max_clients?: number
           name: string
+          plan_tier?: string
           storage_limit_bytes?: number
           storage_used_bytes?: number
+          subscription_ends_at?: string | null
           subscription_plan?: string
           updated_at?: string
         }
         Update: {
+          billing_interval?: string | null
+          branding?: Json | null
           created_at?: string
           created_by?: string | null
           id?: string
+          lemon_squeezy_customer_id?: string | null
           logo_url?: string | null
+          max_clients?: number
           name?: string
+          plan_tier?: string
           storage_limit_bytes?: number
           storage_used_bytes?: number
+          subscription_ends_at?: string | null
           subscription_plan?: string
           updated_at?: string
         }
@@ -720,6 +738,7 @@ export type Database = {
         Args: { _agency_id: string; _channel_id: string }
         Returns: boolean
       }
+      check_client_limit: { Args: { _agency_id: string }; Returns: boolean }
       check_storage_limit: {
         Args: { _agency_id: string; _file_size: number }
         Returns: boolean
