@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.storage-ops]
 verify_jwt = false
+
+[functions.lemon-webhook]
+verify_jwt = false

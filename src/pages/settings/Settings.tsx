@@ -9,6 +9,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { AvatarUpload } from '@/components/settings/AvatarUpload';
 import { StorageManagement } from '@/components/settings/StorageManagement';
+import { BrandingSettings } from '@/components/settings/BrandingSettings';
 import { InstallPWAButton } from '@/components/InstallPWAButton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -214,6 +215,11 @@ const SettingsPage = () => {
             {/* Storage Management - Admin Only */}
             {userRole === 'admin' && (
               <StorageManagement className="mt-6" />
+            )}
+
+            {/* Branding Settings - Admin Only */}
+            {userRole === 'admin' && (
+              <BrandingSettings className="mt-6" />
             )}
           </div>
         </DashboardLayout>
