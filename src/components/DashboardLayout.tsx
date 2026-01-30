@@ -1,6 +1,7 @@
 import { ReactNode } from 'react';
 import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
+import { SubscriptionGuard } from '@/components/SubscriptionGuard';
 import { cn } from '@/lib/utils';
 
 interface DashboardLayoutProps {
@@ -26,7 +27,9 @@ export function DashboardLayout({ role, children, className }: DashboardLayoutPr
         "pb-20 md:pb-8",
         className
       )}>
-        {children}
+        <SubscriptionGuard>
+          {children}
+        </SubscriptionGuard>
       </main>
 
       {/* Mobile Bottom Navigation */}

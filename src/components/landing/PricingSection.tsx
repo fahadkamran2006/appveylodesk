@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Check, Sparkles, ArrowRight } from "lucide-react";
+import { Check, Sparkles, ArrowRight, Loader2 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useSubscription, getCheckoutUrl } from "@/hooks/useSubscription";
 
 interface PlanFeature {
   text: string;
@@ -11,6 +13,7 @@ interface PlanFeature {
 
 interface Plan {
   name: string;
+  key: 'starter' | 'growth' | 'scale';
   monthlyPrice: number;
   yearlyPrice: number;
   description: string;
@@ -20,10 +23,15 @@ interface Plan {
 
 const PricingSection = () => {
   const [isYearly, setIsYearly] = useState(true);
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const { user } = useAuth();
+  const { agencyId } = useSubscription();
+  const navigate = useNavigate();
 
   const plans: Plan[] = [
     {
       name: "Starter",
+      key: "starter",
       monthlyPrice: 29,
       yearlyPrice: 290,
       description: "For Freelancers",
@@ -37,6 +45,7 @@ const PricingSection = () => {
     },
     {
       name: "Growth",
+      key: "growth",
       monthlyPrice: 79,
       yearlyPrice: 790,
       description: "For Growing Agencies",
@@ -50,6 +59,7 @@ const PricingSection = () => {
     },
     {
       name: "Scale",
+      key: "scale",
       monthlyPrice: 149,
       yearlyPrice: 1490,
       description: "For Production Houses",
@@ -77,6 +87,29 @@ const PricingSection = () => {
       period: "/mo",
       subtext: "Billed monthly",
     };
+  };
+
+  const handleSelectPlan = (plan: Plan) => {
+    // If not logged in, redirect to signup
+    if (!user) {
+      navigate('/auth/signup');
+      return;
+    }
+
+    // If no agency yet, redirect to onboarding
+    if (!agencyId) {
+      navigate('/onboarding');
+      return;
+    }
+
+    setLoadingPlan(plan.key);
+    
+    // Build checkout URL with agency_id
+    const interval = isYearly ? 'yearly' : 'monthly';
+    const checkoutUrl = getCheckoutUrl(plan.key, interval, agencyId);
+    
+    // Redirect to Lemon Squeezy checkout
+    window.location.href = checkoutUrl;
   };
 
   return (
@@ -125,6 +158,7 @@ const PricingSection = () => {
         <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
           {plans.map((plan) => {
             const price = getDisplayPrice(plan);
+            const isLoading = loadingPlan === plan.key;
             return (
               <div
                 key={plan.name}
@@ -167,12 +201,20 @@ const PricingSection = () => {
                   variant={plan.popular ? "hero" : "outline"}
                   size="lg"
                   className="w-full"
-                  asChild
+                  onClick={() => handleSelectPlan(plan)}
+                  disabled={isLoading}
                 >
-                  <Link to="/auth/signup">
-                    Start Free Trial
-                    <ArrowRight className="w-4 h-4" />
-                  </Link>
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Redirecting...
+                    </>
+                  ) : (
+                    <>
+                      {user ? 'Subscribe Now' : 'Get Started'}
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
                 </Button>
               </div>
             );
