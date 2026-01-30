@@ -1,11 +1,13 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Check, ArrowRight, Sparkles } from "lucide-react";
+import { Check, ArrowRight, Loader2 } from "lucide-react";
 import Navbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
+import { useAuth } from "@/hooks/useAuth";
+import { useSubscription, getCheckoutUrl } from "@/hooks/useSubscription";
 
 interface PlanFeature {
   text: string;
@@ -14,6 +16,7 @@ interface PlanFeature {
 
 interface Plan {
   name: string;
+  key: 'starter' | 'growth' | 'scale';
   monthlyPrice: number;
   yearlyPrice: number;
   description: string;
@@ -23,10 +26,15 @@ interface Plan {
 
 const Pricing = () => {
   const [isYearly, setIsYearly] = useState(true);
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const { user } = useAuth();
+  const { agencyId, isActive } = useSubscription();
+  const navigate = useNavigate();
 
   const plans: Plan[] = [
     {
       name: "Starter",
+      key: "starter",
       monthlyPrice: 29,
       yearlyPrice: 290,
       description: "For Freelancers",
@@ -40,6 +48,7 @@ const Pricing = () => {
     },
     {
       name: "Growth",
+      key: "growth",
       monthlyPrice: 79,
       yearlyPrice: 790,
       description: "For Growing Agencies",
@@ -53,6 +62,7 @@ const Pricing = () => {
     },
     {
       name: "Scale",
+      key: "scale",
       monthlyPrice: 149,
       yearlyPrice: 1490,
       description: "For Production Houses",
@@ -80,6 +90,29 @@ const Pricing = () => {
       period: "/mo",
       subtext: "Billed monthly",
     };
+  };
+
+  const handleSelectPlan = (plan: Plan) => {
+    // If not logged in, redirect to signup
+    if (!user) {
+      navigate('/auth/signup');
+      return;
+    }
+
+    // If no agency yet, something is wrong - redirect to onboarding
+    if (!agencyId) {
+      navigate('/onboarding');
+      return;
+    }
+
+    setLoadingPlan(plan.key);
+    
+    // Build checkout URL with agency_id
+    const interval = isYearly ? 'yearly' : 'monthly';
+    const checkoutUrl = getCheckoutUrl(plan.key, interval, agencyId);
+    
+    // Redirect to Lemon Squeezy checkout
+    window.location.href = checkoutUrl;
   };
 
   return (
@@ -128,6 +161,7 @@ const Pricing = () => {
             <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
               {plans.map((plan) => {
                 const price = getDisplayPrice(plan);
+                const isLoading = loadingPlan === plan.key;
                 return (
                   <div
                     key={plan.name}
@@ -170,12 +204,20 @@ const Pricing = () => {
                       variant={plan.popular ? "hero" : "outline"}
                       size="lg"
                       className="w-full"
-                      asChild
+                      onClick={() => handleSelectPlan(plan)}
+                      disabled={isLoading}
                     >
-                      <Link to="/auth/signup">
-                        Start Free Trial
-                        <ArrowRight className="w-4 h-4" />
-                      </Link>
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Redirecting...
+                        </>
+                      ) : (
+                        <>
+                          {user ? 'Subscribe Now' : 'Get Started'}
+                          <ArrowRight className="w-4 h-4" />
+                        </>
+                      )}
                     </Button>
                   </div>
                 );

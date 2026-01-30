@@ -141,11 +141,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     if (!error) {
-      // After signup, redirect to onboarding (which will detect invite token)
+      // After signup, redirect based on invite token
       if (inviteToken) {
         navigate(`/onboarding?invite=${inviteToken}`);
       } else {
-        navigate('/onboarding');
+        // New users without invite go to pricing to choose a plan
+        navigate('/pricing');
       }
     }
 
