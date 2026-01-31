@@ -6,10 +6,17 @@ import { Lock, CreditCard, Loader2 } from 'lucide-react';
 
 interface SubscriptionGuardProps {
   children: ReactNode;
+  /** If true, always show children without checking subscription */
+  bypass?: boolean;
 }
 
-export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
+export function SubscriptionGuard({ children, bypass = false }: SubscriptionGuardProps) {
   const { isActive, loading } = useSubscription();
+
+  // If bypass is enabled, always show children
+  if (bypass) {
+    return <>{children}</>;
+  }
 
   if (loading) {
     return (
@@ -50,7 +57,7 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
               className="w-full"
               asChild
             >
-              <Link to="/pricing">
+              <Link to="/subscribe">
                 <CreditCard className="w-4 h-4 mr-2" />
                 Choose a Plan
               </Link>

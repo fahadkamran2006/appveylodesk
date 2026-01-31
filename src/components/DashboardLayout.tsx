@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import { useLocation } from 'react-router-dom';
 import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { SubscriptionGuard } from '@/components/SubscriptionGuard';
@@ -10,7 +11,21 @@ interface DashboardLayoutProps {
   className?: string;
 }
 
+// Routes that remain accessible without subscription (admin only)
+const UNLOCKED_ADMIN_ROUTES = [
+  '/admin/team',
+  '/admin/clients',
+  '/admin/settings',
+];
+
 export function DashboardLayout({ role, children, className }: DashboardLayoutProps) {
+  const location = useLocation();
+  
+  // Determine if this route should bypass the subscription guard
+  const shouldBypassGuard = role === 'admin' && UNLOCKED_ADMIN_ROUTES.some(
+    route => location.pathname.startsWith(route)
+  );
+
   return (
     <div className="min-h-screen bg-background flex flex-col md:flex-row">
       {/* Desktop Sidebar - Hidden on mobile */}
@@ -27,7 +42,7 @@ export function DashboardLayout({ role, children, className }: DashboardLayoutPr
         "pb-20 md:pb-8",
         className
       )}>
-        <SubscriptionGuard>
+        <SubscriptionGuard bypass={shouldBypassGuard}>
           {children}
         </SubscriptionGuard>
       </main>

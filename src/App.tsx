@@ -36,6 +36,7 @@ import EditorProjects from "./pages/editor/Projects";
 import EditorEarnings from "./pages/editor/Earnings";
 
 import Pricing from "./pages/Pricing";
+import Subscribe from "./pages/Subscribe";
 import Privacy from "./pages/legal/Privacy";
 import Terms from "./pages/legal/Terms";
 import Refund from "./pages/legal/Refund";
@@ -76,6 +77,7 @@ const App = () => (
                   <Route path="/auth/signup" element={<Signup />} />
                   <Route path="/" element={<Index />} />
                   <Route path="/pricing" element={<Pricing />} />
+                  <Route path="/subscribe" element={<Subscribe />} />
                   <Route path="/privacy" element={<Privacy />} />
                   <Route path="/terms" element={<Terms />} />
                   <Route path="/refund" element={<Refund />} />

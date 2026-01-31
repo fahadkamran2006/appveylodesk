@@ -203,7 +203,8 @@ const Onboarding = () => {
       if (profileError) throw profileError;
 
       toast.success('Welcome to Veylodesk!');
-      navigate('/admin/dashboard');
+      // Navigate to subscribe page to choose a plan
+      navigate('/subscribe');
     } catch (error: any) {
       toast.error(error.message || 'Failed to complete onboarding');
     } finally {
