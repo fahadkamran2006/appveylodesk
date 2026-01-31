@@ -9,6 +9,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { AvatarUpload } from '@/components/settings/AvatarUpload';
 import { StorageManagement } from '@/components/settings/StorageManagement';
+import { SubscriptionSettings } from '@/components/settings/SubscriptionSettings';
 import { BrandingSettings } from '@/components/settings/BrandingSettings';
 import { InstallPWAButton } from '@/components/InstallPWAButton';
 import { Button } from '@/components/ui/button';
@@ -211,6 +212,11 @@ const SettingsPage = () => {
                 </Form>
               </CardContent>
             </Card>
+
+            {/* Subscription Management - Admin Only */}
+            {userRole === 'admin' && (
+              <SubscriptionSettings className="mt-6" />
+            )}
 
             {/* Storage Management - Admin Only */}
             {userRole === 'admin' && (
