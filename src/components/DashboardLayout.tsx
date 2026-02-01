@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { SubscriptionGuard } from '@/components/SubscriptionGuard';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { cn } from '@/lib/utils';
 
 interface DashboardLayoutProps {
@@ -42,6 +43,11 @@ export function DashboardLayout({ role, children, className }: DashboardLayoutPr
         "pb-20 md:pb-8",
         className
       )}>
+        {/* Dashboard Header with Notification Bell */}
+        <div className="flex items-center justify-end mb-4 md:mb-6">
+          <NotificationBell />
+        </div>
+
         <SubscriptionGuard bypass={shouldBypassGuard}>
           {children}
         </SubscriptionGuard>

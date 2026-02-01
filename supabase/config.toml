@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.lemon-webhook]
 verify_jwt = false
+
+[functions.send-notification-email]
+verify_jwt = false

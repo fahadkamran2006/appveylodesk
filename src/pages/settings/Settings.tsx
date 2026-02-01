@@ -11,6 +11,7 @@ import { AvatarUpload } from '@/components/settings/AvatarUpload';
 import { StorageManagement } from '@/components/settings/StorageManagement';
 import { SubscriptionSettings } from '@/components/settings/SubscriptionSettings';
 import { BrandingSettings } from '@/components/settings/BrandingSettings';
+import { NotificationSettings } from '@/components/settings/NotificationSettings';
 import { InstallPWAButton } from '@/components/InstallPWAButton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +19,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Settings as SettingsIcon, User, Loader2, Smartphone, UserCircle } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Settings as SettingsIcon, User, Loader2, Smartphone, UserCircle, Bell } from 'lucide-react';
 
 const profileSchema = z.object({
   full_name: z.string().min(1, 'Name is required'),
@@ -107,130 +109,142 @@ const SettingsPage = () => {
             </div>
           </div>
 
-          {/* Missing Name Prompt */}
-          {!loading && profile && !profile.full_name && (
-            <Alert className="mb-6 border-primary/30 bg-primary/5">
-              <UserCircle className="h-4 w-4 text-primary" />
-              <AlertDescription className="text-foreground">
-                <span className="font-medium">Complete your profile!</span> Add your display name so teammates and clients can identify you in messages.
-              </AlertDescription>
-            </Alert>
-          )}
+          {/* Tabs for Profile vs Notifications */}
+          <Tabs defaultValue="profile" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="profile" className="flex items-center gap-2">
+                <User className="w-4 h-4" />
+                Profile
+              </TabsTrigger>
+              <TabsTrigger value="notifications" className="flex items-center gap-2">
+                <Bell className="w-4 h-4" />
+                Notifications
+              </TabsTrigger>
+            </TabsList>
 
-          {/* Install App Card */}
-          <Card className="glass-card border-border/50 mb-6">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-                <Smartphone className="w-5 h-5" />
-                Mobile App
-              </CardTitle>
-              <CardDescription>
-                Install Veylodesk on your device for quick access
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <InstallPWAButton variant="default" />
-            </CardContent>
-          </Card>
+            {/* Profile Tab */}
+            <TabsContent value="profile" className="space-y-6">
+              {/* Install App Card */}
+              <Card className="glass-card border-border/50">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+                    <Smartphone className="w-5 h-5" />
+                    Mobile App
+                  </CardTitle>
+                  <CardDescription>
+                    Install Veylodesk on your device for quick access
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <InstallPWAButton variant="default" />
+                </CardContent>
+              </Card>
 
-          {/* Profile Card */}
-          <Card className="glass-card border-border/50">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="w-5 h-5" />
-                  Profile
-                </CardTitle>
-                <CardDescription>
-                  Update your personal information and profile photo
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Avatar Upload */}
-                <div className="flex justify-center py-4">
-                  <AvatarUpload
-                    currentUrl={profile?.avatar_url || null}
-                    name={profile?.full_name || null}
-                    onUpload={uploadAvatar}
-                  />
-                </div>
-
-                <Separator />
-
-                {/* Profile Form */}
-                <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="full_name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Full Name</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Enter your full name"
-                              className="bg-surface-elevated border-border/50"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+              {/* Profile Card */}
+              <Card className="glass-card border-border/50">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <User className="w-5 h-5" />
+                    Profile
+                  </CardTitle>
+                  <CardDescription>
+                    Update your personal information and profile photo
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Avatar Upload */}
+                  <div className="flex justify-center py-4">
+                    <AvatarUpload
+                      currentUrl={profile?.avatar_url || null}
+                      name={profile?.full_name || null}
+                      onUpload={uploadAvatar}
                     />
+                  </div>
 
-                    {/* Email (read-only) */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground">
-                        Email
-                      </label>
-                      <Input
-                        value={profile?.email || ''}
-                        disabled
-                        className="bg-surface-elevated border-border/50 opacity-60"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Email cannot be changed
-                      </p>
-                    </div>
+                  <Separator />
 
-                    <div className="pt-4">
-                      <Button
-                        type="submit"
-                        className="w-full sm:w-auto"
-                        disabled={isSaving}
-                      >
-                        {isSaving ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Saving...
-                          </>
-                        ) : (
-                          'Save Changes'
+                  {/* Profile Form */}
+                  <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="full_name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Full Name</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="Enter your full name"
+                                className="bg-surface-elevated border-border/50"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
                         )}
-                      </Button>
-                    </div>
-                  </form>
-                </Form>
-              </CardContent>
-            </Card>
+                      />
 
-            {/* Subscription Management - Admin Only */}
-            {userRole === 'admin' && (
-              <SubscriptionSettings className="mt-6" />
-            )}
+                      {/* Email (read-only) */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-foreground">
+                          Email
+                        </label>
+                        <Input
+                          value={profile?.email || ''}
+                          disabled
+                          className="bg-surface-elevated border-border/50 opacity-60"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Email cannot be changed
+                        </p>
+                      </div>
 
-            {/* Storage Management - Admin Only */}
-            {userRole === 'admin' && (
-              <StorageManagement className="mt-6" />
-            )}
+                      <div className="pt-4">
+                        <Button
+                          type="submit"
+                          className="w-full sm:w-auto"
+                          disabled={isSaving}
+                        >
+                          {isSaving ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Saving...
+                            </>
+                          ) : (
+                            'Save Changes'
+                          )}
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
+                </CardContent>
+              </Card>
 
-            {/* Branding Settings - Admin Only */}
-            {userRole === 'admin' && (
-              <BrandingSettings className="mt-6" />
-            )}
-          </div>
-        </DashboardLayout>
-      </>
-    );
-  };
+              {/* Subscription Management - Admin Only */}
+              {userRole === 'admin' && (
+                <SubscriptionSettings />
+              )}
+
+              {/* Storage Management - Admin Only */}
+              {userRole === 'admin' && (
+                <StorageManagement />
+              )}
+
+              {/* Branding Settings - Admin Only */}
+              {userRole === 'admin' && (
+                <BrandingSettings />
+              )}
+            </TabsContent>
+
+            {/* Notifications Tab */}
+            <TabsContent value="notifications">
+              <NotificationSettings />
+            </TabsContent>
+          </Tabs>
+        </div>
+      </DashboardLayout>
+    </>
+  );
+};
 
 export default SettingsPage;
