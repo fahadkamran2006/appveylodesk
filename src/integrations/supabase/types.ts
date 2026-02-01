@@ -560,6 +560,97 @@ export type Database = {
           },
         ]
       }
+      notification_preferences: {
+        Row: {
+          agency_id: string
+          created_at: string
+          email_enabled: boolean
+          id: string
+          in_app_enabled: boolean
+          notification_type: Database["public"]["Enums"]["notification_type"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          agency_id: string
+          created_at?: string
+          email_enabled?: boolean
+          id?: string
+          in_app_enabled?: boolean
+          notification_type: Database["public"]["Enums"]["notification_type"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          agency_id?: string
+          created_at?: string
+          email_enabled?: boolean
+          id?: string
+          in_app_enabled?: boolean
+          notification_type?: Database["public"]["Enums"]["notification_type"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_preferences_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          agency_id: string
+          created_at: string
+          id: string
+          is_read: boolean
+          link: string | null
+          message: string
+          metadata: Json | null
+          read_at: string | null
+          title: string
+          type: Database["public"]["Enums"]["notification_type"]
+          user_id: string
+        }
+        Insert: {
+          agency_id: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          link?: string | null
+          message: string
+          metadata?: Json | null
+          read_at?: string | null
+          title: string
+          type: Database["public"]["Enums"]["notification_type"]
+          user_id: string
+        }
+        Update: {
+          agency_id?: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          link?: string | null
+          message?: string
+          metadata?: Json | null
+          read_at?: string | null
+          title?: string
+          type?: Database["public"]["Enums"]["notification_type"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           agency_id: string | null
@@ -743,6 +834,18 @@ export type Database = {
         Args: { _agency_id: string; _file_size: number }
         Returns: boolean
       }
+      create_notification: {
+        Args: {
+          _agency_id: string
+          _link?: string
+          _message: string
+          _metadata?: Json
+          _title: string
+          _type: Database["public"]["Enums"]["notification_type"]
+          _user_id: string
+        }
+        Returns: string
+      }
       create_project_channel: {
         Args: {
           _admin_id: string
@@ -802,6 +905,14 @@ export type Database = {
         Args: { _channel_id: string; _user_id: string }
         Returns: boolean
       }
+      is_email_notification_enabled: {
+        Args: {
+          _agency_id: string
+          _type: Database["public"]["Enums"]["notification_type"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       is_project_editor: {
         Args: { _project_id: string; _user_id: string }
         Returns: boolean
@@ -835,6 +946,17 @@ export type Database = {
       app_role: "admin" | "client" | "editor"
       channel_type: "dm" | "project"
       invoice_status: "unpaid" | "paid" | "overdue" | "pending"
+      notification_type:
+        | "task_assignment"
+        | "new_message"
+        | "invoice_sent"
+        | "invoice_paid"
+        | "proposal_created"
+        | "proposal_approved"
+        | "project_status_change"
+        | "editor_assigned"
+        | "deliverable_uploaded"
+        | "comment_added"
       project_status:
         | "backlog"
         | "in_progress"
@@ -972,6 +1094,18 @@ export const Constants = {
       app_role: ["admin", "client", "editor"],
       channel_type: ["dm", "project"],
       invoice_status: ["unpaid", "paid", "overdue", "pending"],
+      notification_type: [
+        "task_assignment",
+        "new_message",
+        "invoice_sent",
+        "invoice_paid",
+        "proposal_created",
+        "proposal_approved",
+        "project_status_change",
+        "editor_assigned",
+        "deliverable_uploaded",
+        "comment_added",
+      ],
       project_status: [
         "backlog",
         "in_progress",
