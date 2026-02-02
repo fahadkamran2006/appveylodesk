@@ -3,13 +3,14 @@ import { useLocation } from 'react-router-dom';
 import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { SubscriptionGuard } from '@/components/SubscriptionGuard';
-import { NotificationBell } from '@/components/notifications/NotificationBell';
+import { DashboardHeader } from '@/components/notifications/DashboardHeader';
 import { cn } from '@/lib/utils';
 
 interface DashboardLayoutProps {
   role: 'admin' | 'client' | 'editor';
   children: ReactNode;
   className?: string;
+  hideHeader?: boolean;
 }
 
 // Routes that remain accessible without subscription (admin only)
@@ -19,7 +20,7 @@ const UNLOCKED_ADMIN_ROUTES = [
   '/admin/settings',
 ];
 
-export function DashboardLayout({ role, children, className }: DashboardLayoutProps) {
+export function DashboardLayout({ role, children, className, hideHeader = false }: DashboardLayoutProps) {
   const location = useLocation();
   
   // Determine if this route should bypass the subscription guard
@@ -43,10 +44,8 @@ export function DashboardLayout({ role, children, className }: DashboardLayoutPr
         "pb-20 md:pb-8",
         className
       )}>
-        {/* Dashboard Header with Notification Bell */}
-        <div className="flex items-center justify-end mb-4 md:mb-6">
-          <NotificationBell />
-        </div>
+        {/* Dashboard Header with Greeting, Notification Bell, and Profile */}
+        {!hideHeader && <DashboardHeader />}
 
         <SubscriptionGuard bypass={shouldBypassGuard}>
           {children}
