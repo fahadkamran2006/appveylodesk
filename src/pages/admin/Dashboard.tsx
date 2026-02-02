@@ -119,11 +119,11 @@ const AdminDashboard = () => {
       </Helmet>
 
       <DashboardLayout role="admin">
-        {/* Header */}
+        {/* Quick Actions Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 md:mb-8">
           <div>
             <h1 className="text-xl md:text-2xl font-bold text-foreground">Command Center</h1>
-            <p className="text-sm md:text-base text-muted-foreground">Welcome back! Here's your agency overview.</p>
+            <p className="text-sm md:text-base text-muted-foreground">Here's your agency overview at a glance.</p>
           </div>
           <Button variant="hero" onClick={() => setCreateModalOpen(true)} className="w-full sm:w-auto">
             <Plus className="w-4 h-4" />
