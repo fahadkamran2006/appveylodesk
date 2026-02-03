@@ -5,17 +5,20 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
-import { Clock, Download, FolderKanban, Receipt, Upload, Plus, Sparkles } from 'lucide-react';
+import { Clock, Download, FolderKanban, Receipt, Plus, Sparkles, Video, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ClientProposalModal } from '@/components/projects/ClientProposalModal';
 import { ProjectDetailSheet } from '@/components/projects/ProjectDetailSheet';
+import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
 
 interface Project {
   id: string;
   title: string;
+  description: string | null;
   status: string;
   due_date: string | null;
 }
@@ -28,12 +31,23 @@ interface Invoice {
   project: { title: string } | null;
 }
 
+interface ProjectStats {
+  id: string;
+  title: string;
+  description: string | null;
+  videoCount: number;
+  activeCount: number;
+  completedCount: number;
+  due_date: string | null;
+}
+
 const ClientDashboard = () => {
   const { user, userRole, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   
   const [projects, setProjects] = useState<Project[]>([]);
+  const [projectStats, setProjectStats] = useState<ProjectStats[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
@@ -42,12 +56,10 @@ const ClientDashboard = () => {
   const [proposalModalOpen, setProposalModalOpen] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
 
-  // Allow admin god mode - only redirect non-admins away
   useEffect(() => {
     if (!loading && !user) {
       navigate('/auth/login');
     }
-    // Allow admins to view this page for testing
     if (!loading && userRole && userRole !== 'client' && userRole !== 'admin') {
       navigate('/editor/dashboard');
     }
@@ -60,12 +72,24 @@ const ClientDashboard = () => {
       // Fetch projects where client_id matches user
       const { data: projectsData, error: projectsError } = await supabase
         .from('projects')
-        .select('id, title, status, due_date')
+        .select('id, title, description, status, due_date')
         .eq('client_id', user.id)
         .order('created_at', { ascending: false });
 
       if (projectsError) throw projectsError;
       setProjects(projectsData || []);
+
+      // Build project stats - group by project for card display
+      const stats: ProjectStats[] = (projectsData || []).map(p => ({
+        id: p.id,
+        title: p.title,
+        description: p.description,
+        videoCount: 1,
+        activeCount: ['in_progress', 'review', 'backlog'].includes(p.status) ? 1 : 0,
+        completedCount: p.status === 'done' ? 1 : 0,
+        due_date: p.due_date,
+      }));
+      setProjectStats(stats);
 
       // Fetch invoices for this client
       const { data: invoicesData, error: invoicesError } = await supabase
@@ -89,7 +113,6 @@ const ClientDashboard = () => {
   }, [user, toast]);
 
   useEffect(() => {
-    // Allow admins to test the client dashboard
     if (user && (userRole === 'client' || userRole === 'admin')) {
       fetchData();
     }
@@ -113,7 +136,6 @@ const ClientDashboard = () => {
 
     setUploading(true);
     try {
-      // Update invoice with payment proof URL (in production, upload file to storage first)
       const { error } = await supabase
         .from('invoices')
         .update({ 
@@ -144,17 +166,6 @@ const ClientDashboard = () => {
     }
   };
 
-  const getStatusDisplay = (status: string) => {
-    const statusMap: Record<string, { label: string; className: string }> = {
-      proposal: { label: 'Proposal', className: 'bg-purple-500/10 text-purple-500 border border-purple-500/20' },
-      backlog: { label: 'Pending', className: 'bg-muted text-muted-foreground' },
-      in_progress: { label: 'In Progress', className: 'bg-primary/10 text-primary border border-primary/20' },
-      review: { label: 'In Review', className: 'bg-warning/10 text-warning border border-warning/20' },
-      done: { label: 'Delivered', className: 'bg-success/10 text-success border border-success/20' },
-    };
-    return statusMap[status] || { label: status, className: 'bg-muted text-muted-foreground' };
-  };
-
   if (loading || loadingData) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -162,6 +173,9 @@ const ClientDashboard = () => {
       </div>
     );
   }
+
+  const activeProjects = projects.filter(p => !['done', 'cancelled'].includes(p.status));
+  const completedProjects = projects.filter(p => p.status === 'done');
 
   return (
     <>
@@ -176,7 +190,7 @@ const ClientDashboard = () => {
           <p className="text-sm md:text-base text-muted-foreground">Track your projects and manage invoices.</p>
         </div>
 
-        {/* Hero: Create New Project Card - Responsive layout */}
+        {/* Hero: Create New Project Card */}
         <div 
           onClick={() => setProposalModalOpen(true)}
           className="mb-6 md:mb-8 p-4 md:p-6 rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-2 border-dashed border-primary/30 hover:border-primary/50 hover:bg-primary/10 cursor-pointer transition-all duration-300 group"
@@ -201,171 +215,169 @@ const ClientDashboard = () => {
           </div>
         </div>
 
-        {/* Stats Cards - Responsive grid */}
+        {/* Stats Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-8">
-            <div className="glass-card rounded-xl p-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <FolderKanban className="w-6 h-6 text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Active Projects</p>
-                  <p className="text-2xl font-bold text-foreground">
-                    {projects.filter(p => p.status !== 'done').length}
-                  </p>
-                </div>
+          <div className="glass-card rounded-xl p-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                <FolderKanban className="w-6 h-6 text-primary" />
               </div>
-            </div>
-            <div className="glass-card rounded-xl p-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-lg bg-success/10 flex items-center justify-center">
-                  <Download className="w-6 h-6 text-success" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Delivered</p>
-                  <p className="text-2xl font-bold text-foreground">
-                    {projects.filter(p => p.status === 'done').length}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="glass-card rounded-xl p-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-lg bg-warning/10 flex items-center justify-center">
-                  <Receipt className="w-6 h-6 text-warning" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Unpaid Invoices</p>
-                  <p className="text-2xl font-bold text-foreground">
-                    {invoices.filter(i => i.status === 'unpaid').length}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="glass-card rounded-xl p-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-lg bg-destructive/10 flex items-center justify-center">
-                  <Clock className="w-6 h-6 text-destructive" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Due Soon</p>
-                  <p className="text-2xl font-bold text-foreground">
-                    {projects.filter(p => {
-                      if (!p.due_date) return false;
-                      const dueDate = new Date(p.due_date);
-                      const now = new Date();
-                      const diffDays = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-                      return diffDays <= 7 && diffDays >= 0 && p.status !== 'done';
-                    }).length}
-                  </p>
-                </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Active Projects</p>
+                <p className="text-2xl font-bold text-foreground">{activeProjects.length}</p>
               </div>
             </div>
           </div>
+          <div className="glass-card rounded-xl p-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-lg bg-success/10 flex items-center justify-center">
+                <Download className="w-6 h-6 text-success" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Delivered</p>
+                <p className="text-2xl font-bold text-foreground">{completedProjects.length}</p>
+              </div>
+            </div>
+          </div>
+          <div className="glass-card rounded-xl p-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-lg bg-warning/10 flex items-center justify-center">
+                <Receipt className="w-6 h-6 text-warning" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Unpaid Invoices</p>
+                <p className="text-2xl font-bold text-foreground">
+                  {invoices.filter(i => i.status === 'unpaid').length}
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="glass-card rounded-xl p-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-lg bg-destructive/10 flex items-center justify-center">
+                <Clock className="w-6 h-6 text-destructive" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Due Soon</p>
+                <p className="text-2xl font-bold text-foreground">
+                  {projects.filter(p => {
+                    if (!p.due_date) return false;
+                    const dueDate = new Date(p.due_date);
+                    const now = new Date();
+                    const diffDays = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                    return diffDays <= 7 && diffDays >= 0 && p.status !== 'done';
+                  }).length}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
 
-          {/* Projects - No editor info shown */}
-          <div className="glass-card rounded-xl p-6 mb-8">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-foreground">Your Projects</h2>
-              <Button variant="outline" size="sm" onClick={() => navigate('/client/projects')}>
-                View All
+        {/* Projects Grid - New 3-tier hierarchy view */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-semibold text-foreground">Your Projects</h2>
+            <Button variant="outline" size="sm" onClick={() => navigate('/client/projects')}>
+              <Eye className="w-4 h-4 mr-2" />
+              View All Work
+            </Button>
+          </div>
+
+          {projectStats.length === 0 ? (
+            <div className="text-center py-12 rounded-xl border border-dashed border-border">
+              <FolderKanban className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />
+              <p className="text-muted-foreground mb-4">No projects yet.</p>
+              <Button variant="hero" onClick={() => setProposalModalOpen(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                Start Your First Project
               </Button>
             </div>
-            {projects.length === 0 ? (
-              <div className="text-center py-8">
-                <FolderKanban className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />
-                <p className="text-muted-foreground mb-4">No projects yet.</p>
-                <Button variant="hero" onClick={() => setProposalModalOpen(true)}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Start Your First Project
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {projects.slice(0, 5).map((project) => {
-                  const statusInfo = getStatusDisplay(project.status);
-                  return (
-                    <div 
-                      key={project.id} 
-                      className="p-4 rounded-lg bg-muted/30 border border-border/50 hover:border-primary/30 cursor-pointer transition-colors"
-                      onClick={() => setSelectedProjectId(project.id)}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="font-medium text-foreground">{project.title}</h3>
-                          {project.due_date && (
-                            <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
-                              <Clock className="w-3 h-3" />
-                              Due {new Date(project.due_date).toLocaleDateString()}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusInfo.className}`}>
-                            {statusInfo.label}
-                          </span>
-                          {project.status === 'done' && (
-                            <Button variant="outline" size="sm" onClick={(e) => e.stopPropagation()}>
-                              <Download className="w-4 h-4 mr-2" />
-                              Download
-                            </Button>
-                          )}
-                        </div>
-                      </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {projectStats.slice(0, 8).map((project) => (
+                <div
+                  key={project.id}
+                  onClick={() => setSelectedProjectId(project.id)}
+                  className={cn(
+                    'glass-card rounded-xl p-5 cursor-pointer transition-all duration-200',
+                    'hover:border-primary/30 hover:shadow-glow-sm',
+                    'active:scale-[0.98]'
+                  )}
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <FolderKanban className="w-5 h-5 text-primary" />
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Invoices */}
-          <div className="glass-card rounded-xl p-6">
-            <h2 className="text-lg font-semibold text-foreground mb-6">Invoices</h2>
-            {invoices.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8">No invoices yet.</p>
-            ) : (
-              <div className="space-y-4">
-                {invoices.map((invoice) => (
-                  <div key={invoice.id} className="p-4 rounded-lg bg-muted/30 border border-border/50 flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-foreground">{invoice.project?.title || 'Project'}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {invoice.due_date && `Due ${new Date(invoice.due_date).toLocaleDateString()}`}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <span className="font-semibold text-foreground">
-                        ${invoice.amount.toLocaleString()}
-                      </span>
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        invoice.status === 'paid'
-                          ? 'bg-success/10 text-success border border-success/20'
-                          : invoice.status === 'pending'
-                          ? 'bg-warning/10 text-warning border border-warning/20'
-                          : 'bg-destructive/10 text-destructive border border-destructive/20'
-                      }`}>
-                        {invoice.status === 'paid' ? 'Paid' : invoice.status === 'pending' ? 'Pending Review' : 'Unpaid'}
-                      </span>
-                      {invoice.status === 'unpaid' && (
-                        <Button 
-                          variant="hero" 
-                          size="default"
-                          onClick={() => {
-                            setSelectedInvoice(invoice);
-                            setUploadModalOpen(true);
-                          }}
-                          className="gap-2"
-                        >
-                          <Upload className="w-5 h-5" />
-                          Upload Payment Proof
-                        </Button>
-                      )}
-                    </div>
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Video className="w-3 h-3" />
+                      {project.videoCount}
+                    </span>
                   </div>
-                ))}
-              </div>
-            )}
+                  
+                  <h3 className="font-semibold text-foreground mb-1 line-clamp-1">
+                    {project.title}
+                  </h3>
+                  
+                  {project.description && (
+                    <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                      {project.description}
+                    </p>
+                  )}
+                  
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    {project.activeCount > 0 && (
+                      <span className="text-primary">{project.activeCount} active</span>
+                    )}
+                    {project.completedCount > 0 && (
+                      <span className="text-success">{project.completedCount} done</span>
+                    )}
+                  </div>
+                  
+                  {project.due_date && (
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground mt-2 pt-2 border-t border-border/50">
+                      <Clock className="w-3 h-3" />
+                      Due {format(new Date(project.due_date), 'MMM d')}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Invoices Section */}
+        <div className="glass-card rounded-xl p-6">
+          <h2 className="text-lg font-semibold text-foreground mb-6">Recent Invoices</h2>
+          {invoices.length === 0 ? (
+            <p className="text-muted-foreground text-center py-8">No invoices yet.</p>
+          ) : (
+            <div className="space-y-4">
+              {invoices.slice(0, 5).map((invoice) => (
+                <div key={invoice.id} className="p-4 rounded-lg bg-muted/30 border border-border/50 flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-foreground">{invoice.project?.title || 'Project'}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {invoice.due_date && `Due ${new Date(invoice.due_date).toLocaleDateString()}`}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className="font-semibold text-foreground">
+                      ${invoice.amount.toLocaleString()}
+                    </span>
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      invoice.status === 'paid'
+                        ? 'bg-success/10 text-success border border-success/20'
+                        : invoice.status === 'pending'
+                        ? 'bg-warning/10 text-warning border border-warning/20'
+                        : 'bg-destructive/10 text-destructive border border-destructive/20'
+                    }`}>
+                      {invoice.status === 'paid' ? 'Paid' : invoice.status === 'pending' ? 'Pending' : 'Unpaid'}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </DashboardLayout>
 
@@ -374,18 +386,17 @@ const ClientDashboard = () => {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Upload className="w-5 h-5 text-primary" />
+              <Receipt className="w-5 h-5 text-primary" />
               Upload Payment Proof
             </DialogTitle>
             <DialogDescription>
-              Upload a screenshot or document showing your payment for this invoice.
+              Upload a screenshot or document showing your payment.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleUploadPaymentProof} className="space-y-4">
-            <div className="border-2 border-dashed border-primary/30 rounded-xl p-8 text-center hover:border-primary/50 transition-colors">
-              <Upload className="w-12 h-12 mx-auto text-primary mb-4" />
+            <div className="border-2 border-dashed border-primary/30 rounded-xl p-8 text-center">
               <Label htmlFor="proof" className="text-foreground font-medium block mb-2">
-                Click to select file or drag & drop
+                Click to select file
               </Label>
               <Input
                 id="proof"
@@ -394,16 +405,13 @@ const ClientDashboard = () => {
                 accept="image/*,.pdf"
                 className="mt-2"
               />
-              <p className="text-xs text-muted-foreground mt-2">
-                Supports: Images, PDF
-              </p>
             </div>
             <div className="flex justify-end gap-3">
               <Button type="button" variant="outline" onClick={() => setUploadModalOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" variant="hero" disabled={uploading}>
-                {uploading ? 'Uploading...' : 'Upload Proof'}
+              <Button type="submit" disabled={uploading}>
+                {uploading ? 'Uploading...' : 'Upload'}
               </Button>
             </div>
           </form>
@@ -422,10 +430,10 @@ const ClientDashboard = () => {
         projectId={selectedProjectId}
         open={!!selectedProjectId}
         onOpenChange={(open) => !open && setSelectedProjectId(null)}
+        onProjectDeleted={fetchData}
       />
     </>
   );
 };
 
 export default ClientDashboard;
-

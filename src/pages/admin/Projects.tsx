@@ -7,14 +7,16 @@ import { DashboardLayout } from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { KanbanColumn, Project, ProjectStatus } from '@/components/projects/KanbanColumn';
 import { WorkspaceCard } from '@/components/projects/WorkspaceCard';
+import { ClientProjectsGrid } from '@/components/projects/ClientProjectsGrid';
 import { ProjectListView } from '@/components/projects/ProjectListView';
 import { ProjectFilters, ViewMode } from '@/components/projects/ProjectFilters';
 import { ProjectBreadcrumb } from '@/components/projects/ProjectBreadcrumb';
 import { CreateProjectModal } from '@/components/projects/CreateProjectModal';
+import { CreateProjectContainerModal } from '@/components/projects/CreateProjectContainerModal';
 import { ProjectDetailSheet } from '@/components/projects/ProjectDetailSheet';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Loader2, ArrowLeft, LayoutGrid } from 'lucide-react';
+import { Plus, Loader2, ArrowLeft, LayoutGrid, Video } from 'lucide-react';
 
 const COLUMNS: { id: ProjectStatus; title: string }[] = [
   { id: 'proposal', title: 'Proposals' },
@@ -34,6 +36,17 @@ interface ClientWorkspace {
   completedCount: number;
 }
 
+interface ProjectContainer {
+  id: string;
+  title: string;
+  description?: string | null;
+  client_id: string;
+  videoCount: number;
+  activeCount: number;
+  completedCount: number;
+  due_date?: string | null;
+}
+
 interface EditorInfo {
   id: string;
   name: string;
@@ -47,10 +60,12 @@ const AdminProjects = () => {
   
   // View state
   const [projects, setProjects] = useState<Project[]>([]);
+  const [projectContainers, setProjectContainers] = useState<ProjectContainer[]>([]);
   const [workspaces, setWorkspaces] = useState<ClientWorkspace[]>([]);
   const [editors, setEditors] = useState<EditorInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [createVideoModalOpen, setCreateVideoModalOpen] = useState(false);
+  const [createProjectModalOpen, setCreateProjectModalOpen] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   
   // Filter state
@@ -61,9 +76,13 @@ const AdminProjects = () => {
   const [editorFilter, setEditorFilter] = useState<string | 'all' | 'my_work'>('all');
   const [showArchived, setShowArchived] = useState(false);
 
-  // Get current workspace from URL
+  // URL parameters for navigation
   const selectedClientId = searchParams.get('workspace');
-  const isGlobalView = !selectedClientId;
+  const selectedProjectContainerId = searchParams.get('project');
+  const isGlobalView = searchParams.get('workspace') === 'all';
+  const isWorkspaceLanding = !selectedClientId;
+  const isClientProjectsView = selectedClientId && !selectedProjectContainerId && selectedClientId !== 'all';
+  const isProjectBoardView = selectedClientId && selectedProjectContainerId;
 
   useEffect(() => {
     if (!loading && !user) {
@@ -134,7 +153,7 @@ const AdminProjects = () => {
         name: e.full_name || e.email 
       })));
 
-      // Fetch all projects
+      // Fetch all projects (these are "videos" in the new hierarchy)
       const { data: projectsData, error } = await supabase
         .from('projects')
         .select('*')
@@ -143,9 +162,11 @@ const AdminProjects = () => {
 
       if (error) throw error;
 
-      // Build project details and workspace stats
-      const clientProjectCounts: Record<string, { total: number; active: number; completed: number }> = {};
-      
+      // Track stats for workspaces (client level) and project containers
+      const clientStats: Record<string, { total: number; active: number; completed: number }> = {};
+      const projectContainerStats: Record<string, { total: number; active: number; completed: number }> = {};
+
+      // Build project details
       const projectsWithDetails: Project[] = await Promise.all(
         (projectsData || []).map(async (project) => {
           let clientName: string | undefined;
@@ -158,15 +179,15 @@ const AdminProjects = () => {
             clientName = client?.full_name || client?.email;
 
             // Track workspace stats
-            if (!clientProjectCounts[project.client_id]) {
-              clientProjectCounts[project.client_id] = { total: 0, active: 0, completed: 0 };
+            if (!clientStats[project.client_id]) {
+              clientStats[project.client_id] = { total: 0, active: 0, completed: 0 };
             }
-            clientProjectCounts[project.client_id].total++;
+            clientStats[project.client_id].total++;
             if (['in_progress', 'review', 'backlog'].includes(project.status)) {
-              clientProjectCounts[project.client_id].active++;
+              clientStats[project.client_id].active++;
             }
             if (project.status === 'done') {
-              clientProjectCounts[project.client_id].completed++;
+              clientStats[project.client_id].completed++;
             }
           }
 
@@ -212,12 +233,36 @@ const AdminProjects = () => {
         name: client.full_name || client.email,
         email: client.email,
         avatar: client.avatar_url,
-        projectCount: clientProjectCounts[client.id]?.total || 0,
-        activeCount: clientProjectCounts[client.id]?.active || 0,
-        completedCount: clientProjectCounts[client.id]?.completed || 0,
+        projectCount: clientStats[client.id]?.total || 0,
+        activeCount: clientStats[client.id]?.active || 0,
+        completedCount: clientStats[client.id]?.completed || 0,
       }));
 
       setWorkspaces(workspaceList.sort((a, b) => b.projectCount - a.projectCount));
+
+      // For now, we'll treat all projects as "videos" (the existing structure)
+      // In a full implementation, you'd have a separate "project_containers" table
+      // Here we'll group projects by client to simulate project containers
+      const containersList: ProjectContainer[] = projectsWithDetails
+        .filter(p => p.client_id)
+        .reduce((acc: ProjectContainer[], project) => {
+          // For simplicity, each project is its own container
+          // In a real app, you'd have a parent_project_id or similar
+          acc.push({
+            id: project.id,
+            title: project.title,
+            description: project.description,
+            client_id: project.client_id!,
+            videoCount: 1, // Each project is one video
+            activeCount: ['in_progress', 'review', 'backlog'].includes(project.status) ? 1 : 0,
+            completedCount: project.status === 'done' ? 1 : 0,
+            due_date: project.due_date,
+          });
+          return acc;
+        }, []);
+
+      setProjectContainers(containersList);
+
     } catch (error) {
       console.error('Error fetching projects:', error);
       toast({
@@ -236,16 +281,20 @@ const AdminProjects = () => {
     }
   }, [user, userRole, fetchData]);
 
-  // Filter projects
+  // Filter projects based on current view and filters
   const filteredProjects = useMemo(() => {
     let result = projects;
 
-    // Filter by workspace/client
-    if (selectedClientId) {
+    // Filter by specific project container (project board view)
+    if (selectedProjectContainerId) {
+      result = result.filter(p => p.id === selectedProjectContainerId);
+    }
+    // Filter by client workspace (client projects view or global with client filter)
+    else if (selectedClientId && selectedClientId !== 'all') {
       result = result.filter(p => p.client_id === selectedClientId);
     }
 
-    // Filter by client (in global view)
+    // Additional filters for global view
     if (isGlobalView && clientFilter !== 'all') {
       result = result.filter(p => p.client_id === clientFilter);
     }
@@ -278,7 +327,24 @@ const AdminProjects = () => {
     }
 
     return result;
-  }, [projects, selectedClientId, isGlobalView, clientFilter, statusFilter, editorFilter, showArchived, searchQuery, user?.id]);
+  }, [projects, selectedClientId, selectedProjectContainerId, isGlobalView, clientFilter, statusFilter, editorFilter, showArchived, searchQuery, user?.id]);
+
+  // Get projects for a specific client (for ClientProjectsGrid)
+  const clientProjects = useMemo(() => {
+    if (!selectedClientId || selectedClientId === 'all') return [];
+    
+    return projects
+      .filter(p => p.client_id === selectedClientId)
+      .map(p => ({
+        id: p.id,
+        title: p.title,
+        description: p.description,
+        videoCount: 1,
+        activeCount: ['in_progress', 'review', 'backlog'].includes(p.status) ? 1 : 0,
+        completedCount: p.status === 'done' ? 1 : 0,
+        due_date: p.due_date,
+      }));
+  }, [projects, selectedClientId]);
 
   const handleDragEnd = async (result: DropResult) => {
     const { destination, source, draggableId } = result;
@@ -322,18 +388,64 @@ const AdminProjects = () => {
   const getProjectsByStatus = (status: ProjectStatus) =>
     filteredProjects.filter((p) => p.status === status);
 
-  const openWorkspace = (clientId: string) => {
+  // Navigation handlers
+  const openClientWorkspace = (clientId: string) => {
     setSearchParams({ workspace: clientId });
-    setClientFilter('all');
   };
 
-  const closeWorkspace = () => {
-    setSearchParams({});
+  const openProjectBoard = (projectId: string) => {
+    const params = new URLSearchParams(searchParams);
+    params.set('project', projectId);
+    setSearchParams(params);
   };
 
-  const currentWorkspace = selectedClientId 
+  const goBack = () => {
+    if (selectedProjectContainerId) {
+      // Go back to client projects view
+      const params = new URLSearchParams(searchParams);
+      params.delete('project');
+      setSearchParams(params);
+    } else if (selectedClientId) {
+      // Go back to workspace landing
+      setSearchParams({});
+    }
+  };
+
+  const openGlobalView = () => {
+    setSearchParams({ workspace: 'all' });
+  };
+
+  // Get current context for breadcrumbs and headers
+  const currentWorkspace = selectedClientId && selectedClientId !== 'all'
     ? workspaces.find(w => w.id === selectedClientId) 
     : null;
+
+  const currentProject = selectedProjectContainerId
+    ? projects.find(p => p.id === selectedProjectContainerId)
+    : null;
+
+  // Build breadcrumb items
+  const breadcrumbItems = useMemo(() => {
+    const items: { label: string; href?: string; icon?: 'home' | 'projects' | 'client' }[] = [
+      { label: 'Clients', href: '/admin/projects', icon: 'projects' },
+    ];
+
+    if (isGlobalView) {
+      items.push({ label: 'All Projects' });
+    } else if (currentWorkspace) {
+      items.push({ 
+        label: currentWorkspace.name, 
+        href: `/admin/projects?workspace=${currentWorkspace.id}`,
+        icon: 'client' 
+      });
+      
+      if (currentProject) {
+        items.push({ label: currentProject.title });
+      }
+    }
+
+    return items;
+  }, [isGlobalView, currentWorkspace, currentProject]);
 
   if (loading) {
     return (
@@ -346,27 +458,31 @@ const AdminProjects = () => {
   return (
     <>
       <Helmet>
-        <title>{currentWorkspace ? `${currentWorkspace.name} - Projects` : 'Projects'} | Veylodesk</title>
+        <title>
+          {currentProject 
+            ? `${currentProject.title} - Projects` 
+            : currentWorkspace 
+              ? `${currentWorkspace.name} - Projects`
+              : isGlobalView 
+                ? 'All Projects'
+                : 'Client Workspaces'
+          } | Veylodesk
+        </title>
         <meta name="description" content="Manage your agency projects with Kanban board." />
       </Helmet>
 
       <DashboardLayout role="admin">
         {/* Breadcrumb Navigation */}
-        <ProjectBreadcrumb 
-          items={[
-            { label: 'Projects', href: '/admin/projects', icon: 'projects' },
-            ...(currentWorkspace ? [{ label: currentWorkspace.name, icon: 'client' as const }] : []),
-          ]} 
-        />
+        <ProjectBreadcrumb items={breadcrumbItems} />
 
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
-            {currentWorkspace && (
+            {(selectedClientId || selectedProjectContainerId) && (
               <Button 
                 variant="ghost" 
                 size="icon"
-                onClick={closeWorkspace}
+                onClick={goBack}
                 className="shrink-0"
               >
                 <ArrowLeft className="w-5 h-5" />
@@ -374,36 +490,58 @@ const AdminProjects = () => {
             )}
             <div>
               <h1 className="text-xl md:text-2xl font-bold text-foreground">
-                {currentWorkspace ? currentWorkspace.name : 'Client Workspaces'}
+                {currentProject
+                  ? currentProject.title
+                  : currentWorkspace 
+                    ? `${currentWorkspace.name}'s Projects`
+                    : isGlobalView 
+                      ? 'All Projects' 
+                      : 'Client Workspaces'
+                }
               </h1>
               <p className="text-sm md:text-base text-muted-foreground mt-1">
-                {currentWorkspace 
-                  ? `${currentWorkspace.projectCount} projects • ${currentWorkspace.activeCount} active`
-                  : `${workspaces.length} clients • ${projects.length} total projects`
+                {currentProject
+                  ? `Video board for ${currentWorkspace?.name || 'client'}`
+                  : currentWorkspace 
+                    ? `${clientProjects.length} project${clientProjects.length !== 1 ? 's' : ''}`
+                    : isGlobalView
+                      ? `${projects.length} total videos across all clients`
+                      : `${workspaces.length} clients • ${projects.length} total projects`
                 }
               </p>
             </div>
           </div>
+          
           <div className="flex items-center gap-2 w-full sm:w-auto">
-            {isGlobalView && (
+            {isWorkspaceLanding && (
               <Button
                 variant="outline"
-                onClick={() => {
-                  setSearchParams({ workspace: 'all' });
-                }}
+                onClick={openGlobalView}
                 className="gap-2"
               >
                 <LayoutGrid className="w-4 h-4" />
                 <span className="hidden sm:inline">View All Projects</span>
               </Button>
             )}
-            <Button
-              onClick={() => setCreateModalOpen(true)}
-              className="bg-primary hover:bg-primary/90 flex-1 sm:flex-initial"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              New Project
-            </Button>
+            
+            {/* Show appropriate create button based on view */}
+            {isClientProjectsView ? (
+              <Button
+                onClick={() => setCreateProjectModalOpen(true)}
+                className="bg-primary hover:bg-primary/90 flex-1 sm:flex-initial"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                New Project
+              </Button>
+            ) : (isProjectBoardView || isGlobalView) ? (
+              <Button
+                onClick={() => setCreateVideoModalOpen(true)}
+                className="bg-primary hover:bg-primary/90 flex-1 sm:flex-initial"
+              >
+                <Video className="w-4 h-4 mr-2" />
+                New Video
+              </Button>
+            ) : null}
           </div>
         </div>
 
@@ -411,8 +549,8 @@ const AdminProjects = () => {
           <div className="flex-1 flex items-center justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
-        ) : isGlobalView && searchParams.get('workspace') !== 'all' ? (
-          /* Workspace Cards View */
+        ) : isWorkspaceLanding ? (
+          /* Workspace Cards View (Level 1: Clients) */
           <div className="space-y-6">
             {workspaces.length === 0 ? (
               <div className="text-center py-16">
@@ -437,14 +575,23 @@ const AdminProjects = () => {
                     projectCount={workspace.projectCount}
                     activeCount={workspace.activeCount}
                     completedCount={workspace.completedCount}
-                    onClick={() => openWorkspace(workspace.id)}
+                    onClick={() => openClientWorkspace(workspace.id)}
                   />
                 ))}
               </div>
             )}
           </div>
+        ) : isClientProjectsView && currentWorkspace ? (
+          /* Client Projects Grid (Level 2: Projects within a Client) */
+          <ClientProjectsGrid
+            clientName={currentWorkspace.name}
+            clientAvatar={currentWorkspace.avatar}
+            projects={clientProjects}
+            onProjectClick={(projectId) => openProjectBoard(projectId)}
+            onCreateProject={() => setCreateProjectModalOpen(true)}
+          />
         ) : (
-          /* Project Board/List View */
+          /* Project Board/List View (Level 3: Videos within a Project OR Global View) */
           <div className="space-y-4">
             <ProjectFilters
               viewMode={viewMode}
@@ -486,19 +633,29 @@ const AdminProjects = () => {
               <ProjectListView
                 projects={filteredProjects}
                 onProjectClick={(project) => setSelectedProjectId(project.id)}
-                showClient={!currentWorkspace}
+                showClient={isGlobalView}
               />
             )}
           </div>
         )}
       </DashboardLayout>
 
+      {/* Create Video Modal (Full project creation with all details) */}
       <CreateProjectModal
-        open={createModalOpen}
-        onOpenChange={setCreateModalOpen}
+        open={createVideoModalOpen}
+        onOpenChange={setCreateVideoModalOpen}
         onSuccess={fetchData}
       />
 
+      {/* Create Project Container Modal (Simple container creation) */}
+      <CreateProjectContainerModal
+        open={createProjectModalOpen}
+        onOpenChange={setCreateProjectModalOpen}
+        onSuccess={fetchData}
+        preselectedClientId={selectedClientId && selectedClientId !== 'all' ? selectedClientId : undefined}
+      />
+
+      {/* Project Detail Sheet */}
       <ProjectDetailSheet
         projectId={selectedProjectId}
         open={!!selectedProjectId}
