@@ -44,7 +44,6 @@ interface ProjectContainer {
   videoCount: number;
   activeCount: number;
   completedCount: number;
-  due_date?: string | null;
 }
 
 interface EditorInfo {
@@ -153,41 +152,64 @@ const AdminProjects = () => {
         name: e.full_name || e.email 
       })));
 
-      // Fetch all projects (these are "videos" in the new hierarchy)
-      const { data: projectsData, error } = await supabase
+      // Fetch all videos (projects table) - these are the work items
+      const { data: videosData, error: videosError } = await supabase
         .from('projects')
         .select('*')
         .eq('agency_id', agencyId)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (videosError) throw videosError;
 
-      // Track stats for workspaces (client level) and project containers
+      // Fetch all project containers
+      const { data: containersData, error: containersError } = await supabase
+        .from('project_containers')
+        .select('*')
+        .eq('agency_id', agencyId)
+        .order('title', { ascending: true });
+
+      if (containersError) throw containersError;
+
+      // Track stats for workspaces (client level) and containers
       const clientStats: Record<string, { total: number; active: number; completed: number }> = {};
-      const projectContainerStats: Record<string, { total: number; active: number; completed: number }> = {};
+      const containerStats: Record<string, { total: number; active: number; completed: number }> = {};
 
-      // Build project details
-      const projectsWithDetails: Project[] = await Promise.all(
-        (projectsData || []).map(async (project) => {
+      // Build video details (projects are videos in this hierarchy)
+      const videosWithDetails: Project[] = await Promise.all(
+        (videosData || []).map(async (video) => {
           let clientName: string | undefined;
           let editorName: string | undefined;
           let editorAvatar: string | null | undefined;
 
           // Get client name
-          if (project.client_id) {
-            const client = clientProfiles.find(c => c.id === project.client_id);
+          if (video.client_id) {
+            const client = clientProfiles.find(c => c.id === video.client_id);
             clientName = client?.full_name || client?.email;
 
             // Track workspace stats
-            if (!clientStats[project.client_id]) {
-              clientStats[project.client_id] = { total: 0, active: 0, completed: 0 };
+            if (!clientStats[video.client_id]) {
+              clientStats[video.client_id] = { total: 0, active: 0, completed: 0 };
             }
-            clientStats[project.client_id].total++;
-            if (['in_progress', 'review', 'backlog'].includes(project.status)) {
-              clientStats[project.client_id].active++;
+            clientStats[video.client_id].total++;
+            if (['in_progress', 'review', 'backlog'].includes(video.status)) {
+              clientStats[video.client_id].active++;
             }
-            if (project.status === 'done') {
-              clientStats[project.client_id].completed++;
+            if (video.status === 'done') {
+              clientStats[video.client_id].completed++;
+            }
+          }
+
+          // Track container stats
+          if (video.container_id) {
+            if (!containerStats[video.container_id]) {
+              containerStats[video.container_id] = { total: 0, active: 0, completed: 0 };
+            }
+            containerStats[video.container_id].total++;
+            if (['in_progress', 'review', 'backlog'].includes(video.status)) {
+              containerStats[video.container_id].active++;
+            }
+            if (video.status === 'done') {
+              containerStats[video.container_id].completed++;
             }
           }
 
@@ -195,7 +217,7 @@ const AdminProjects = () => {
           const { data: projectEditor } = await supabase
             .from('project_editors')
             .select('editor_id')
-            .eq('project_id', project.id)
+            .eq('project_id', video.id)
             .maybeSingle();
 
           if (projectEditor?.editor_id) {
@@ -211,21 +233,22 @@ const AdminProjects = () => {
           }
 
           return {
-            id: project.id,
-            title: project.title,
-            description: project.description,
-            client_id: project.client_id,
+            id: video.id,
+            title: video.title,
+            description: video.description,
+            client_id: video.client_id,
             client_name: clientName,
+            container_id: video.container_id,
             editor_id: projectEditor?.editor_id,
             editor_name: editorName,
             editor_avatar: editorAvatar,
-            due_date: project.due_date,
-            status: project.status as ProjectStatus,
+            due_date: video.due_date,
+            status: video.status as ProjectStatus,
           };
         })
       );
 
-      setProjects(projectsWithDetails);
+      setProjects(videosWithDetails);
 
       // Build workspaces from clients
       const workspaceList: ClientWorkspace[] = clientProfiles.map(client => ({
@@ -240,26 +263,16 @@ const AdminProjects = () => {
 
       setWorkspaces(workspaceList.sort((a, b) => b.projectCount - a.projectCount));
 
-      // For now, we'll treat all projects as "videos" (the existing structure)
-      // In a full implementation, you'd have a separate "project_containers" table
-      // Here we'll group projects by client to simulate project containers
-      const containersList: ProjectContainer[] = projectsWithDetails
-        .filter(p => p.client_id)
-        .reduce((acc: ProjectContainer[], project) => {
-          // For simplicity, each project is its own container
-          // In a real app, you'd have a parent_project_id or similar
-          acc.push({
-            id: project.id,
-            title: project.title,
-            description: project.description,
-            client_id: project.client_id!,
-            videoCount: 1, // Each project is one video
-            activeCount: ['in_progress', 'review', 'backlog'].includes(project.status) ? 1 : 0,
-            completedCount: project.status === 'done' ? 1 : 0,
-            due_date: project.due_date,
-          });
-          return acc;
-        }, []);
+      // Build project containers list from the actual project_containers table
+      const containersList: ProjectContainer[] = (containersData || []).map(container => ({
+        id: container.id,
+        title: container.title,
+        description: container.description,
+        client_id: container.client_id,
+        videoCount: containerStats[container.id]?.total || 0,
+        activeCount: containerStats[container.id]?.active || 0,
+        completedCount: containerStats[container.id]?.completed || 0,
+      }));
 
       setProjectContainers(containersList);
 
@@ -285,9 +298,9 @@ const AdminProjects = () => {
   const filteredProjects = useMemo(() => {
     let result = projects;
 
-    // Filter by specific project container (project board view)
+    // Filter by specific project container (project board view) - show videos in that container
     if (selectedProjectContainerId) {
-      result = result.filter(p => p.id === selectedProjectContainerId);
+      result = result.filter(p => p.container_id === selectedProjectContainerId);
     }
     // Filter by client workspace (client projects view or global with client filter)
     else if (selectedClientId && selectedClientId !== 'all') {
@@ -329,22 +342,12 @@ const AdminProjects = () => {
     return result;
   }, [projects, selectedClientId, selectedProjectContainerId, isGlobalView, clientFilter, statusFilter, editorFilter, showArchived, searchQuery, user?.id]);
 
-  // Get projects for a specific client (for ClientProjectsGrid)
-  const clientProjects = useMemo(() => {
+  // Get project containers for a specific client (for ClientProjectsGrid)
+  const clientProjectContainers = useMemo(() => {
     if (!selectedClientId || selectedClientId === 'all') return [];
     
-    return projects
-      .filter(p => p.client_id === selectedClientId)
-      .map(p => ({
-        id: p.id,
-        title: p.title,
-        description: p.description,
-        videoCount: 1,
-        activeCount: ['in_progress', 'review', 'backlog'].includes(p.status) ? 1 : 0,
-        completedCount: p.status === 'done' ? 1 : 0,
-        due_date: p.due_date,
-      }));
-  }, [projects, selectedClientId]);
+    return projectContainers.filter(c => c.client_id === selectedClientId);
+  }, [projectContainers, selectedClientId]);
 
   const handleDragEnd = async (result: DropResult) => {
     const { destination, source, draggableId } = result;
@@ -420,8 +423,8 @@ const AdminProjects = () => {
     ? workspaces.find(w => w.id === selectedClientId) 
     : null;
 
-  const currentProject = selectedProjectContainerId
-    ? projects.find(p => p.id === selectedProjectContainerId)
+  const currentProjectContainer = selectedProjectContainerId
+    ? projectContainers.find(c => c.id === selectedProjectContainerId)
     : null;
 
   // Build breadcrumb items
@@ -439,13 +442,13 @@ const AdminProjects = () => {
         icon: 'client' 
       });
       
-      if (currentProject) {
-        items.push({ label: currentProject.title });
+      if (currentProjectContainer) {
+        items.push({ label: currentProjectContainer.title });
       }
     }
 
     return items;
-  }, [isGlobalView, currentWorkspace, currentProject]);
+  }, [isGlobalView, currentWorkspace, currentProjectContainer]);
 
   if (loading) {
     return (
@@ -459,8 +462,8 @@ const AdminProjects = () => {
     <>
       <Helmet>
         <title>
-          {currentProject 
-            ? `${currentProject.title} - Projects` 
+          {currentProjectContainer 
+            ? `${currentProjectContainer.title} - Projects` 
             : currentWorkspace 
               ? `${currentWorkspace.name} - Projects`
               : isGlobalView 
@@ -490,8 +493,8 @@ const AdminProjects = () => {
             )}
             <div>
               <h1 className="text-xl md:text-2xl font-bold text-foreground">
-                {currentProject
-                  ? currentProject.title
+                {currentProjectContainer
+                  ? currentProjectContainer.title
                   : currentWorkspace 
                     ? `${currentWorkspace.name}'s Projects`
                     : isGlobalView 
@@ -500,13 +503,13 @@ const AdminProjects = () => {
                 }
               </h1>
               <p className="text-sm md:text-base text-muted-foreground mt-1">
-                {currentProject
+                {currentProjectContainer
                   ? `Video board for ${currentWorkspace?.name || 'client'}`
                   : currentWorkspace 
-                    ? `${clientProjects.length} project${clientProjects.length !== 1 ? 's' : ''}`
+                    ? `${clientProjectContainers.length} project${clientProjectContainers.length !== 1 ? 's' : ''}`
                     : isGlobalView
                       ? `${projects.length} total videos across all clients`
-                      : `${workspaces.length} clients • ${projects.length} total projects`
+                      : `${workspaces.length} clients • ${projectContainers.length} total projects`
                 }
               </p>
             </div>
@@ -582,12 +585,12 @@ const AdminProjects = () => {
             )}
           </div>
         ) : isClientProjectsView && currentWorkspace ? (
-          /* Client Projects Grid (Level 2: Projects within a Client) */
+          /* Client Projects Grid (Level 2: Project Containers within a Client) */
           <ClientProjectsGrid
             clientName={currentWorkspace.name}
             clientAvatar={currentWorkspace.avatar}
-            projects={clientProjects}
-            onProjectClick={(projectId) => openProjectBoard(projectId)}
+            projects={clientProjectContainers}
+            onProjectClick={(containerId) => openProjectBoard(containerId)}
             onCreateProject={() => setCreateProjectModalOpen(true)}
           />
         ) : (
@@ -640,11 +643,13 @@ const AdminProjects = () => {
         )}
       </DashboardLayout>
 
-      {/* Create Video Modal (Full project creation with all details) */}
+      {/* Create Video Modal (Full video creation with all details) */}
       <CreateProjectModal
         open={createVideoModalOpen}
         onOpenChange={setCreateVideoModalOpen}
         onSuccess={fetchData}
+        preselectedClientId={selectedClientId && selectedClientId !== 'all' ? selectedClientId : undefined}
+        preselectedContainerId={selectedProjectContainerId || undefined}
       />
 
       {/* Create Project Container Modal (Simple container creation) */}

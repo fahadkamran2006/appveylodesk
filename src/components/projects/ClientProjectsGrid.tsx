@@ -1,8 +1,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { FolderKanban, Plus, Calendar, Video } from 'lucide-react';
+import { FolderKanban, Plus, Video } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
 
 interface ProjectInfo {
   id: string;
@@ -11,7 +10,6 @@ interface ProjectInfo {
   videoCount: number;
   activeCount: number;
   completedCount: number;
-  due_date?: string | null;
 }
 
 interface ClientProjectsGridProps {
@@ -111,13 +109,6 @@ export function ClientProjectsGrid({
                   {project.completedCount} done
                 </span>
               </div>
-              
-              {project.due_date && (
-                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-2 pt-2 border-t border-border/50">
-                  <Calendar className="w-3 h-3" />
-                  Due {format(new Date(project.due_date), 'MMM d')}
-                </div>
-              )}
             </div>
           ))}
           
