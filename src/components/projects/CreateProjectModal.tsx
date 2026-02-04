@@ -38,10 +38,11 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 
-const projectSchema = z.object({
+const videoSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   description: z.string().optional(),
-  client_id: z.string().optional(),
+  client_id: z.string().min(1, 'Client is required'),
+  container_id: z.string().min(1, 'Project is required'),
   editor_id: z.string().optional(),
   due_date: z.date().optional(),
   budget: z.string().optional(),
@@ -49,12 +50,18 @@ const projectSchema = z.object({
   reference_links: z.string().optional(),
 });
 
-type ProjectFormData = z.infer<typeof projectSchema>;
+type VideoFormData = z.infer<typeof videoSchema>;
 
 interface Person {
   id: string;
   name: string;
   email: string;
+}
+
+interface ProjectContainer {
+  id: string;
+  title: string;
+  client_id: string;
 }
 
 interface SelectedFile {
@@ -65,16 +72,21 @@ interface CreateProjectModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
+  preselectedClientId?: string;
+  preselectedContainerId?: string;
 }
 
 export function CreateProjectModal({
   open,
   onOpenChange,
   onSuccess,
+  preselectedClientId,
+  preselectedContainerId,
 }: CreateProjectModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [clients, setClients] = useState<Person[]>([]);
   const [editors, setEditors] = useState<Person[]>([]);
+  const [containers, setContainers] = useState<ProjectContainer[]>([]);
   const [agencyId, setAgencyId] = useState<string | null>(null);
   const [richDescription, setRichDescription] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([]);
@@ -83,20 +95,47 @@ export function CreateProjectModal({
   const { toast } = useToast();
   const { addToQueue } = useUploadContext();
 
-  const form = useForm<ProjectFormData>({
-    resolver: zodResolver(projectSchema),
+  const form = useForm<VideoFormData>({
+    resolver: zodResolver(videoSchema),
     defaultValues: {
       title: '',
       description: '',
+      client_id: preselectedClientId || '',
+      container_id: preselectedContainerId || '',
       budget: '',
       editor_rate: '',
       reference_links: '',
     },
   });
 
-  // Fetch clients and editors
+  // Watch client_id to filter containers
+  const selectedClientId = form.watch('client_id');
+
+  // Filter containers by selected client
+  const filteredContainers = containers.filter(
+    c => c.client_id === selectedClientId
+  );
+
+  // Update form values when preselected props change
   useEffect(() => {
-    const fetchPeople = async () => {
+    if (preselectedClientId) {
+      form.setValue('client_id', preselectedClientId);
+    }
+    if (preselectedContainerId) {
+      form.setValue('container_id', preselectedContainerId);
+    }
+  }, [preselectedClientId, preselectedContainerId, form]);
+
+  // Reset container when client changes (unless it's preselected)
+  useEffect(() => {
+    if (!preselectedContainerId && selectedClientId) {
+      form.setValue('container_id', '');
+    }
+  }, [selectedClientId, preselectedContainerId, form]);
+
+  // Fetch clients, editors, and project containers
+  useEffect(() => {
+    const fetchData = async () => {
       if (!user) return;
 
       try {
@@ -155,13 +194,22 @@ export function CreateProjectModal({
             }))
           );
         }
+
+        // Get project containers
+        const { data: containersData } = await supabase
+          .from('project_containers')
+          .select('id, title, client_id')
+          .eq('agency_id', userRole.agency_id)
+          .order('title', { ascending: true });
+
+        setContainers(containersData || []);
       } catch (error) {
-        console.error('Error fetching people:', error);
+        console.error('Error fetching data:', error);
       }
     };
 
     if (open) {
-      fetchPeople();
+      fetchData();
     }
   }, [user, open]);
 
@@ -191,7 +239,7 @@ export function CreateProjectModal({
     addToQueue(files, projectId, projectTitle, 'asset');
   };
 
-  const onSubmit = async (data: ProjectFormData) => {
+  const onSubmit = async (data: VideoFormData) => {
     if (!user || !agencyId) return;
 
     setIsSubmitting(true);
@@ -204,13 +252,14 @@ export function CreateProjectModal({
         ? parseFloat(data.editor_rate.replace(/[^0-9.]/g, ''))
         : null;
 
-      // Insert project
+      // Insert video (project) with container_id linking it to a project container
       const { data: project, error: projectError } = await supabase
         .from('projects')
         .insert({
           title: data.title,
           description: richDescription || data.description || null,
-          client_id: data.client_id || null,
+          client_id: data.client_id,
+          container_id: data.container_id,
           agency_id: agencyId,
           status: 'backlog',
           due_date: data.due_date?.toISOString() || null,
@@ -258,7 +307,7 @@ export function CreateProjectModal({
       }
 
       toast({
-        title: 'Project created',
+        title: 'Video created',
         description: selectedFiles.length > 0 
           ? `"${data.title}" has been added to Backlog. Files are uploading in the background.`
           : `"${data.title}" has been added to Backlog`,
@@ -295,10 +344,10 @@ export function CreateProjectModal({
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2 text-foreground">
             <FolderPlus className="w-5 h-5 text-primary" />
-            New Project
+            New Video
           </DialogTitle>
           <DialogDescription className="text-muted-foreground">
-            Create a new project with all details and assign it to your team.
+            Create a new video task and assign it to a project and editor.
           </DialogDescription>
         </DialogHeader>
 
@@ -310,10 +359,10 @@ export function CreateProjectModal({
               name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-foreground">Title</FormLabel>
+                  <FormLabel className="text-foreground">Video Title</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="Project title"
+                      placeholder="e.g., Episode 1, Intro Video"
                       className="bg-surface-elevated border-border/50"
                       {...field}
                     />
@@ -337,7 +386,7 @@ export function CreateProjectModal({
               </div>
             </FormItem>
 
-            {/* Client & Editor Assignment */}
+            {/* Client & Project Selection (Cascading) */}
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -345,12 +394,16 @@ export function CreateProjectModal({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-foreground">
-                      Assigned Client
+                      Client <span className="text-destructive">*</span>
                     </FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      value={field.value}
+                      disabled={!!preselectedClientId}
+                    >
                       <FormControl>
                         <SelectTrigger className="bg-surface-elevated border-border/50">
-                          <SelectValue placeholder="Select client" />
+                          <SelectValue placeholder="Select client first" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -373,27 +426,31 @@ export function CreateProjectModal({
 
               <FormField
                 control={form.control}
-                name="editor_id"
+                name="container_id"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-foreground">
-                      Assigned Editor
+                      Project <span className="text-destructive">*</span>
                     </FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      value={field.value}
+                      disabled={!selectedClientId || !!preselectedContainerId}
+                    >
                       <FormControl>
                         <SelectTrigger className="bg-surface-elevated border-border/50">
-                          <SelectValue placeholder="Select editor" />
+                          <SelectValue placeholder={selectedClientId ? "Select project" : "Select client first"} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {editors.map((editor) => (
-                          <SelectItem key={editor.id} value={editor.id}>
-                            {editor.name}
+                        {filteredContainers.map((container) => (
+                          <SelectItem key={container.id} value={container.id}>
+                            {container.title}
                           </SelectItem>
                         ))}
-                        {editors.length === 0 && (
+                        {filteredContainers.length === 0 && selectedClientId && (
                           <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                            No editors found
+                            No projects for this client. Create one first.
                           </div>
                         )}
                       </SelectContent>
@@ -403,6 +460,39 @@ export function CreateProjectModal({
                 )}
               />
             </div>
+
+            {/* Editor Assignment */}
+            <FormField
+              control={form.control}
+              name="editor_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-foreground">
+                    Assigned Editor <span className="text-muted-foreground font-normal">(optional)</span>
+                  </FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="bg-surface-elevated border-border/50">
+                        <SelectValue placeholder="Select editor" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {editors.map((editor) => (
+                        <SelectItem key={editor.id} value={editor.id}>
+                          {editor.name}
+                        </SelectItem>
+                      ))}
+                      {editors.length === 0 && (
+                        <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                          No editors found
+                        </div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             {/* Budget & Editor Rate */}
             <div className="grid grid-cols-2 gap-4">
@@ -598,7 +688,7 @@ export function CreateProjectModal({
                     {selectedFiles.length > 0 ? 'Creating...' : 'Creating...'}
                   </>
                 ) : (
-                  'Create Project'
+                  'Create Video'
                 )}
               </Button>
             </div>

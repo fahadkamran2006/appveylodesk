@@ -32,13 +32,13 @@ import {
 } from '@/components/ui/select';
 import { Loader2, FolderPlus } from 'lucide-react';
 
-const projectSchema = z.object({
+const containerSchema = z.object({
   title: z.string().min(1, 'Project name is required'),
   description: z.string().optional(),
   client_id: z.string().min(1, 'Client is required'),
 });
 
-type ProjectFormData = z.infer<typeof projectSchema>;
+type ContainerFormData = z.infer<typeof containerSchema>;
 
 interface Client {
   id: string;
@@ -65,8 +65,8 @@ export function CreateProjectContainerModal({
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const form = useForm<ProjectFormData>({
-    resolver: zodResolver(projectSchema),
+  const form = useForm<ContainerFormData>({
+    resolver: zodResolver(containerSchema),
     defaultValues: {
       title: '',
       description: '',
@@ -127,36 +127,22 @@ export function CreateProjectContainerModal({
     }
   }, [user, open]);
 
-  const onSubmit = async (data: ProjectFormData) => {
+  const onSubmit = async (data: ContainerFormData) => {
     if (!user || !agencyId) return;
 
     setIsSubmitting(true);
     try {
-      // Create project container (no video/deliverable content yet)
-      const { data: project, error } = await supabase
-        .from('projects')
+      // Create project container in the new project_containers table
+      const { error } = await supabase
+        .from('project_containers')
         .insert({
           title: data.title,
           description: data.description || null,
           client_id: data.client_id,
           agency_id: agencyId,
-          status: 'backlog', // Default status for project containers
-        })
-        .select()
-        .single();
+        });
 
       if (error) throw error;
-
-      // Create project channel
-      if (project) {
-        await supabase.rpc('create_project_channel', {
-          _project_id: project.id,
-          _agency_id: agencyId,
-          _admin_id: user.id,
-          _client_id: data.client_id,
-          _editor_id: null,
-        });
-      }
 
       toast({
         title: 'Project created',

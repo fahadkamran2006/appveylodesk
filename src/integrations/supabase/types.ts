@@ -692,6 +692,44 @@ export type Database = {
           },
         ]
       }
+      project_containers: {
+        Row: {
+          agency_id: string
+          client_id: string
+          created_at: string
+          description: string | null
+          id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          agency_id: string
+          client_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          agency_id?: string
+          client_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_containers_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_editors: {
         Row: {
           assigned_at: string
@@ -727,6 +765,7 @@ export type Database = {
           budget: number | null
           client_id: string | null
           completed_at: string | null
+          container_id: string | null
           created_at: string
           description: string | null
           due_date: string | null
@@ -742,6 +781,7 @@ export type Database = {
           budget?: number | null
           client_id?: string | null
           completed_at?: string | null
+          container_id?: string | null
           created_at?: string
           description?: string | null
           due_date?: string | null
@@ -757,6 +797,7 @@ export type Database = {
           budget?: number | null
           client_id?: string | null
           completed_at?: string | null
+          container_id?: string | null
           created_at?: string
           description?: string | null
           due_date?: string | null
@@ -768,6 +809,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_projects_container"
+            columns: ["container_id"]
+            isOneToOne: false
+            referencedRelation: "project_containers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "projects_agency_id_fkey"
             columns: ["agency_id"]
@@ -832,6 +880,10 @@ export type Database = {
       check_client_limit: { Args: { _agency_id: string }; Returns: boolean }
       check_storage_limit: {
         Args: { _agency_id: string; _file_size: number }
+        Returns: boolean
+      }
+      container_belongs_to_agency: {
+        Args: { _agency_id: string; _container_id: string }
         Returns: boolean
       }
       create_notification: {
