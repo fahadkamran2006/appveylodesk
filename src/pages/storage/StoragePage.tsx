@@ -834,40 +834,57 @@ const StoragePage = () => {
         {/* Drag and Drop Overlay */}
         {isDragging && (
           <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center pointer-events-none">
-            <div className="border-4 border-dashed border-primary rounded-3xl p-16 bg-primary/5 flex flex-col items-center gap-4 animate-pulse">
-              <CloudUpload className="w-20 h-20 text-primary" />
-              <p className="text-2xl font-semibold text-primary">Drop files here to upload</p>
-              <p className="text-muted-foreground">Files will be uploaded after selecting a project</p>
+            <div className="border-4 border-dashed border-primary rounded-3xl p-8 md:p-16 bg-primary/5 flex flex-col items-center gap-4 animate-pulse mx-4">
+              <CloudUpload className="w-12 h-12 md:w-20 md:h-20 text-primary" />
+              <p className="text-lg md:text-2xl font-semibold text-primary text-center">Drop files here to upload</p>
+              <p className="text-muted-foreground text-center text-sm">Files will be uploaded after selecting a project</p>
             </div>
           </div>
         )}
 
-        <CollapsibleSidebar role={userRole === 'admin' ? 'admin' : userRole === 'client' ? 'client' : 'editor'} />
+        {/* Desktop Sidebar */}
+        <div className="hidden md:block">
+          <CollapsibleSidebar role={userRole === 'admin' ? 'admin' : userRole === 'client' ? 'client' : 'editor'} />
+        </div>
 
-        <main className="flex-1 p-8">
+        <main className="flex-1 p-4 md:p-8 pb-24 md:pb-8">
           {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">Storage</h1>
-              <p className="text-muted-foreground">
-                {userRole === 'admin'
-                  ? 'View and manage all files across the platform'
-                  : 'View files from your projects'}
-              </p>
+          <div className="flex flex-col gap-4 mb-6 md:mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold text-foreground">Storage</h1>
+                <p className="text-sm md:text-base text-muted-foreground">
+                  {userRole === 'admin'
+                    ? 'View and manage all files across the platform'
+                    : 'View files from your projects'}
+                </p>
+              </div>
+              
+              {/* Upload Button - visible when projects available */}
+              {(userRole === 'admin' || userRole === 'editor') && availableProjects.length > 0 && (
+                <Button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full sm:w-auto shrink-0"
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  Upload Files
+                </Button>
+              )}
             </div>
-            <div className="flex items-center gap-3">
-              {/* Storage Usage Card - shown for all users */}
+            
+            {/* Storage Usage Card - Stacked on mobile */}
+            <div className="flex flex-col lg:flex-row lg:items-center gap-4">
               {storageInfo && (
-                <div className="glass-card rounded-xl p-4 flex items-center gap-4">
-                  <HardDrive className="w-6 h-6 text-primary" />
-                  <div>
+                <div className="glass-card rounded-xl p-4 flex items-center gap-4 flex-1 lg:flex-none">
+                  <HardDrive className="w-6 h-6 text-primary shrink-0" />
+                  <div className="flex-1 min-w-0">
                     <p className="text-sm text-muted-foreground">
                       Storage Used {loadingStorageInfo && <Loader2 className="w-3 h-3 inline animate-spin ml-1" />}
                     </p>
-                    <p className="text-lg font-semibold text-foreground">
+                    <p className="text-base md:text-lg font-semibold text-foreground">
                       {formatBytes(storageInfo.used)} / {formatBytes(storageInfo.limit)}
                     </p>
-                    <div className="w-40 h-2 bg-muted rounded-full mt-1">
+                    <div className="w-full lg:w-40 h-2 bg-muted rounded-full mt-1">
                       <div
                         className="h-full bg-primary rounded-full"
                         style={{ width: `${Math.min((storageInfo.used / storageInfo.limit) * 100, 100)}%` }}
@@ -879,7 +896,7 @@ const StoragePage = () => {
               
               {/* Admin-only tools */}
               {userRole === 'admin' && (
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Button
                     variant="outline"
                     size="sm"
@@ -964,9 +981,9 @@ const StoragePage = () => {
             </div>
           )}
 
-          {/* Search and Upload */}
-          <div className="mb-6 flex items-center gap-4">
-            <div className="relative flex-1 max-w-md">
+          {/* Search and Actions Bar */}
+          <div className="mb-6 flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="Search files, projects, or clients..."
@@ -984,17 +1001,6 @@ const StoragePage = () => {
               onChange={handleFileInputChange}
               className="hidden"
             />
-            
-            {/* Upload Button */}
-            {(userRole === 'admin' || userRole === 'editor') && availableProjects.length > 0 && (
-              <Button
-                onClick={() => fileInputRef.current?.click()}
-                className="shrink-0"
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                Upload Files
-              </Button>
-            )}
             
             {files.length > 0 && (
               <Button
@@ -1020,29 +1026,30 @@ const StoragePage = () => {
 
           {/* Bulk Actions Bar */}
           {selectedFiles.size > 0 && (
-            <div className="mb-6 glass-card rounded-xl p-4 flex items-center justify-between border border-primary/30 bg-primary/5">
+            <div className="mb-6 glass-card rounded-xl p-3 md:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border border-primary/30 bg-primary/5">
               <div className="flex items-center gap-3">
-                <CheckSquare className="w-5 h-5 text-primary" />
-                <span className="font-medium text-foreground">
+                <CheckSquare className="w-5 h-5 text-primary shrink-0" />
+                <span className="font-medium text-foreground text-sm md:text-base">
                   {selectedFiles.size} file{selectedFiles.size !== 1 ? 's' : ''} selected
                 </span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleBulkDownload}
                   disabled={isBulkDownloading}
+                  className="flex-1 sm:flex-none"
                 >
                   {isBulkDownloading ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Downloading...
+                      <span className="hidden sm:inline">Downloading...</span>
                     </>
                   ) : (
                     <>
-                      <Download className="w-4 h-4 mr-2" />
-                      Download All
+                      <Download className="w-4 h-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Download All</span>
                     </>
                   )}
                 </Button>
@@ -1052,9 +1059,10 @@ const StoragePage = () => {
                     size="sm"
                     onClick={() => setShowBulkDeleteConfirm(true)}
                     disabled={isBulkDeleting}
+                    className="flex-1 sm:flex-none"
                   >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Delete All
+                    <Trash2 className="w-4 h-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Delete All</span>
                   </Button>
                 )}
               </div>
