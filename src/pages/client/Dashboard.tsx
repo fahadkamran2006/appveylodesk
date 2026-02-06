@@ -10,17 +10,20 @@ import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ClientProposalModal } from '@/components/projects/ClientProposalModal';
-import { ProjectDetailSheet } from '@/components/projects/ProjectDetailSheet';
+import { ClientCreateProjectModal } from '@/components/projects/ClientCreateProjectModal';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
 
-interface Project {
+interface ProjectContainer {
   id: string;
   title: string;
   description: string | null;
-  status: string;
-  due_date: string | null;
+  created_at: string;
+}
+
+interface ProjectContainerStats extends ProjectContainer {
+  videoCount: number;
+  activeCount: number;
+  completedCount: number;
 }
 
 interface Invoice {
@@ -31,30 +34,18 @@ interface Invoice {
   project: { title: string } | null;
 }
 
-interface ProjectStats {
-  id: string;
-  title: string;
-  description: string | null;
-  videoCount: number;
-  activeCount: number;
-  completedCount: number;
-  due_date: string | null;
-}
-
 const ClientDashboard = () => {
   const { user, userRole, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [projectStats, setProjectStats] = useState<ProjectStats[]>([]);
+  const [projectContainers, setProjectContainers] = useState<ProjectContainerStats[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [proposalModalOpen, setProposalModalOpen] = useState(false);
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [createProjectModalOpen, setCreateProjectModalOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -69,27 +60,35 @@ const ClientDashboard = () => {
     if (!user) return;
     
     try {
-      // Fetch projects where client_id matches user
-      const { data: projectsData, error: projectsError } = await supabase
-        .from('projects')
-        .select('id, title, description, status, due_date')
+      // Fetch project containers (the actual "Projects" in 2-tier client view)
+      const { data: containersData, error: containersError } = await supabase
+        .from('project_containers')
+        .select('id, title, description, created_at')
         .eq('client_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (projectsError) throw projectsError;
-      setProjects(projectsData || []);
+      if (containersError) throw containersError;
 
-      // Build project stats - group by project for card display
-      const stats: ProjectStats[] = (projectsData || []).map(p => ({
-        id: p.id,
-        title: p.title,
-        description: p.description,
-        videoCount: 1,
-        activeCount: ['in_progress', 'review', 'backlog'].includes(p.status) ? 1 : 0,
-        completedCount: p.status === 'done' ? 1 : 0,
-        due_date: p.due_date,
-      }));
-      setProjectStats(stats);
+      // Fetch videos (projects table) to calculate stats per container
+      const { data: videosData, error: videosError } = await supabase
+        .from('projects')
+        .select('id, container_id, status')
+        .eq('client_id', user.id);
+
+      if (videosError) throw videosError;
+
+      // Build stats for each container
+      const containerStats: ProjectContainerStats[] = (containersData || []).map(container => {
+        const containerVideos = (videosData || []).filter(v => v.container_id === container.id);
+        return {
+          ...container,
+          videoCount: containerVideos.length,
+          activeCount: containerVideos.filter(v => ['in_progress', 'review', 'backlog', 'proposal'].includes(v.status)).length,
+          completedCount: containerVideos.filter(v => v.status === 'done').length,
+        };
+      });
+
+      setProjectContainers(containerStats);
 
       // Fetch invoices for this client
       const { data: invoicesData, error: invoicesError } = await supabase
@@ -166,6 +165,11 @@ const ClientDashboard = () => {
     }
   };
 
+  const handleProjectClick = (containerId: string) => {
+    // Navigate to the project board for this container
+    navigate(`/client/projects?project=${containerId}`);
+  };
+
   if (loading || loadingData) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -174,8 +178,10 @@ const ClientDashboard = () => {
     );
   }
 
-  const activeProjects = projects.filter(p => !['done', 'cancelled'].includes(p.status));
-  const completedProjects = projects.filter(p => p.status === 'done');
+  // Calculate stats from all videos across all containers
+  const totalVideos = projectContainers.reduce((acc, c) => acc + c.videoCount, 0);
+  const activeVideos = projectContainers.reduce((acc, c) => acc + c.activeCount, 0);
+  const completedVideos = projectContainers.reduce((acc, c) => acc + c.completedCount, 0);
 
   return (
     <>
@@ -192,7 +198,7 @@ const ClientDashboard = () => {
 
         {/* Hero: Create New Project Card */}
         <div 
-          onClick={() => setProposalModalOpen(true)}
+          onClick={() => setCreateProjectModalOpen(true)}
           className="mb-6 md:mb-8 p-4 md:p-6 rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-2 border-dashed border-primary/30 hover:border-primary/50 hover:bg-primary/10 cursor-pointer transition-all duration-300 group"
         >
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
@@ -201,11 +207,11 @@ const ClientDashboard = () => {
             </div>
             <div className="flex-1">
               <h2 className="text-lg md:text-xl font-bold text-foreground flex items-center gap-2">
-                Start a New Project
+                Create a New Project
                 <Sparkles className="w-4 h-4 md:w-5 md:h-5 text-primary" />
               </h2>
               <p className="text-sm md:text-base text-muted-foreground mt-1">
-                Submit a project proposal and we'll get back to you with a quote
+                Organize your video work into projects (e.g., "Main Channel", "Shorts")
               </p>
             </div>
             <Button variant="hero" size="default" className="w-full sm:w-auto shrink-0">
@@ -223,8 +229,19 @@ const ClientDashboard = () => {
                 <FolderKanban className="w-6 h-6 text-primary" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Active Projects</p>
-                <p className="text-2xl font-bold text-foreground">{activeProjects.length}</p>
+                <p className="text-sm text-muted-foreground">Projects</p>
+                <p className="text-2xl font-bold text-foreground">{projectContainers.length}</p>
+              </div>
+            </div>
+          </div>
+          <div className="glass-card rounded-xl p-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Video className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Active Videos</p>
+                <p className="text-2xl font-bold text-foreground">{activeVideos}</p>
               </div>
             </div>
           </div>
@@ -235,7 +252,7 @@ const ClientDashboard = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Delivered</p>
-                <p className="text-2xl font-bold text-foreground">{completedProjects.length}</p>
+                <p className="text-2xl font-bold text-foreground">{completedVideos}</p>
               </div>
             </div>
           </div>
@@ -252,52 +269,33 @@ const ClientDashboard = () => {
               </div>
             </div>
           </div>
-          <div className="glass-card rounded-xl p-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-lg bg-destructive/10 flex items-center justify-center">
-                <Clock className="w-6 h-6 text-destructive" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Due Soon</p>
-                <p className="text-2xl font-bold text-foreground">
-                  {projects.filter(p => {
-                    if (!p.due_date) return false;
-                    const dueDate = new Date(p.due_date);
-                    const now = new Date();
-                    const diffDays = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-                    return diffDays <= 7 && diffDays >= 0 && p.status !== 'done';
-                  }).length}
-                </p>
-              </div>
-            </div>
-          </div>
         </div>
 
-        {/* Projects Grid - New 3-tier hierarchy view */}
+        {/* Projects Grid - Shows project containers */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-semibold text-foreground">Your Projects</h2>
-            <Button variant="outline" size="sm" onClick={() => navigate('/client/projects')}>
+            <Button variant="outline" size="sm" onClick={() => navigate('/client/projects?view=all')}>
               <Eye className="w-4 h-4 mr-2" />
-              View All Work
+              View All Videos
             </Button>
           </div>
 
-          {projectStats.length === 0 ? (
+          {projectContainers.length === 0 ? (
             <div className="text-center py-12 rounded-xl border border-dashed border-border">
               <FolderKanban className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />
               <p className="text-muted-foreground mb-4">No projects yet.</p>
-              <Button variant="hero" onClick={() => setProposalModalOpen(true)}>
+              <Button variant="hero" onClick={() => setCreateProjectModalOpen(true)}>
                 <Plus className="w-4 h-4 mr-2" />
-                Start Your First Project
+                Create Your First Project
               </Button>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {projectStats.slice(0, 8).map((project) => (
+              {projectContainers.slice(0, 8).map((project) => (
                 <div
                   key={project.id}
-                  onClick={() => setSelectedProjectId(project.id)}
+                  onClick={() => handleProjectClick(project.id)}
                   className={cn(
                     'glass-card rounded-xl p-5 cursor-pointer transition-all duration-200',
                     'hover:border-primary/30 hover:shadow-glow-sm',
@@ -331,14 +329,10 @@ const ClientDashboard = () => {
                     {project.completedCount > 0 && (
                       <span className="text-success">{project.completedCount} done</span>
                     )}
+                    {project.videoCount === 0 && (
+                      <span className="text-muted-foreground">No videos yet</span>
+                    )}
                   </div>
-                  
-                  {project.due_date && (
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground mt-2 pt-2 border-t border-border/50">
-                      <Clock className="w-3 h-3" />
-                      Due {format(new Date(project.due_date), 'MMM d')}
-                    </div>
-                  )}
                 </div>
               ))}
             </div>
@@ -418,19 +412,11 @@ const ClientDashboard = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Proposal Modal */}
-      <ClientProposalModal
-        open={proposalModalOpen}
-        onOpenChange={setProposalModalOpen}
+      {/* Create Project Modal */}
+      <ClientCreateProjectModal
+        open={createProjectModalOpen}
+        onOpenChange={setCreateProjectModalOpen}
         onSuccess={fetchData}
-      />
-
-      {/* Project Detail Sheet */}
-      <ProjectDetailSheet
-        projectId={selectedProjectId}
-        open={!!selectedProjectId}
-        onOpenChange={(open) => !open && setSelectedProjectId(null)}
-        onProjectDeleted={fetchData}
       />
     </>
   );
