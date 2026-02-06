@@ -49,12 +49,14 @@ interface ClientProposalModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
+  preselectedContainerId?: string;
 }
 
 export function ClientProposalModal({
   open,
   onOpenChange,
   onSuccess,
+  preselectedContainerId,
 }: ClientProposalModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [richDescription, setRichDescription] = useState('');
@@ -116,7 +118,7 @@ export function ClientProposalModal({
         ? parseFloat(data.proposed_budget.replace(/[^0-9.]/g, ''))
         : null;
 
-      // Create project as proposal
+      // Create video (project) as proposal, linking to container if provided
       const { data: newProject, error: projectError } = await supabase
         .from('projects')
         .insert({
@@ -128,6 +130,7 @@ export function ClientProposalModal({
           due_date: data.due_date?.toISOString() || null,
           reference_links: data.reference_links || null,
           budget: budgetValue,
+          container_id: preselectedContainerId || null,
         })
         .select('id')
         .single();
