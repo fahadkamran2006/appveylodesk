@@ -37,7 +37,9 @@ import {
   Edit3,
   Link as LinkIcon,
   ExternalLink,
-  Package
+  Package,
+  FolderKanban,
+  ArrowRightLeft
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
@@ -50,6 +52,7 @@ import { CommentPanel } from '@/components/video/CommentPanel';
 import { useToast } from '@/hooks/use-toast';
 import { FilePreviewModal } from '@/components/ui/file-preview-modal';
 import { ProjectEditModal } from './ProjectEditModal';
+import { MoveVideoModal } from './MoveVideoModal';
 
 interface ProjectDetailSheetProps {
   projectId: string | null;
@@ -69,6 +72,7 @@ interface ProjectDetail {
   reference_links: string | null;
   client_id: string | null;
   agency_id: string;
+  container_id: string | null;
   client_name?: string;
   editor_name?: string;
 }
@@ -114,6 +118,9 @@ export function ProjectDetailSheet({
   
   // Edit modal state
   const [showEditModal, setShowEditModal] = useState(false);
+  
+  // Move video modal state
+  const [showMoveModal, setShowMoveModal] = useState(false);
   
   // Image preview state
   const [previewImage, setPreviewImage] = useState<Deliverable | null>(null);
@@ -435,15 +442,25 @@ export function ProjectDetailSheet({
                       </Button>
                     )}
                     {userRole === 'admin' && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setShowDeleteDialog(true)}
-                        className="ml-auto text-destructive hover:text-destructive hover:bg-destructive/10"
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Delete Project
-                      </Button>
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowMoveModal(true)}
+                        >
+                          <ArrowRightLeft className="w-4 h-4 mr-2" />
+                          Move Video
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowDeleteDialog(true)}
+                          className="ml-auto text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete Project
+                        </Button>
+                      </>
                     )}
                   </div>
 
@@ -646,6 +663,21 @@ export function ProjectDetailSheet({
           open={showEditModal}
           onOpenChange={setShowEditModal}
           onSuccess={handleEditSuccess}
+        />
+      )}
+
+      {/* Move Video Modal */}
+      {project && (
+        <MoveVideoModal
+          open={showMoveModal}
+          onOpenChange={setShowMoveModal}
+          videoId={project.id}
+          videoTitle={project.title}
+          currentContainerId={project.container_id}
+          onSuccess={() => {
+            fetchProject();
+            onProjectDeleted?.();
+          }}
         />
       )}
     </Sheet>

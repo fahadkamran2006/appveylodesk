@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Send, Lock, MoreVertical, VolumeX, Volume2, FolderKanban, MessageSquare, Trash2 } from 'lucide-react';
+import { Send, Lock, MoreVertical, VolumeX, Volume2, FolderKanban, MessageSquare, Trash2, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { useChannelMutes } from '@/hooks/useMessaging';
@@ -55,9 +55,11 @@ interface ChatWindowProps {
   messages: Message[];
   loading?: boolean;
   onSendMessage: (content: string, attachmentUrl?: string, attachmentType?: string) => Promise<boolean>;
+  onBack?: () => void;
+  showBackButton?: boolean;
 }
 
-export function ChatWindow({ channel, messages, loading, onSendMessage }: ChatWindowProps) {
+export function ChatWindow({ channel, messages, loading, onSendMessage, onBack, showBackButton }: ChatWindowProps) {
   const { user, userRole } = useAuth();
   const [messageInput, setMessageInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -194,6 +196,17 @@ export function ChatWindow({ channel, messages, loading, onSendMessage }: ChatWi
         {/* Header */}
         <div className="p-4 border-b border-border/50 flex items-center justify-between">
           <div className="flex items-center gap-3">
+            {/* Mobile Back Button */}
+            {showBackButton && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onBack}
+                className="md:hidden"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+            )}
             {isDM ? (
               <Avatar className="w-10 h-10 border border-border/50">
                 <AvatarImage src={otherUser?.avatar_url || undefined} />

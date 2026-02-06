@@ -309,83 +309,87 @@ const AdminInvoices = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background flex">
-        <CollapsibleSidebar role="admin" />
+        {/* Desktop sidebar */}
+        <div className="hidden md:block">
+          <CollapsibleSidebar role="admin" />
+        </div>
 
-        <main className="flex-1 p-8">
-          <div className="flex items-center justify-between mb-8">
+        <main className="flex-1 p-4 md:p-8 pb-24 md:pb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
             <div>
-              <h1 className="text-2xl font-bold text-foreground">Invoices</h1>
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground">Invoices</h1>
               <p className="text-muted-foreground">Create and manage client invoices.</p>
             </div>
-            <Button variant="hero" onClick={() => setCreateModalOpen(true)}>
+            <Button variant="hero" onClick={() => setCreateModalOpen(true)} className="w-full sm:w-auto">
               <Plus className="w-4 h-4 mr-2" />
               Create Invoice
             </Button>
           </div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="glass-card rounded-xl p-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <TrendingUp className="w-6 h-6 text-primary" />
+          {/* Stats Cards - Stack on mobile, grid on desktop */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 mb-8">
+            <div className="glass-card rounded-xl p-4 md:p-6">
+              <div className="flex items-center gap-3 md:gap-4">
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  <TrendingUp className="w-5 h-5 md:w-6 md:h-6 text-primary" />
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Billed</p>
-                  <p className="text-2xl font-bold text-foreground">${stats.total.toLocaleString()}</p>
-                </div>
-              </div>
-            </div>
-            <div className="glass-card rounded-xl p-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-lg bg-destructive/10 flex items-center justify-center">
-                  <DollarSign className="w-6 h-6 text-destructive" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Unpaid</p>
-                  <p className="text-2xl font-bold text-foreground">${stats.unpaid.toLocaleString()}</p>
+                <div className="min-w-0">
+                  <p className="text-xs md:text-sm text-muted-foreground truncate">Total Billed</p>
+                  <p className="text-lg md:text-2xl font-bold text-foreground">${stats.total.toLocaleString()}</p>
                 </div>
               </div>
             </div>
-            <div className="glass-card rounded-xl p-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-lg bg-warning/10 flex items-center justify-center">
-                  <Clock className="w-6 h-6 text-warning" />
+            <div className="glass-card rounded-xl p-4 md:p-6">
+              <div className="flex items-center gap-3 md:gap-4">
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg bg-destructive/10 flex items-center justify-center shrink-0">
+                  <DollarSign className="w-5 h-5 md:w-6 md:h-6 text-destructive" />
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Pending Review</p>
-                  <p className="text-2xl font-bold text-foreground">{stats.pending}</p>
+                <div className="min-w-0">
+                  <p className="text-xs md:text-sm text-muted-foreground truncate">Unpaid</p>
+                  <p className="text-lg md:text-2xl font-bold text-foreground">${stats.unpaid.toLocaleString()}</p>
                 </div>
               </div>
             </div>
-            <div className="glass-card rounded-xl p-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-lg bg-success/10 flex items-center justify-center">
-                  <CheckCircle2 className="w-6 h-6 text-success" />
+            <div className="glass-card rounded-xl p-4 md:p-6">
+              <div className="flex items-center gap-3 md:gap-4">
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg bg-warning/10 flex items-center justify-center shrink-0">
+                  <Clock className="w-5 h-5 md:w-6 md:h-6 text-warning" />
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Collected</p>
-                  <p className="text-2xl font-bold text-foreground">${stats.paid.toLocaleString()}</p>
+                <div className="min-w-0">
+                  <p className="text-xs md:text-sm text-muted-foreground truncate">Pending</p>
+                  <p className="text-lg md:text-2xl font-bold text-foreground">{stats.pending}</p>
+                </div>
+              </div>
+            </div>
+            <div className="glass-card rounded-xl p-4 md:p-6">
+              <div className="flex items-center gap-3 md:gap-4">
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg bg-success/10 flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="w-5 h-5 md:w-6 md:h-6 text-success" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs md:text-sm text-muted-foreground truncate">Collected</p>
+                  <p className="text-lg md:text-2xl font-bold text-foreground">${stats.paid.toLocaleString()}</p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Filter Tabs */}
-          <div className="flex gap-2 mb-6">
+          {/* Filter Tabs - Scrollable on mobile */}
+          <div className="flex gap-2 mb-6 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0">
             {(['all', 'unpaid', 'pending', 'paid'] as const).map((f) => (
               <Button
                 key={f}
                 variant={filter === f ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setFilter(f)}
+                className="shrink-0"
               >
                 {f.charAt(0).toUpperCase() + f.slice(1)}
               </Button>
             ))}
           </div>
 
-          {/* Invoices Table */}
+          {/* Invoices - Cards on mobile, Table on desktop */}
           <div className="glass-card rounded-xl overflow-hidden">
             {filteredInvoices.length === 0 ? (
               <div className="p-12 text-center">
@@ -393,58 +397,107 @@ const AdminInvoices = () => {
                 <p className="text-muted-foreground">No invoices found.</p>
               </div>
             ) : (
-              <table className="w-full">
-                <thead className="bg-muted/30">
-                  <tr>
-                    <th className="text-left p-4 text-sm font-medium text-muted-foreground">Project</th>
-                    <th className="text-left p-4 text-sm font-medium text-muted-foreground">Client</th>
-                    <th className="text-left p-4 text-sm font-medium text-muted-foreground">Amount</th>
-                    <th className="text-left p-4 text-sm font-medium text-muted-foreground">Due Date</th>
-                    <th className="text-left p-4 text-sm font-medium text-muted-foreground">Status</th>
-                    <th className="text-left p-4 text-sm font-medium text-muted-foreground">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/50">
+              <>
+                {/* Mobile Card View */}
+                <div className="md:hidden divide-y divide-border/50">
                   {filteredInvoices.map((invoice) => (
-                    <tr key={invoice.id} className="hover:bg-muted/20">
-                      <td className="p-4 font-medium text-foreground">
-                        {invoice.project?.title || 'Unknown Project'}
-                      </td>
-                      <td className="p-4 text-muted-foreground">
-                        {invoice.client?.full_name || invoice.client?.email || 'Unknown'}
-                      </td>
-                      <td className="p-4 font-semibold text-foreground">
-                        ${invoice.amount.toLocaleString()}
-                      </td>
-                      <td className="p-4 text-muted-foreground">
-                        {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : '-'}
-                      </td>
-                      <td className="p-4">
+                    <div key={invoice.id} className="p-4 space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-foreground truncate">
+                            {invoice.project?.title || 'Unknown Project'}
+                          </p>
+                          <p className="text-sm text-muted-foreground truncate">
+                            {invoice.client?.full_name || invoice.client?.email || 'Unknown'}
+                          </p>
+                        </div>
                         <span className={cn(
-                          "px-3 py-1 rounded-full text-xs font-medium",
+                          "px-2 py-1 rounded-full text-xs font-medium shrink-0 ml-2",
                           invoice.status === 'paid' && "bg-success/10 text-success border border-success/20",
                           invoice.status === 'pending' && "bg-warning/10 text-warning border border-warning/20",
                           invoice.status === 'unpaid' && "bg-destructive/10 text-destructive border border-destructive/20"
                         )}>
-                          {invoice.status === 'paid' ? 'Paid' : invoice.status === 'pending' ? 'Pending Review' : 'Unpaid'}
+                          {invoice.status === 'paid' ? 'Paid' : invoice.status === 'pending' ? 'Review' : 'Unpaid'}
                         </span>
-                      </td>
-                      <td className="p-4">
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4 text-sm">
+                          <span className="font-semibold text-foreground">${invoice.amount.toLocaleString()}</span>
+                          {invoice.due_date && (
+                            <span className="text-muted-foreground">
+                              Due {new Date(invoice.due_date).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
                         {invoice.status === 'pending' && invoice.payment_proof_url && (
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => handleViewProof(invoice)}
                           >
-                            <Eye className="w-4 h-4 mr-2" />
-                            Review Proof
+                            <Eye className="w-4 h-4 mr-1" />
+                            Review
                           </Button>
                         )}
-                      </td>
-                    </tr>
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                </div>
+
+                {/* Desktop Table View */}
+                <table className="w-full hidden md:table">
+                  <thead className="bg-muted/30">
+                    <tr>
+                      <th className="text-left p-4 text-sm font-medium text-muted-foreground">Project</th>
+                      <th className="text-left p-4 text-sm font-medium text-muted-foreground">Client</th>
+                      <th className="text-left p-4 text-sm font-medium text-muted-foreground">Amount</th>
+                      <th className="text-left p-4 text-sm font-medium text-muted-foreground">Due Date</th>
+                      <th className="text-left p-4 text-sm font-medium text-muted-foreground">Status</th>
+                      <th className="text-left p-4 text-sm font-medium text-muted-foreground">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/50">
+                    {filteredInvoices.map((invoice) => (
+                      <tr key={invoice.id} className="hover:bg-muted/20">
+                        <td className="p-4 font-medium text-foreground">
+                          {invoice.project?.title || 'Unknown Project'}
+                        </td>
+                        <td className="p-4 text-muted-foreground">
+                          {invoice.client?.full_name || invoice.client?.email || 'Unknown'}
+                        </td>
+                        <td className="p-4 font-semibold text-foreground">
+                          ${invoice.amount.toLocaleString()}
+                        </td>
+                        <td className="p-4 text-muted-foreground">
+                          {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : '-'}
+                        </td>
+                        <td className="p-4">
+                          <span className={cn(
+                            "px-3 py-1 rounded-full text-xs font-medium",
+                            invoice.status === 'paid' && "bg-success/10 text-success border border-success/20",
+                            invoice.status === 'pending' && "bg-warning/10 text-warning border border-warning/20",
+                            invoice.status === 'unpaid' && "bg-destructive/10 text-destructive border border-destructive/20"
+                          )}>
+                            {invoice.status === 'paid' ? 'Paid' : invoice.status === 'pending' ? 'Pending Review' : 'Unpaid'}
+                          </span>
+                        </td>
+                        <td className="p-4">
+                          {invoice.status === 'pending' && invoice.payment_proof_url && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleViewProof(invoice)}
+                            >
+                              <Eye className="w-4 h-4 mr-2" />
+                              Review Proof
+                            </Button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
             )}
           </div>
         </main>

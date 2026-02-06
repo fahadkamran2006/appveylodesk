@@ -86,6 +86,9 @@ const MessagesPage = () => {
     );
   }
 
+  // Mobile: show chat list or chat window (not both)
+  const showChatListOnMobile = !selectedChannelId;
+
   return (
     <>
       <Helmet>
@@ -94,11 +97,17 @@ const MessagesPage = () => {
       </Helmet>
 
       <div className="h-screen bg-background flex overflow-hidden">
-        <CollapsibleSidebar role={getSidebarRole()} />
+        {/* Desktop sidebar - hidden on mobile */}
+        <div className="hidden md:block">
+          <CollapsibleSidebar role={getSidebarRole()} />
+        </div>
 
         <main className="flex-1 flex h-full overflow-hidden">
-          {/* Chat List Sidebar */}
-          <div className="w-80 h-full border-r border-border/50 bg-surface-dark flex flex-col">
+          {/* Chat List Sidebar - full width on mobile when no channel selected */}
+          <div className={`
+            ${showChatListOnMobile ? 'flex' : 'hidden'} md:flex
+            w-full md:w-80 h-full border-r border-border/50 bg-surface-dark flex-col
+          `}>
             <div className="shrink-0 p-4 border-b border-border/50">
               <div className="flex items-center gap-2">
                 <MessageSquare className="w-5 h-5 text-primary" />
@@ -119,13 +128,18 @@ const MessagesPage = () => {
             </div>
           </div>
 
-          {/* Chat Window */}
-          <div className="flex-1 h-full overflow-hidden">
+          {/* Chat Window - full width on mobile when channel selected */}
+          <div className={`
+            ${!showChatListOnMobile ? 'flex' : 'hidden'} md:flex
+            flex-1 h-full overflow-hidden flex-col
+          `}>
             <ChatWindow
               channel={selectedChannel as any}
               messages={messages as any}
               loading={messagesLoading}
               onSendMessage={sendMessage}
+              onBack={() => setSelectedChannelId(null)}
+              showBackButton={!!selectedChannelId}
             />
           </div>
         </main>

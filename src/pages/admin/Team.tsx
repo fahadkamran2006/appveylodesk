@@ -138,20 +138,23 @@ const AdminTeam = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background flex">
-        <CollapsibleSidebar role="admin" />
+        {/* Desktop sidebar */}
+        <div className="hidden md:block">
+          <CollapsibleSidebar role="admin" />
+        </div>
 
-        <main className="flex-1 p-8">
+        <main className="flex-1 p-4 md:p-8 pb-24 md:pb-8">
           {/* Header */}
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
             <div>
-              <h1 className="text-3xl font-bold text-foreground">Team</h1>
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground">Team</h1>
               <p className="text-muted-foreground mt-1">
                 Manage your editors and team members
               </p>
             </div>
             <Button
               onClick={() => setInviteOpen(true)}
-              className="bg-primary hover:bg-primary/90"
+              className="bg-primary hover:bg-primary/90 w-full sm:w-auto"
             >
               <UserPlus className="w-4 h-4 mr-2" />
               Invite Member
@@ -164,7 +167,7 @@ const AdminTeam = () => {
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
           ) : !hasContent ? (
-            <div className="flex flex-col items-center justify-center h-64 text-center">
+            <div className="flex flex-col items-center justify-center h-64 text-center px-4">
               <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6">
                 <UsersRound className="w-8 h-8 text-primary" />
               </div>
@@ -209,7 +212,8 @@ const AdminTeam = () => {
                       ({pendingInvitations.length})
                     </span>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {/* Mobile: Single column, Desktop: Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                     {pendingInvitations.map((invitation) => (
                       <PendingInvitationCard
                         key={invitation.id}
@@ -235,7 +239,8 @@ const AdminTeam = () => {
                       ({teamMembers.length})
                     </span>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {/* Mobile: Single column, Desktop: Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                     {teamMembers.map((member) => {
                       const stats = editorStats[member.id];
                       return (
