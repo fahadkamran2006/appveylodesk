@@ -2,7 +2,7 @@ import { Droppable, Draggable } from '@hello-pangea/dnd';
 import { ProjectCard } from './ProjectCard';
 import { cn } from '@/lib/utils';
 
-export type ProjectStatus = 'proposal' | 'backlog' | 'in_progress' | 'review' | 'done' | 'cancelled';
+export type ProjectStatus = 'proposal' | 'backlog' | 'in_progress' | 'review' | 'done' | 'paid' | 'archived' | 'cancelled';
 
 export interface Project {
   id: string;
@@ -50,6 +50,16 @@ const columnStyles: Record<ProjectStatus, { bg: string; border: string; dot: str
     bg: 'bg-success/5',
     border: 'border-success/20',
     dot: 'bg-success',
+  },
+  paid: {
+    bg: 'bg-emerald-500/5',
+    border: 'border-emerald-500/20',
+    dot: 'bg-emerald-500',
+  },
+  archived: {
+    bg: 'bg-slate-500/5',
+    border: 'border-slate-500/20',
+    dot: 'bg-slate-500',
   },
   cancelled: {
     bg: 'bg-destructive/5',

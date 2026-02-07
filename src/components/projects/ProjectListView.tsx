@@ -21,6 +21,8 @@ const statusConfig: Record<ProjectStatus, { label: string; variant: 'default' | 
   in_progress: { label: 'In Progress', variant: 'default' },
   review: { label: 'Review', variant: 'outline' },
   done: { label: 'Done', variant: 'secondary' },
+  paid: { label: 'Paid', variant: 'default' },
+  archived: { label: 'Archived', variant: 'secondary' },
   cancelled: { label: 'Cancelled', variant: 'destructive' },
 };
 

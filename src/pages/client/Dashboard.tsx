@@ -5,12 +5,14 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
-import { Clock, Download, FolderKanban, Receipt, Plus, Sparkles, Video, Eye } from 'lucide-react';
+import { Clock, Download, FolderKanban, Receipt, Plus, Sparkles, Video, Eye, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ClientCreateProjectModal } from '@/components/projects/ClientCreateProjectModal';
+import { ClientProposalModal } from '@/components/projects/ClientProposalModal';
+import { RequestVideoModal } from '@/components/projects/RequestVideoModal';
 import { cn } from '@/lib/utils';
 
 interface ProjectContainer {
@@ -46,6 +48,7 @@ const ClientDashboard = () => {
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [uploading, setUploading] = useState(false);
   const [createProjectModalOpen, setCreateProjectModalOpen] = useState(false);
+  const [requestVideoModalOpen, setRequestVideoModalOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -196,28 +199,47 @@ const ClientDashboard = () => {
           <p className="text-sm md:text-base text-muted-foreground">Track your projects and manage invoices.</p>
         </div>
 
-        {/* Hero: Create New Project Card */}
-        <div 
-          onClick={() => setCreateProjectModalOpen(true)}
-          className="mb-6 md:mb-8 p-4 md:p-6 rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-2 border-dashed border-primary/30 hover:border-primary/50 hover:bg-primary/10 cursor-pointer transition-all duration-300 group"
-        >
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
-            <div className="w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl bg-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
-              <Plus className="w-6 h-6 md:w-8 md:h-8 text-primary" />
+        {/* Hero: Request Project / Request Video Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 md:mb-8">
+          {/* Request New Project */}
+          <div 
+            onClick={() => setCreateProjectModalOpen(true)}
+            className="p-4 md:p-6 rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-2 border-dashed border-primary/30 hover:border-primary/50 hover:bg-primary/10 cursor-pointer transition-all duration-300 group"
+          >
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
+                <FolderKanban className="w-6 h-6 text-primary" />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+                  Request New Project
+                  <Sparkles className="w-4 h-4 text-primary" />
+                </h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Start a new project like a YouTube channel, podcast, or video series
+                </p>
+              </div>
             </div>
-            <div className="flex-1">
-              <h2 className="text-lg md:text-xl font-bold text-foreground flex items-center gap-2">
-                Create a New Project
-                <Sparkles className="w-4 h-4 md:w-5 md:h-5 text-primary" />
-              </h2>
-              <p className="text-sm md:text-base text-muted-foreground mt-1">
-                Organize your video work into projects (e.g., "Main Channel", "Shorts")
-              </p>
+          </div>
+
+          {/* Request New Video */}
+          <div 
+            onClick={() => setRequestVideoModalOpen(true)}
+            className="p-4 md:p-6 rounded-2xl bg-gradient-to-br from-accent/10 via-accent/5 to-transparent border-2 border-dashed border-accent/30 hover:border-accent/50 hover:bg-accent/10 cursor-pointer transition-all duration-300 group"
+          >
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
+                <Video className="w-6 h-6 text-accent" />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+                  Request New Video
+                </h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Add a video to one of your existing projects
+                </p>
+              </div>
             </div>
-            <Button variant="hero" size="default" className="w-full sm:w-auto shrink-0">
-              <Plus className="w-4 h-4 md:w-5 md:h-5 mr-2" />
-              New Project
-            </Button>
           </div>
         </div>
 
@@ -286,8 +308,8 @@ const ClientDashboard = () => {
               <FolderKanban className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />
               <p className="text-muted-foreground mb-4">No projects yet.</p>
               <Button variant="hero" onClick={() => setCreateProjectModalOpen(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Create Your First Project
+                <FolderKanban className="w-4 h-4 mr-2" />
+                Request Your First Project
               </Button>
             </div>
           ) : (
@@ -416,6 +438,13 @@ const ClientDashboard = () => {
       <ClientCreateProjectModal
         open={createProjectModalOpen}
         onOpenChange={setCreateProjectModalOpen}
+        onSuccess={fetchData}
+      />
+
+      {/* Request Video Modal */}
+      <RequestVideoModal
+        open={requestVideoModalOpen}
+        onOpenChange={setRequestVideoModalOpen}
         onSuccess={fetchData}
       />
     </>

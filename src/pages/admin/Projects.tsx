@@ -24,6 +24,8 @@ const COLUMNS: { id: ProjectStatus; title: string }[] = [
   { id: 'in_progress', title: 'In Progress' },
   { id: 'review', title: 'Review' },
   { id: 'done', title: 'Delivered' },
+  { id: 'paid', title: 'Paid' },
+  { id: 'archived', title: 'Archived' },
 ];
 
 interface ClientWorkspace {
@@ -324,9 +326,9 @@ const AdminProjects = () => {
       result = result.filter(p => p.editor_id === editorFilter);
     }
 
-    // Filter archived (done/cancelled)
+    // Filter archived (paid/archived/cancelled)
     if (!showArchived) {
-      result = result.filter(p => !['done', 'cancelled'].includes(p.status));
+      result = result.filter(p => !['done', 'paid', 'archived', 'cancelled'].includes(p.status));
     }
 
     // Search
@@ -618,7 +620,7 @@ const AdminProjects = () => {
               <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
                 <DragDropContext onDragEnd={handleDragEnd}>
                   <div className="flex gap-4 md:gap-6 min-w-max pb-4 hide-scrollbar-mobile">
-                    {COLUMNS.filter(col => showArchived || !['done', 'cancelled'].includes(col.id)).map((column) => (
+                    {COLUMNS.filter(col => showArchived || !['done', 'paid', 'archived', 'cancelled'].includes(col.id)).map((column) => (
                       <KanbanColumn
                         key={column.id}
                         id={column.id}

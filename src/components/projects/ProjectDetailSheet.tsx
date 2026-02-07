@@ -53,6 +53,7 @@ import { useToast } from '@/hooks/use-toast';
 import { FilePreviewModal } from '@/components/ui/file-preview-modal';
 import { ProjectEditModal } from './ProjectEditModal';
 import { MoveVideoModal } from './MoveVideoModal';
+import { VideoApprovalActions } from './VideoApprovalActions';
 
 interface ProjectDetailSheetProps {
   projectId: string | null;
@@ -83,6 +84,8 @@ const STATUS_COLORS: Record<string, string> = {
   in_progress: 'bg-primary/20 text-primary',
   review: 'bg-warning/20 text-warning',
   done: 'bg-accent/20 text-accent',
+  paid: 'bg-emerald-500/20 text-emerald-500',
+  archived: 'bg-slate-500/20 text-slate-500',
   cancelled: 'bg-destructive/20 text-destructive',
 };
 
@@ -92,6 +95,8 @@ const STATUS_LABELS: Record<string, string> = {
   in_progress: 'In Progress',
   review: 'Review',
   done: 'Delivered',
+  paid: 'Paid',
+  archived: 'Archived',
   cancelled: 'Cancelled',
 };
 
@@ -486,6 +491,16 @@ export function ProjectDetailSheet({
                         ))}
                       </div>
                     </div>
+                  )}
+
+                  {/* Video Approval Actions for Clients */}
+                  {userRole === 'client' && project.client_id === user?.id && (
+                    <VideoApprovalActions
+                      projectId={project.id}
+                      projectTitle={project.title}
+                      status={project.status}
+                      onStatusChange={fetchProject}
+                    />
                   )}
                 </>
               )}
