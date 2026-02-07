@@ -44,6 +44,8 @@ const STATUS_OPTIONS: { value: ProjectStatus | 'all'; label: string }[] = [
   { value: 'in_progress', label: 'In Progress' },
   { value: 'review', label: 'Review' },
   { value: 'done', label: 'Done' },
+  { value: 'paid', label: 'Paid' },
+  { value: 'archived', label: 'Archived' },
   { value: 'cancelled', label: 'Cancelled' },
 ];
 

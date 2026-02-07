@@ -4,16 +4,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Send, Lock, MoreVertical, VolumeX, Volume2, FolderKanban, MessageSquare, Trash2, ArrowLeft } from 'lucide-react';
+import { Send, Lock, MoreVertical, VolumeX, Volume2, FolderKanban, MessageSquare, Trash2, ArrowLeft, UserPlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
-import { useChannelMutes } from '@/hooks/useMessaging';
+import { useChannelMutes, useMessaging } from '@/hooks/useMessaging';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { useChatAttachments } from '@/hooks/useChatAttachments';
 import { useReadReceipts } from '@/hooks/useReadReceipts';
 import { useClearChat } from '@/hooks/useClearChat';
 import { ChatAttachmentButton } from './ChatAttachmentButton';
 import { ChatMessageBubble } from './ChatMessageBubble';
+import { ManageParticipantsModal } from './ManageParticipantsModal';
 
 interface Sender {
   id: string;
@@ -61,10 +62,12 @@ interface ChatWindowProps {
 
 export function ChatWindow({ channel, messages, loading, onSendMessage, onBack, showBackButton }: ChatWindowProps) {
   const { user, userRole } = useAuth();
+  const { agencyId, refetch: refetchChannels } = useMessaging();
   const [messageInput, setMessageInput] = useState('');
   const [sending, setSending] = useState(false);
   const [pendingAttachment, setPendingAttachment] = useState<{ url: string; type: string } | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [showManageParticipants, setShowManageParticipants] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { mutedUsers, muteUser, unmuteUser, isUserMuted } = useChannelMutes(channel?.id || null);
   const { typingUsers, onTyping, stopTyping } = useTypingIndicator(channel?.id || null);
@@ -240,6 +243,14 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onBack, 
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              {/* Manage Participants (Admin only, project chats) */}
+              {userRole === 'admin' && !isDM && (
+                <DropdownMenuItem onClick={() => setShowManageParticipants(true)}>
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Manage participants
+                </DropdownMenuItem>
+              )}
+
               {/* Clear Chat option */}
               <DropdownMenuItem onClick={() => setShowClearConfirm(true)}>
                 <Trash2 className="w-4 h-4 mr-2" />
@@ -403,6 +414,18 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onBack, 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Manage Participants Modal */}
+      {channel && !isDM && (
+        <ManageParticipantsModal
+          open={showManageParticipants}
+          onOpenChange={setShowManageParticipants}
+          channelId={channel.id}
+          participants={channel.participants}
+          agencyId={agencyId}
+          onParticipantsChanged={refetchChannels}
+        />
+      )}
     </>
   );
 }
