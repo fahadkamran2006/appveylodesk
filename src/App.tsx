@@ -46,6 +46,7 @@ import SettingsPage from "./pages/settings/Settings";
 import MessagesPage from "./pages/messages/MessagesPage";
 import StoragePage from "./pages/storage/StoragePage";
 import CalendarPage from "./pages/Calendar";
+import InvoiceDetailPage from "./pages/invoices/InvoiceDetail";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -104,6 +105,9 @@ const App = () => (
                   <Route path="/client/messages" element={<MessagesPage />} />
                   <Route path="/client/calendar" element={<CalendarPage />} />
                   <Route path="/client/settings" element={<SettingsPage />} />
+
+                  {/* Invoice detail (shared) */}
+                  <Route path="/invoices/:invoiceId" element={<InvoiceDetailPage />} />
 
                   {/* Editor */}
                   <Route path="/editor/dashboard" element={<EditorDashboard />} />
