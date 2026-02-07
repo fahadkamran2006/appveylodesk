@@ -71,21 +71,22 @@ export function ClientCreateProjectModal({
         throw new Error('Could not find your agency');
       }
 
-      // Create project container (the true "Project" in 3-tier hierarchy)
-      const { error: containerError } = await supabase
-        .from('project_containers')
+      // Create a project as a proposal (awaiting admin approval)
+      const { error: projectError } = await supabase
+        .from('projects')
         .insert({
           title: data.title,
           description: data.description || null,
           client_id: user.id,
           agency_id: userRole.agency_id,
+          status: 'proposal',
         });
 
-      if (containerError) throw containerError;
+      if (projectError) throw projectError;
 
       toast({
-        title: 'Project created',
-        description: `"${data.title}" has been created. You can now add videos to it.`,
+        title: 'Project request submitted',
+        description: `"${data.title}" has been sent to the agency for review.`,
       });
 
       form.reset();
@@ -115,10 +116,10 @@ export function ClientCreateProjectModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-foreground">
             <FolderPlus className="w-5 h-5 text-primary" />
-            New Project
+            Request New Project
           </DialogTitle>
           <DialogDescription className="text-muted-foreground">
-            Create a project to organize your videos (e.g., "Main Channel", "Podcast Episodes").
+            Submit a project request. The agency will review and approve it.
           </DialogDescription>
         </DialogHeader>
 
@@ -180,10 +181,10 @@ export function ClientCreateProjectModal({
                 {isSubmitting ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Creating...
+                    Submitting...
                   </>
                 ) : (
-                  'Create Project'
+                  'Submit Request'
                 )}
               </Button>
             </div>
