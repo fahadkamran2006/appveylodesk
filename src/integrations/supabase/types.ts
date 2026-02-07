@@ -420,6 +420,47 @@ export type Database = {
           },
         ]
       }
+      invoice_line_items: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string
+          id: string
+          invoice_id: string
+          quantity: number
+          rate: number
+          sort_order: number
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          description: string
+          id?: string
+          invoice_id: string
+          quantity?: number
+          rate: number
+          sort_order?: number
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string
+          id?: string
+          invoice_id?: string
+          quantity?: number
+          rate?: number
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_line_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           agency_id: string
@@ -428,11 +469,18 @@ export type Database = {
           created_at: string
           due_date: string | null
           id: string
+          invoice_number: string | null
+          notes: string | null
           paid_at: string | null
+          payment_link: string | null
+          payment_method_id: string | null
           payment_proof_url: string | null
           pdf_url: string | null
           project_id: string
           status: Database["public"]["Enums"]["invoice_status"]
+          subtotal: number | null
+          tax_amount: number | null
+          tax_rate: number | null
           updated_at: string
         }
         Insert: {
@@ -442,11 +490,18 @@ export type Database = {
           created_at?: string
           due_date?: string | null
           id?: string
+          invoice_number?: string | null
+          notes?: string | null
           paid_at?: string | null
+          payment_link?: string | null
+          payment_method_id?: string | null
           payment_proof_url?: string | null
           pdf_url?: string | null
           project_id: string
           status?: Database["public"]["Enums"]["invoice_status"]
+          subtotal?: number | null
+          tax_amount?: number | null
+          tax_rate?: number | null
           updated_at?: string
         }
         Update: {
@@ -456,11 +511,18 @@ export type Database = {
           created_at?: string
           due_date?: string | null
           id?: string
+          invoice_number?: string | null
+          notes?: string | null
           paid_at?: string | null
+          payment_link?: string | null
+          payment_method_id?: string | null
           payment_proof_url?: string | null
           pdf_url?: string | null
           project_id?: string
           status?: Database["public"]["Enums"]["invoice_status"]
+          subtotal?: number | null
+          tax_amount?: number | null
+          tax_rate?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -469,6 +531,13 @@ export type Database = {
             columns: ["agency_id"]
             isOneToOne: false
             referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_payment_method_id_fkey"
+            columns: ["payment_method_id"]
+            isOneToOne: false
+            referencedRelation: "payment_methods"
             referencedColumns: ["id"]
           },
           {
@@ -644,6 +713,47 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "notifications_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_methods: {
+        Row: {
+          agency_id: string
+          created_at: string
+          details: string
+          id: string
+          is_default: boolean
+          name: string
+          payment_link: string | null
+          updated_at: string
+        }
+        Insert: {
+          agency_id: string
+          created_at?: string
+          details: string
+          id?: string
+          is_default?: boolean
+          name: string
+          payment_link?: string | null
+          updated_at?: string
+        }
+        Update: {
+          agency_id?: string
+          created_at?: string
+          details?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+          payment_link?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_methods_agency_id_fkey"
             columns: ["agency_id"]
             isOneToOne: false
             referencedRelation: "agencies"
@@ -908,6 +1018,7 @@ export type Database = {
         }
         Returns: string
       }
+      generate_invoice_number: { Args: { _agency_id: string }; Returns: string }
       get_admin_performance_metrics: {
         Args: { _agency_id: string }
         Returns: {

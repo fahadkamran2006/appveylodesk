@@ -5,8 +5,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { 
   Dialog, 
   DialogContent, 
@@ -14,13 +12,6 @@ import {
   DialogTitle, 
   DialogDescription 
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { 
   Receipt, 
@@ -30,12 +21,15 @@ import {
   Eye,
   Clock,
   DollarSign,
-  TrendingUp
+  TrendingUp,
+  ExternalLink
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CreateInvoiceModal } from '@/components/invoices/CreateInvoiceModal';
 
 interface Invoice {
   id: string;
+  invoice_number: string | null;
   amount: number;
   status: string;
   due_date: string | null;
@@ -64,13 +58,7 @@ const AdminInvoices = () => {
   const [proofModalOpen, setProofModalOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [proofUrl, setProofUrl] = useState<string | null>(null);
-  const [creating, setCreating] = useState(false);
   const [filter, setFilter] = useState<'all' | 'unpaid' | 'pending' | 'paid'>('all');
-
-  // Form state
-  const [selectedProject, setSelectedProject] = useState('');
-  const [amount, setAmount] = useState('');
-  const [dueDate, setDueDate] = useState('');
 
   useEffect(() => {
     if (!loading && !user) {
@@ -90,6 +78,7 @@ const AdminInvoices = () => {
         .from('invoices')
         .select(`
           id,
+          invoice_number,
           amount,
           status,
           due_date,
@@ -158,55 +147,6 @@ const AdminInvoices = () => {
       fetchData();
     }
   }, [user, userRole, fetchData]);
-
-  const handleCreateInvoice = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedProject || !amount) return;
-
-    setCreating(true);
-    try {
-      const project = projects.find(p => p.id === selectedProject);
-      if (!project || !project.client_id) {
-        throw new Error('Project has no client assigned');
-      }
-
-      // Get agency ID
-      const { data: agencyData } = await supabase.rpc('get_user_agency_id', { _user_id: user!.id });
-
-      const { error } = await supabase
-        .from('invoices')
-        .insert({
-          project_id: selectedProject,
-          client_id: project.client_id,
-          agency_id: agencyData,
-          amount: parseFloat(amount),
-          due_date: dueDate || null,
-          status: 'unpaid',
-        });
-
-      if (error) throw error;
-
-      toast({
-        title: "Invoice created",
-        description: "The invoice has been sent to the client.",
-      });
-
-      setCreateModalOpen(false);
-      setSelectedProject('');
-      setAmount('');
-      setDueDate('');
-      fetchData();
-    } catch (error: any) {
-      console.error('Error creating invoice:', error);
-      toast({
-        title: "Failed to create invoice",
-        description: error.message || "Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setCreating(false);
-    }
-  };
 
   const handleViewProof = async (invoice: Invoice) => {
     if (!invoice.payment_proof_url) return;
@@ -401,11 +341,15 @@ const AdminInvoices = () => {
                 {/* Mobile Card View */}
                 <div className="md:hidden divide-y divide-border/50">
                   {filteredInvoices.map((invoice) => (
-                    <div key={invoice.id} className="p-4 space-y-3">
+                    <div 
+                      key={invoice.id} 
+                      className="p-4 space-y-3 cursor-pointer hover:bg-muted/20 transition-colors"
+                      onClick={() => navigate(`/invoices/${invoice.id}`)}
+                    >
                       <div className="flex items-start justify-between">
                         <div className="min-w-0 flex-1">
                           <p className="font-medium text-foreground truncate">
-                            {invoice.project?.title || 'Unknown Project'}
+                            {invoice.invoice_number || invoice.project?.title || 'Unknown Project'}
                           </p>
                           <p className="text-sm text-muted-foreground truncate">
                             {invoice.client?.full_name || invoice.client?.email || 'Unknown'}
@@ -433,7 +377,10 @@ const AdminInvoices = () => {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleViewProof(invoice)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewProof(invoice);
+                            }}
                           >
                             <Eye className="w-4 h-4 mr-1" />
                             Review
@@ -448,6 +395,7 @@ const AdminInvoices = () => {
                 <table className="w-full hidden md:table">
                   <thead className="bg-muted/30">
                     <tr>
+                      <th className="text-left p-4 text-sm font-medium text-muted-foreground">Invoice #</th>
                       <th className="text-left p-4 text-sm font-medium text-muted-foreground">Project</th>
                       <th className="text-left p-4 text-sm font-medium text-muted-foreground">Client</th>
                       <th className="text-left p-4 text-sm font-medium text-muted-foreground">Amount</th>
@@ -458,8 +406,15 @@ const AdminInvoices = () => {
                   </thead>
                   <tbody className="divide-y divide-border/50">
                     {filteredInvoices.map((invoice) => (
-                      <tr key={invoice.id} className="hover:bg-muted/20">
+                      <tr 
+                        key={invoice.id} 
+                        className="hover:bg-muted/20 cursor-pointer"
+                        onClick={() => navigate(`/invoices/${invoice.id}`)}
+                      >
                         <td className="p-4 font-medium text-foreground">
+                          {invoice.invoice_number || '-'}
+                        </td>
+                        <td className="p-4 text-muted-foreground">
                           {invoice.project?.title || 'Unknown Project'}
                         </td>
                         <td className="p-4 text-muted-foreground">
@@ -482,16 +437,32 @@ const AdminInvoices = () => {
                           </span>
                         </td>
                         <td className="p-4">
-                          {invoice.status === 'pending' && invoice.payment_proof_url && (
+                          <div className="flex items-center gap-2">
                             <Button
-                              variant="outline"
+                              variant="ghost"
                               size="sm"
-                              onClick={() => handleViewProof(invoice)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/invoices/${invoice.id}`);
+                              }}
                             >
-                              <Eye className="w-4 h-4 mr-2" />
-                              Review Proof
+                              <ExternalLink className="w-4 h-4 mr-1" />
+                              View
                             </Button>
-                          )}
+                            {invoice.status === 'pending' && invoice.payment_proof_url && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleViewProof(invoice);
+                                }}
+                              >
+                                <Eye className="w-4 h-4 mr-2" />
+                                Review Proof
+                              </Button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -504,65 +475,12 @@ const AdminInvoices = () => {
       </div>
 
       {/* Create Invoice Modal */}
-      <Dialog open={createModalOpen} onOpenChange={setCreateModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create Invoice</DialogTitle>
-            <DialogDescription>
-              Create a new invoice for a client project.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleCreateInvoice} className="space-y-4">
-            <div>
-              <Label>Project</Label>
-              <Select value={selectedProject} onValueChange={setSelectedProject}>
-                <SelectTrigger className="mt-2">
-                  <SelectValue placeholder="Select a project" />
-                </SelectTrigger>
-                <SelectContent>
-                  {projects.map((project) => (
-                    <SelectItem key={project.id} value={project.id}>
-                      {project.title} - {project.client?.full_name || project.client?.email}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="amount">Amount ($)</Label>
-              <Input
-                id="amount"
-                type="number"
-                step="0.01"
-                min="0"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="0.00"
-                className="mt-2"
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="dueDate">Due Date (Optional)</Label>
-              <Input
-                id="dueDate"
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className="mt-2"
-              />
-            </div>
-            <div className="flex justify-end gap-3 pt-4">
-              <Button type="button" variant="outline" onClick={() => setCreateModalOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={creating || !selectedProject || !amount}>
-                {creating ? 'Creating...' : 'Create Invoice'}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <CreateInvoiceModal
+        open={createModalOpen}
+        onOpenChange={setCreateModalOpen}
+        projects={projects}
+        onSuccess={fetchData}
+      />
 
       {/* Payment Proof Review Modal */}
       <Dialog open={proofModalOpen} onOpenChange={setProofModalOpen}>
@@ -570,7 +488,7 @@ const AdminInvoices = () => {
           <DialogHeader>
             <DialogTitle>Review Payment Proof</DialogTitle>
             <DialogDescription>
-              {selectedInvoice?.project?.title} - ${selectedInvoice?.amount.toLocaleString()}
+              {selectedInvoice?.invoice_number || selectedInvoice?.project?.title} - ${selectedInvoice?.amount.toLocaleString()}
             </DialogDescription>
           </DialogHeader>
           

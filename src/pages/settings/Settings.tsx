@@ -12,6 +12,7 @@ import { StorageManagement } from '@/components/settings/StorageManagement';
 import { SubscriptionSettings } from '@/components/settings/SubscriptionSettings';
 import { BrandingSettings } from '@/components/settings/BrandingSettings';
 import { NotificationSettings } from '@/components/settings/NotificationSettings';
+import { PaymentMethodsSettings } from '@/components/settings/PaymentMethodsSettings';
 import { InstallPWAButton } from '@/components/InstallPWAButton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,7 +21,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings as SettingsIcon, User, Loader2, Smartphone, UserCircle, Bell } from 'lucide-react';
+import { Settings as SettingsIcon, User, Loader2, Smartphone, UserCircle, Bell, CreditCard } from 'lucide-react';
 
 const profileSchema = z.object({
   full_name: z.string().min(1, 'Name is required'),
@@ -109,17 +110,23 @@ const SettingsPage = () => {
             </div>
           </div>
 
-          {/* Tabs for Profile vs Notifications */}
+          {/* Tabs for Profile vs Notifications vs Payment Methods */}
           <Tabs defaultValue="profile" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsList className={`grid w-full mb-6 ${userRole === 'admin' ? 'grid-cols-3' : 'grid-cols-2'}`}>
               <TabsTrigger value="profile" className="flex items-center gap-2">
                 <User className="w-4 h-4" />
-                Profile
+                <span className="hidden sm:inline">Profile</span>
               </TabsTrigger>
               <TabsTrigger value="notifications" className="flex items-center gap-2">
                 <Bell className="w-4 h-4" />
-                Notifications
+                <span className="hidden sm:inline">Notifications</span>
               </TabsTrigger>
+              {userRole === 'admin' && (
+                <TabsTrigger value="payments" className="flex items-center gap-2">
+                  <CreditCard className="w-4 h-4" />
+                  <span className="hidden sm:inline">Payments</span>
+                </TabsTrigger>
+              )}
             </TabsList>
 
             {/* Profile Tab */}
@@ -240,6 +247,13 @@ const SettingsPage = () => {
             <TabsContent value="notifications">
               <NotificationSettings />
             </TabsContent>
+
+            {/* Payment Methods Tab - Admin Only */}
+            {userRole === 'admin' && (
+              <TabsContent value="payments" className="space-y-6">
+                <PaymentMethodsSettings />
+              </TabsContent>
+            )}
           </Tabs>
         </div>
       </DashboardLayout>

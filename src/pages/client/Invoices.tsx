@@ -239,7 +239,8 @@ const ClientInvoices = () => {
                 {invoices.map((invoice) => (
                   <div 
                     key={invoice.id} 
-                    className="p-4 rounded-lg bg-muted/30 border border-border/50 flex items-center justify-between"
+                    className="p-4 rounded-lg bg-muted/30 border border-border/50 flex items-center justify-between cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => navigate(`/invoices/${invoice.id}`)}
                   >
                     <div>
                       <p className="font-medium text-foreground">
@@ -273,7 +274,8 @@ const ClientInvoices = () => {
                         <Button 
                           variant="hero" 
                           size="sm"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setSelectedInvoice(invoice);
                             setUploadModalOpen(true);
                           }}
