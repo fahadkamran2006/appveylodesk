@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/hooks/useAuth';
@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { CreateProjectModal } from '@/components/projects/CreateProjectModal';
 import { EarningsChart } from '@/components/dashboard/EarningsChart';
 import { ClientAcquisitionChart } from '@/components/dashboard/ClientAcquisitionChart';
-import { PerformanceCard } from '@/components/dashboard/PerformanceCard';
+import { ProposalsSection } from '@/components/admin/ProposalsSection';
 import { Plus, Clock, DollarSign, FolderKanban, Receipt, Users, Loader2 } from 'lucide-react';
 import { format, isPast, parseISO } from 'date-fns';
 const AdminDashboard = () => {
@@ -36,6 +36,12 @@ const AdminDashboard = () => {
     loading: analyticsLoading
   } = useAdminAnalytics();
   const [createModalOpen, setCreateModalOpen] = useState(false);
+
+  // Filter proposals from projects
+  const proposals = useMemo(
+    () => projects.filter((p) => p.status === 'proposal'),
+    [projects]
+  );
   useEffect(() => {
     if (!loading && !user) {
       navigate('/auth/login');
@@ -153,6 +159,20 @@ const AdminDashboard = () => {
 
           {/* Performance & Analytics Section */}
           
+
+          {/* Proposals Section - shown when there are pending proposals */}
+          {proposals.length > 0 && (
+            <div className="mb-6 md:mb-8">
+              <ProposalsSection
+                proposals={proposals}
+                loading={projectsLoading}
+                onRefresh={() => {
+                  fetchProjects();
+                  refetchStats();
+                }}
+              />
+            </div>
+          )}
 
           {/* Charts Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-6 md:mb-8">
