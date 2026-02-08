@@ -62,8 +62,8 @@ const HeroSection = () => {
             className="flex flex-col sm:flex-row items-center justify-center gap-5 mb-16"
           >
             <Button variant="hero" size="xl" className="btn-glow" asChild>
-              <Link to="/auth/signup">
-                Start Your Free Trial
+              <Link to="/pricing">
+                Start Scaling Today
                 <ArrowRight className="w-5 h-5" />
               </Link>
             </Button>
@@ -84,11 +84,11 @@ const HeroSection = () => {
           >
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-success" />
-              <span>14-day free trial</span>
+              <span>Unlimited team members</span>
             </div>
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-success" />
-              <span>No credit card required</span>
+              <span>14-day money-back guarantee</span>
             </div>
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-success" />

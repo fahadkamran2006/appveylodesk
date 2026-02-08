@@ -64,7 +64,7 @@ export function SubscriptionGuard({ children, bypass = false }: SubscriptionGuar
             </Button>
 
             <p className="text-sm text-muted-foreground mt-4">
-              All plans include a 14-day money-back guarantee
+              100% satisfaction guarantee—refund within 14 days
             </p>
           </div>
         </div>

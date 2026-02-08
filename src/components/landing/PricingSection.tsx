@@ -90,9 +90,9 @@ const PricingSection = () => {
   };
 
   const handleSelectPlan = (plan: Plan) => {
-    // If not logged in, redirect to signup
+    // If not logged in, redirect to signup with plan param
     if (!user) {
-      navigate('/auth/signup');
+      navigate(`/auth/signup?plan=${plan.key}`);
       return;
     }
 
@@ -225,11 +225,10 @@ const PricingSection = () => {
         <div className="mt-16 max-w-2xl mx-auto text-center">
           <div className="glass-card rounded-2xl p-8 border-primary/30">
             <h3 className="text-2xl font-bold mb-3 text-foreground">
-              14-Day Money-Back Guarantee
+              100% Satisfaction Guarantee
             </h3>
             <p className="text-muted-foreground">
-              Try Veylodesk risk-free. If you're not completely satisfied within the first 14 days, 
-              we'll refund your payment—no questions asked.
+              Not satisfied? Get a full refund within the first 14 days—no questions asked.
             </p>
           </div>
         </div>

@@ -157,7 +157,7 @@ const Subscribe = () => {
                 Almost there!
               </div>
               <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-3">
-                Welcome to {agencyName || 'your agency'}!
+                Activate Your Account
               </h1>
               <p className="text-lg text-muted-foreground max-w-xl mx-auto">
                 Choose a plan to unlock your dashboard and start managing your video editing projects.
@@ -254,7 +254,7 @@ const Subscribe = () => {
             {/* Guarantee */}
             <div className="text-center mt-8">
               <p className="text-sm text-muted-foreground">
-                All plans include a 14-day money-back guarantee. No questions asked.
+                100% satisfaction guarantee—full refund within 14 days, no questions asked.
               </p>
             </div>
           </div>

@@ -93,9 +93,9 @@ const Pricing = () => {
   };
 
   const handleSelectPlan = (plan: Plan) => {
-    // If not logged in, redirect to signup
+    // If not logged in, redirect to signup with plan param
     if (!user) {
-      navigate('/auth/signup');
+      navigate(`/auth/signup?plan=${plan.key}`);
       return;
     }
 
@@ -119,7 +119,7 @@ const Pricing = () => {
     <>
       <Helmet>
         <title>Pricing | Veylodesk</title>
-        <meta name="description" content="Simple, transparent pricing for video agencies of all sizes. Start your 14-day free trial today." />
+        <meta name="description" content="Simple, transparent pricing for video agencies of all sizes. Subscribe today and start scaling." />
       </Helmet>
 
       <div className="min-h-screen bg-background">
@@ -226,9 +226,9 @@ const Pricing = () => {
 
             {/* FAQ or Guarantee */}
             <div className="mt-24 max-w-2xl mx-auto text-center">
-              <h2 className="text-2xl font-bold text-foreground mb-4">14-Day Money-Back Guarantee</h2>
+              <h2 className="text-2xl font-bold text-foreground mb-4">100% Satisfaction Guarantee</h2>
               <p className="text-muted-foreground">
-                Try Veylodesk risk-free. If you're not completely satisfied within the first 14 days, we'll refund your payment—no questions asked.
+                Not satisfied? Get a full refund within the first 14 days—no questions asked.
               </p>
             </div>
           </div>
