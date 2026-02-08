@@ -47,7 +47,7 @@ interface UploadContextValue {
   currentUploadId: string | null;
   isMinimized: boolean;
   setIsMinimized: (minimized: boolean) => void;
-  addToQueue: (files: File[], projectId: string, projectTitle?: string, fileType?: 'asset' | 'deliverable') => string[];
+  addToQueue: (files: File[], projectId: string, projectTitle?: string, fileType?: 'asset' | 'deliverable') => Promise<string[]>;
   removeFromQueue: (uploadId: string) => void;
   clearCompleted: () => void;
   reorderQueue: (fromIndex: number, toIndex: number) => void;
@@ -188,12 +188,56 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
     return videoExtensions.includes(ext);
   }, []);
 
-  const addToQueue = useCallback((
+  const addToQueue = useCallback(async (
     files: File[], 
     projectId: string, 
     projectTitle?: string,
     fileType: 'asset' | 'deliverable' = 'deliverable'
   ) => {
+    // Check storage limit before adding files
+    if (user) {
+      try {
+        const { data: userRole } = await supabase
+          .from('user_roles')
+          .select('agency_id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (userRole?.agency_id) {
+          const { data: agency } = await supabase
+            .from('agencies')
+            .select('storage_limit_bytes, storage_used_bytes')
+            .eq('id', userRole.agency_id)
+            .single();
+
+          if (agency) {
+            const totalUploadSize = files.reduce((sum, f) => sum + f.size, 0);
+            const remainingStorage = agency.storage_limit_bytes - agency.storage_used_bytes;
+
+            if (totalUploadSize > remainingStorage) {
+              const formatBytes = (bytes: number) => {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+              };
+
+              toast({
+                title: 'Storage limit exceeded',
+                description: `You need ${formatBytes(totalUploadSize)} but only have ${formatBytes(remainingStorage)} remaining. Please upgrade your plan for more storage.`,
+                variant: 'destructive',
+              });
+              return [];
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error checking storage limit:', error);
+        // Continue with upload even if check fails
+      }
+    }
+
     const newItems: QueuedUpload[] = files.map(file => ({
       id: generateId(),
       file,
@@ -221,7 +265,7 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
     setIsMinimized(false);
 
     return newItems.map(item => item.id);
-  }, [toast]);
+  }, [toast, user]);
 
   const removeFromQueue = useCallback((uploadId: string) => {
     setState(prev => {

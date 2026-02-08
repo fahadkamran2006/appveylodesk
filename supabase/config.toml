@@ -29,3 +29,9 @@ verify_jwt = false
 
 [functions.get-portal-url]
 verify_jwt = false
+
+[functions.sync-subscription]
+verify_jwt = false
+
+[functions.get-portal-url]
+verify_jwt = false

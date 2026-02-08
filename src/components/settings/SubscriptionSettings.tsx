@@ -5,9 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Crown, Zap, Rocket, ExternalLink, Calendar, Users, HardDrive, Loader2 } from 'lucide-react';
+import { Crown, Zap, Rocket, ExternalLink, Calendar, Users, HardDrive, Loader2, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { useAgencyLimits } from '@/hooks/useAgencyLimits';
 
 interface SubscriptionSettingsProps {
   className?: string;
@@ -48,8 +49,10 @@ const PLAN_DETAILS = {
 
 export const SubscriptionSettings = ({ className }: SubscriptionSettingsProps) => {
   const { isActive, planTier, subscriptionEndsAt, loading, agencyId } = useSubscription();
+  const { currentClients, maxClients, storageUsedBytes, storageLimitBytes, formatBytes, refetch: refetchLimits } = useAgencyLimits();
   const [billingInterval, setBillingInterval] = useState<'monthly' | 'yearly'>('yearly');
   const [portalLoading, setPortalLoading] = useState(false);
+  const [syncLoading, setSyncLoading] = useState(false);
 
   if (loading) {
     return (
@@ -117,6 +120,47 @@ export const SubscriptionSettings = ({ className }: SubscriptionSettingsProps) =
     }
   };
 
+  const syncSubscription = async () => {
+    setSyncLoading(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session?.session?.access_token) {
+        toast.error('Please log in to sync your subscription');
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('sync-subscription', {
+        headers: {
+          Authorization: `Bearer ${session.session.access_token}`,
+        },
+      });
+
+      if (error) {
+        console.error('Sync error:', error);
+        toast.error('Failed to sync subscription');
+        return;
+      }
+
+      if (data?.error) {
+        toast.error(data.message || data.error);
+        return;
+      }
+
+      if (data?.success) {
+        toast.success(data.message || 'Subscription synced successfully');
+        // Refetch limits to update the UI
+        refetchLimits();
+        // Force a page reload to update all subscription state
+        window.location.reload();
+      }
+    } catch (err) {
+      console.error('Sync error:', err);
+      toast.error('Failed to sync subscription');
+    } finally {
+      setSyncLoading(false);
+    }
+  };
+
   return (
     <Card className={cn('glass-card border-border/50', className)}>
       <CardHeader>
@@ -158,18 +202,18 @@ export const SubscriptionSettings = ({ className }: SubscriptionSettingsProps) =
                 <Users className="w-4 h-4 text-muted-foreground" />
                 <div>
                   <p className="text-sm font-medium text-foreground">
-                    {currentPlan.clients} Clients
+                    {currentClients}/{typeof currentPlan.clients === 'number' ? currentPlan.clients : '∞'} Clients
                   </p>
-                  <p className="text-xs text-muted-foreground">Max allowed</p>
+                  <p className="text-xs text-muted-foreground">Used / Max</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <HardDrive className="w-4 h-4 text-muted-foreground" />
                 <div>
                   <p className="text-sm font-medium text-foreground">
-                    {currentPlan.storage}
+                    {formatBytes(storageUsedBytes)} / {currentPlan.storage}
                   </p>
-                  <p className="text-xs text-muted-foreground">Storage</p>
+                  <p className="text-xs text-muted-foreground">Storage Used</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -189,21 +233,36 @@ export const SubscriptionSettings = ({ className }: SubscriptionSettingsProps) =
 
         {/* Customer Portal - Always show for active subscribers */}
         {isActive && (
-          <div>
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={openCustomerPortal}
-              disabled={portalLoading}
-            >
-              {portalLoading ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <ExternalLink className="w-4 h-4 mr-2" />
-              )}
-              Manage Billing & Invoices
-            </Button>
-            <p className="text-xs text-muted-foreground mt-2 text-center">
+          <div className="space-y-3">
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={openCustomerPortal}
+                disabled={portalLoading}
+              >
+                {portalLoading ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                )}
+                Manage Billing & Invoices
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={syncSubscription}
+                disabled={syncLoading}
+                title="Sync subscription status"
+              >
+                {syncLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4" />
+                )}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground text-center">
               Upgrade, downgrade, update payment method, or cancel your subscription
             </p>
           </div>
