@@ -16,6 +16,7 @@ import NotFound from "./pages/NotFound";
 
 import Login from "./pages/auth/Login";
 import Signup from "./pages/auth/Signup";
+import AuthCallback from "./pages/auth/AuthCallback";
 import JoinClient from "./pages/JoinClient";
 import JoinTeam from "./pages/JoinTeam";
 
@@ -76,6 +77,7 @@ const App = () => (
                   {/* Other public routes */}
                   <Route path="/auth/login" element={<Login />} />
                   <Route path="/auth/signup" element={<Signup />} />
+                  <Route path="/auth/callback" element={<AuthCallback />} />
                   <Route path="/" element={<Index />} />
                   <Route path="/pricing" element={<Pricing />} />
                   <Route path="/subscribe" element={<Subscribe />} />
