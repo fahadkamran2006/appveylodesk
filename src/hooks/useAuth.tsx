@@ -141,13 +141,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     if (!error) {
-      // After signup, redirect based on invite token
-      if (inviteToken) {
-        navigate(`/onboarding?invite=${inviteToken}`);
-      } else {
-        // New users without invite go to pricing to choose a plan
-        navigate('/pricing');
-      }
+      // After signup, always redirect to onboarding
+      // Plan selection is already captured in localStorage from the pricing page
+      navigate('/onboarding');
     }
 
     return { error: error as Error | null };
