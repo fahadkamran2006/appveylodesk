@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.send-invoice-email]
 verify_jwt = false
+
+[functions.get-portal-url]
+verify_jwt = false

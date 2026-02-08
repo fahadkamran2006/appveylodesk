@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useSubscription, getCheckoutUrl } from '@/hooks/useSubscription';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Crown, Zap, Rocket, ExternalLink, Calendar, Users, HardDrive, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface SubscriptionSettingsProps {
   className?: string;
@@ -44,11 +46,10 @@ const PLAN_DETAILS = {
   },
 };
 
-const CUSTOMER_PORTAL_URL = 'https://veylodesk.lemonsqueezy.com/billing';
-
 export const SubscriptionSettings = ({ className }: SubscriptionSettingsProps) => {
   const { isActive, planTier, subscriptionEndsAt, loading, agencyId } = useSubscription();
   const [billingInterval, setBillingInterval] = useState<'monthly' | 'yearly'>('yearly');
+  const [portalLoading, setPortalLoading] = useState(false);
 
   if (loading) {
     return (
@@ -78,8 +79,42 @@ export const SubscriptionSettings = ({ className }: SubscriptionSettingsProps) =
     window.open(url, '_blank');
   };
 
-  const openCustomerPortal = () => {
-    window.open(CUSTOMER_PORTAL_URL, '_blank');
+  const openCustomerPortal = async () => {
+    setPortalLoading(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session?.session?.access_token) {
+        toast.error('Please log in to manage your subscription');
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('get-portal-url', {
+        headers: {
+          Authorization: `Bearer ${session.session.access_token}`,
+        },
+      });
+
+      if (error) {
+        console.error('Portal URL error:', error);
+        toast.error('Failed to open billing portal');
+        return;
+      }
+
+      if (data?.fallback && data?.message) {
+        toast.info(data.message);
+      }
+
+      if (data?.url) {
+        window.open(data.url, '_blank');
+      } else {
+        toast.error('Could not retrieve billing portal URL');
+      }
+    } catch (err) {
+      console.error('Portal error:', err);
+      toast.error('Failed to open billing portal');
+    } finally {
+      setPortalLoading(false);
+    }
   };
 
   return (
@@ -152,112 +187,124 @@ export const SubscriptionSettings = ({ className }: SubscriptionSettingsProps) =
           )}
         </div>
 
-        {/* Customer Portal */}
-        <div>
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={openCustomerPortal}
-          >
-            <ExternalLink className="w-4 h-4 mr-2" />
-            Manage Billing & Invoices
-          </Button>
-          <p className="text-xs text-muted-foreground mt-2 text-center">
-            Update payment method, view invoices, or cancel subscription
-          </p>
-        </div>
+        {/* Customer Portal - Always show for active subscribers */}
+        {isActive && (
+          <div>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={openCustomerPortal}
+              disabled={portalLoading}
+            >
+              {portalLoading ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <ExternalLink className="w-4 h-4 mr-2" />
+              )}
+              Manage Billing & Invoices
+            </Button>
+            <p className="text-xs text-muted-foreground mt-2 text-center">
+              Upgrade, downgrade, update payment method, or cancel your subscription
+            </p>
+          </div>
+        )}
 
         <Separator />
 
-        {/* Upgrade Options */}
-        <div>
-          <h4 className="font-medium text-foreground mb-3">Change Plan</h4>
-          
-          {/* Billing Toggle */}
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <button
-              onClick={() => setBillingInterval('monthly')}
-              className={cn(
-                'px-3 py-1.5 text-sm rounded-md transition-colors',
-                billingInterval === 'monthly'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              Monthly
-            </button>
-            <button
-              onClick={() => setBillingInterval('yearly')}
-              className={cn(
-                'px-3 py-1.5 text-sm rounded-md transition-colors',
-                billingInterval === 'yearly'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              Yearly
-              <span className="ml-1 text-xs opacity-75">Save 17%</span>
-            </button>
-          </div>
+        {/* Show Subscribe Options ONLY for inactive subscriptions */}
+        {!isActive && (
+          <div>
+            <h4 className="font-medium text-foreground mb-3">Choose a Plan</h4>
+            
+            {/* Billing Toggle */}
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <button
+                onClick={() => setBillingInterval('monthly')}
+                className={cn(
+                  'px-3 py-1.5 text-sm rounded-md transition-colors',
+                  billingInterval === 'monthly'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                Monthly
+              </button>
+              <button
+                onClick={() => setBillingInterval('yearly')}
+                className={cn(
+                  'px-3 py-1.5 text-sm rounded-md transition-colors',
+                  billingInterval === 'yearly'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                Yearly
+                <span className="ml-1 text-xs opacity-75">Save 17%</span>
+              </button>
+            </div>
 
-          <div className="grid gap-3">
-            {Object.entries(PLAN_DETAILS).map(([key, plan]) => {
-              const PlanIcon = plan.icon;
-              const isCurrent = planTier === key;
-              const price = billingInterval === 'yearly' ? plan.yearlyPrice : plan.monthlyPrice;
-              
-              return (
-                <div
-                  key={key}
-                  className={cn(
-                    'flex items-center justify-between p-3 rounded-lg border transition-colors',
-                    isCurrent
-                      ? 'border-primary/50 bg-primary/5'
-                      : 'border-border/50 hover:border-border'
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center', plan.bgColor)}>
-                      <PlanIcon className={cn('w-4 h-4', plan.color)} />
+            <div className="grid gap-3">
+              {Object.entries(PLAN_DETAILS).map(([key, plan]) => {
+                const PlanIcon = plan.icon;
+                const price = billingInterval === 'yearly' ? plan.yearlyPrice : plan.monthlyPrice;
+                
+                return (
+                  <div
+                    key={key}
+                    className="flex items-center justify-between p-3 rounded-lg border border-border/50 hover:border-border transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center', plan.bgColor)}>
+                        <PlanIcon className={cn('w-4 h-4', plan.color)} />
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">{plan.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {plan.clients} clients • {plan.storage}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium text-foreground">{plan.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {plan.clients} clients • {plan.storage}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="text-right">
-                      <p className="font-semibold text-foreground">
-                        ${price}
-                        <span className="text-xs text-muted-foreground font-normal">
-                          /{billingInterval === 'yearly' ? 'yr' : 'mo'}
-                        </span>
-                      </p>
-                    </div>
-                    {isCurrent ? (
-                      <Badge variant="secondary" className="min-w-[80px] justify-center">
-                        Current
-                      </Badge>
-                    ) : (
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <p className="font-semibold text-foreground">
+                          ${price}
+                          <span className="text-xs text-muted-foreground font-normal">
+                            /{billingInterval === 'yearly' ? 'yr' : 'mo'}
+                          </span>
+                        </p>
+                      </div>
                       <Button
                         size="sm"
                         variant="outline"
                         className="min-w-[80px]"
                         onClick={() => handleUpgrade(key as 'starter' | 'growth' | 'scale')}
                       >
-                        {planTier && Object.keys(PLAN_DETAILS).indexOf(key) > Object.keys(PLAN_DETAILS).indexOf(planTier)
-                          ? 'Upgrade'
-                          : 'Switch'}
+                        Subscribe
                       </Button>
-                    )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Info message for active subscribers */}
+        {isActive && (
+          <div className="text-center py-4 px-6 rounded-lg bg-muted/50 border border-border/50">
+            <p className="text-sm text-muted-foreground">
+              To upgrade, downgrade, or cancel your plan, use the{' '}
+              <button 
+                onClick={openCustomerPortal} 
+                className="text-primary hover:underline font-medium"
+                disabled={portalLoading}
+              >
+                Customer Portal
+              </button>{' '}
+              above.
+            </p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
