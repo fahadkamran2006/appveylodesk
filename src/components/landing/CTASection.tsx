@@ -55,8 +55,8 @@ const CTASection = () => {
             className="flex flex-col sm:flex-row items-center justify-center gap-5"
           >
             <Button variant="hero" size="xl" className="btn-glow" asChild>
-              <Link to="/auth/signup">
-                Start Your Free Trial
+              <Link to="/pricing">
+                Get Started Today
                 <ArrowRight className="w-5 h-5" />
               </Link>
             </Button>
@@ -74,7 +74,7 @@ const CTASection = () => {
             transition={{ duration: 0.6, delay: 0.4 }}
             className="mt-12 text-sm text-muted-foreground"
           >
-            14-day free trial • No credit card required • Cancel anytime
+            Unlimited team members • 14-day money-back guarantee • Cancel anytime
           </motion.p>
         </div>
       </div>

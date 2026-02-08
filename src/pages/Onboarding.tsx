@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
+import { getCheckoutUrl } from '@/hooks/useSubscription';
 import { Command, Loader2, Building2, Users, UserPlus, Plus, X, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -194,6 +195,15 @@ const Onboarding = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
+      // Get user's agency_id
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('agency_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.agency_id) throw new Error('Agency not found');
+
       // Mark onboarding complete
       const { error: profileError } = await supabase
         .from('profiles')
@@ -203,8 +213,20 @@ const Onboarding = () => {
       if (profileError) throw profileError;
 
       toast.success('Welcome to Veylodesk!');
-      // Navigate to subscribe page to choose a plan
-      navigate('/subscribe');
+
+      // Check for pre-selected plan from signup flow
+      const selectedPlan = localStorage.getItem('selected_plan') as 'starter' | 'growth' | 'scale' | null;
+      
+      if (selectedPlan && ['starter', 'growth', 'scale'].includes(selectedPlan)) {
+        // Clear the stored plan
+        localStorage.removeItem('selected_plan');
+        // Redirect directly to Lemon Squeezy checkout (default to yearly)
+        const checkoutUrl = getCheckoutUrl(selectedPlan, 'yearly', profile.agency_id);
+        window.location.href = checkoutUrl;
+      } else {
+        // No plan selected, redirect to subscribe page to choose
+        navigate('/subscribe');
+      }
     } catch (error: any) {
       toast.error(error.message || 'Failed to complete onboarding');
     } finally {
@@ -436,13 +458,13 @@ const Onboarding = () => {
                   </div>
                   <h1 className="text-2xl font-bold text-foreground mb-2">You're all set!</h1>
                   <p className="text-muted-foreground">
-                    Welcome to Veylodesk, <strong>{agencyName}</strong>. Let's take command.
+                    Welcome to Veylodesk, <strong>{agencyName}</strong>. Let's activate your account.
                   </p>
                 </div>
 
                 <div className="p-4 rounded-xl bg-muted/30 border border-border/50">
                   <p className="text-sm text-muted-foreground">
-                    <strong className="text-foreground">Pro tip:</strong> Start by creating your first project from the dashboard.
+                    <strong className="text-foreground">Next step:</strong> Complete payment to unlock your dashboard.
                   </p>
                 </div>
 
@@ -459,7 +481,7 @@ const Onboarding = () => {
                       Setting up...
                     </>
                   ) : (
-                    'Launch Dashboard'
+                    'Finalize Setup & Pay'
                   )}
                 </Button>
               </div>

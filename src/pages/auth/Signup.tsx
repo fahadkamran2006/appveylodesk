@@ -32,6 +32,11 @@ const Signup = () => {
     if (inviteToken) {
       localStorage.setItem('pending_invite_token', inviteToken);
     }
+    // Capture plan selection from URL for smart checkout flow
+    const selectedPlan = searchParams.get('plan');
+    if (selectedPlan && ['starter', 'growth', 'scale'].includes(selectedPlan)) {
+      localStorage.setItem('selected_plan', selectedPlan);
+    }
   }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -59,8 +64,8 @@ const Signup = () => {
   };
 
   const benefits = [
-    '14-day free trial',
-    'No credit card required',
+    'Unlimited team members',
+    '14-day money-back guarantee',
     'Cancel anytime',
   ];
 
@@ -89,7 +94,7 @@ const Signup = () => {
               </span>
             </Link>
 
-            <h1 className="text-3xl font-bold text-foreground mb-2">Start your free trial</h1>
+            <h1 className="text-3xl font-bold text-foreground mb-2">Create your agency account</h1>
             <p className="text-muted-foreground">
               Already have an account?{' '}
               <Link to="/auth/login" className="text-primary hover:underline">

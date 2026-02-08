@@ -63,7 +63,7 @@ const Navbar = () => {
               <Link to="/auth/login">Login</Link>
             </Button>
             <Button variant="hero" asChild>
-              <Link to="/auth/signup">Start Free Trial</Link>
+              <Link to="/pricing">Get Started</Link>
             </Button>
           </div>
 
@@ -106,7 +106,7 @@ const Navbar = () => {
                   <Link to="/auth/login">Login</Link>
                 </Button>
                 <Button variant="hero" asChild>
-                  <Link to="/auth/signup">Start Free Trial</Link>
+                  <Link to="/pricing">Get Started</Link>
                 </Button>
               </div>
             </div>
