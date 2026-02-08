@@ -176,7 +176,7 @@ const Signup = () => {
                 onClick={async () => {
                   setIsGoogleLoading(true);
                   const { error } = await lovable.auth.signInWithOAuth('google', {
-                    redirect_uri: window.location.origin,
+                    redirect_uri: `${window.location.origin}/auth/callback`,
                   });
                   if (error) {
                     toast.error(error.message || 'Failed to sign in with Google');
@@ -218,7 +218,7 @@ const Signup = () => {
                 onClick={async () => {
                   setIsAppleLoading(true);
                   const { error } = await lovable.auth.signInWithOAuth('apple', {
-                    redirect_uri: window.location.origin,
+                    redirect_uri: `${window.location.origin}/auth/callback`,
                   });
                   if (error) {
                     toast.error(error.message || 'Failed to sign in with Apple');
