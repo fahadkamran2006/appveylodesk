@@ -8,6 +8,7 @@ import { PersonCard } from '@/components/PersonCard';
 import { PersonDetailSheet } from '@/components/PersonDetailSheet';
 import { InviteUserModal } from '@/components/InviteUserModal';
 import { PendingInvitationCard } from '@/components/PendingInvitationCard';
+import { RemoveMemberModal } from '@/components/RemoveMemberModal';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 import { useClientStats } from '@/hooks/usePersonStats';
@@ -41,6 +42,8 @@ const AdminClients = () => {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<ClientProfile | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [removeModalOpen, setRemoveModalOpen] = useState(false);
+  const [clientToRemove, setClientToRemove] = useState<ClientProfile | null>(null);
   
   // Get agency limits for client enforcement
   const { maxClients, currentClients, canAddClient, planTier, loading: limitsLoading } = useAgencyLimits();
@@ -135,6 +138,14 @@ const AdminClients = () => {
     if (client) {
       setSelectedClient(client);
       setDetailOpen(true);
+    }
+  };
+
+  const handleRemoveClient = (id: string) => {
+    const client = clients.find((c) => c.id === id);
+    if (client) {
+      setClientToRemove(client);
+      setRemoveModalOpen(true);
     }
   };
 
@@ -280,6 +291,7 @@ const AdminClients = () => {
                             totalSpent: stats?.totalSpent ?? 0,
                           }}
                           onExpand={handleExpandClient}
+                          onRemove={handleRemoveClient}
                         />
                       );
                     })}
@@ -321,6 +333,20 @@ const AdminClients = () => {
           totalSpent: clientStats[selectedClient.id]?.totalSpent ?? 0,
         } : undefined}
         projects={selectedClient ? clientStats[selectedClient.id]?.projects : undefined}
+      />
+
+      {/* Remove Client Modal */}
+      <RemoveMemberModal
+        open={removeModalOpen}
+        onOpenChange={setRemoveModalOpen}
+        member={clientToRemove ? {
+          id: clientToRemove.id,
+          name: clientToRemove.full_name,
+          email: clientToRemove.email,
+          avatarUrl: clientToRemove.avatar_url,
+        } : null}
+        memberType="client"
+        onSuccess={fetchClients}
       />
     </>
   );
