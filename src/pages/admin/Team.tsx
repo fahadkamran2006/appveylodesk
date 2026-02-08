@@ -9,6 +9,7 @@ import { PersonDetailSheet } from '@/components/PersonDetailSheet';
 import { InviteUserModal } from '@/components/InviteUserModal';
 import { PendingInvitationCard } from '@/components/PendingInvitationCard';
 import { EditorLeaderboard } from '@/components/admin/EditorLeaderboard';
+import { RemoveMemberModal } from '@/components/RemoveMemberModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useEditorStats, type TimePeriod } from '@/hooks/usePersonStats';
 import { UsersRound, UserPlus, Loader2, Clock } from 'lucide-react';
@@ -41,6 +42,8 @@ const AdminTeam = () => {
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [leaderboardPeriod, setLeaderboardPeriod] = useState<TimePeriod>('all');
+  const [removeModalOpen, setRemoveModalOpen] = useState(false);
+  const [memberToRemove, setMemberToRemove] = useState<TeamMember | null>(null);
 
   // Fetch real stats for all editors
   const editorIds = useMemo(() => teamMembers.map(m => m.id), [teamMembers]);
@@ -113,6 +116,14 @@ const AdminTeam = () => {
     if (member) {
       setSelectedMember(member);
       setDetailOpen(true);
+    }
+  };
+
+  const handleRemoveMember = (id: string) => {
+    const member = teamMembers.find((m) => m.id === id);
+    if (member) {
+      setMemberToRemove(member);
+      setRemoveModalOpen(true);
     }
   };
 
@@ -257,6 +268,7 @@ const AdminTeam = () => {
                             status: (stats?.currentLoad ?? 0) > 0 ? 'active' : 'offline',
                           }}
                           onExpand={handleExpandMember}
+                          onRemove={handleRemoveMember}
                         />
                       );
                     })}
@@ -299,6 +311,20 @@ const AdminTeam = () => {
           avgDeliveryDays: editorStats[selectedMember.id]?.avgDeliveryDays,
         } : undefined}
         projects={selectedMember ? editorStats[selectedMember.id]?.projects : undefined}
+      />
+
+      {/* Remove Member Modal */}
+      <RemoveMemberModal
+        open={removeModalOpen}
+        onOpenChange={setRemoveModalOpen}
+        member={memberToRemove ? {
+          id: memberToRemove.id,
+          name: memberToRemove.full_name,
+          email: memberToRemove.email,
+          avatarUrl: memberToRemove.avatar_url,
+        } : null}
+        memberType="editor"
+        onSuccess={fetchTeamData}
       />
     </>
   );

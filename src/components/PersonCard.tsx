@@ -2,7 +2,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { ChevronRight, DollarSign, FolderKanban, Zap } from 'lucide-react';
+import { ChevronRight, DollarSign, FolderKanban, Zap, Trash2 } from 'lucide-react';
 
 interface PersonCardProps {
   id: string;
@@ -17,6 +17,7 @@ interface PersonCardProps {
     status?: 'active' | 'offline';
   };
   onExpand?: (id: string) => void;
+  onRemove?: (id: string) => void;
   variant?: 'client' | 'team';
 }
 
@@ -28,6 +29,7 @@ export function PersonCard({
   role,
   stats,
   onExpand,
+  onRemove,
   variant = 'client',
 }: PersonCardProps) {
   const initials = name
@@ -133,13 +135,28 @@ export function PersonCard({
       </div>
 
       {/* Footer */}
-      <Button
-        variant="ghost"
-        className="w-full justify-between text-muted-foreground hover:text-foreground group-hover:bg-surface-elevated"
-      >
-        {variant === 'client' ? 'View Details' : 'View Performance'}
-        <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-      </Button>
+      <div className="flex gap-2">
+        <Button
+          variant="ghost"
+          className="flex-1 justify-between text-muted-foreground hover:text-foreground group-hover:bg-surface-elevated"
+        >
+          {variant === 'client' ? 'View Details' : 'View Performance'}
+          <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+        </Button>
+        {onRemove && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove(id);
+            }}
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
