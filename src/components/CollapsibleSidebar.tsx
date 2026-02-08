@@ -3,9 +3,11 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 import { useSidebar } from '@/hooks/useSidebar';
+import { useAgencyLimits } from '@/hooks/useAgencyLimits';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -26,6 +28,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Calendar,
+  Zap,
+  Crown,
+  Rocket,
 } from 'lucide-react';
 
 interface NavItem {
@@ -81,8 +86,28 @@ export function CollapsibleSidebar({ role = 'admin' }: CollapsibleSidebarProps) 
   const { signOut, user } = useAuth();
   const { totalUnread } = useUnreadMessages();
   const { isCollapsed, toggleSidebar } = useSidebar();
+  const { planTier, storageUsedBytes, storageLimitBytes, formatBytes, getStoragePercentage, loading: limitsLoading } = useAgencyLimits();
   const [branding, setBranding] = useState<AgencyBranding | null>(null);
   const [canWhiteLabel, setCanWhiteLabel] = useState(false);
+
+  // Plan badge icons
+  const getPlanIcon = () => {
+    switch (planTier) {
+      case 'scale': return Rocket;
+      case 'growth': return Crown;
+      default: return Zap;
+    }
+  };
+  
+  const getPlanColor = () => {
+    switch (planTier) {
+      case 'scale': return 'text-amber-500';
+      case 'growth': return 'text-purple-500';
+      default: return 'text-blue-500';
+    }
+  };
+  
+  const PlanIcon = getPlanIcon();
 
   const navItems = role === 'admin' 
     ? adminNavItems 
@@ -251,6 +276,49 @@ export function CollapsibleSidebar({ role = 'admin' }: CollapsibleSidebarProps) 
         "border-t border-border/50",
         isCollapsed ? "p-2" : "p-3"
       )}>
+        {/* Plan Badge - Only show for admins */}
+        {role === 'admin' && !limitsLoading && planTier && (
+          <>
+            {isCollapsed ? (
+              <Tooltip delayDuration={0}>
+                <TooltipTrigger asChild>
+                  <Link 
+                    to="/admin/settings"
+                    className="flex justify-center items-center p-2 rounded-lg hover:bg-muted/50 transition-colors mb-2"
+                  >
+                    <PlanIcon className={cn("w-4 h-4", getPlanColor())} />
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="font-medium">
+                  <div className="text-sm">
+                    <p className="font-medium capitalize">{planTier} Plan</p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatBytes(storageUsedBytes)} / {formatBytes(storageLimitBytes)}
+                    </p>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <Link 
+                to="/admin/settings"
+                className="flex flex-col gap-2 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors mb-3"
+              >
+                <div className="flex items-center gap-2">
+                  <PlanIcon className={cn("w-4 h-4", getPlanColor())} />
+                  <span className="text-sm font-medium text-foreground capitalize">{planTier} Plan</span>
+                </div>
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Storage</span>
+                    <span>{formatBytes(storageUsedBytes)} / {formatBytes(storageLimitBytes)}</span>
+                  </div>
+                  <Progress value={getStoragePercentage()} className="h-1" />
+                </div>
+              </Link>
+            )}
+          </>
+        )}
+
         {isCollapsed ? (
           <Tooltip delayDuration={0}>
             <TooltipTrigger asChild>

@@ -8,9 +8,11 @@ import { PersonCard } from '@/components/PersonCard';
 import { PersonDetailSheet } from '@/components/PersonDetailSheet';
 import { InviteUserModal } from '@/components/InviteUserModal';
 import { PendingInvitationCard } from '@/components/PendingInvitationCard';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 import { useClientStats } from '@/hooks/usePersonStats';
-import { Users, UserPlus, Loader2, Clock } from 'lucide-react';
+import { useAgencyLimits } from '@/hooks/useAgencyLimits';
+import { Users, UserPlus, Loader2, Clock, AlertCircle } from 'lucide-react';
 
 interface ClientProfile {
   id: string;
@@ -39,6 +41,9 @@ const AdminClients = () => {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<ClientProfile | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  
+  // Get agency limits for client enforcement
+  const { maxClients, currentClients, canAddClient, planTier, loading: limitsLoading } = useAgencyLimits();
 
   // Fetch real stats for all clients
   const clientIds = useMemo(() => clients.map(c => c.id), [clients]);
@@ -160,13 +165,32 @@ const AdminClients = () => {
                 Manage your agency clients and their projects
               </p>
             </div>
-            <Button
-              onClick={() => setInviteOpen(true)}
-              className="bg-primary hover:bg-primary/90"
-            >
-              <UserPlus className="w-4 h-4 mr-2" />
-              Invite Client
-            </Button>
+            {canAddClient() ? (
+              <Button
+                onClick={() => setInviteOpen(true)}
+                className="bg-primary hover:bg-primary/90"
+              >
+                <UserPlus className="w-4 h-4 mr-2" />
+                Invite Client
+              </Button>
+            ) : (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div>
+                    <Button
+                      disabled
+                      className="bg-primary/50 cursor-not-allowed"
+                    >
+                      <AlertCircle className="w-4 h-4 mr-2" />
+                      Limit Reached ({currentClients}/{maxClients})
+                    </Button>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-xs">
+                  <p>You've reached the client limit for your {planTier} plan. Upgrade to add more clients.</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
           </div>
 
           {/* Content */}
@@ -187,13 +211,25 @@ const AdminClients = () => {
                 be able to view projects, track progress, and communicate with
                 your team.
               </p>
-              <Button
-                onClick={() => setInviteOpen(true)}
-                className="bg-primary hover:bg-primary/90"
-              >
-                <UserPlus className="w-4 h-4 mr-2" />
-                Invite Your First Client
-              </Button>
+              {canAddClient() ? (
+                <Button
+                  onClick={() => setInviteOpen(true)}
+                  className="bg-primary hover:bg-primary/90"
+                >
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Invite Your First Client
+                </Button>
+              ) : (
+                <div className="text-center">
+                  <p className="text-sm text-destructive mb-2">Client limit reached ({currentClients}/{maxClients})</p>
+                  <Button
+                    onClick={() => navigate('/admin/settings')}
+                    variant="outline"
+                  >
+                    Upgrade Plan
+                  </Button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="space-y-8">
