@@ -10,9 +10,13 @@ import { InviteUserModal } from '@/components/InviteUserModal';
 import { PendingInvitationCard } from '@/components/PendingInvitationCard';
 import { EditorLeaderboard } from '@/components/admin/EditorLeaderboard';
 import { RemoveMemberModal } from '@/components/RemoveMemberModal';
+import { EditEditorModal } from '@/components/admin/EditEditorModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useEditorStats, type TimePeriod } from '@/hooks/usePersonStats';
 import { UsersRound, UserPlus, Loader2, Clock } from 'lucide-react';
+import type { Database } from '@/integrations/supabase/types';
+
+type EmploymentType = Database['public']['Enums']['employment_type'];
 
 interface TeamMember {
   id: string;
@@ -20,6 +24,8 @@ interface TeamMember {
   email: string;
   avatar_url: string | null;
   created_at: string;
+  employment_type: EmploymentType;
+  monthly_salary: number | null;
 }
 
 interface PendingInvitation {
@@ -44,6 +50,8 @@ const AdminTeam = () => {
   const [leaderboardPeriod, setLeaderboardPeriod] = useState<TimePeriod>('all');
   const [removeModalOpen, setRemoveModalOpen] = useState(false);
   const [memberToRemove, setMemberToRemove] = useState<TeamMember | null>(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editorToEdit, setEditorToEdit] = useState<TeamMember | null>(null);
 
   // Fetch real stats for all editors
   const editorIds = useMemo(() => teamMembers.map(m => m.id), [teamMembers]);
@@ -92,7 +100,7 @@ const AdminTeam = () => {
         const editorUserIds = editorRolesResult.data.map((r) => r.user_id);
         const { data: profiles } = await supabase
           .from('profiles')
-          .select('id, full_name, email, avatar_url, created_at')
+          .select('id, full_name, email, avatar_url, created_at, employment_type, monthly_salary')
           .in('id', editorUserIds);
         setTeamMembers(profiles || []);
       } else {
@@ -129,6 +137,14 @@ const AdminTeam = () => {
 
   const handleInvitationChange = () => {
     fetchTeamData();
+  };
+
+  const handleEditMember = (id: string) => {
+    const member = teamMembers.find((m) => m.id === id);
+    if (member) {
+      setEditorToEdit(member);
+      setEditModalOpen(true);
+    }
   };
 
   if (loading) {
@@ -263,12 +279,14 @@ const AdminTeam = () => {
                           avatarUrl={member.avatar_url}
                           role="editor"
                           variant="team"
+                          employmentType={member.employment_type}
                           stats={{
                             currentLoad: stats?.currentLoad ?? 0,
                             status: (stats?.currentLoad ?? 0) > 0 ? 'active' : 'offline',
                           }}
                           onExpand={handleExpandMember}
                           onRemove={handleRemoveMember}
+                          onEdit={handleEditMember}
                         />
                       );
                     })}
@@ -311,6 +329,14 @@ const AdminTeam = () => {
           avgDeliveryDays: editorStats[selectedMember.id]?.avgDeliveryDays,
         } : undefined}
         projects={selectedMember ? editorStats[selectedMember.id]?.projects : undefined}
+      />
+
+      {/* Edit Editor Modal */}
+      <EditEditorModal
+        open={editModalOpen}
+        onOpenChange={setEditModalOpen}
+        editor={editorToEdit}
+        onSuccess={fetchTeamData}
       />
 
       {/* Remove Member Modal */}
