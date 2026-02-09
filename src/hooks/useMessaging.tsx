@@ -430,18 +430,22 @@ export function useChannelMessages(channelId: string | null) {
   const sendMessage = async (
     content: string,
     attachmentUrl?: string,
-    attachmentType?: string
+    attachmentType?: string,
+    parentId?: string | null
   ): Promise<boolean> => {
     if (!user || !channelId || (!content.trim() && !attachmentUrl)) return false;
 
     try {
-      const { error } = await supabase.from('messages').insert({
+      const insertData: any = {
         channel_id: channelId,
         sender_id: user.id,
         content: content.trim(),
         attachment_url: attachmentUrl || null,
         attachment_type: attachmentType || null,
-      });
+      };
+      if (parentId) insertData.parent_id = parentId;
+
+      const { error } = await supabase.from('messages').insert(insertData);
 
       if (error) throw error;
 
