@@ -775,32 +775,41 @@ export type Database = {
       }
       profiles: {
         Row: {
+          accumulated_bonus: number
           agency_id: string | null
           avatar_url: string | null
           created_at: string
           email: string
+          employment_type: Database["public"]["Enums"]["employment_type"]
           full_name: string | null
           id: string
+          monthly_salary: number | null
           onboarding_completed: boolean | null
           updated_at: string
         }
         Insert: {
+          accumulated_bonus?: number
           agency_id?: string | null
           avatar_url?: string | null
           created_at?: string
           email: string
+          employment_type?: Database["public"]["Enums"]["employment_type"]
           full_name?: string | null
           id: string
+          monthly_salary?: number | null
           onboarding_completed?: boolean | null
           updated_at?: string
         }
         Update: {
+          accumulated_bonus?: number
           agency_id?: string | null
           avatar_url?: string | null
           created_at?: string
           email?: string
+          employment_type?: Database["public"]["Enums"]["employment_type"]
           full_name?: string | null
           id?: string
+          monthly_salary?: number | null
           onboarding_completed?: boolean | null
           updated_at?: string
         }
@@ -1120,6 +1129,7 @@ export type Database = {
     Enums: {
       app_role: "admin" | "client" | "editor"
       channel_type: "dm" | "project"
+      employment_type: "freelance" | "salaried"
       invoice_status: "unpaid" | "paid" | "overdue" | "pending"
       notification_type:
         | "task_assignment"
@@ -1271,6 +1281,7 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "client", "editor"],
       channel_type: ["dm", "project"],
+      employment_type: ["freelance", "salaried"],
       invoice_status: ["unpaid", "paid", "overdue", "pending"],
       notification_type: [
         "task_assignment",

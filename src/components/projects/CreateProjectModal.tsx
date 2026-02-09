@@ -58,6 +58,13 @@ interface Person {
   email: string;
 }
 
+interface Editor {
+  id: string;
+  name: string;
+  email: string;
+  employment_type: 'freelance' | 'salaried';
+}
+
 interface ProjectContainer {
   id: string;
   title: string;
@@ -85,8 +92,8 @@ export function CreateProjectModal({
 }: CreateProjectModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [clients, setClients] = useState<Person[]>([]);
-  const [editors, setEditors] = useState<Person[]>([]);
-  const [containers, setContainers] = useState<ProjectContainer[]>([]);
+  const [editors, setEditors] = useState<Editor[]>([]);
+  const [containers, setContainers] = useState<ProjectContainer[]>();
   const [agencyId, setAgencyId] = useState<string | null>(null);
   const [richDescription, setRichDescription] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([]);
@@ -110,11 +117,16 @@ export function CreateProjectModal({
 
   // Watch client_id to filter containers
   const selectedClientId = form.watch('client_id');
+  const selectedEditorId = form.watch('editor_id');
 
   // Filter containers by selected client
-  const filteredContainers = containers.filter(
+  const filteredContainers = (containers || []).filter(
     c => c.client_id === selectedClientId
   );
+
+  // Check if selected editor is salaried
+  const selectedEditor = editors.find(e => e.id === selectedEditorId);
+  const isEditorSalaried = selectedEditor?.employment_type === 'salaried';
 
   // Update form values when preselected props change
   useEffect(() => {
@@ -183,7 +195,7 @@ export function CreateProjectModal({
           const editorIds = editorRoles.map((r) => r.user_id);
           const { data: editorProfiles } = await supabase
             .from('profiles')
-            .select('id, full_name, email')
+            .select('id, full_name, email, employment_type')
             .in('id', editorIds);
 
           setEditors(
@@ -191,6 +203,7 @@ export function CreateProjectModal({
               id: p.id,
               name: p.full_name || p.email,
               email: p.email,
+              employment_type: (p.employment_type as 'freelance' | 'salaried') || 'freelance',
             }))
           );
         }
@@ -495,7 +508,7 @@ export function CreateProjectModal({
             />
 
             {/* Budget & Editor Rate */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className={isEditorSalaried ? '' : 'grid grid-cols-2 gap-4'}>
               <FormField
                 control={form.control}
                 name="budget"
@@ -521,30 +534,41 @@ export function CreateProjectModal({
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="editor_rate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-foreground flex items-center gap-2">
-                      <DollarSign className="w-4 h-4" />
-                      Editor Rate <span className="text-muted-foreground font-normal">(optional)</span>
-                    </FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                        <Input
-                          type="text"
-                          placeholder="e.g., 100"
-                          className="bg-surface-elevated border-border/50 pl-7"
-                          {...field}
-                        />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {/* Only show editor rate for freelance editors */}
+              {!isEditorSalaried && (
+                <FormField
+                  control={form.control}
+                  name="editor_rate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-foreground flex items-center gap-2">
+                        <DollarSign className="w-4 h-4" />
+                        Editor Rate <span className="text-muted-foreground font-normal">(optional)</span>
+                      </FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                          <Input
+                            type="text"
+                            placeholder="e.g., 100"
+                            className="bg-surface-elevated border-border/50 pl-7"
+                            {...field}
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+              {isEditorSalaried && (
+                <div className="mt-2 p-3 rounded-lg bg-muted/30 border border-border/50">
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-medium text-foreground">{selectedEditor?.name}</span> is a salaried employee. 
+                    Their pay is not tied to individual videos.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Reference Links */}

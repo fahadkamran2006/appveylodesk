@@ -51,6 +51,7 @@ const adminNavItems: NavItem[] = [
   { label: 'Clients', icon: Users, href: '/admin/clients' },
   { label: 'Team', icon: UsersRound, href: '/admin/team' },
   { label: 'Invoices', icon: Receipt, href: '/admin/invoices' },
+  { label: 'Payroll', icon: DollarSign, href: '/admin/payroll' },
   { label: 'Storage', icon: HardDrive, href: '/admin/storage' },
   { label: 'Messages', icon: MessageSquare, href: '/admin/messages' },
   { label: 'Calendar', icon: Calendar, href: '/admin/calendar' },

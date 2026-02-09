@@ -2,7 +2,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { ChevronRight, DollarSign, FolderKanban, Zap, Trash2 } from 'lucide-react';
+import { ChevronRight, DollarSign, FolderKanban, Zap, Trash2, Pencil, Briefcase } from 'lucide-react';
 
 interface PersonCardProps {
   id: string;
@@ -10,6 +10,7 @@ interface PersonCardProps {
   email: string;
   avatarUrl?: string | null;
   role?: 'client' | 'editor';
+  employmentType?: 'freelance' | 'salaried';
   stats?: {
     activeProjects?: number;
     totalSpent?: number;
@@ -18,6 +19,7 @@ interface PersonCardProps {
   };
   onExpand?: (id: string) => void;
   onRemove?: (id: string) => void;
+  onEdit?: (id: string) => void;
   variant?: 'client' | 'team';
 }
 
@@ -27,9 +29,11 @@ export function PersonCard({
   email,
   avatarUrl,
   role,
+  employmentType,
   stats,
   onExpand,
   onRemove,
+  onEdit,
   variant = 'client',
 }: PersonCardProps) {
   const initials = name
@@ -65,16 +69,34 @@ export function PersonCard({
           <p className="text-sm text-muted-foreground truncate">{email}</p>
         </div>
 
-        {variant === 'team' && role && (
-          <Badge
-            variant="secondary"
-            className={cn(
-              'capitalize shrink-0',
-              role === 'editor' && 'bg-primary/20 text-primary border-primary/30'
+        {variant === 'team' && (
+          <div className="flex items-center gap-2 shrink-0">
+            {employmentType && (
+              <Badge
+                variant="outline"
+                className={cn(
+                  'text-xs',
+                  employmentType === 'salaried' 
+                    ? 'bg-primary/10 text-primary border-primary/30' 
+                    : 'bg-muted text-muted-foreground border-border'
+                )}
+              >
+                <Briefcase className="w-3 h-3 mr-1" />
+                {employmentType === 'salaried' ? 'Salaried' : 'Freelance'}
+              </Badge>
             )}
-          >
-            {role}
-          </Badge>
+            {role && (
+              <Badge
+                variant="secondary"
+                className={cn(
+                  'capitalize',
+                  role === 'editor' && 'bg-primary/20 text-primary border-primary/30'
+                )}
+              >
+                {role}
+              </Badge>
+            )}
+          </div>
         )}
       </div>
 
@@ -143,6 +165,19 @@ export function PersonCard({
           {variant === 'client' ? 'View Details' : 'View Performance'}
           <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
         </Button>
+        {onEdit && variant === 'team' && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0 text-muted-foreground hover:text-primary hover:bg-primary/10"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(id);
+            }}
+          >
+            <Pencil className="w-4 h-4" />
+          </Button>
+        )}
         {onRemove && (
           <Button
             variant="ghost"
