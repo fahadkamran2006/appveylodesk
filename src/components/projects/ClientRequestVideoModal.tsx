@@ -52,12 +52,14 @@ interface ClientRequestVideoModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
+  preselectedContainerId?: string;
 }
 
 export function ClientRequestVideoModal({
   open,
   onOpenChange,
   onSuccess,
+  preselectedContainerId,
 }: ClientRequestVideoModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [containers, setContainers] = useState<ProjectContainer[]>([]);
@@ -72,10 +74,17 @@ export function ClientRequestVideoModal({
     defaultValues: {
       title: '',
       description: '',
-      container_id: '',
+      container_id: preselectedContainerId || '',
       reference_links: '',
     },
   });
+
+  // Update container_id when preselectedContainerId changes
+  useEffect(() => {
+    if (preselectedContainerId && open) {
+      form.setValue('container_id', preselectedContainerId);
+    }
+  }, [preselectedContainerId, open, form]);
 
   // Fetch project containers for the client
   useEffect(() => {
@@ -221,7 +230,7 @@ export function ClientRequestVideoModal({
                     <FormLabel className="text-foreground">Select Project</FormLabel>
                     <Select
                       onValueChange={field.onChange}
-                      defaultValue={field.value}
+                      value={field.value}
                     >
                       <FormControl>
                         <SelectTrigger className="bg-surface-elevated border-border/50">
