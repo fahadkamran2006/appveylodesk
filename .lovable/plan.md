@@ -1,68 +1,49 @@
 
-## Goal
-Fix Google/Apple OAuth on the published domain where it currently lands on your app’s 404 page at a URL like:
-`https://veylodesk.com/--oauth/initiate?...`
 
-## What’s actually happening (root cause)
-Your OAuth flow is *starting* by navigating to an “OAuth broker initiate” path (`/~oauth/initiate` or ` /--oauth/initiate`). On the published app, that path is being served by your SPA (React Router), so it hits the catch-all `*` route and shows your in-app 404 page.
+## Fix Client Projects Page to Enforce Strict 3-Tier Hierarchy
 
-This is why it “works in the Lovable preview window” but fails on the published domain:
-- In preview, the flow typically runs in an iframe/popup mode and may avoid the same navigation handling.
-- On the published domain, the navigation to the broker path is treated like a normal SPA route.
+### Problem
+The Client Dashboard (`/client/dashboard`) correctly enforces the hierarchy, but the Client Projects page (`/client/projects`) has leftover UI from the old workflow that lets clients create projects and submit proposals -- bypassing Admin-only project creation and the new video request approval flow.
 
-## Implementation approach (robust fix)
-Instead of relying on the published domain to serve the broker route correctly, we’ll add a tiny “proxy route” inside the React app:
+### Changes
 
-When the app is opened at:
-- `/~oauth/initiate?...` OR
-- `/--oauth/initiate?...`
+#### 1. Remove all "Create Project" UI from `/client/projects`
 
-…it will immediately redirect the browser to the hosted OAuth broker origin:
-- `https://oauth.lovable.app/~oauth/initiate?...` (preserving the full query string)
+In `src/pages/client/Projects.tsx`:
 
-This keeps your existing login/signup code unchanged and avoids any brittle server rewrites.
+- Remove the "New Project" button from the header (lines 267-270)
+- Remove the dashed "Add Project" card from the grid (lines 351-363)
+- Replace the empty state "Create Your First Project" button with the correct message: "Your admin will create projects for you. Once you have projects, you can request videos."
+- Remove the import of `ClientCreateProjectModal` and its state/JSX entirely
 
-## Changes to make
+#### 2. Replace `ClientProposalModal` with `ClientRequestVideoModal`
 
-### 1) Add an OAuth initiate proxy page
-Create a new page:
-- `src/pages/auth/OAuthInitiateProxy.tsx`
+In `src/pages/client/Projects.tsx`:
 
-Behavior:
-- On mount (`useEffect`), read `window.location.search`
-- Redirect with `window.location.replace()` to:
-  - `https://oauth.lovable.app/~oauth/initiate` + the existing query string
-- Show a centered loading spinner + “Redirecting…” while the redirect happens
+- Replace the import of `ClientProposalModal` with `ClientRequestVideoModal`
+- Change the "New Video" button (shown when inside a project board) to open `ClientRequestVideoModal` instead
+- Pass the `preselectedContainerId` as a prop so the project dropdown is pre-filled when the client is already browsing a specific project
+- Update `ClientRequestVideoModal` to accept and use an optional `preselectedContainerId` prop (auto-select the container in the dropdown)
+- Remove `proposalModalOpen` state and the `ClientProposalModal` JSX
 
-Key detail:
-- Preserve the query string exactly (includes `provider`, `redirect_uri`, `state`, and sometimes `response_mode=web_message`).
+#### 3. Add `'request'` to the status config map
 
-### 2) Register routes in `App.tsx`
-Add these routes BEFORE the `*` catch-all:
-- `<Route path="/~oauth/initiate" element={<OAuthInitiateProxy />} />`
-- `<Route path="/--oauth/initiate" element={<OAuthInitiateProxy />} />`
+In `src/pages/client/Projects.tsx`:
 
-(We add both because your screenshot shows `--oauth`, but the auth library’s documented default is `~oauth`. Supporting both makes the fix resilient.)
+- Add a `request` entry to the `statusConfig` object with a label like "Requested", an appropriate icon (e.g., `Send`), and a distinct badge style (e.g., orange/amber tones)
 
-### 3) (Optional but recommended) Prevent future PWA/service-worker interference
-If the PWA service worker is contributing to “app shell” being served on broker URLs, we’ll also update `vite.config.ts` Workbox settings to ensure these broker paths are not treated as normal SPA navigations (denylist them from navigation fallback).  
-This step is optional if the proxy route fix works by itself, but it reduces future edge cases.
+#### 4. (Optional cleanup) Delete `ClientCreateProjectModal` component
 
-## How we’ll verify (end-to-end)
-1. Publish the frontend changes.
-2. On `https://veylodesk.com`, click “Continue with Google”.
-   - It should briefly show “Redirecting…”
-   - Then you should see the OAuth flow continue (no 404 page)
-   - After completion, you should land on `/auth/callback` and be logged in.
-3. Repeat with Apple.
-4. If you still see old behavior, do a hard refresh and/or clear site data for `veylodesk.com` (published sites can keep older service worker caches).
+Since it is no longer needed by any page, the file `src/components/projects/ClientCreateProjectModal.tsx` can be removed to prevent future misuse.
 
-## Notes / Why this is safe
-- We are not changing authentication tokens, database logic, or your callback route.
-- We are only ensuring the “start OAuth” step doesn’t get trapped by React Router on the published domain.
-- This solution works even if the hosting platform doesn’t special-case the broker path on custom domains.
+### Technical Details
 
-## Files involved
-- New: `src/pages/auth/OAuthInitiateProxy.tsx`
-- Edit: `src/App.tsx` (add 2 routes)
-- Optional edit: `vite.config.ts` (Workbox navigation fallback denylist)
+**Files modified:**
+- `src/pages/client/Projects.tsx` -- Remove project creation UI; swap proposal modal for request modal; add `request` status styling
+- `src/components/projects/ClientRequestVideoModal.tsx` -- Add optional `preselectedContainerId` prop to auto-select a container
+
+**File deleted:**
+- `src/components/projects/ClientCreateProjectModal.tsx`
+
+**No database or RLS changes needed** -- the schema and policies are already correct. This is purely a frontend enforcement fix.
+
