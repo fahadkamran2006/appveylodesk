@@ -10,6 +10,7 @@ const corsHeaders = {
 
 interface InvoiceEmailPayload {
   invoice_id: string;
+  pdf_base64?: string; // Optional base64-encoded PDF
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -42,7 +43,7 @@ const handler = async (req: Request): Promise<Response> => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const payload: InvoiceEmailPayload = await req.json();
-    console.log("Processing invoice email:", payload);
+    console.log("Processing invoice email:", payload.invoice_id);
 
     if (!payload.invoice_id) {
       return new Response(
@@ -95,10 +96,10 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Get agency info
+    // Get agency info including legal settings
     const { data: agency } = await supabase
       .from("agencies")
-      .select("id, name, logo_url")
+      .select("id, name, logo_url, business_name, business_address, tax_id, invoice_footer")
       .eq("id", invoice.agency_id)
       .single();
 
@@ -120,7 +121,7 @@ const handler = async (req: Request): Promise<Response> => {
       .eq("invoice_id", payload.invoice_id)
       .order("sort_order", { ascending: true });
 
-    const agencyName = agency?.name || "Veylodesk";
+    const agencyName = agency?.business_name || agency?.name || "Veylodesk";
     const clientName = client.full_name || client.email.split("@")[0];
     const projectTitle = invoice.project?.title || "Project";
     const invoiceNumber = invoice.invoice_number || "Invoice";
@@ -151,6 +152,16 @@ const handler = async (req: Request): Promise<Response> => {
         .join("");
     }
 
+    // Build agency header with legal info
+    let agencyInfoHtml = `<h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">${agencyName}</h1>`;
+    
+    if (agency?.business_address) {
+      agencyInfoHtml += `<p style="margin: 8px 0 0; color: rgba(255,255,255,0.8); font-size: 12px; white-space: pre-wrap;">${agency.business_address}</p>`;
+    }
+    if (agency?.tax_id) {
+      agencyInfoHtml += `<p style="margin: 4px 0 0; color: rgba(255,255,255,0.7); font-size: 11px;">Tax ID: ${agency.tax_id}</p>`;
+    }
+
     const emailHtml = `
 <!DOCTYPE html>
 <html>
@@ -170,11 +181,9 @@ const handler = async (req: Request): Promise<Response> => {
               <table role="presentation" style="width: 100%;">
                 <tr>
                   <td>
-                    <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">
-                      ${agencyName}
-                    </h1>
+                    ${agencyInfoHtml}
                   </td>
-                  <td style="text-align: right;">
+                  <td style="text-align: right; vertical-align: top;">
                     <span style="color: rgba(255,255,255,0.9); font-size: 14px;">
                       ${invoiceNumber}
                     </span>
@@ -194,6 +203,10 @@ const handler = async (req: Request): Promise<Response> => {
               <h2 style="margin: 16px 0; color: #ffffff; font-size: 20px; font-weight: 600;">
                 You have a new invoice for ${projectTitle}
               </h2>
+
+              <p style="margin: 0 0 24px; color: #a1a1aa; font-size: 14px;">
+                Please find your invoice attached as a PDF for your records.
+              </p>
               
               ${
                 lineItems && lineItems.length > 0
@@ -300,6 +313,11 @@ const handler = async (req: Request): Promise<Response> => {
           <!-- Footer -->
           <tr>
             <td style="padding: 24px 32px; background-color: #18181b; border-radius: 0 0 16px 16px; border-top: 1px solid #27272a;">
+              ${
+                agency?.invoice_footer
+                  ? `<p style="margin: 0 0 16px; color: #a1a1aa; font-size: 11px; line-height: 1.6;">${agency.invoice_footer}</p>`
+                  : ""
+              }
               <p style="margin: 0; color: #71717a; font-size: 12px; text-align: center;">
                 This invoice was sent by ${agencyName}. If you have any questions, please contact us.
               </p>
@@ -313,12 +331,26 @@ const handler = async (req: Request): Promise<Response> => {
 </html>
     `;
 
-    const { data: emailResult, error: emailError } = await resend.emails.send({
+    // Build email options
+    const emailOptions: any = {
       from: `${agencyName} <noreply@veylodesk.com>`,
       to: [client.email],
-      subject: `${invoiceNumber} - $${Number(invoice.amount).toFixed(2)} for ${projectTitle}`,
+      subject: `${invoiceNumber} from ${agencyName}`,
       html: emailHtml,
-    });
+    };
+
+    // Add PDF attachment if provided
+    if (payload.pdf_base64) {
+      console.log("Attaching PDF to email");
+      emailOptions.attachments = [
+        {
+          filename: `${invoiceNumber}.pdf`,
+          content: payload.pdf_base64,
+        },
+      ];
+    }
+
+    const { data: emailResult, error: emailError } = await resend.emails.send(emailOptions);
 
     if (emailError) {
       console.error("Error sending email:", emailError);

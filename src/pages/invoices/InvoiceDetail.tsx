@@ -4,6 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { generateInvoicePDF, downloadInvoicePDF } from '@/lib/generateInvoicePDF';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,7 +25,9 @@ import {
   Building2,
   User,
   Calendar,
-  Receipt
+  Receipt,
+  Loader2,
+  FileDown
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -53,7 +56,16 @@ interface Invoice {
   notes: string | null;
   project: { id: string; title: string } | null;
   client: { id: string; full_name: string | null; email: string } | null;
-  agency: { id: string; name: string; logo_url: string | null; branding: any } | null;
+  agency: { 
+    id: string; 
+    name: string; 
+    logo_url: string | null; 
+    branding: any;
+    business_name: string | null;
+    business_address: string | null;
+    tax_id: string | null;
+    invoice_footer: string | null;
+  } | null;
   payment_method: { id: string; name: string; details: string; payment_link: string | null } | null;
 }
 
@@ -68,7 +80,7 @@ const InvoiceDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
-
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   useEffect(() => {
     if (!authLoading && !user) {
       navigate('/auth/login');
@@ -116,7 +128,7 @@ const InvoiceDetailPage = () => {
       // Fetch agency
       const { data: agencyData } = await supabase
         .from('agencies')
-        .select('id, name, logo_url, branding')
+        .select('id, name, logo_url, branding, business_name, business_address, tax_id, invoice_footer')
         .eq('id', invoiceData.agency_id)
         .single();
 
@@ -218,6 +230,65 @@ const InvoiceDetailPage = () => {
       });
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!invoice) return;
+    
+    setDownloadingPdf(true);
+    try {
+      const pdfBlob = await generateInvoicePDF({
+        invoice: {
+          invoice_number: invoice.invoice_number,
+          amount: invoice.amount,
+          subtotal: invoice.subtotal,
+          tax_rate: invoice.tax_rate,
+          tax_amount: invoice.tax_amount,
+          due_date: invoice.due_date,
+          created_at: invoice.created_at,
+          notes: invoice.notes,
+        },
+        agency: {
+          name: invoice.agency?.name || 'Agency',
+          logo_url: invoice.agency?.logo_url || null,
+          business_name: invoice.agency?.business_name || null,
+          business_address: invoice.agency?.business_address || null,
+          tax_id: invoice.agency?.tax_id || null,
+          invoice_footer: invoice.agency?.invoice_footer || null,
+        },
+        client: {
+          full_name: invoice.client?.full_name || null,
+          email: invoice.client?.email || '',
+        },
+        project: invoice.project ? { title: invoice.project.title } : null,
+        paymentMethod: invoice.payment_method ? {
+          name: invoice.payment_method.name,
+          details: invoice.payment_method.details,
+        } : null,
+        lineItems: lineItems.map(item => ({
+          description: item.description,
+          quantity: item.quantity,
+          rate: item.rate,
+          amount: item.amount,
+        })),
+      });
+
+      downloadInvoicePDF(pdfBlob, invoice.invoice_number);
+      
+      toast({
+        title: 'PDF Downloaded',
+        description: 'Invoice PDF has been saved to your device.',
+      });
+    } catch (error: any) {
+      console.error('Error generating PDF:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to generate PDF. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setDownloadingPdf(false);
     }
   };
 
@@ -445,7 +516,26 @@ const InvoiceDetailPage = () => {
               </div>
 
               {/* Actions */}
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-3">
+                {/* Download PDF Button - Always visible */}
+                <Button 
+                  variant="outline" 
+                  onClick={handleDownloadPDF}
+                  disabled={downloadingPdf}
+                >
+                  {downloadingPdf ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <FileDown className="w-4 h-4 mr-2" />
+                      Download PDF
+                    </>
+                  )}
+                </Button>
+                
                 {paymentLink && invoice.status === 'unpaid' && (
                   <Button
                     variant="hero"
