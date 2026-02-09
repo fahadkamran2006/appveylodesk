@@ -9,8 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
-import { ClientCreateProjectModal } from '@/components/projects/ClientCreateProjectModal';
-import { ClientProposalModal } from '@/components/projects/ClientProposalModal';
+import { ClientRequestVideoModal } from '@/components/projects/ClientRequestVideoModal';
 import { ProjectDetailSheet } from '@/components/projects/ProjectDetailSheet';
 import { ProjectBreadcrumb } from '@/components/projects/ProjectBreadcrumb';
 import { cn } from '@/lib/utils';
@@ -39,6 +38,7 @@ interface VideoProject {
 }
 
 const statusConfig: Record<string, { label: string; icon: typeof Clock; className: string }> = {
+  request: { label: 'Requested', icon: Send, className: 'bg-amber-500/10 text-amber-600 border-amber-500/20' },
   proposal: { label: 'Proposal', icon: Send, className: 'bg-purple-500/10 text-purple-500 border-purple-500/20' },
   backlog: { label: 'Backlog', icon: Clock, className: 'bg-muted text-muted-foreground border-border' },
   in_progress: { label: 'In Progress', icon: AlertCircle, className: 'bg-primary/10 text-primary border-primary/20' },
@@ -55,8 +55,7 @@ export default function ClientProjects() {
   const [projectContainers, setProjectContainers] = useState<ProjectContainerStats[]>([]);
   const [videos, setVideos] = useState<VideoProject[]>([]);
   const [loading, setLoading] = useState(true);
-  const [createProjectModalOpen, setCreateProjectModalOpen] = useState(false);
-  const [proposalModalOpen, setProposalModalOpen] = useState(false);
+  const [requestVideoModalOpen, setRequestVideoModalOpen] = useState(false);
   const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -101,7 +100,7 @@ export default function ClientProjects() {
         return {
           ...container,
           videoCount: containerVideos.length,
-          activeCount: containerVideos.filter(v => ['in_progress', 'review', 'backlog', 'proposal'].includes(v.status)).length,
+          activeCount: containerVideos.filter(v => ['in_progress', 'review', 'backlog', 'request'].includes(v.status)).length,
           completedCount: containerVideos.filter(v => v.status === 'done').length,
         };
       });
@@ -132,12 +131,10 @@ export default function ClientProjects() {
   const filteredVideos = useMemo(() => {
     let result = videos;
 
-    // Filter by project if in project board view
     if (isProjectBoardView && selectedProjectId) {
       result = result.filter(v => v.container_id === selectedProjectId);
     }
 
-    // Apply search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       result = result.filter(video =>
@@ -258,15 +255,10 @@ export default function ClientProjects() {
                   <span className="hidden sm:inline">All Videos</span>
                 </Button>
               )}
-              {isProjectBoardView ? (
-                <Button variant="hero" onClick={() => setProposalModalOpen(true)} className="flex-1 sm:flex-initial">
+              {isProjectBoardView && (
+                <Button variant="hero" onClick={() => setRequestVideoModalOpen(true)} className="flex-1 sm:flex-initial">
                   <Plus className="w-4 h-4 mr-2" />
                   New Video
-                </Button>
-              ) : (
-                <Button variant="hero" onClick={() => setCreateProjectModalOpen(true)} className="flex-1 sm:flex-initial">
-                  <Plus className="w-4 h-4 mr-2" />
-                  New Project
                 </Button>
               )}
             </div>
@@ -293,13 +285,10 @@ export default function ClientProjects() {
                   {searchQuery ? (
                     <p className="text-muted-foreground">No projects match your search</p>
                   ) : (
-                    <>
-                      <p className="text-muted-foreground mb-4">No projects yet</p>
-                      <Button variant="hero" onClick={() => setCreateProjectModalOpen(true)}>
-                        <Plus className="w-4 h-4 mr-2" />
-                        Create Your First Project
-                      </Button>
-                    </>
+                    <p className="text-muted-foreground">
+                      Your admin will create projects for you.<br />
+                      Once you have projects, you can request videos.
+                    </p>
                   )}
                 </div>
               ) : (
@@ -347,19 +336,6 @@ export default function ClientProjects() {
                       </div>
                     </div>
                   ))}
-                  
-                  {/* Add Project Card */}
-                  <div
-                    onClick={() => setCreateProjectModalOpen(true)}
-                    className={cn(
-                      'rounded-xl p-5 cursor-pointer transition-all duration-200',
-                      'border-2 border-dashed border-border hover:border-primary/50',
-                      'hover:bg-primary/5 flex flex-col items-center justify-center min-h-[150px]'
-                    )}
-                  >
-                    <Plus className="w-8 h-8 text-muted-foreground mb-2" />
-                    <span className="text-sm font-medium text-muted-foreground">Add Project</span>
-                  </div>
                 </div>
               )}
             </div>
@@ -375,9 +351,9 @@ export default function ClientProjects() {
                     <>
                       <p className="text-muted-foreground mb-4">No videos in this project yet</p>
                       {isProjectBoardView && (
-                        <Button variant="hero" onClick={() => setProposalModalOpen(true)}>
+                        <Button variant="hero" onClick={() => setRequestVideoModalOpen(true)}>
                           <Plus className="w-4 h-4 mr-2" />
-                          Submit Your First Video
+                          Request Your First Video
                         </Button>
                       )}
                     </>
@@ -425,17 +401,10 @@ export default function ClientProjects() {
         </div>
       </DashboardLayout>
 
-      {/* Create Project Modal (for project containers) */}
-      <ClientCreateProjectModal
-        open={createProjectModalOpen}
-        onOpenChange={setCreateProjectModalOpen}
-        onSuccess={fetchData}
-      />
-
-      {/* Proposal Modal (for creating videos within a project) */}
-      <ClientProposalModal
-        open={proposalModalOpen}
-        onOpenChange={setProposalModalOpen}
+      {/* Request Video Modal */}
+      <ClientRequestVideoModal
+        open={requestVideoModalOpen}
+        onOpenChange={setRequestVideoModalOpen}
         onSuccess={fetchData}
         preselectedContainerId={selectedProjectId || undefined}
       />
