@@ -17,6 +17,7 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/auth/Login";
 import Signup from "./pages/auth/Signup";
 import AuthCallback from "./pages/auth/AuthCallback";
+import OAuthInitiateProxy from "./pages/auth/OAuthInitiateProxy";
 import JoinClient from "./pages/JoinClient";
 import JoinTeam from "./pages/JoinTeam";
 
@@ -119,6 +120,10 @@ const App = () => (
                   <Route path="/editor/messages" element={<MessagesPage />} />
                   <Route path="/editor/calendar" element={<CalendarPage />} />
                   <Route path="/editor/settings" element={<SettingsPage />} />
+
+                  {/* OAuth broker proxy routes - must be before catch-all */}
+                  <Route path="/~oauth/initiate" element={<OAuthInitiateProxy />} />
+                  <Route path="/--oauth/initiate" element={<OAuthInitiateProxy />} />
 
                   {/* Catch-all must be last */}
                   <Route path="*" element={<NotFound />} />
