@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { usePaymentMethods, PaymentMethod } from '@/hooks/usePaymentMethods';
 import { useToast } from '@/hooks/use-toast';
+import { generateInvoicePDF } from '@/lib/generateInvoicePDF';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -150,6 +151,31 @@ export const CreateInvoiceModal = ({
 
       const { data: agencyId } = await supabase.rpc('get_user_agency_id', { _user_id: user.id });
 
+      // Fetch agency data for PDF generation
+      const { data: agencyData } = await supabase
+        .from('agencies')
+        .select('id, name, logo_url, business_name, business_address, tax_id, invoice_footer')
+        .eq('id', agencyId)
+        .single();
+
+      // Fetch client profile for PDF generation
+      const { data: clientProfile } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .eq('id', project.client_id)
+        .single();
+
+      // Fetch payment method details if selected
+      let paymentMethodData = null;
+      if (selectedPaymentMethod) {
+        const { data: pmData } = await supabase
+          .from('payment_methods')
+          .select('id, name, details, payment_link')
+          .eq('id', selectedPaymentMethod)
+          .single();
+        paymentMethodData = pmData;
+      }
+
       // Generate invoice number
       const { data: invoiceNumber } = await supabase.rpc('generate_invoice_number', {
         _agency_id: agencyId,
@@ -173,7 +199,7 @@ export const CreateInvoiceModal = ({
           invoice_number: invoiceNumber,
           status: 'unpaid',
         })
-        .select('id')
+        .select('id, created_at')
         .single();
 
       if (invoiceError) throw invoiceError;
@@ -194,10 +220,67 @@ export const CreateInvoiceModal = ({
 
       if (lineItemsError) throw lineItemsError;
 
-      // Send invoice email notification
+      // Generate PDF for email attachment
+      let pdfBase64: string | undefined;
+      try {
+        const pdfBlob = await generateInvoicePDF({
+          invoice: {
+            invoice_number: invoiceNumber,
+            amount: total,
+            subtotal: subtotal,
+            tax_rate: Number(taxRate),
+            tax_amount: taxAmount,
+            due_date: dueDate || null,
+            created_at: invoice.created_at,
+            notes: notes || null,
+          },
+          agency: {
+            name: agencyData?.name || 'Agency',
+            logo_url: agencyData?.logo_url || null,
+            business_name: agencyData?.business_name || null,
+            business_address: agencyData?.business_address || null,
+            tax_id: agencyData?.tax_id || null,
+            invoice_footer: agencyData?.invoice_footer || null,
+          },
+          client: {
+            full_name: clientProfile?.full_name || null,
+            email: clientProfile?.email || '',
+          },
+          project: { title: project.title },
+          paymentMethod: paymentMethodData ? {
+            name: paymentMethodData.name,
+            details: paymentMethodData.details,
+          } : null,
+          lineItems: validLineItems.map(item => ({
+            description: item.description,
+            quantity: item.quantity,
+            rate: item.rate,
+            amount: item.amount,
+          })),
+        });
+
+        // Convert blob to base64
+        const reader = new FileReader();
+        pdfBase64 = await new Promise<string>((resolve, reject) => {
+          reader.onloadend = () => {
+            const base64 = (reader.result as string).split(',')[1];
+            resolve(base64);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(pdfBlob);
+        });
+      } catch (pdfError) {
+        console.error('Failed to generate PDF:', pdfError);
+        // Continue without PDF attachment
+      }
+
+      // Send invoice email notification with PDF attachment
       try {
         await supabase.functions.invoke('send-invoice-email', {
-          body: { invoice_id: invoice.id },
+          body: { 
+            invoice_id: invoice.id,
+            pdf_base64: pdfBase64,
+          },
         });
       } catch (emailError) {
         console.error('Failed to send invoice email:', emailError);
