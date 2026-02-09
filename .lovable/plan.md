@@ -1,61 +1,68 @@
 
-# Fix OAuth 404 Error on Published App
+## Goal
+Fix Google/Apple OAuth on the published domain where it currently lands on your app’s 404 page at a URL like:
+`https://veylodesk.com/--oauth/initiate?...`
 
-## Problem Identified
-The OAuth sign-in/sign-up is failing on your published custom domain (`veylodesk.com`) with a 404 error because of two issues:
+## What’s actually happening (root cause)
+Your OAuth flow is *starting* by navigating to an “OAuth broker initiate” path (`/~oauth/initiate` or ` /--oauth/initiate`). On the published app, that path is being served by your SPA (React Router), so it hits the catch-all `*` route and shows your in-app 404 page.
 
-1. **Code Issue**: The `Signup.tsx` file still uses `redirect_uri: window.location.origin` instead of the correct `/auth/callback` path (Login.tsx was fixed but Signup.tsx was missed)
+This is why it “works in the Lovable preview window” but fails on the published domain:
+- In preview, the flow typically runs in an iframe/popup mode and may avoid the same navigation handling.
+- On the published domain, the navigation to the broker path is treated like a normal SPA route.
 
-2. **Configuration Issue**: Your custom domain `veylodesk.com` needs to be added to the allowed redirect URLs in the authentication settings
+## Implementation approach (robust fix)
+Instead of relying on the published domain to serve the broker route correctly, we’ll add a tiny “proxy route” inside the React app:
 
-## Why It Works in Preview
-The preview URL (`id-preview--20bad592-ee9a-41fd-8ceb-1db3cf54c871.lovable.app`) is automatically configured as a valid redirect URL. Your custom domain is not.
+When the app is opened at:
+- `/~oauth/initiate?...` OR
+- `/--oauth/initiate?...`
 
----
+…it will immediately redirect the browser to the hosted OAuth broker origin:
+- `https://oauth.lovable.app/~oauth/initiate?...` (preserving the full query string)
 
-## Implementation Plan
+This keeps your existing login/signup code unchanged and avoids any brittle server rewrites.
 
-### Step 1: Fix Signup.tsx OAuth Redirect URLs
-Update both Google and Apple OAuth buttons to use the callback path:
+## Changes to make
 
-**File**: `src/pages/auth/Signup.tsx`
+### 1) Add an OAuth initiate proxy page
+Create a new page:
+- `src/pages/auth/OAuthInitiateProxy.tsx`
 
-- **Line 179**: Change `redirect_uri: window.location.origin` to `redirect_uri: \`${window.location.origin}/auth/callback\``
-- **Line 221**: Same change for Apple sign-in
+Behavior:
+- On mount (`useEffect`), read `window.location.search`
+- Redirect with `window.location.replace()` to:
+  - `https://oauth.lovable.app/~oauth/initiate` + the existing query string
+- Show a centered loading spinner + “Redirecting…” while the redirect happens
 
-### Step 2: Configure Custom Domain in Auth Settings
-You need to add your custom domain to the allowed redirect URLs in your backend authentication settings:
+Key detail:
+- Preserve the query string exactly (includes `provider`, `redirect_uri`, `state`, and sometimes `response_mode=web_message`).
 
-- Add `https://veylodesk.com` as an allowed redirect URL
-- Add `https://veylodesk.com/auth/callback` as an allowed redirect URL
+### 2) Register routes in `App.tsx`
+Add these routes BEFORE the `*` catch-all:
+- `<Route path="/~oauth/initiate" element={<OAuthInitiateProxy />} />`
+- `<Route path="/--oauth/initiate" element={<OAuthInitiateProxy />} />`
 
-I'll provide a button to open the Cloud Dashboard where you can update these settings.
+(We add both because your screenshot shows `--oauth`, but the auth library’s documented default is `~oauth`. Supporting both makes the fix resilient.)
 
----
+### 3) (Optional but recommended) Prevent future PWA/service-worker interference
+If the PWA service worker is contributing to “app shell” being served on broker URLs, we’ll also update `vite.config.ts` Workbox settings to ensure these broker paths are not treated as normal SPA navigations (denylist them from navigation fallback).  
+This step is optional if the proxy route fix works by itself, but it reduces future edge cases.
 
-## Technical Details
+## How we’ll verify (end-to-end)
+1. Publish the frontend changes.
+2. On `https://veylodesk.com`, click “Continue with Google”.
+   - It should briefly show “Redirecting…”
+   - Then you should see the OAuth flow continue (no 404 page)
+   - After completion, you should land on `/auth/callback` and be logged in.
+3. Repeat with Apple.
+4. If you still see old behavior, do a hard refresh and/or clear site data for `veylodesk.com` (published sites can keep older service worker caches).
 
-### Current Code (Signup.tsx - Line 178-180)
-```typescript
-const { error } = await lovable.auth.signInWithOAuth('google', {
-  redirect_uri: window.location.origin,  // ❌ Missing /auth/callback
-});
-```
+## Notes / Why this is safe
+- We are not changing authentication tokens, database logic, or your callback route.
+- We are only ensuring the “start OAuth” step doesn’t get trapped by React Router on the published domain.
+- This solution works even if the hosting platform doesn’t special-case the broker path on custom domains.
 
-### Fixed Code
-```typescript
-const { error } = await lovable.auth.signInWithOAuth('google', {
-  redirect_uri: `${window.location.origin}/auth/callback`,  // ✅ Correct
-});
-```
-
----
-
-## Files to Modify
-| File | Change |
-|------|--------|
-| `src/pages/auth/Signup.tsx` | Update Google OAuth redirect_uri (line 179) |
-| `src/pages/auth/Signup.tsx` | Update Apple OAuth redirect_uri (line 221) |
-
-## Configuration Required
-After code changes, you must add your custom domain to the authentication settings in the Cloud Dashboard.
+## Files involved
+- New: `src/pages/auth/OAuthInitiateProxy.tsx`
+- Edit: `src/App.tsx` (add 2 routes)
+- Optional edit: `vite.config.ts` (Workbox navigation fallback denylist)
