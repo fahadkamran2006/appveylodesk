@@ -10,6 +10,7 @@ import { CreateProjectModal } from '@/components/projects/CreateProjectModal';
 import { EarningsChart } from '@/components/dashboard/EarningsChart';
 import { ClientAcquisitionChart } from '@/components/dashboard/ClientAcquisitionChart';
 import { ProposalsSection } from '@/components/admin/ProposalsSection';
+import { VideoRequestsSection } from '@/components/admin/VideoRequestsSection';
 import { Plus, Clock, DollarSign, FolderKanban, Receipt, Users, Loader2 } from 'lucide-react';
 import { format, isPast, parseISO } from 'date-fns';
 const AdminDashboard = () => {
@@ -37,9 +38,14 @@ const AdminDashboard = () => {
   } = useAdminAnalytics();
   const [createModalOpen, setCreateModalOpen] = useState(false);
 
-  // Filter proposals from projects
+  // Filter proposals and video requests from projects
   const proposals = useMemo(
     () => projects.filter((p) => p.status === 'proposal'),
+    [projects]
+  );
+  
+  const videoRequests = useMemo(
+    () => projects.filter((p) => p.status === 'request'),
     [projects]
   );
   useEffect(() => {
@@ -165,6 +171,20 @@ const AdminDashboard = () => {
             <div className="mb-6 md:mb-8">
               <ProposalsSection
                 proposals={proposals}
+                loading={projectsLoading}
+                onRefresh={() => {
+                  fetchProjects();
+                  refetchStats();
+                }}
+              />
+            </div>
+          )}
+
+          {/* Video Requests Section - shown when there are pending requests */}
+          {videoRequests.length > 0 && (
+            <div className="mb-6 md:mb-8">
+              <VideoRequestsSection
+                requests={videoRequests}
                 loading={projectsLoading}
                 onRefresh={() => {
                   fetchProjects();
