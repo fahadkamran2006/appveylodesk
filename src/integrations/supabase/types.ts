@@ -18,9 +18,12 @@ export type Database = {
         Row: {
           billing_interval: string | null
           branding: Json | null
+          business_address: string | null
+          business_name: string | null
           created_at: string
           created_by: string | null
           id: string
+          invoice_footer: string | null
           lemon_squeezy_customer_id: string | null
           logo_url: string | null
           max_clients: number
@@ -30,14 +33,18 @@ export type Database = {
           storage_used_bytes: number
           subscription_ends_at: string | null
           subscription_plan: string
+          tax_id: string | null
           updated_at: string
         }
         Insert: {
           billing_interval?: string | null
           branding?: Json | null
+          business_address?: string | null
+          business_name?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
+          invoice_footer?: string | null
           lemon_squeezy_customer_id?: string | null
           logo_url?: string | null
           max_clients?: number
@@ -47,14 +54,18 @@ export type Database = {
           storage_used_bytes?: number
           subscription_ends_at?: string | null
           subscription_plan?: string
+          tax_id?: string | null
           updated_at?: string
         }
         Update: {
           billing_interval?: string | null
           branding?: Json | null
+          business_address?: string | null
+          business_name?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
+          invoice_footer?: string | null
           lemon_squeezy_customer_id?: string | null
           logo_url?: string | null
           max_clients?: number
@@ -64,6 +75,7 @@ export type Database = {
           storage_used_bytes?: number
           subscription_ends_at?: string | null
           subscription_plan?: string
+          tax_id?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -1129,6 +1141,7 @@ export type Database = {
         | "cancelled"
         | "paid"
         | "archived"
+        | "request"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1280,6 +1293,7 @@ export const Constants = {
         "cancelled",
         "paid",
         "archived",
+        "request",
       ],
     },
   },

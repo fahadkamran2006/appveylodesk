@@ -11,6 +11,7 @@ import { AvatarUpload } from '@/components/settings/AvatarUpload';
 import { StorageManagement } from '@/components/settings/StorageManagement';
 import { SubscriptionSettings } from '@/components/settings/SubscriptionSettings';
 import { BrandingSettings } from '@/components/settings/BrandingSettings';
+import { LegalSettings } from '@/components/settings/LegalSettings';
 import { NotificationSettings } from '@/components/settings/NotificationSettings';
 import { PaymentMethodsSettings } from '@/components/settings/PaymentMethodsSettings';
 import { InstallPWAButton } from '@/components/InstallPWAButton';
@@ -240,6 +241,11 @@ const SettingsPage = () => {
               {/* Branding Settings - Admin Only */}
               {userRole === 'admin' && (
                 <BrandingSettings />
+              )}
+
+              {/* Legal & Compliance Settings - Admin Only */}
+              {userRole === 'admin' && (
+                <LegalSettings />
               )}
             </TabsContent>
 

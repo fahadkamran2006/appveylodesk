@@ -5,14 +5,12 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
-import { Clock, Download, FolderKanban, Receipt, Plus, Sparkles, Video, Eye, FileText } from 'lucide-react';
+import { Clock, Download, FolderKanban, Receipt, Video, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ClientCreateProjectModal } from '@/components/projects/ClientCreateProjectModal';
-import { ClientProposalModal } from '@/components/projects/ClientProposalModal';
-import { RequestVideoModal } from '@/components/projects/RequestVideoModal';
+import { ClientRequestVideoModal } from '@/components/projects/ClientRequestVideoModal';
 import { cn } from '@/lib/utils';
 
 interface ProjectContainer {
@@ -47,7 +45,6 @@ const ClientDashboard = () => {
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [createProjectModalOpen, setCreateProjectModalOpen] = useState(false);
   const [requestVideoModalOpen, setRequestVideoModalOpen] = useState(false);
 
   useEffect(() => {
@@ -199,44 +196,23 @@ const ClientDashboard = () => {
           <p className="text-sm md:text-base text-muted-foreground">Track your projects and manage invoices.</p>
         </div>
 
-        {/* Hero: Request Project / Request Video Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 md:mb-8">
-          {/* Request New Project */}
-          <div 
-            onClick={() => setCreateProjectModalOpen(true)}
-            className="p-4 md:p-6 rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-2 border-dashed border-primary/30 hover:border-primary/50 hover:bg-primary/10 cursor-pointer transition-all duration-300 group"
-          >
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
-                <FolderKanban className="w-6 h-6 text-primary" />
-              </div>
-              <div className="flex-1">
-                <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-                  Request New Project
-                  <Sparkles className="w-4 h-4 text-primary" />
-                </h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Start a new project like a YouTube channel, podcast, or video series
-                </p>
-              </div>
-            </div>
-          </div>
-
+        {/* Hero: Request Video Card */}
+        <div className="mb-6 md:mb-8">
           {/* Request New Video */}
           <div 
             onClick={() => setRequestVideoModalOpen(true)}
-            className="p-4 md:p-6 rounded-2xl bg-gradient-to-br from-accent/10 via-accent/5 to-transparent border-2 border-dashed border-accent/30 hover:border-accent/50 hover:bg-accent/10 cursor-pointer transition-all duration-300 group"
+            className="p-4 md:p-6 rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-2 border-dashed border-primary/30 hover:border-primary/50 hover:bg-primary/10 cursor-pointer transition-all duration-300 group max-w-lg"
           >
             <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
-                <Video className="w-6 h-6 text-accent" />
+              <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
+                <Video className="w-6 h-6 text-primary" />
               </div>
               <div className="flex-1">
                 <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
                   Request New Video
                 </h2>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Add a video to one of your existing projects
+                  Submit a video request for your agency to review and start working on
                 </p>
               </div>
             </div>
@@ -306,11 +282,10 @@ const ClientDashboard = () => {
           {projectContainers.length === 0 ? (
             <div className="text-center py-12 rounded-xl border border-dashed border-border">
               <FolderKanban className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />
-              <p className="text-muted-foreground mb-4">No projects yet.</p>
-              <Button variant="hero" onClick={() => setCreateProjectModalOpen(true)}>
-                <FolderKanban className="w-4 h-4 mr-2" />
-                Request Your First Project
-              </Button>
+              <p className="text-muted-foreground mb-2">No projects yet.</p>
+              <p className="text-sm text-muted-foreground">
+                Your admin will create projects for you. Once you have projects, you can request videos.
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -434,15 +409,8 @@ const ClientDashboard = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Create Project Modal */}
-      <ClientCreateProjectModal
-        open={createProjectModalOpen}
-        onOpenChange={setCreateProjectModalOpen}
-        onSuccess={fetchData}
-      />
-
       {/* Request Video Modal */}
-      <RequestVideoModal
+      <ClientRequestVideoModal
         open={requestVideoModalOpen}
         onOpenChange={setRequestVideoModalOpen}
         onSuccess={fetchData}
