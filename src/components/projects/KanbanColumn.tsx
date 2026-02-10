@@ -2,7 +2,7 @@ import { Droppable, Draggable } from '@hello-pangea/dnd';
 import { ProjectCard } from './ProjectCard';
 import { cn } from '@/lib/utils';
 
-export type ProjectStatus = 'proposal' | 'backlog' | 'in_progress' | 'review' | 'done' | 'paid' | 'archived' | 'cancelled';
+export type ProjectStatus = 'request' | 'proposal' | 'backlog' | 'in_progress' | 'review' | 'done' | 'paid' | 'archived' | 'cancelled';
 
 export interface Project {
   id: string;
@@ -26,6 +26,11 @@ interface KanbanColumnProps {
 }
 
 const columnStyles: Record<ProjectStatus, { bg: string; border: string; dot: string }> = {
+  request: {
+    bg: 'bg-warning/5',
+    border: 'border-warning/20',
+    dot: 'bg-warning',
+  },
   proposal: {
     bg: 'bg-purple-500/5',
     border: 'border-purple-500/20',

@@ -16,6 +16,7 @@ interface ProjectListViewProps {
 }
 
 const statusConfig: Record<ProjectStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+  request: { label: 'Requested', variant: 'outline' },
   proposal: { label: 'Proposal', variant: 'outline' },
   backlog: { label: 'Backlog', variant: 'secondary' },
   in_progress: { label: 'In Progress', variant: 'default' },
