@@ -88,19 +88,35 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Extract agency ID from custom data
-    const agencyId = customData.agency_id;
+    const subscriptionData = event.data?.attributes;
+    const customerId = subscriptionData?.customer_id?.toString();
+
+    // Extract agency ID from custom data OR look up by customer ID
+    let agencyId = customData.agency_id;
+    
+    if (!agencyId && customerId) {
+      console.log(`No agency_id in custom_data, looking up by customer_id: ${customerId}`);
+      const { data: agency, error: lookupError } = await supabase
+        .from("agencies")
+        .select("id")
+        .eq("lemon_squeezy_customer_id", customerId)
+        .maybeSingle();
+      
+      if (lookupError) {
+        console.error("Error looking up agency by customer_id:", lookupError);
+      }
+      agencyId = agency?.id;
+    }
+
     if (!agencyId) {
-      console.error("No agency_id in custom data");
+      console.error("Could not determine agency_id from custom_data or customer_id");
       return new Response(JSON.stringify({ error: "Missing agency_id" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const subscriptionData = event.data?.attributes;
     const variantId = subscriptionData?.variant_id?.toString();
-    const customerId = subscriptionData?.customer_id?.toString();
     const productName = subscriptionData?.product_name?.toLowerCase() || "";
     const variantName = subscriptionData?.variant_name?.toLowerCase() || "";
     
