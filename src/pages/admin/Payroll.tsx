@@ -5,6 +5,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
 import { Button } from '@/components/ui/button';
 import { AddBonusModal } from '@/components/admin/AddBonusModal';
+import { PayrollPaymentModal } from '@/components/admin/PayrollPaymentModal';
+import { AddBalanceModal } from '@/components/admin/AddBalanceModal';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   DollarSign, 
@@ -13,7 +15,11 @@ import {
   Gift,
   Loader2,
   TrendingUp,
-  Clock
+  CheckCircle2,
+  Wallet,
+  History,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +38,21 @@ interface EditorPayroll {
   accumulated_bonus: number;
   freelance_earnings: number;
   completed_videos: number;
+  isPaidThisMonth: boolean;
+  balanceOwed: number;
+}
+
+interface PaymentHistoryRecord {
+  id: string;
+  editor_id: string;
+  period_month: number;
+  period_year: number;
+  base_amount: number;
+  bonus_amount: number;
+  total_amount: number;
+  status: string;
+  paid_at: string | null;
+  note: string | null;
 }
 
 const AdminPayroll = () => {
@@ -39,8 +60,13 @@ const AdminPayroll = () => {
   const navigate = useNavigate();
   const [editors, setEditors] = useState<EditorPayroll[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [agencyId, setAgencyId] = useState<string>('');
   const [bonusModalOpen, setBonusModalOpen] = useState(false);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [balanceModalOpen, setBalanceModalOpen] = useState(false);
   const [selectedEditor, setSelectedEditor] = useState<EditorPayroll | null>(null);
+  const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryRecord[]>([]);
+  const [expandedEditor, setExpandedEditor] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -56,7 +82,6 @@ const AdminPayroll = () => {
 
     setIsLoading(true);
     try {
-      // Get user's agency_id
       const { data: userRoleData } = await supabase
         .from('user_roles')
         .select('agency_id')
@@ -68,13 +93,13 @@ const AdminPayroll = () => {
         return;
       }
 
-      const agencyId = userRoleData.agency_id;
+      const aid = userRoleData.agency_id;
+      setAgencyId(aid);
 
-      // Get all editors in agency
       const { data: editorRoles } = await supabase
         .from('user_roles')
         .select('user_id')
-        .eq('agency_id', agencyId)
+        .eq('agency_id', aid)
         .eq('role', 'editor');
 
       if (!editorRoles || editorRoles.length === 0) {
@@ -85,13 +110,11 @@ const AdminPayroll = () => {
 
       const editorIds = editorRoles.map(r => r.user_id);
 
-      // Get editor profiles with compensation data
       const { data: profiles } = await supabase
         .from('profiles')
         .select('id, full_name, email, avatar_url, employment_type, monthly_salary, accumulated_bonus')
         .in('id', editorIds);
 
-      // Get freelance earnings (completed videos this month)
       const startOfMonth = new Date();
       startOfMonth.setDate(1);
       startOfMonth.setHours(0, 0, 0, 0);
@@ -109,17 +132,13 @@ const AdminPayroll = () => {
         `)
         .in('editor_id', editorIds);
 
-      // Calculate earnings per editor
       const earningsMap = new Map<string, { freelanceEarnings: number; completedVideos: number }>();
       
       (projectEditors || []).forEach(pe => {
         const project = pe.project as any;
         if (!project) return;
-        
         const editorId = pe.editor_id;
         const current = earningsMap.get(editorId) || { freelanceEarnings: 0, completedVideos: 0 };
-        
-        // Count completed videos this month
         if (project.status === 'done' && project.completed_at) {
           const completedDate = new Date(project.completed_at);
           if (completedDate >= startOfMonth) {
@@ -127,11 +146,46 @@ const AdminPayroll = () => {
             current.completedVideos += 1;
           }
         }
-        
         earningsMap.set(editorId, current);
       });
 
-      // Combine data
+      // Fetch payment status for this month
+      const now = new Date();
+      const currentMonth = now.getMonth() + 1;
+      const currentYear = now.getFullYear();
+
+      const { data: paymentsThisMonth } = await supabase
+        .from('payroll_payments')
+        .select('editor_id, status')
+        .eq('agency_id', aid)
+        .eq('period_month', currentMonth)
+        .eq('period_year', currentYear)
+        .eq('status', 'paid');
+
+      const paidSet = new Set((paymentsThisMonth || []).map(p => p.editor_id));
+
+      // Fetch balances
+      const { data: balancesData } = await supabase
+        .from('editor_balances')
+        .select('editor_id, amount, type')
+        .eq('agency_id', aid);
+
+      const balanceMap = new Map<string, number>();
+      (balancesData || []).forEach((b: any) => {
+        const current = balanceMap.get(b.editor_id) || 0;
+        balanceMap.set(b.editor_id, current + (b.type === 'owed' ? b.amount : -b.amount));
+      });
+
+      // Fetch all payment history
+      const { data: allPayments } = await supabase
+        .from('payroll_payments')
+        .select('*')
+        .eq('agency_id', aid)
+        .order('period_year', { ascending: false })
+        .order('period_month', { ascending: false });
+
+      setPaymentHistory((allPayments || []) as PaymentHistoryRecord[]);
+
       const payrollData: EditorPayroll[] = (profiles || []).map(profile => {
         const earnings = earningsMap.get(profile.id) || { freelanceEarnings: 0, completedVideos: 0 };
         return {
@@ -144,6 +198,8 @@ const AdminPayroll = () => {
           accumulated_bonus: profile.accumulated_bonus || 0,
           freelance_earnings: earnings.freelanceEarnings,
           completed_videos: earnings.completedVideos,
+          isPaidThisMonth: paidSet.has(profile.id),
+          balanceOwed: balanceMap.get(profile.id) || 0,
         };
       });
 
@@ -166,26 +222,37 @@ const AdminPayroll = () => {
     setBonusModalOpen(true);
   };
 
-  // Calculate totals
+  const handleMarkPaid = (editor: EditorPayroll) => {
+    setSelectedEditor(editor);
+    setPaymentModalOpen(true);
+  };
+
+  const handleAddBalance = (editor: EditorPayroll) => {
+    setSelectedEditor(editor);
+    setBalanceModalOpen(true);
+  };
+
   const totals = useMemo(() => {
     const freelancers = editors.filter(e => e.employment_type === 'freelance');
     const salaried = editors.filter(e => e.employment_type === 'salaried');
-
     return {
       freelancerCount: freelancers.length,
       salariedCount: salaried.length,
       freelanceTotal: freelancers.reduce((sum, e) => sum + e.freelance_earnings, 0),
       salaryTotal: salaried.reduce((sum, e) => sum + (e.monthly_salary || 0) + e.accumulated_bonus, 0),
-      bonusTotal: salaried.reduce((sum, e) => sum + e.accumulated_bonus, 0),
+      paidCount: editors.filter(e => e.isPaidThisMonth).length,
+      unpaidCount: editors.filter(e => !e.isPaidThisMonth).length,
     };
   }, [editors]);
 
   const getInitials = (name: string | null, email: string) => {
-    if (name) {
-      return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-    }
+    if (name) return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
     return email.slice(0, 2).toUpperCase();
   };
+
+  const monthNames = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  const getEditorHistory = (editorId: string) => paymentHistory.filter(p => p.editor_id === editorId);
 
   if (loading) {
     return (
@@ -208,12 +275,9 @@ const AdminPayroll = () => {
         </div>
 
         <main className="flex-1 p-4 md:p-8 pb-24 md:pb-8">
-          {/* Header */}
           <div className="mb-8">
             <h1 className="text-2xl md:text-3xl font-bold text-foreground">Payroll</h1>
-            <p className="text-muted-foreground mt-1">
-              Manage editor compensation and bonuses
-            </p>
+            <p className="text-muted-foreground mt-1">Manage editor compensation, payments, and balances</p>
           </div>
 
           {isLoading ? (
@@ -222,55 +286,55 @@ const AdminPayroll = () => {
             </div>
           ) : (
             <>
-              {/* Stats Overview */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-                <div className="glass-card rounded-xl p-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <Users className="w-6 h-6 text-primary" />
+              {/* Stats */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div className="glass-card rounded-xl p-5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Users className="w-5 h-5 text-primary" />
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">Freelancers</p>
-                      <p className="text-2xl font-bold text-foreground">{totals.freelancerCount}</p>
+                      <p className="text-xs text-muted-foreground">Team</p>
+                      <p className="text-xl font-bold text-foreground">{editors.length}</p>
                     </div>
                   </div>
                 </div>
-                <div className="glass-card rounded-xl p-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-lg bg-secondary/10 flex items-center justify-center">
-                      <Briefcase className="w-6 h-6 text-secondary-foreground" />
+                <div className="glass-card rounded-xl p-5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
+                      <CheckCircle2 className="w-5 h-5 text-success" />
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">Salaried Staff</p>
-                      <p className="text-2xl font-bold text-foreground">{totals.salariedCount}</p>
+                      <p className="text-xs text-muted-foreground">Paid</p>
+                      <p className="text-xl font-bold text-foreground">{totals.paidCount}</p>
                     </div>
                   </div>
                 </div>
-                <div className="glass-card rounded-xl p-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-lg bg-success/10 flex items-center justify-center">
-                      <TrendingUp className="w-6 h-6 text-success" />
+                <div className="glass-card rounded-xl p-5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center">
+                      <DollarSign className="w-5 h-5 text-warning" />
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">Freelance Payouts</p>
-                      <p className="text-2xl font-bold text-foreground">${totals.freelanceTotal.toLocaleString()}</p>
+                      <p className="text-xs text-muted-foreground">Unpaid</p>
+                      <p className="text-xl font-bold text-foreground">{totals.unpaidCount}</p>
                     </div>
                   </div>
                 </div>
-                <div className="glass-card rounded-xl p-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-lg bg-warning/10 flex items-center justify-center">
-                      <DollarSign className="w-6 h-6 text-warning" />
+                <div className="glass-card rounded-xl p-5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <TrendingUp className="w-5 h-5 text-primary" />
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">Salary + Bonuses</p>
-                      <p className="text-2xl font-bold text-foreground">${totals.salaryTotal.toLocaleString()}</p>
+                      <p className="text-xs text-muted-foreground">Total Payroll</p>
+                      <p className="text-xl font-bold text-foreground">${(totals.freelanceTotal + totals.salaryTotal).toLocaleString()}</p>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Editors Table */}
+              {/* Payroll Table */}
               <div className="glass-card rounded-xl overflow-hidden">
                 <div className="p-6 border-b border-border/50">
                   <h2 className="text-lg font-semibold text-foreground">This Month's Payroll</h2>
@@ -291,90 +355,165 @@ const AdminPayroll = () => {
                         <tr>
                           <th className="text-left p-4 text-sm font-medium text-muted-foreground">Editor</th>
                           <th className="text-left p-4 text-sm font-medium text-muted-foreground">Type</th>
-                          <th className="text-right p-4 text-sm font-medium text-muted-foreground">Base Pay</th>
+                          <th className="text-right p-4 text-sm font-medium text-muted-foreground">Base</th>
                           <th className="text-right p-4 text-sm font-medium text-muted-foreground">Bonus</th>
                           <th className="text-right p-4 text-sm font-medium text-muted-foreground">Total</th>
+                          <th className="text-center p-4 text-sm font-medium text-muted-foreground">Status</th>
+                          <th className="text-right p-4 text-sm font-medium text-muted-foreground">Owed</th>
                           <th className="text-right p-4 text-sm font-medium text-muted-foreground">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border/50">
                         {editors.map((editor) => {
                           const isSalaried = editor.employment_type === 'salaried';
-                          const basePay = isSalaried 
-                            ? (editor.monthly_salary || 0)
-                            : editor.freelance_earnings;
+                          const basePay = isSalaried ? (editor.monthly_salary || 0) : editor.freelance_earnings;
                           const bonus = isSalaried ? editor.accumulated_bonus : 0;
                           const total = basePay + bonus;
+                          const history = getEditorHistory(editor.id);
+                          const isExpanded = expandedEditor === editor.id;
 
                           return (
-                            <tr key={editor.id} className="hover:bg-muted/20">
-                              <td className="p-4">
-                                <div className="flex items-center gap-3">
-                                  <Avatar className="w-10 h-10">
-                                    <AvatarImage src={editor.avatar_url || undefined} />
-                                    <AvatarFallback className="bg-primary/20 text-primary">
-                                      {getInitials(editor.full_name, editor.email)}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <div>
-                                    <p className="font-medium text-foreground">
-                                      {editor.full_name || 'Unnamed'}
-                                    </p>
-                                    <p className="text-sm text-muted-foreground">{editor.email}</p>
+                            <>
+                              <tr key={editor.id} className="hover:bg-muted/20">
+                                <td className="p-4">
+                                  <div className="flex items-center gap-3">
+                                    <Avatar className="w-9 h-9">
+                                      <AvatarImage src={editor.avatar_url || undefined} />
+                                      <AvatarFallback className="bg-primary/20 text-primary text-xs">
+                                        {getInitials(editor.full_name, editor.email)}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                      <p className="font-medium text-foreground text-sm">{editor.full_name || 'Unnamed'}</p>
+                                      <p className="text-xs text-muted-foreground">{editor.email}</p>
+                                    </div>
                                   </div>
-                                </div>
-                              </td>
-                              <td className="p-4">
-                                <Badge
-                                  variant="secondary"
-                                  className={cn(
+                                </td>
+                                <td className="p-4">
+                                  <Badge variant="secondary" className={cn(
+                                    "text-xs",
                                     isSalaried
                                       ? 'bg-primary/10 text-primary border border-primary/20'
                                       : 'bg-muted text-muted-foreground'
-                                  )}
-                                >
-                                  {isSalaried ? 'Salaried' : 'Freelance'}
-                                </Badge>
-                                {!isSalaried && editor.completed_videos > 0 && (
-                                  <span className="text-xs text-muted-foreground ml-2">
-                                    {editor.completed_videos} videos
-                                  </span>
-                                )}
-                              </td>
-                              <td className="p-4 text-right font-medium text-foreground">
-                                ${basePay.toLocaleString()}
-                              </td>
-                              <td className="p-4 text-right">
-                                {isSalaried ? (
-                                  <span className={cn(
-                                    "font-medium",
-                                    bonus > 0 ? "text-success" : "text-muted-foreground"
                                   )}>
+                                    {isSalaried ? 'Salaried' : 'Freelance'}
+                                  </Badge>
+                                </td>
+                                <td className="p-4 text-right font-medium text-foreground text-sm">${basePay.toLocaleString()}</td>
+                                <td className="p-4 text-right text-sm">
+                                  <span className={cn("font-medium", bonus > 0 ? "text-success" : "text-muted-foreground")}>
                                     {bonus > 0 ? `+$${bonus.toLocaleString()}` : '-'}
                                   </span>
-                                ) : (
-                                  <span className="text-muted-foreground">-</span>
-                                )}
-                              </td>
-                              <td className="p-4 text-right">
-                                <span className="font-bold text-foreground text-lg">
-                                  ${total.toLocaleString()}
-                                </span>
-                              </td>
-                              <td className="p-4 text-right">
-                                {isSalaried && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleAddBonus(editor)}
-                                    className="gap-1"
-                                  >
-                                    <Gift className="w-4 h-4" />
-                                    Add Bonus
-                                  </Button>
-                                )}
-                              </td>
-                            </tr>
+                                </td>
+                                <td className="p-4 text-right font-bold text-foreground">${total.toLocaleString()}</td>
+                                <td className="p-4 text-center">
+                                  <Badge variant="secondary" className={cn(
+                                    "text-xs",
+                                    editor.isPaidThisMonth
+                                      ? 'bg-success/10 text-success border border-success/20'
+                                      : 'bg-warning/10 text-warning border border-warning/20'
+                                  )}>
+                                    {editor.isPaidThisMonth ? 'Paid' : 'Unpaid'}
+                                  </Badge>
+                                </td>
+                                <td className="p-4 text-right text-sm">
+                                  <span className={cn(
+                                    "font-medium",
+                                    editor.balanceOwed > 0 ? "text-primary" : "text-muted-foreground"
+                                  )}>
+                                    {editor.balanceOwed > 0 ? `$${editor.balanceOwed.toLocaleString()}` : '-'}
+                                  </span>
+                                </td>
+                                <td className="p-4 text-right">
+                                  <div className="flex items-center justify-end gap-1 flex-wrap">
+                                    {!editor.isPaidThisMonth && (
+                                      <Button variant="outline" size="sm" className="gap-1 text-xs h-7" onClick={() => handleMarkPaid(editor)}>
+                                        <CheckCircle2 className="w-3 h-3" />
+                                        Pay
+                                      </Button>
+                                    )}
+                                    {isSalaried && (
+                                      <Button variant="outline" size="sm" className="gap-1 text-xs h-7" onClick={() => handleAddBonus(editor)}>
+                                        <Gift className="w-3 h-3" />
+                                        Bonus
+                                      </Button>
+                                    )}
+                                    <Button variant="outline" size="sm" className="gap-1 text-xs h-7" onClick={() => handleAddBalance(editor)}>
+                                      <Wallet className="w-3 h-3" />
+                                      Balance
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 w-7 p-0"
+                                      onClick={() => setExpandedEditor(isExpanded ? null : editor.id)}
+                                    >
+                                      {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                    </Button>
+                                  </div>
+                                </td>
+                              </tr>
+                              {/* Expandable history row */}
+                              {isExpanded && (
+                                <tr key={`${editor.id}-history`}>
+                                  <td colSpan={8} className="p-0">
+                                    <div className="bg-muted/20 p-4 border-t border-border/30">
+                                      <div className="flex items-center gap-2 mb-3">
+                                        <History className="w-4 h-4 text-muted-foreground" />
+                                        <h4 className="text-sm font-semibold text-foreground">Payment History</h4>
+                                      </div>
+                                      {history.length === 0 ? (
+                                        <p className="text-sm text-muted-foreground">No payment records yet.</p>
+                                      ) : (
+                                        <div className="overflow-x-auto">
+                                          <table className="w-full text-sm">
+                                            <thead>
+                                              <tr className="text-muted-foreground">
+                                                <th className="text-left p-2 font-medium">Period</th>
+                                                <th className="text-right p-2 font-medium">Base</th>
+                                                <th className="text-right p-2 font-medium">Bonus</th>
+                                                <th className="text-right p-2 font-medium">Total</th>
+                                                <th className="text-left p-2 font-medium">Status</th>
+                                                <th className="text-left p-2 font-medium">Paid At</th>
+                                                <th className="text-left p-2 font-medium">Note</th>
+                                              </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-border/30">
+                                              {history.map(h => (
+                                                <tr key={h.id}>
+                                                  <td className="p-2 text-foreground">{monthNames[h.period_month]} {h.period_year}</td>
+                                                  <td className="p-2 text-right text-foreground">${h.base_amount.toLocaleString()}</td>
+                                                  <td className="p-2 text-right">
+                                                    <span className={cn(h.bonus_amount > 0 ? "text-success" : "text-muted-foreground")}>
+                                                      {h.bonus_amount > 0 ? `+$${h.bonus_amount.toLocaleString()}` : '-'}
+                                                    </span>
+                                                  </td>
+                                                  <td className="p-2 text-right font-semibold text-foreground">${h.total_amount.toLocaleString()}</td>
+                                                  <td className="p-2">
+                                                    <Badge variant="secondary" className={cn(
+                                                      "text-xs",
+                                                      h.status === 'paid'
+                                                        ? 'bg-success/10 text-success border border-success/20'
+                                                        : 'bg-warning/10 text-warning border border-warning/20'
+                                                    )}>
+                                                      {h.status === 'paid' ? 'Paid' : 'Unpaid'}
+                                                    </Badge>
+                                                  </td>
+                                                  <td className="p-2 text-muted-foreground">
+                                                    {h.paid_at ? new Date(h.paid_at).toLocaleDateString() : '-'}
+                                                  </td>
+                                                  <td className="p-2 text-muted-foreground max-w-[150px] truncate">{h.note || '-'}</td>
+                                                </tr>
+                                              ))}
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </>
                           );
                         })}
                       </tbody>
@@ -386,7 +525,7 @@ const AdminPayroll = () => {
                           <td className="p-4 text-right font-bold text-primary text-xl">
                             ${(totals.freelanceTotal + totals.salaryTotal).toLocaleString()}
                           </td>
-                          <td></td>
+                          <td colSpan={3}></td>
                         </tr>
                       </tfoot>
                     </table>
@@ -398,11 +537,24 @@ const AdminPayroll = () => {
         </main>
       </div>
 
-      {/* Add Bonus Modal */}
       <AddBonusModal
         open={bonusModalOpen}
         onOpenChange={setBonusModalOpen}
         editor={selectedEditor}
+        onSuccess={fetchPayrollData}
+      />
+      <PayrollPaymentModal
+        open={paymentModalOpen}
+        onOpenChange={setPaymentModalOpen}
+        editor={selectedEditor}
+        agencyId={agencyId}
+        onSuccess={fetchPayrollData}
+      />
+      <AddBalanceModal
+        open={balanceModalOpen}
+        onOpenChange={setBalanceModalOpen}
+        editor={selectedEditor}
+        agencyId={agencyId}
         onSuccess={fetchPayrollData}
       />
     </>

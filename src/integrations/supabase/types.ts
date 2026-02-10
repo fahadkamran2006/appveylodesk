@@ -432,6 +432,50 @@ export type Database = {
           },
         ]
       }
+      editor_balances: {
+        Row: {
+          agency_id: string
+          amount: number
+          created_at: string
+          editor_id: string
+          id: string
+          label: string
+          note: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          agency_id: string
+          amount?: number
+          created_at?: string
+          editor_id: string
+          id?: string
+          label: string
+          note?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          agency_id?: string
+          amount?: number
+          created_at?: string
+          editor_id?: string
+          id?: string
+          label?: string
+          note?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "editor_balances_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_line_items: {
         Row: {
           amount: number
@@ -808,6 +852,65 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "payment_methods_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payroll_payments: {
+        Row: {
+          agency_id: string
+          base_amount: number
+          bonus_amount: number
+          created_at: string
+          editor_id: string
+          id: string
+          note: string | null
+          paid_at: string | null
+          paid_by: string | null
+          period_month: number
+          period_year: number
+          status: string
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          agency_id: string
+          base_amount?: number
+          bonus_amount?: number
+          created_at?: string
+          editor_id: string
+          id?: string
+          note?: string | null
+          paid_at?: string | null
+          paid_by?: string | null
+          period_month: number
+          period_year: number
+          status?: string
+          total_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          agency_id?: string
+          base_amount?: number
+          bonus_amount?: number
+          created_at?: string
+          editor_id?: string
+          id?: string
+          note?: string | null
+          paid_at?: string | null
+          paid_by?: string | null
+          period_month?: number
+          period_year?: number
+          status?: string
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payroll_payments_agency_id_fkey"
             columns: ["agency_id"]
             isOneToOne: false
             referencedRelation: "agencies"
