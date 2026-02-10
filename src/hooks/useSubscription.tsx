@@ -108,16 +108,16 @@ export const useSubscription = (): SubscriptionStatus => {
 // Checkout URL generator
 export const CHECKOUT_LINKS = {
   starter: {
-    monthly: 'https://veylodesk.lemonsqueezy.com/checkout/buy/7c7d7e08-aa11-4eb6-b1d3-d560f495c744?enabled=1262852',
-    yearly: 'https://veylodesk.lemonsqueezy.com/checkout/buy/b364418d-cf0d-48c7-b30b-37610ccd36b3?enabled=1262845',
+    monthly: 'https://veylodesk.lemonsqueezy.com/checkout/buy/bb7da811-c5c6-43aa-aec0-2cc3e8268a3e?enabled=1294953',
+    yearly: 'https://veylodesk.lemonsqueezy.com/checkout/buy/570a4f07-132e-4aac-9717-34e47aba61fa?enabled=1294952',
   },
   growth: {
-    monthly: 'https://veylodesk.lemonsqueezy.com/checkout/buy/ef1dbf59-856e-4577-959d-052786bd1e72?enabled=1263073',
-    yearly: 'https://veylodesk.lemonsqueezy.com/checkout/buy/3980ebc4-f83a-4148-a2b6-7635813f5b3e?enabled=1263072',
+    monthly: 'https://veylodesk.lemonsqueezy.com/checkout/buy/56b69aaf-41d8-44ff-beae-af5617e18673?enabled=1294944',
+    yearly: 'https://veylodesk.lemonsqueezy.com/checkout/buy/cc48914b-bd61-476f-9092-ff7a7f2096f2?enabled=1294943',
   },
   scale: {
-    monthly: 'https://veylodesk.lemonsqueezy.com/checkout/buy/abb70d87-9ff6-4f27-855a-3ff8da494882?enabled=1263145',
-    yearly: 'https://veylodesk.lemonsqueezy.com/checkout/buy/62f2b280-a789-48f2-a418-3a6a9713e2c3?enabled=1263144',
+    monthly: 'https://veylodesk.lemonsqueezy.com/checkout/buy/e3acb0e8-3321-402c-830b-99f7b431e847?enabled=1294947',
+    yearly: 'https://veylodesk.lemonsqueezy.com/checkout/buy/23af3ace-41d0-437c-9abf-f5449cf4a479?enabled=1294946',
   },
 };
 

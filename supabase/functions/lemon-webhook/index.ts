@@ -28,13 +28,12 @@ const STORAGE_ADDON_BYTES = 1099511627776;
 // Map Lemon Squeezy variant IDs to tiers
 // You'll need to update these with your actual variant IDs from Lemon Squeezy
 const VARIANT_TO_TIER: Record<string, { tier: string; interval: string }> = {
-  // Example mappings - replace with actual variant IDs
-  // starter_monthly: { tier: 'starter', interval: 'monthly' },
-  // starter_yearly: { tier: 'starter', interval: 'yearly' },
-  // growth_monthly: { tier: 'growth', interval: 'monthly' },
-  // growth_yearly: { tier: 'growth', interval: 'yearly' },
-  // scale_monthly: { tier: 'scale', interval: 'monthly' },
-  // scale_yearly: { tier: 'scale', interval: 'yearly' },
+  "1294953": { tier: "starter", interval: "monthly" },
+  "1294952": { tier: "starter", interval: "yearly" },
+  "1294944": { tier: "growth", interval: "monthly" },
+  "1294943": { tier: "growth", interval: "yearly" },
+  "1294947": { tier: "scale", interval: "monthly" },
+  "1294946": { tier: "scale", interval: "yearly" },
 };
 
 // Verify Lemon Squeezy webhook signature
