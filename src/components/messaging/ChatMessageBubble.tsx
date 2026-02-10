@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { Play, Maximize2, Check, CheckCheck, Reply, SmilePlus } from 'lucide-react';
+import { Play, Maximize2, Check, CheckCheck, Reply, Clock } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import DOMPurify from 'dompurify';
 import { EmojiPicker } from './EmojiPicker';
 import { MessageReactions } from './MessageReactions';
+import { motion } from 'framer-motion';
 
 interface Sender {
   id: string;
@@ -41,18 +42,40 @@ interface ChatMessageBubbleProps {
   isDM: boolean;
   isDelivered?: boolean;
   isRead?: boolean;
+  isOptimistic?: boolean;
+  isGrouped?: boolean;
+  isLastInGroup?: boolean;
   parentMessage?: Message | null;
   reactions?: ReactionSummary[];
   onReply?: (message: Message) => void;
   onReact?: (messageId: string, emoji: string) => void;
 }
 
+/** Convert URLs in plain text to clickable links */
+function linkifyText(text: string): string {
+  const urlRegex = /(https?:\/\/[^\s<]+)/g;
+  return text.replace(urlRegex, '<a href="$1" target="_blank" rel="noopener noreferrer" class="underline break-all">$1</a>');
+}
+
+/** Basic markdown: **bold**, *italic*, `code`, ```code blocks``` */
+function parseMarkdown(text: string): string {
+  // Code blocks first
+  let result = text.replace(/```([^`]+)```/g, '<code class="block bg-background/30 rounded px-2 py-1 text-xs font-mono my-1 whitespace-pre-wrap">$1</code>');
+  // Inline code
+  result = result.replace(/`([^`]+)`/g, '<code class="bg-background/30 rounded px-1 py-0.5 text-xs font-mono">$1</code>');
+  // Bold
+  result = result.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // Italic
+  result = result.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  return result;
+}
+
 function renderMessageContent(content: string) {
   const hasHtml = /<[^>]+>/.test(content);
   if (hasHtml) {
     const sanitized = DOMPurify.sanitize(content, {
-      ALLOWED_TAGS: ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 'a', 'ul', 'ol', 'li'],
-      ALLOWED_ATTR: ['href', 'target', 'rel'],
+      ALLOWED_TAGS: ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 'a', 'ul', 'ol', 'li', 'code'],
+      ALLOWED_ATTR: ['href', 'target', 'rel', 'class'],
     });
     return (
       <div
@@ -61,12 +84,23 @@ function renderMessageContent(content: string) {
       />
     );
   }
-  return <p className="text-sm whitespace-pre-wrap break-words">{content}</p>;
+  // Plain text: apply markdown then linkify
+  const processed = linkifyText(parseMarkdown(content));
+  return (
+    <div
+      className="text-sm whitespace-pre-wrap break-words"
+      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(processed, {
+        ALLOWED_TAGS: ['strong', 'b', 'em', 'i', 'code', 'a'],
+        ALLOWED_ATTR: ['href', 'target', 'rel', 'class'],
+      }) }}
+    />
+  );
 }
 
 export function ChatMessageBubble({
   message, isOwn, showAvatar, isMuted, isDM,
   isDelivered = true, isRead = false,
+  isOptimistic = false, isGrouped = false, isLastInGroup = true,
   parentMessage, reactions = [], onReply, onReact,
 }: ChatMessageBubbleProps) {
   const [videoPlaying, setVideoPlaying] = useState(false);
@@ -90,14 +124,25 @@ export function ChatMessageBubble({
 
   return (
     <>
-      <div
-        className={cn('group flex gap-3 relative', isOwn && 'flex-row-reverse', isMuted && 'opacity-50')}
+      <motion.div
+        layout="position"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: isOptimistic ? 0.5 : 1, y: 0 }}
+        exit={{ opacity: 0, y: -8 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
+        className={cn(
+          'group flex gap-3 relative',
+          isOwn && 'flex-row-reverse',
+          isMuted && 'opacity-50',
+          isGrouped ? 'mt-0.5' : 'mt-3',
+        )}
         onMouseEnter={() => setShowActions(true)}
         onMouseLeave={() => setShowActions(false)}
         onTouchStart={() => setShowActions(true)}
       >
+        {/* Avatar or spacer */}
         {showAvatar && !isOwn ? (
-          <Avatar className="w-8 h-8 border border-border/50 flex-shrink-0">
+          <Avatar className="w-8 h-8 border border-border/50 flex-shrink-0 mt-1">
             <AvatarImage src={message.sender.avatar_url || undefined} />
             <AvatarFallback className="bg-primary/20 text-primary text-xs">
               {getInitials(message.sender.full_name, message.sender.email)}
@@ -109,9 +154,9 @@ export function ChatMessageBubble({
 
         <div className="max-w-[70%]">
           {/* Hover Actions */}
-          {showActions && !isMuted && (
+          {showActions && !isMuted && !isOptimistic && (
             <div className={cn(
-              'flex items-center gap-0.5 mb-1',
+              'flex items-center gap-0.5 mb-0.5',
               isOwn ? 'justify-end' : 'justify-start'
             )}>
               {onReply && (
@@ -119,7 +164,7 @@ export function ChatMessageBubble({
                   onClick={() => onReply(message)}
                   className="p-1 rounded hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  <Reply className="w-4 h-4" />
+                  <Reply className="w-3.5 h-3.5" />
                 </button>
               )}
               {onReact && (
@@ -131,9 +176,14 @@ export function ChatMessageBubble({
           <div className={cn(
             'rounded-2xl overflow-hidden',
             isOwn
-              ? 'bg-primary text-primary-foreground rounded-br-md'
-              : 'bg-muted text-foreground rounded-bl-md'
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-muted text-foreground',
+            // Tighter radius on grouped edges
+            isOwn
+              ? (isGrouped ? 'rounded-tr-md' : '') + (isLastInGroup ? ' rounded-br-md' : '')
+              : (isGrouped ? 'rounded-tl-md' : '') + (isLastInGroup ? ' rounded-bl-md' : ''),
           )}>
+            {/* Sender name - only on first message in group */}
             {showAvatar && !isOwn && (
               <div className="px-4 pt-2">
                 <p className="text-xs font-medium opacity-70">
@@ -199,13 +249,19 @@ export function ChatMessageBubble({
             )}
 
             {/* Timestamp & Read Status */}
-            <div className={cn('px-4 pb-2 flex items-center justify-end gap-1', !message.content && hasAttachment && 'pt-1')}>
+            <div className={cn('px-4 pb-1.5 flex items-center justify-end gap-1', !message.content && hasAttachment && 'pt-1')}>
               <p className={cn('text-[10px]', isOwn ? 'text-primary-foreground/70' : 'text-muted-foreground')}>
                 {format(new Date(message.created_at), 'h:mm a')}
               </p>
               {isOwn && isDM && (
                 <span className={cn('flex items-center', isRead ? 'text-blue-400' : isOwn ? 'text-primary-foreground/70' : 'text-muted-foreground')}>
-                  {isRead ? <CheckCheck className="w-3.5 h-3.5" /> : isDelivered ? <Check className="w-3.5 h-3.5" /> : null}
+                  {isOptimistic ? (
+                    <Clock className="w-3 h-3" />
+                  ) : isRead ? (
+                    <CheckCheck className="w-3.5 h-3.5" />
+                  ) : isDelivered ? (
+                    <Check className="w-3.5 h-3.5" />
+                  ) : null}
                 </span>
               )}
             </div>
@@ -218,7 +274,7 @@ export function ChatMessageBubble({
             isOwn={isOwn}
           />
         </div>
-      </div>
+      </motion.div>
 
       {/* Image Lightbox */}
       <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>

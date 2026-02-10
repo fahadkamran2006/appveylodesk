@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Send, Lock, MoreVertical, VolumeX, Volume2, FolderKanban, MessageSquare, Trash2, ArrowLeft, Info } from 'lucide-react';
+import { Send, Lock, MoreVertical, VolumeX, Volume2, FolderKanban, MessageSquare, Trash2, ArrowLeft, Info, ArrowDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { useChannelMutes, useMessaging } from '@/hooks/useMessaging';
@@ -17,6 +17,7 @@ import { ChatAttachmentButton } from './ChatAttachmentButton';
 import { ChatMessageBubble } from './ChatMessageBubble';
 import { ChatInfoDrawer } from './ChatInfoDrawer';
 import { ReplyPreview } from './ReplyPreview';
+import { AnimatePresence } from 'framer-motion';
 
 interface Sender {
   id: string;
@@ -59,6 +60,15 @@ interface ChatWindowProps {
   showBackButton?: boolean;
 }
 
+const GROUP_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
+
+function shouldGroup(prev: Message | undefined, curr: Message): boolean {
+  if (!prev) return false;
+  if (prev.sender_id !== curr.sender_id) return false;
+  const diff = new Date(curr.created_at).getTime() - new Date(prev.created_at).getTime();
+  return diff < GROUP_THRESHOLD_MS;
+}
+
 export function ChatWindow({ channel, messages, loading, onSendMessage, onBack, showBackButton }: ChatWindowProps) {
   const { user, userRole } = useAuth();
   const { agencyId, refetch: refetchChannels } = useMessaging();
@@ -68,7 +78,12 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onBack, 
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showInfoDrawer, setShowInfoDrawer] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+  const [optimisticMessages, setOptimisticMessages] = useState<Message[]>([]);
+  const [isAtBottom, setIsAtBottom] = useState(true);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
   const { mutedUsers, muteUser, unmuteUser, isUserMuted } = useChannelMutes(channel?.id || null);
   const { typingUsers, onTyping, stopTyping } = useTypingIndicator(channel?.id || null);
   const { uploadChatAttachment, uploadProgress, cancelUpload } = useChatAttachments();
@@ -81,9 +96,50 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onBack, 
     ? messages.filter(m => new Date(m.created_at) > new Date(clearedAt))
     : messages;
 
+  // Merge real + optimistic, filter out optimistic once real arrives
+  const optimisticIds = new Set(optimisticMessages.map(m => m.id));
+  const realIds = new Set(visibleMessages.map(m => m.id));
+  const pendingOptimistic = optimisticMessages.filter(m => !realIds.has(m.id));
+  const allMessages = [...visibleMessages, ...pendingOptimistic];
+
+  // Remove confirmed optimistic messages
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
-  }, [visibleMessages, channel?.id]);
+    setOptimisticMessages(prev => prev.filter(m => !realIds.has(m.id)));
+  }, [messages]);
+
+  // Clear optimistic messages on channel change
+  useEffect(() => {
+    setOptimisticMessages([]);
+  }, [channel?.id]);
+
+  // Scroll tracking
+  const handleScroll = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const threshold = 100;
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+    setIsAtBottom(atBottom);
+  }, []);
+
+  // Auto-scroll to bottom when new messages arrive (only if already at bottom)
+  useEffect(() => {
+    if (isAtBottom) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [allMessages.length, isAtBottom]);
+
+  // Force scroll to bottom on channel change
+  useEffect(() => {
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
+      setIsAtBottom(true);
+    }, 50);
+  }, [channel?.id]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    setIsAtBottom(true);
+  };
 
   useEffect(() => {
     if (!channel || !user || channel.type !== 'dm' || visibleMessages.length === 0) return;
@@ -103,16 +159,40 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onBack, 
     setSending(true);
     stopTyping();
 
-    const success = await onSendMessage(
-      messageInput,
-      pendingAttachment?.url,
-      pendingAttachment?.type,
-      replyingTo?.id || null
-    );
-    if (success) {
+    const content = messageInput;
+    const attachment = pendingAttachment;
+    const parentId = replyingTo?.id || null;
+
+    // Create optimistic message
+    if (user) {
+      const optimistic: Message = {
+        id: `optimistic-${Date.now()}`,
+        content,
+        created_at: new Date().toISOString(),
+        sender_id: user.id,
+        sender: {
+          id: user.id,
+          full_name: user.user_metadata?.full_name || null,
+          email: user.email || '',
+          avatar_url: user.user_metadata?.avatar_url || null,
+        },
+        attachment_url: attachment?.url || null,
+        attachment_type: attachment?.type || null,
+        parent_id: parentId,
+      };
+      setOptimisticMessages(prev => [...prev, optimistic]);
       setMessageInput('');
       setPendingAttachment(null);
       setReplyingTo(null);
+      setIsAtBottom(true);
+    }
+
+    const success = await onSendMessage(content, attachment?.url, attachment?.type, parentId);
+    if (!success && user) {
+      // Remove failed optimistic message
+      setOptimisticMessages(prev => prev.filter(m => !m.id.startsWith('optimistic-')));
+      setMessageInput(content);
+      setPendingAttachment(attachment);
     }
     setSending(false);
   };
@@ -147,8 +227,7 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onBack, 
     return channel.project?.title || channel.name || 'Project Chat';
   };
 
-  // Build a map of messages by ID for reply lookups
-  const messageMap = new Map(visibleMessages.map(m => [m.id, m]));
+  const messageMap = new Map(allMessages.map(m => [m.id, m]));
 
   if (!channel) {
     return (
@@ -202,12 +281,9 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onBack, 
           </div>
 
           <div className="flex items-center gap-1">
-            {/* Info Button */}
             <Button variant="ghost" size="icon" onClick={() => setShowInfoDrawer(true)}>
               <Info className="w-5 h-5" />
             </Button>
-
-            {/* Actions Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon">
@@ -236,12 +312,16 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onBack, 
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4">
+        <div
+          ref={scrollContainerRef}
+          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto p-4 relative"
+        >
           {loading ? (
             <div className="h-full flex items-center justify-center">
               <div className="animate-pulse text-muted-foreground">Loading messages...</div>
             </div>
-          ) : visibleMessages.length === 0 ? (
+          ) : allMessages.length === 0 ? (
             <div className="h-full flex items-center justify-center">
               <div className="text-center text-muted-foreground">
                 <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
@@ -250,34 +330,51 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onBack, 
               </div>
             </div>
           ) : (
-            <div className="space-y-4">
-              {visibleMessages.map((message, index) => {
-                const isOwn = message.sender_id === user?.id;
-                const showAvatar = index === 0 || visibleMessages[index - 1].sender_id !== message.sender_id;
-                const isMuted = isUserMuted(message.sender_id);
-                const otherUserId = otherUser?.id;
-                const isRead = isDM && isOwn && otherUserId ? isMessageRead(message.id, otherUserId) : false;
-                const parentMessage = message.parent_id ? messageMap.get(message.parent_id) || null : null;
+            <div className="space-y-0.5">
+              <AnimatePresence initial={false}>
+                {allMessages.map((message, index) => {
+                  const isOwn = message.sender_id === user?.id;
+                  const isOptimistic = message.id.startsWith('optimistic-');
+                  const grouped = shouldGroup(allMessages[index - 1], message);
+                  const isLastInGroup = index === allMessages.length - 1 || !shouldGroup(message, allMessages[index + 1]);
+                  const isMuted = isUserMuted(message.sender_id);
+                  const otherUserId = otherUser?.id;
+                  const isRead = isDM && isOwn && otherUserId ? isMessageRead(message.id, otherUserId) : false;
+                  const parentMessage = message.parent_id ? messageMap.get(message.parent_id) || null : null;
 
-                return (
-                  <ChatMessageBubble
-                    key={message.id}
-                    message={message}
-                    isOwn={isOwn}
-                    showAvatar={showAvatar}
-                    isMuted={isMuted}
-                    isDM={isDM}
-                    isDelivered={true}
-                    isRead={isRead}
-                    parentMessage={parentMessage}
-                    reactions={getReactionSummary(message.id)}
-                    onReply={(msg) => setReplyingTo(msg)}
-                    onReact={(msgId, emoji) => toggleReaction(msgId, emoji)}
-                  />
-                );
-              })}
+                  return (
+                    <ChatMessageBubble
+                      key={message.id}
+                      message={message}
+                      isOwn={isOwn}
+                      showAvatar={!grouped}
+                      isMuted={isMuted}
+                      isDM={isDM}
+                      isDelivered={!isOptimistic}
+                      isRead={isRead}
+                      isOptimistic={isOptimistic}
+                      isGrouped={grouped}
+                      isLastInGroup={isLastInGroup}
+                      parentMessage={parentMessage}
+                      reactions={getReactionSummary(message.id)}
+                      onReply={(msg) => setReplyingTo(msg)}
+                      onReact={(msgId, emoji) => toggleReaction(msgId, emoji)}
+                    />
+                  );
+                })}
+              </AnimatePresence>
               <div ref={messagesEndRef} />
             </div>
+          )}
+
+          {/* Scroll to bottom FAB */}
+          {!isAtBottom && (
+            <button
+              onClick={scrollToBottom}
+              className="sticky bottom-2 left-1/2 -translate-x-1/2 z-10 w-9 h-9 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90 transition-all animate-fade-in mx-auto"
+            >
+              <ArrowDown className="w-4 h-4" />
+            </button>
           )}
         </div>
 
@@ -333,11 +430,11 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onBack, 
                 onKeyDown={handleKeyDown}
                 placeholder={pendingAttachment ? "Add a caption..." : replyingTo ? "Reply..." : "Type a message..."}
                 className="flex-1 bg-surface-elevated border-border/50"
-                disabled={sending || uploadProgress.uploading}
+                disabled={uploadProgress.uploading}
               />
               <Button
                 onClick={handleSend}
-                disabled={(!messageInput.trim() && !pendingAttachment) || sending || uploadProgress.uploading}
+                disabled={(!messageInput.trim() && !pendingAttachment) || uploadProgress.uploading}
                 size="icon"
               >
                 <Send className="w-4 h-4" />
