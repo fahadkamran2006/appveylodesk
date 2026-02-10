@@ -37,6 +37,10 @@ const Signup = () => {
     if (selectedPlan && ['starter', 'growth', 'scale'].includes(selectedPlan)) {
       localStorage.setItem('selected_plan', selectedPlan);
     }
+    const selectedInterval = searchParams.get('interval');
+    if (selectedInterval && ['monthly', 'yearly'].includes(selectedInterval)) {
+      localStorage.setItem('selected_interval', selectedInterval);
+    }
   }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
