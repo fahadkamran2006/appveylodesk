@@ -14,7 +14,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Video, Calendar, Check, X, Loader2 } from 'lucide-react';
+import { ProjectDetailSheet } from '@/components/projects/ProjectDetailSheet';
+import { Video, Calendar, Check, X, Loader2, Eye } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import type { Project } from '@/hooks/useProjects';
 
@@ -28,8 +29,10 @@ export function VideoRequestsSection({ requests, loading, onRefresh }: VideoRequ
   const { toast } = useToast();
   const [processing, setProcessing] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<Project | null>(null);
+  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
 
-  const handleApprove = async (request: Project) => {
+  const handleApprove = async (e: React.MouseEvent, request: Project) => {
+    e.stopPropagation();
     setProcessing(request.id);
     try {
       const { error } = await supabase
@@ -43,6 +46,7 @@ export function VideoRequestsSection({ requests, loading, onRefresh }: VideoRequ
         title: 'Request approved',
         description: `"${request.title}" has been moved to the backlog.`,
       });
+      setSelectedRequestId(null);
       onRefresh();
     } catch (error: any) {
       console.error('Error approving request:', error);
@@ -73,6 +77,7 @@ export function VideoRequestsSection({ requests, loading, onRefresh }: VideoRequ
         description: `"${deleteConfirm.title}" has been removed.`,
       });
       setDeleteConfirm(null);
+      setSelectedRequestId(null);
       onRefresh();
     } catch (error: any) {
       console.error('Error rejecting request:', error);
@@ -133,7 +138,8 @@ export function VideoRequestsSection({ requests, loading, onRefresh }: VideoRequ
             return (
               <div
                 key={request.id}
-                className="flex items-center justify-between p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                className="flex items-center justify-between p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer"
+                onClick={() => setSelectedRequestId(request.id)}
               >
                 <div className="flex items-center gap-4 min-w-0 flex-1">
                   <Avatar className="h-10 w-10 flex-shrink-0">
@@ -142,7 +148,10 @@ export function VideoRequestsSection({ requests, loading, onRefresh }: VideoRequ
                     </AvatarFallback>
                   </Avatar>
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-foreground truncate">{request.title}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-foreground truncate">{request.title}</p>
+                      <Eye className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                    </div>
                     <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
                       <span>{request.client_name || 'Unknown Client'}</span>
                       {request.due_date && (
@@ -163,7 +172,10 @@ export function VideoRequestsSection({ requests, loading, onRefresh }: VideoRequ
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setDeleteConfirm(request)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeleteConfirm(request);
+                    }}
                     disabled={isProcessing}
                     className="text-destructive hover:text-destructive hover:bg-destructive/10"
                   >
@@ -177,7 +189,7 @@ export function VideoRequestsSection({ requests, loading, onRefresh }: VideoRequ
                   <Button
                     variant="hero"
                     size="sm"
-                    onClick={() => handleApprove(request)}
+                    onClick={(e) => handleApprove(e, request)}
                     disabled={isProcessing}
                   >
                     {isProcessing ? (
@@ -193,6 +205,14 @@ export function VideoRequestsSection({ requests, loading, onRefresh }: VideoRequ
           })}
         </div>
       </div>
+
+      {/* Project Detail Sheet for viewing full request details */}
+      <ProjectDetailSheet
+        projectId={selectedRequestId}
+        open={!!selectedRequestId}
+        onOpenChange={(open) => !open && setSelectedRequestId(null)}
+        onProjectDeleted={onRefresh}
+      />
 
       {/* Reject Confirmation Dialog */}
       <AlertDialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
