@@ -200,7 +200,7 @@ export function ClientRequestVideoModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="glass-card border-border/50 sm:max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="glass-card border-border/50 sm:max-w-lg lg:max-w-2xl xl:max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-foreground">
             <Video className="w-5 h-5 text-primary" />
