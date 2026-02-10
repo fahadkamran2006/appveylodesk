@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, DragEvent } from 'react';
+import { isDefinitelyBunnyStreamUrl } from '@/lib/bunnyStream';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/hooks/useAuth';
@@ -588,6 +589,64 @@ const StoragePage = () => {
 
   const handleDownload = async (file: StorageFile) => {
     try {
+      // Route Bunny Stream videos through edge function proxy
+      const isBunnyStream = isDefinitelyBunnyStreamUrl(file.file_url);
+      
+      if (isBunnyStream) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const accessToken = sessionData?.session?.access_token;
+        if (!accessToken) {
+          toast({ title: 'Download failed', description: 'Not authenticated', variant: 'destructive' });
+          return;
+        }
+
+        toast({ title: 'Download started', description: `Preparing ${file.file_name}…` });
+
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const response = await fetch(`${supabaseUrl}/functions/v1/bunny-ops`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ action: 'download_stream', deliverableId: file.id }),
+        });
+
+        if (!response.ok) throw new Error(`Download failed: ${response.status}`);
+
+        const disposition = response.headers.get('Content-Disposition');
+        let filename = file.file_name || 'video.mp4';
+        if (disposition) {
+          const match = disposition.match(/filename="(.+)"/);
+          if (match) filename = match[1];
+        }
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        return;
+      }
+
+      // Bunny CDN (non-stream) files: use direct anchor download
+      if (file.file_url.includes('b-cdn.net') || file.file_url.includes('bunnycdn')) {
+        const a = document.createElement('a');
+        a.href = file.file_url;
+        a.download = file.file_name;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        return;
+      }
+
+      // Legacy Supabase storage files
       const urlParts = file.file_url.split('/deliverables/');
       if (urlParts.length < 2) {
         window.open(file.file_url, '_blank');
@@ -1107,16 +1166,13 @@ const StoragePage = () => {
                                       >
                                         {getFileIcon(file.file_name)}
                                         <div className="min-w-0 flex-1">
-                                          <a 
-                                            href={file.file_url} 
-                                            target="_blank" 
-                                            rel="noopener noreferrer"
-                                            onClick={(e) => e.stopPropagation()}
+                                          <button 
+                                            onClick={(e) => { e.stopPropagation(); setPreviewFile(file); }}
                                             className="font-medium text-foreground truncate hover:underline hover:text-primary flex items-center gap-1"
                                           >
                                             {file.file_name}
                                             <ExternalLink className="w-3 h-3 shrink-0" />
-                                          </a>
+                                          </button>
                                           <p className="text-sm text-muted-foreground truncate">
                                             {file.client_name} / {file.project_title} • {formatBytes(file.file_size)}
                                           </p>
@@ -1198,16 +1254,13 @@ const StoragePage = () => {
                                       >
                                         {getFileIcon(file.file_name)}
                                         <div className="min-w-0 flex-1">
-                                          <a 
-                                            href={file.file_url} 
-                                            target="_blank" 
-                                            rel="noopener noreferrer"
-                                            onClick={(e) => e.stopPropagation()}
+                                          <button 
+                                            onClick={(e) => { e.stopPropagation(); setPreviewFile(file); }}
                                             className="text-sm font-medium text-foreground truncate hover:underline hover:text-primary flex items-center gap-1"
                                           >
                                             {file.file_name}
                                             <ExternalLink className="w-3 h-3 shrink-0" />
-                                          </a>
+                                          </button>
                                           <p className="text-xs text-muted-foreground">
                                             {formatBytes(file.file_size)} • Uploaded by {file.uploader_name}
                                           </p>

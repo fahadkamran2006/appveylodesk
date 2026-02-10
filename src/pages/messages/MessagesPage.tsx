@@ -24,6 +24,7 @@ const MessagesPage = () => {
     loading: channelsLoading, 
     agencyId,
     getOrCreateDM,
+    refetch: refetchChannels,
   } = useMessaging();
 
   const {
@@ -121,6 +122,7 @@ const MessagesPage = () => {
                 selectedChannelId={selectedChannelId}
                 onSelectChannel={handleSelectChannel}
                 onNewDM={() => setShowNewDM(true)}
+                onChannelDeleted={() => { setSelectedChannelId(null); refetchChannels(); }}
                 loading={channelsLoading}
                 unreadCounts={unreadCounts}
                 isUserOnline={isOnline}

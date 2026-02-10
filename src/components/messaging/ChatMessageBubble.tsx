@@ -152,27 +152,24 @@ export function ChatMessageBubble({
           <div className="w-8 flex-shrink-0" />
         ) : null}
 
-        <div className="max-w-[70%]">
-          {/* Hover Actions */}
-          {showActions && !isMuted && !isOptimistic && (
-            <div className={cn(
-              'flex items-center gap-0.5 mb-0.5',
-              isOwn ? 'justify-end' : 'justify-start'
-            )}>
-              {onReply && (
-                <button
-                  onClick={() => onReply(message)}
-                  className="p-1 rounded hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <Reply className="w-3.5 h-3.5" />
-                </button>
-              )}
-              {onReact && (
-                <EmojiPicker onSelect={(emoji) => onReact(message.id, emoji)} />
-              )}
-            </div>
-          )}
+        {/* Actions on opposite side of bubble */}
+        {isOwn && showActions && !isMuted && !isOptimistic && (
+          <div className="flex items-center gap-0.5 self-center opacity-0 group-hover:opacity-100 transition-opacity">
+            {onReply && (
+              <button
+                onClick={() => onReply(message)}
+                className="p-1 rounded hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Reply className="w-3.5 h-3.5" />
+              </button>
+            )}
+            {onReact && (
+              <EmojiPicker onSelect={(emoji) => onReact(message.id, emoji)} />
+            )}
+          </div>
+        )}
 
+        <div className="max-w-[70%]">
           <div className={cn(
             'rounded-2xl overflow-hidden',
             isOwn
@@ -274,6 +271,23 @@ export function ChatMessageBubble({
             isOwn={isOwn}
           />
         </div>
+
+        {/* Actions on opposite side of bubble (for others' messages) */}
+        {!isOwn && showActions && !isMuted && !isOptimistic && (
+          <div className="flex items-center gap-0.5 self-center opacity-0 group-hover:opacity-100 transition-opacity">
+            {onReply && (
+              <button
+                onClick={() => onReply(message)}
+                className="p-1 rounded hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Reply className="w-3.5 h-3.5" />
+              </button>
+            )}
+            {onReact && (
+              <EmojiPicker onSelect={(emoji) => onReact(message.id, emoji)} />
+            )}
+          </div>
+        )}
       </motion.div>
 
       {/* Image Lightbox */}

@@ -27,6 +27,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { Deliverable, useStorage } from '@/hooks/useStorage';
+import { useToast } from '@/hooks/use-toast';
 import { useUploadContext } from '@/contexts/UploadContext';
 import { format } from 'date-fns';
 import { isDefinitelyBunnyStreamUrl } from '@/lib/bunnyStream';
@@ -89,6 +90,7 @@ export function FileManager({
   uploadLabel = 'Click to upload files',
 }: FileManagerProps) {
   const { deleteDeliverable, formatBytes, loading } = useStorage();
+  const { toast } = useToast();
   const { addToQueue } = useUploadContext();
   const [deleteTarget, setDeleteTarget] = useState<Deliverable | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -128,6 +130,7 @@ export function FileManager({
     const isBunnyStream = isDefinitelyBunnyStreamUrl(deliverable.file_url);
     
     if (isBunnyStream) {
+      toast({ title: 'Download started', description: `Preparing ${deliverable.file_name}…` });
       // Use the edge function Storage API proxy for proper filename download
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData?.session?.access_token;
