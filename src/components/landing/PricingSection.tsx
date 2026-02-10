@@ -90,9 +90,10 @@ const PricingSection = () => {
   };
 
   const handleSelectPlan = (plan: Plan) => {
+    const interval = isYearly ? 'yearly' : 'monthly';
     // If not logged in, redirect to signup with plan param
     if (!user) {
-      navigate(`/auth/signup?plan=${plan.key}`);
+      navigate(`/auth/signup?plan=${plan.key}&interval=${interval}`);
       return;
     }
 
@@ -103,9 +104,6 @@ const PricingSection = () => {
     }
 
     setLoadingPlan(plan.key);
-    
-    // Build checkout URL with agency_id
-    const interval = isYearly ? 'yearly' : 'monthly';
     const checkoutUrl = getCheckoutUrl(plan.key, interval, agencyId);
     
     // Redirect to Lemon Squeezy checkout

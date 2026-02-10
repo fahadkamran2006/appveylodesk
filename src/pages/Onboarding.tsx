@@ -216,12 +216,14 @@ const Onboarding = () => {
 
       // Check for pre-selected plan from signup flow
       const selectedPlan = localStorage.getItem('selected_plan') as 'starter' | 'growth' | 'scale' | null;
+      const selectedInterval = (localStorage.getItem('selected_interval') as 'monthly' | 'yearly') || 'yearly';
       
       if (selectedPlan && ['starter', 'growth', 'scale'].includes(selectedPlan)) {
         // Clear the stored plan
         localStorage.removeItem('selected_plan');
-        // Redirect directly to Lemon Squeezy checkout (default to yearly)
-        const checkoutUrl = getCheckoutUrl(selectedPlan, 'yearly', profile.agency_id);
+        localStorage.removeItem('selected_interval');
+        // Redirect directly to Lemon Squeezy checkout
+        const checkoutUrl = getCheckoutUrl(selectedPlan, selectedInterval, profile.agency_id);
         window.location.href = checkoutUrl;
       } else {
         // No plan selected, redirect to subscribe page to choose
