@@ -1,49 +1,64 @@
 
 
-## Fix Client Projects Page to Enforce Strict 3-Tier Hierarchy
+## Fix Three Issues: Editor Compensation Update, Duplicate Button, and Project Deletion
 
-### Problem
-The Client Dashboard (`/client/dashboard`) correctly enforces the hierarchy, but the Client Projects page (`/client/projects`) has leftover UI from the old workflow that lets clients create projects and submit proposals -- bypassing Admin-only project creation and the new video request approval flow.
+### Issue 1: Editor Compensation Update Fails Silently
 
-### Changes
+**Root Cause:** The `profiles` table has an RLS policy that only allows users to update their own profile (`auth.uid() = id`). When an Admin tries to change an editor from "freelance" to "salaried," the update silently fails (0 rows affected) but the code doesn't check for that, so it shows "Editor updated" even though nothing changed.
 
-#### 1. Remove all "Create Project" UI from `/client/projects`
+**Fix:** Add a new RLS policy allowing admins to update profiles of users within their agency.
 
-In `src/pages/client/Projects.tsx`:
+**Database migration:**
+```sql
+CREATE POLICY "Admins can update profiles in their agency"
+ON public.profiles
+FOR UPDATE
+USING (
+  has_role(auth.uid(), 'admin'::app_role)
+  AND id <> auth.uid()
+  AND EXISTS (
+    SELECT 1 FROM user_roles ur_admin
+    JOIN user_roles ur_target ON ur_target.agency_id = ur_admin.agency_id
+    WHERE ur_admin.user_id = auth.uid()
+    AND ur_admin.role = 'admin'::app_role
+    AND ur_target.user_id = profiles.id
+  )
+);
+```
 
-- Remove the "New Project" button from the header (lines 267-270)
-- Remove the dashed "Add Project" card from the grid (lines 351-363)
-- Replace the empty state "Create Your First Project" button with the correct message: "Your admin will create projects for you. Once you have projects, you can request videos."
-- Remove the import of `ClientCreateProjectModal` and its state/JSX entirely
+Additionally, update `EditEditorModal.tsx` to verify that the update actually affected a row by checking the response data, so errors are surfaced properly.
 
-#### 2. Replace `ClientProposalModal` with `ClientRequestVideoModal`
+---
 
-In `src/pages/client/Projects.tsx`:
+### Issue 2: Duplicate "New Project" Buttons
 
-- Replace the import of `ClientProposalModal` with `ClientRequestVideoModal`
-- Change the "New Video" button (shown when inside a project board) to open `ClientRequestVideoModal` instead
-- Pass the `preselectedContainerId` as a prop so the project dropdown is pre-filled when the client is already browsing a specific project
-- Update `ClientRequestVideoModal` to accept and use an optional `preselectedContainerId` prop (auto-select the container in the dropdown)
-- Remove `proposalModalOpen` state and the `ClientProposalModal` JSX
+**Root Cause:** The `ClientProjectsGrid` component has its own "+ New Project" button in the header (line 53) AND a dashed "Add Project" card at the end of the grid (line 116). On top of that, the parent `Projects.tsx` page also renders a "+ New Project" button in its own header bar (line 534). This results in up to three create-project triggers visible at once.
 
-#### 3. Add `'request'` to the status config map
+**Fix:** Remove the "+ New Project" button from the top-right header bar in `Projects.tsx` (lines 533-541) when in the `isClientProjectsView` state. The `ClientProjectsGrid` component already provides adequate create-project entry points (the header button and the dashed card). This eliminates the duplicate without losing any functionality.
 
-In `src/pages/client/Projects.tsx`:
+---
 
-- Add a `request` entry to the `statusConfig` object with a label like "Requested", an appropriate icon (e.g., `Send`), and a distinct badge style (e.g., orange/amber tones)
+### Issue 3: Add Project Container Deletion (with Cascade)
 
-#### 4. (Optional cleanup) Delete `ClientCreateProjectModal` component
+**Root Cause:** There is currently no way to delete a project container (folder). The `ProjectDetailSheet` only handles deleting individual videos. When an admin wants to remove an entire project folder and all its videos + files, there is no UI or logic for it.
 
-Since it is no longer needed by any page, the file `src/components/projects/ClientCreateProjectModal.tsx` can be removed to prevent future misuse.
+**Fix:**
+1. Add a "Delete Project" button (with trash icon) to each project container card in `ClientProjectsGrid.tsx`.
+2. Show a confirmation dialog warning that all videos and their files inside will be permanently deleted.
+3. Implement cascade deletion logic:
+   - For each video (from `projects` table) inside the container, call the `delete-asset` edge function to remove physical files from storage.
+   - Delete all video records (`projects` table rows) linked to the container.
+   - Delete the container record from `project_containers`.
+4. Refresh the data after successful deletion.
 
-### Technical Details
+---
 
-**Files modified:**
-- `src/pages/client/Projects.tsx` -- Remove project creation UI; swap proposal modal for request modal; add `request` status styling
-- `src/components/projects/ClientRequestVideoModal.tsx` -- Add optional `preselectedContainerId` prop to auto-select a container
+### Technical Summary
 
-**File deleted:**
-- `src/components/projects/ClientCreateProjectModal.tsx`
-
-**No database or RLS changes needed** -- the schema and policies are already correct. This is purely a frontend enforcement fix.
+| File | Change |
+|------|--------|
+| **New migration** | Add RLS policy for admin profile updates |
+| `src/components/admin/EditEditorModal.tsx` | Add row-count check after update |
+| `src/pages/admin/Projects.tsx` | Remove duplicate "New Project" button from header when in client view; add container deletion handler |
+| `src/components/projects/ClientProjectsGrid.tsx` | Add delete button + confirmation dialog for project containers |
 
