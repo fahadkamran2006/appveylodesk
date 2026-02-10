@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Plus, Loader2, ArrowLeft, LayoutGrid, Video } from 'lucide-react';
 
 const COLUMNS: { id: ProjectStatus; title: string }[] = [
+  { id: 'request', title: 'Requests' },
   { id: 'proposal', title: 'Proposals' },
   { id: 'backlog', title: 'Backlog' },
   { id: 'in_progress', title: 'In Progress' },

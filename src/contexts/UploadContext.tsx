@@ -553,15 +553,20 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
     try {
       const success = await uploadFile(pendingItem);
       
-      setState(prev => ({
-        ...prev,
-        queue: prev.queue.map(q =>
-          q.id === pendingItem.id
-            ? { ...q, status: success ? 'completed' : 'paused', progress: success ? 100 : q.progress }
-            : q
-        ),
-        currentUploadId: null,
-      }));
+      setState(prev => {
+        const updatedQueue = prev.queue.map(q => {
+          if (q.id !== pendingItem.id) return q;
+          const newStatus: QueuedUpload['status'] = success ? 'completed' : 'paused';
+          return { ...q, status: newStatus, progress: success ? 100 : q.progress };
+        });
+        const hasMorePending = updatedQueue.some(q => q.status === 'pending');
+        return {
+          ...prev,
+          queue: updatedQueue,
+          currentUploadId: null,
+          isProcessing: hasMorePending,
+        };
+      });
 
       if (success) {
         toast({
