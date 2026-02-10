@@ -530,15 +530,7 @@ const AdminProjects = () => {
             )}
             
             {/* Show appropriate create button based on view */}
-            {isClientProjectsView ? (
-              <Button
-                onClick={() => setCreateProjectModalOpen(true)}
-                className="bg-primary hover:bg-primary/90 flex-1 sm:flex-initial"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                New Project
-              </Button>
-            ) : (isProjectBoardView || isGlobalView) ? (
+            {(isProjectBoardView || isGlobalView) ? (
               <Button
                 onClick={() => setCreateVideoModalOpen(true)}
                 className="bg-primary hover:bg-primary/90 flex-1 sm:flex-initial"
@@ -594,6 +586,7 @@ const AdminProjects = () => {
             projects={clientProjectContainers}
             onProjectClick={(containerId) => openProjectBoard(containerId)}
             onCreateProject={() => setCreateProjectModalOpen(true)}
+            onProjectDeleted={fetchData}
           />
         ) : (
           /* Project Board/List View (Level 3: Videos within a Project OR Global View) */

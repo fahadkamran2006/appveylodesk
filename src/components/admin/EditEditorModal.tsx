@@ -94,7 +94,7 @@ export function EditEditorModal({
         ? parseFloat(data.monthly_salary.replace(/[^0-9.]/g, ''))
         : null;
 
-      const { error } = await supabase
+      const { data: updatedRows, error } = await supabase
         .from('profiles')
         .update({
           full_name: data.full_name,
@@ -102,9 +102,14 @@ export function EditEditorModal({
           monthly_salary: salaryValue,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', editor.id);
+        .eq('id', editor.id)
+        .select();
 
       if (error) throw error;
+
+      if (!updatedRows || updatedRows.length === 0) {
+        throw new Error('Update failed — you may not have permission to edit this profile.');
+      }
 
       toast({
         title: 'Editor updated',
