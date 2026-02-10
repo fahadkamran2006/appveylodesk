@@ -5,10 +5,21 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { MessageSquare, Users, FolderKanban, Lock, Plus, ChevronDown, Archive } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { MessageSquare, Users, FolderKanban, Lock, Plus, ChevronDown, Archive, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Participant {
   user_id: string;
@@ -44,6 +55,7 @@ interface ChatListProps {
   selectedChannelId: string | null;
   onSelectChannel: (channelId: string) => void;
   onNewDM?: () => void;
+  onChannelDeleted?: () => void;
   loading?: boolean;
   unreadCounts?: { [channelId: string]: number };
   isUserOnline?: (userId: string) => boolean;
@@ -55,6 +67,7 @@ export function ChatList({
   selectedChannelId,
   onSelectChannel,
   onNewDM,
+  onChannelDeleted,
   loading,
   unreadCounts = {},
   isUserOnline,
@@ -62,6 +75,8 @@ export function ChatList({
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'dm' | 'project'>('dm');
   const [showArchived, setShowArchived] = useState(false);
+  const [deleteChannelTarget, setDeleteChannelTarget] = useState<Channel | null>(null);
+  const [isDeletingChannel, setIsDeletingChannel] = useState(false);
 
   // Sort channels by last message time (most recent first)
   const sortByRecency = (a: Channel, b: Channel) => {
@@ -91,6 +106,26 @@ export function ChatList({
       .slice(0, 2);
   };
 
+  const handleDeleteChannel = async () => {
+    if (!deleteChannelTarget || !user) return;
+    setIsDeletingChannel(true);
+    try {
+      // Remove user's participation from the channel
+      await supabase
+        .from('channel_participants')
+        .delete()
+        .eq('channel_id', deleteChannelTarget.id)
+        .eq('user_id', user.id);
+      
+      setDeleteChannelTarget(null);
+      onChannelDeleted?.();
+    } catch (error) {
+      console.error('Error deleting chat:', error);
+    } finally {
+      setIsDeletingChannel(false);
+    }
+  };
+
   const renderChannelItem = (channel: Channel) => {
     const isSelected = channel.id === selectedChannelId;
     const isDM = channel.type === 'dm';
@@ -101,81 +136,93 @@ export function ChatList({
     const unreadCount = unreadCounts[channel.id] || 0;
 
     return (
-      <button
-        key={channel.id}
-        onClick={() => onSelectChannel(channel.id)}
-        className={cn(
-          'w-full flex items-center gap-3 p-3 rounded-lg transition-colors text-left',
-          isSelected
-            ? 'bg-primary/10 text-primary'
-            : 'hover:bg-muted/50 text-foreground'
-        )}
-      >
-        {/* Avatar with presence indicator */}
-        {isDM ? (
-          <div className="relative">
-            <Avatar className="w-10 h-10 border border-border/50">
-              <AvatarImage src={otherUser?.avatar_url || undefined} />
-              <AvatarFallback className="bg-primary/20 text-primary text-sm">
-                {getInitials(otherUser?.full_name || null, otherUser?.email || '')}
-              </AvatarFallback>
-            </Avatar>
-            {/* Online indicator */}
-            {otherUser && isUserOnline && (
-              <span
-                className={cn(
-                  "absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-background",
-                  isUserOnline(otherUser.id) ? "bg-green-500" : "bg-muted-foreground/50"
-                )}
-                title={isUserOnline(otherUser.id) ? "Online" : "Offline"}
-              />
-            )}
-          </div>
-        ) : (
-          <div className={cn(
-            "w-10 h-10 rounded-full flex items-center justify-center",
-            channel.is_archived ? "bg-muted" : "bg-secondary"
-          )}>
-            <FolderKanban className="w-5 h-5 text-muted-foreground" />
-          </div>
-        )}
-
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className={cn(
-              "font-medium truncate",
-              channel.is_archived && "text-muted-foreground"
+      <div key={channel.id} className="group relative">
+        <button
+          onClick={() => onSelectChannel(channel.id)}
+          className={cn(
+            'w-full flex items-center gap-3 p-3 rounded-lg transition-colors text-left',
+            isSelected
+              ? 'bg-primary/10 text-primary'
+              : 'hover:bg-muted/50 text-foreground'
+          )}
+        >
+          {/* Avatar with presence indicator */}
+          {isDM ? (
+            <div className="relative">
+              <Avatar className="w-10 h-10 border border-border/50">
+                <AvatarImage src={otherUser?.avatar_url || undefined} />
+                <AvatarFallback className="bg-primary/20 text-primary text-sm">
+                  {getInitials(otherUser?.full_name || null, otherUser?.email || '')}
+                </AvatarFallback>
+              </Avatar>
+              {/* Online indicator */}
+              {otherUser && isUserOnline && (
+                <span
+                  className={cn(
+                    "absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-background",
+                    isUserOnline(otherUser.id) ? "bg-green-500" : "bg-muted-foreground/50"
+                  )}
+                  title={isUserOnline(otherUser.id) ? "Online" : "Offline"}
+                />
+              )}
+            </div>
+          ) : (
+            <div className={cn(
+              "w-10 h-10 rounded-full flex items-center justify-center",
+              channel.is_archived ? "bg-muted" : "bg-secondary"
             )}>
-              {displayName}
-            </span>
-            {channel.is_archived && (
-              <Lock className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+              <FolderKanban className="w-5 h-5 text-muted-foreground" />
+            </div>
+          )}
+
+          {/* Content */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className={cn(
+                "font-medium truncate",
+                channel.is_archived && "text-muted-foreground"
+              )}>
+                {displayName}
+              </span>
+              {channel.is_archived && (
+                <Lock className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+              )}
+            </div>
+            {channel.last_message && (
+              <p className="text-sm text-muted-foreground truncate">
+                {channel.last_message.content}
+              </p>
             )}
           </div>
-          {channel.last_message && (
-            <p className="text-sm text-muted-foreground truncate">
-              {channel.last_message.content}
-            </p>
-          )}
-        </div>
 
-        {/* Time & Unread Badge */}
-        <div className="flex flex-col items-end gap-1 flex-shrink-0">
-          {channel.last_message && (
-            <span className="text-xs text-muted-foreground">
-              {formatDistanceToNow(new Date(channel.last_message.created_at), {
-                addSuffix: false,
-              })}
-            </span>
-          )}
-          {unreadCount > 0 && (
-            <Badge className="bg-primary text-primary-foreground text-xs px-1.5 py-0.5 min-w-[20px] text-center">
-              {unreadCount > 99 ? '99+' : unreadCount}
-            </Badge>
-          )}
-        </div>
-      </button>
+          {/* Time & Unread Badge */}
+          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+            {channel.last_message && (
+              <span className="text-xs text-muted-foreground">
+                {formatDistanceToNow(new Date(channel.last_message.created_at), {
+                  addSuffix: false,
+                })}
+              </span>
+            )}
+            {unreadCount > 0 && (
+              <Badge className="bg-primary text-primary-foreground text-xs px-1.5 py-0.5 min-w-[20px] text-center">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </Badge>
+            )}
+          </div>
+        </button>
+
+        {/* Delete button for DMs - appears on hover */}
+        {isDM && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setDeleteChannelTarget(channel); }}
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+            title="Delete chat"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
     );
   };
 
@@ -279,6 +326,28 @@ export function ChatList({
           </ScrollArea>
         </TabsContent>
       </Tabs>
+
+      {/* Delete Chat Confirmation */}
+      <AlertDialog open={!!deleteChannelTarget} onOpenChange={(open) => !open && setDeleteChannelTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this chat?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove the conversation from your list. The other person will still have access to their copy.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingChannel}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteChannel}
+              disabled={isDeletingChannel}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeletingChannel ? 'Deleting…' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

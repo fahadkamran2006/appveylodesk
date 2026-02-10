@@ -13,13 +13,16 @@ export function EmojiPicker({ onSelect }: EmojiPickerProps) {
   const [open, setOpen] = useState(false);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen} modal>
       <PopoverTrigger asChild>
-        <button className="p-1 rounded hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors">
+        <button
+          className="p-1 rounded hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
+          onMouseDown={(e) => e.stopPropagation()}
+        >
           <SmilePlus className="w-4 h-4" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-2" side="top" align="start">
+      <PopoverContent className="w-auto p-2" side="top" align="start" onPointerDownOutside={(e) => e.preventDefault()}>
         <div className="flex gap-1">
           {QUICK_EMOJIS.map(emoji => (
             <button

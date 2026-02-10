@@ -95,15 +95,23 @@ function getBunnyStreamEmbedUrl(videoId: string): string {
 }
 
 // Download stream video via edge function proxy for proper filename
-async function downloadStreamVideo(deliverableId: string, fileName: string): Promise<void> {
+async function downloadStreamVideo(
+  deliverableId: string,
+  fileName: string,
+  onStart?: () => void,
+  onError?: () => void,
+): Promise<void> {
   try {
     const { data: sessionData } = await supabase.auth.getSession();
     const accessToken = sessionData?.session?.access_token;
     
     if (!accessToken) {
       console.error('No access token for download');
+      onError?.();
       return;
     }
+    
+    onStart?.();
     
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     const downloadUrl = `${supabaseUrl}/functions/v1/bunny-ops`;
@@ -149,6 +157,7 @@ async function downloadStreamVideo(deliverableId: string, fileName: string): Pro
     URL.revokeObjectURL(url);
   } catch (error) {
     console.error('Download error:', error);
+    onError?.();
   }
 }
 
@@ -203,6 +212,8 @@ export function FilePreviewModal({
   const [isStreamVideo, setIsStreamVideo] = useState(false);
   const [streamVideoId, setStreamVideoId] = useState<string | null>(null);
   const [isVideoProcessing, setIsVideoProcessing] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadFailed, setDownloadFailed] = useState(false);
 
   // Reset editing state & zoom/rotation when file changes
   useEffect(() => {
@@ -334,7 +345,15 @@ export function FilePreviewModal({
   const handleDownload = async () => {
     // For Bunny Stream videos, use the edge function proxy for proper filename
     if (isStreamVideo && streamVideoId && file) {
-      await downloadStreamVideo(file.id, file.file_name);
+      setIsDownloading(true);
+      setDownloadFailed(false);
+      await downloadStreamVideo(
+        file.id,
+        file.file_name,
+        () => {}, // onStart
+        () => setDownloadFailed(true), // onError
+      );
+      setIsDownloading(false);
       return;
     }
     
@@ -430,8 +449,20 @@ export function FilePreviewModal({
               </>
             )}
             {(onDownload || (isStreamVideo && streamVideoId)) && !isVideoProcessing && (
-              <Button size="icon" variant="ghost" onClick={handleDownload}>
-                <Download className="w-4 h-4" />
+              <Button size="icon" variant="ghost" onClick={handleDownload} disabled={isDownloading}>
+                {isDownloading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4" />
+                )}
+              </Button>
+            )}
+            {isDownloading && (
+              <span className="text-xs text-muted-foreground whitespace-nowrap">Downloading…</span>
+            )}
+            {downloadFailed && !isDownloading && (
+              <Button size="sm" variant="outline" onClick={handleDownload} className="text-xs">
+                Retry Download
               </Button>
             )}
           </div>
