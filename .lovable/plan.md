@@ -1,64 +1,90 @@
 
 
-## Fix Three Issues: Editor Compensation Update, Duplicate Button, and Project Deletion
+# Download Manager
 
-### Issue 1: Editor Compensation Update Fails Silently
+## The Problem
 
-**Root Cause:** The `profiles` table has an RLS policy that only allows users to update their own profile (`auth.uid() = id`). When an Admin tries to change an editor from "freelance" to "salaried," the update silently fails (0 rows affected) but the code doesn't check for that, so it shows "Editor updated" even though nothing changed.
+When you click download, the app fetches the entire video through the backend function, buffers it completely in browser memory (`response.blob()`), and only **then** triggers the browser's download dialog. For a 500MB video, this means waiting minutes with no visible progress before the download "starts."
 
-**Fix:** Add a new RLS policy allowing admins to update profiles of users within their agency.
+## The Solution
 
-**Database migration:**
-```sql
-CREATE POLICY "Admins can update profiles in their agency"
-ON public.profiles
-FOR UPDATE
-USING (
-  has_role(auth.uid(), 'admin'::app_role)
-  AND id <> auth.uid()
-  AND EXISTS (
-    SELECT 1 FROM user_roles ur_admin
-    JOIN user_roles ur_target ON ur_target.agency_id = ur_admin.agency_id
-    WHERE ur_admin.user_id = auth.uid()
-    AND ur_admin.role = 'admin'::app_role
-    AND ur_target.user_id = profiles.id
-  )
-);
+Build a **Download Manager** that mirrors the existing Upload Tray -- a persistent, minimizable panel in the bottom-right corner that shows real-time download progress with speed, ETA, and cancel support.
+
+The key technical change: instead of `response.blob()` (which buffers everything), we read the response as a **stream** chunk-by-chunk, tracking bytes received in real time.
+
+## What You Will See
+
+- When you click Download on any file, it immediately appears in a **Download Tray** at the bottom-right (just like the upload tray).
+- Each download shows: file name, progress bar, speed (MB/s), and estimated time remaining.
+- You can **cancel** individual downloads mid-stream.
+- When complete, the file auto-saves to your computer.
+- The tray is minimizable and shows a badge count of active downloads.
+- Both Bunny Stream videos (proxied through the backend) and regular CDN files go through the same manager.
+
+## Technical Details
+
+### 1. Create Download Context (`src/contexts/DownloadContext.tsx`)
+
+A React Context (mirroring `UploadContext`) that manages a queue of downloads:
+
+```text
+QueuedDownload {
+  id, fileName, fileSize,
+  status: 'downloading' | 'completed' | 'failed' | 'cancelled',
+  progress (0-100), speed (bytes/sec), remainingTime,
+  abortController (for cancellation)
+}
 ```
 
-Additionally, update `EditEditorModal.tsx` to verify that the update actually affected a row by checking the response data, so errors are surfaced properly.
+Core logic:
+- `startDownload(deliverableId, fileName, fileUrl)` -- determines if it is a Bunny Stream video or CDN file, then fetches using `ReadableStream` reader to track progress chunk-by-chunk.
+- Uses `Content-Length` header from the response to calculate percentage.
+- Assembles chunks into a `Blob` only at the end, then triggers `<a download>`.
+- `cancelDownload(id)` -- calls `abortController.abort()` to stop mid-stream.
+- `clearCompleted()` -- removes finished items from the tray.
 
----
+### 2. Create Download Tray UI (`src/components/download/GlobalDownloadTray.tsx`)
 
-### Issue 2: Duplicate "New Project" Buttons
+A fixed-position panel matching the style of the existing `GlobalUploadTray`:
+- Appears only when there are active or recent downloads.
+- Minimizable to a small pill showing count.
+- Each item shows file icon, name, progress bar, speed, ETA, and cancel/clear buttons.
+- Completed items show a green checkmark.
+- Failed items show retry button.
 
-**Root Cause:** The `ClientProjectsGrid` component has its own "+ New Project" button in the header (line 53) AND a dashed "Add Project" card at the end of the grid (line 116). On top of that, the parent `Projects.tsx` page also renders a "+ New Project" button in its own header bar (line 534). This results in up to three create-project triggers visible at once.
+### 3. Wire Up Download Tray in App Layout
 
-**Fix:** Remove the "+ New Project" button from the top-right header bar in `Projects.tsx` (lines 533-541) when in the `isClientProjectsView` state. The `ClientProjectsGrid` component already provides adequate create-project entry points (the header button and the dashed card). This eliminates the duplicate without losing any functionality.
+Add `<DownloadProvider>` wrapping the app in `src/App.tsx` and render `<GlobalDownloadTray />` alongside the existing `<GlobalUploadTray />`.
 
----
+### 4. Update All Download Triggers
 
-### Issue 3: Add Project Container Deletion (with Cascade)
+Replace the current `response.blob()` pattern in these files with calls to `downloadContext.startDownload()`:
+- `src/components/ui/file-preview-modal.tsx` -- the preview modal download button
+- `src/components/projects/FileManager.tsx` -- the file list download button
+- `src/pages/storage/StoragePage.tsx` -- the storage page download button
 
-**Root Cause:** There is currently no way to delete a project container (folder). The `ProjectDetailSheet` only handles deleting individual videos. When an admin wants to remove an entire project folder and all its videos + files, there is no UI or logic for it.
+Each call simply adds the download to the queue and the context handles the rest. The download button immediately shows feedback (item appears in tray) instead of waiting silently.
 
-**Fix:**
-1. Add a "Delete Project" button (with trash icon) to each project container card in `ClientProjectsGrid.tsx`.
-2. Show a confirmation dialog warning that all videos and their files inside will be permanently deleted.
-3. Implement cascade deletion logic:
-   - For each video (from `projects` table) inside the container, call the `delete-asset` edge function to remove physical files from storage.
-   - Delete all video records (`projects` table rows) linked to the container.
-   - Delete the container record from `project_containers`.
-4. Refresh the data after successful deletion.
+### 5. Streaming Read Pattern (the core fix)
 
----
+```text
+const response = await fetch(url, { signal: abortController.signal });
+const contentLength = +response.headers.get('Content-Length');
+const reader = response.body.getReader();
+const chunks = [];
+let received = 0;
 
-### Technical Summary
+while (true) {
+  const { done, value } = await reader.read();
+  if (done) break;
+  chunks.push(value);
+  received += value.length;
+  // Update progress, speed, ETA in real time
+}
 
-| File | Change |
-|------|--------|
-| **New migration** | Add RLS policy for admin profile updates |
-| `src/components/admin/EditEditorModal.tsx` | Add row-count check after update |
-| `src/pages/admin/Projects.tsx` | Remove duplicate "New Project" button from header when in client view; add container deletion handler |
-| `src/components/projects/ClientProjectsGrid.tsx` | Add delete button + confirmation dialog for project containers |
+const blob = new Blob(chunks);
+// Trigger browser download via <a> tag
+```
+
+This means the progress bar updates in real time as data arrives, rather than sitting at 0% until the entire file is buffered.
 
