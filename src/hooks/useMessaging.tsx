@@ -6,7 +6,6 @@ import type { Database } from '@/integrations/supabase/types';
 
 type Channel = Database['public']['Tables']['channels']['Row'];
 type Message = Database['public']['Tables']['messages']['Row'];
-type ChannelType = Database['public']['Enums']['channel_type'];
 
 interface ChannelWithDetails extends Channel {
   participants: {
@@ -18,6 +17,10 @@ interface ChannelWithDetails extends Channel {
       avatar_url: string | null;
     };
   }[];
+  container?: {
+    id: string;
+    title: string;
+  } | null;
   project?: {
     id: string;
     title: string;
@@ -45,12 +48,8 @@ async function fetchProfilesWithRetry(
   if (userIds.length === 0) return [];
 
   for (let attempt = 0; attempt < retries; attempt++) {
-    // Verify session is active before each attempt
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      console.warn('No active session, skipping profile fetch');
-      return [];
-    }
+    if (!session) return [];
 
     const { data: profilesData, error: profilesError } = await supabase
       .from('profiles')
@@ -60,14 +59,12 @@ async function fetchProfilesWithRetry(
     if (profilesError) {
       console.error(`Error fetching profiles (attempt ${attempt + 1}):`, profilesError);
     } else if (profilesData && profilesData.length > 0) {
-      // Check if we got all profiles with full_name populated
       const resolvedProfiles = profilesData.filter(p => p.full_name !== null);
       if (resolvedProfiles.length === profilesData.length || attempt === retries - 1) {
         return profilesData;
       }
     }
 
-    // Wait before retry (unless last attempt)
     if (attempt < retries - 1) {
       await new Promise(resolve => setTimeout(resolve, delayMs));
     }
@@ -77,7 +74,7 @@ async function fetchProfilesWithRetry(
 }
 
 export function useMessaging() {
-  const { user, userRole } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [channels, setChannels] = useState<ChannelWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,12 +103,8 @@ export function useMessaging() {
   const fetchChannels = useCallback(async () => {
     if (!user) return;
 
-    // Ensure session is valid before fetching
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      console.warn('No active session, skipping channel fetch');
-      return;
-    }
+    if (!session) return;
 
     try {
       setLoading(true);
@@ -133,14 +126,22 @@ export function useMessaging() {
       // Get channel details
       const { data: channelsData, error: channelsError } = await supabase
         .from('channels')
-        .select(`
-          *,
-          project:projects(id, title, status)
-        `)
+        .select('*')
         .in('id', channelIds)
         .order('updated_at', { ascending: false });
 
       if (channelsError) throw channelsError;
+
+      // Get container info for project channels
+      const containerIds = [...new Set((channelsData || []).map(c => (c as any).container_id).filter(Boolean))];
+      let containersMap: Record<string, { id: string; title: string }> = {};
+      if (containerIds.length > 0) {
+        const { data: containersData } = await supabase
+          .from('project_containers')
+          .select('id, title')
+          .in('id', containerIds);
+        (containersData || []).forEach(c => { containersMap[c.id] = c; });
+      }
 
       // Get participants for each channel
       const { data: allParticipants, error: participantsError } = await supabase
@@ -150,10 +151,7 @@ export function useMessaging() {
 
       if (participantsError) throw participantsError;
 
-      // Get unique user IDs
       const userIds = [...new Set(allParticipants?.map(p => p.user_id) || [])];
-
-      // Get profiles with retry logic for RLS timing issues
       const profiles = await fetchProfilesWithRetry(userIds);
 
       // Get last message for each channel
@@ -165,7 +163,6 @@ export function useMessaging() {
 
       if (messagesError) throw messagesError;
 
-      // Build channel details
       const channelsWithDetails: ChannelWithDetails[] = (channelsData || []).map(channel => {
         const channelParticipants = allParticipants
           ?.filter(p => p.channel_id === channel.id)
@@ -179,14 +176,15 @@ export function useMessaging() {
             },
           })) || [];
 
-        // Find last message for this channel
         const channelMessages = lastMessages?.filter(m => m.channel_id === channel.id) || [];
         const lastMessage = channelMessages[0] || null;
+        const containerId = (channel as any).container_id;
 
         return {
           ...channel,
           participants: channelParticipants,
-          project: channel.project as ChannelWithDetails['project'],
+          container: containerId ? containersMap[containerId] || null : null,
+          project: null,
           last_message: lastMessage,
         };
       });
@@ -196,7 +194,7 @@ export function useMessaging() {
       console.error('Error fetching channels:', error);
       toast({
         title: 'Messaging unavailable',
-        description: error.message || 'Failed to load conversations. Please try again.',
+        description: error.message || 'Failed to load conversations.',
         variant: 'destructive',
       });
     } finally {
@@ -214,22 +212,12 @@ export function useMessaging() {
 
     const channelSubscription = supabase
       .channel('channels-realtime')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'channels',
-        },
-        () => {
-          fetchChannels();
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'channels' }, () => {
+        fetchChannels();
+      })
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channelSubscription);
-    };
+    return () => { supabase.removeChannel(channelSubscription); };
   }, [user?.id, fetchChannels]);
 
   // Get or create DM channel
@@ -243,7 +231,6 @@ export function useMessaging() {
       });
 
       if (error) throw error;
-      
       await fetchChannels();
       return data;
     } catch (error: any) {
@@ -256,7 +243,52 @@ export function useMessaging() {
     }
   };
 
-  // Filter channels by type
+  // Delete a channel and all its messages
+  const deleteChannel = async (channelId: string): Promise<boolean> => {
+    if (!user) return false;
+
+    try {
+      // Delete all messages in the channel first
+      const { error: msgError } = await supabase
+        .from('messages')
+        .delete()
+        .eq('channel_id', channelId);
+      if (msgError) throw msgError;
+
+      // Delete read receipts
+      await supabase.from('channel_read_receipts').delete().eq('channel_id', channelId);
+      await supabase.from('cleared_chats').delete().eq('channel_id', channelId);
+      await supabase.from('channel_mutes').delete().eq('channel_id', channelId);
+      await supabase.from('message_reactions').delete().in('message_id', 
+        (await supabase.from('messages').select('id').eq('channel_id', channelId)).data?.map(m => m.id) || []
+      );
+
+      // Delete participants
+      const { error: partError } = await supabase
+        .from('channel_participants')
+        .delete()
+        .eq('channel_id', channelId);
+      if (partError) throw partError;
+
+      // Delete the channel itself
+      const { error: chanError } = await supabase
+        .from('channels')
+        .delete()
+        .eq('id', channelId);
+      if (chanError) throw chanError;
+
+      return true;
+    } catch (error: any) {
+      console.error('Error deleting channel:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to delete chat',
+        variant: 'destructive',
+      });
+      return false;
+    }
+  };
+
   const dmChannels = channels.filter(c => c.type === 'dm');
   const projectChannels = channels.filter(c => c.type === 'project');
 
@@ -267,6 +299,7 @@ export function useMessaging() {
     loading,
     agencyId,
     getOrCreateDM,
+    deleteChannel,
     refetch: fetchChannels,
   };
 }
@@ -287,23 +320,28 @@ export function useChannelMessages(channelId: string | null) {
         return;
       }
 
-      // Verify session before fetch
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        console.warn('No active session, skipping channel fetch');
-        return;
-      }
+      if (!session) return;
 
       const { data, error } = await supabase
         .from('channels')
-        .select(`
-          *,
-          project:projects(id, title, status)
-        `)
+        .select('*')
         .eq('id', channelId)
         .maybeSingle();
 
       if (!error && data) {
+        // Get container info
+        const containerId = (data as any).container_id;
+        let container = null;
+        if (containerId) {
+          const { data: containerData } = await supabase
+            .from('project_containers')
+            .select('id, title')
+            .eq('id', containerId)
+            .maybeSingle();
+          container = containerData;
+        }
+
         // Get participants
         const { data: participants } = await supabase
           .from('channel_participants')
@@ -311,8 +349,6 @@ export function useChannelMessages(channelId: string | null) {
           .eq('channel_id', channelId);
 
         const userIds = participants?.map(p => p.user_id) || [];
-
-        // Fetch profiles with retry logic for RLS timing issues
         const profiles = await fetchProfilesWithRetry(userIds);
 
         setChannel({
@@ -326,7 +362,8 @@ export function useChannelMessages(channelId: string | null) {
               avatar_url: null,
             },
           })) || [],
-          project: data.project as ChannelWithDetails['project'],
+          container: container,
+          project: null,
         });
       }
     };
@@ -342,10 +379,8 @@ export function useChannelMessages(channelId: string | null) {
       return;
     }
 
-    // Verify session before fetch
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      console.warn('No active session, skipping messages fetch');
       setLoading(false);
       return;
     }
@@ -361,7 +396,6 @@ export function useChannelMessages(channelId: string | null) {
 
       if (error) throw error;
 
-      // Get sender profiles with retry logic for RLS timing issues
       const senderIds = [...new Set(messagesData?.map(m => m.sender_id) || [])];
       const profiles = await fetchProfilesWithRetry(senderIds);
 
@@ -393,37 +427,30 @@ export function useChannelMessages(channelId: string | null) {
 
     const messageSubscription = supabase
       .channel(`messages-${channelId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `channel_id=eq.${channelId}`,
-        },
-        async (payload) => {
-          // Fetch sender profile with retry for new message
-          const profiles = await fetchProfilesWithRetry([payload.new.sender_id], 2, 300);
-          const profile = profiles.find(p => p.id === payload.new.sender_id);
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: `channel_id=eq.${channelId}`,
+      }, async (payload) => {
+        const profiles = await fetchProfilesWithRetry([payload.new.sender_id], 2, 300);
+        const profile = profiles.find(p => p.id === payload.new.sender_id);
 
-          const newMessage: MessageWithSender = {
-            ...(payload.new as Message),
-            sender: profile || {
-              id: payload.new.sender_id,
-              full_name: null,
-              email: '',
-              avatar_url: null,
-            },
-          };
+        const newMessage: MessageWithSender = {
+          ...(payload.new as Message),
+          sender: profile || {
+            id: payload.new.sender_id,
+            full_name: null,
+            email: '',
+            avatar_url: null,
+          },
+        };
 
-          setMessages(prev => [...prev, newMessage]);
-        }
-      )
+        setMessages(prev => [...prev, newMessage]);
+      })
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(messageSubscription);
-    };
+    return () => { supabase.removeChannel(messageSubscription); };
   }, [channelId]);
 
   // Send message
@@ -446,10 +473,8 @@ export function useChannelMessages(channelId: string | null) {
       if (parentId) insertData.parent_id = parentId;
 
       const { error } = await supabase.from('messages').insert(insertData);
-
       if (error) throw error;
 
-      // Update channel's updated_at
       await supabase
         .from('channels')
         .update({ updated_at: new Date().toISOString() })
@@ -477,11 +502,10 @@ export function useChannelMessages(channelId: string | null) {
 
 // Hook for muting users in project channels
 export function useChannelMutes(channelId: string | null) {
-  const { user, userRole } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [mutedUsers, setMutedUsers] = useState<string[]>([]);
 
-  // Fetch muted users
   useEffect(() => {
     const fetchMutes = async () => {
       if (!channelId || !user) return;
@@ -498,75 +522,38 @@ export function useChannelMutes(channelId: string | null) {
     fetchMutes();
   }, [channelId, user?.id]);
 
-  // Mute a user
   const muteUser = async (userId: string): Promise<boolean> => {
     if (!channelId || !user) return false;
-
     try {
       const { error } = await supabase.from('channel_mutes').insert({
-        channel_id: channelId,
-        muted_by: user.id,
-        muted_user_id: userId,
+        channel_id: channelId, muted_by: user.id, muted_user_id: userId,
       });
-
       if (error) throw error;
-
       setMutedUsers(prev => [...prev, userId]);
-      
-      toast({
-        title: 'User muted',
-        description: 'You will no longer receive notifications from this user.',
-      });
-
+      toast({ title: 'User muted', description: 'Notifications silenced for this user.' });
       return true;
     } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to mute user',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
       return false;
     }
   };
 
-  // Unmute a user
   const unmuteUser = async (userId: string): Promise<boolean> => {
     if (!channelId || !user) return false;
-
     try {
-      const { error } = await supabase
-        .from('channel_mutes')
-        .delete()
-        .eq('channel_id', channelId)
-        .eq('muted_by', user.id)
-        .eq('muted_user_id', userId);
-
+      const { error } = await supabase.from('channel_mutes').delete()
+        .eq('channel_id', channelId).eq('muted_by', user.id).eq('muted_user_id', userId);
       if (error) throw error;
-
       setMutedUsers(prev => prev.filter(id => id !== userId));
-      
-      toast({
-        title: 'User unmuted',
-        description: 'You will now receive notifications from this user.',
-      });
-
+      toast({ title: 'User unmuted' });
       return true;
     } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to unmute user',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
       return false;
     }
   };
 
   const isUserMuted = (userId: string) => mutedUsers.includes(userId);
 
-  return {
-    mutedUsers,
-    muteUser,
-    unmuteUser,
-    isUserMuted,
-  };
+  return { mutedUsers, muteUser, unmuteUser, isUserMuted };
 }

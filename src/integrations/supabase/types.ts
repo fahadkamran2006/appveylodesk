@@ -267,6 +267,7 @@ export type Database = {
       channels: {
         Row: {
           agency_id: string
+          container_id: string | null
           created_at: string
           id: string
           is_archived: boolean
@@ -277,6 +278,7 @@ export type Database = {
         }
         Insert: {
           agency_id: string
+          container_id?: string | null
           created_at?: string
           id?: string
           is_archived?: boolean
@@ -287,6 +289,7 @@ export type Database = {
         }
         Update: {
           agency_id?: string
+          container_id?: string | null
           created_at?: string
           id?: string
           is_archived?: boolean
@@ -301,6 +304,13 @@ export type Database = {
             columns: ["agency_id"]
             isOneToOne: false
             referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channels_container_id_fkey"
+            columns: ["container_id"]
+            isOneToOne: false
+            referencedRelation: "project_containers"
             referencedColumns: ["id"]
           },
           {

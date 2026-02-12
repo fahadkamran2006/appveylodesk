@@ -224,7 +224,7 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onBack, 
       const other = getOtherParticipant();
       return other?.full_name || 'User';
     }
-    return channel.project?.title || channel.name || 'Project Chat';
+    return (channel as any).container?.title || channel.name || 'Project Chat';
   };
 
   const messageMap = new Map(allMessages.map(m => [m.id, m]));

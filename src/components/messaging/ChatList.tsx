@@ -3,8 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Input } from '@/components/ui/input';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,11 +14,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { MessageSquare, Users, FolderKanban, Lock, Plus, ChevronDown, Archive, Trash2 } from 'lucide-react';
+import { MessageSquare, Hash, Plus, Trash2, Search, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
 
 interface Participant {
   user_id: string;
@@ -38,6 +36,10 @@ interface Channel {
   is_archived: boolean;
   updated_at: string;
   participants: Participant[];
+  container?: {
+    id: string;
+    title: string;
+  } | null;
   project?: {
     id: string;
     title: string;
@@ -55,6 +57,7 @@ interface ChatListProps {
   selectedChannelId: string | null;
   onSelectChannel: (channelId: string) => void;
   onNewDM?: () => void;
+  onDeleteChannel?: (channelId: string) => Promise<boolean>;
   onChannelDeleted?: () => void;
   loading?: boolean;
   unreadCounts?: { [channelId: string]: number };
@@ -67,273 +70,264 @@ export function ChatList({
   selectedChannelId,
   onSelectChannel,
   onNewDM,
+  onDeleteChannel,
   onChannelDeleted,
   loading,
   unreadCounts = {},
   isUserOnline,
 }: ChatListProps) {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'dm' | 'project'>('dm');
-  const [showArchived, setShowArchived] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [deleteChannelTarget, setDeleteChannelTarget] = useState<Channel | null>(null);
   const [isDeletingChannel, setIsDeletingChannel] = useState(false);
+  const [dmExpanded, setDmExpanded] = useState(true);
+  const [projectExpanded, setProjectExpanded] = useState(true);
 
-  // Sort channels by last message time (most recent first)
   const sortByRecency = (a: Channel, b: Channel) => {
     const aTime = a.last_message?.created_at || a.updated_at;
     const bTime = b.last_message?.created_at || b.updated_at;
     return new Date(bTime).getTime() - new Date(aTime).getTime();
   };
 
-  // Sort DM channels by recency
-  const sortedDmChannels = [...dmChannels].sort(sortByRecency);
-
-  // Separate active and archived project channels, sorted by recency
-  const activeProjectChannels = projectChannels.filter(c => !c.is_archived).sort(sortByRecency);
-  const archivedProjectChannels = projectChannels.filter(c => c.is_archived).sort(sortByRecency);
-
   const getOtherParticipant = (channel: Channel) => {
     return channel.participants.find(p => p.user_id !== user?.id)?.profile;
   };
 
-  const getInitials = (name: string | null, email: string) => {
-    const displayName = name || email;
-    return displayName
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
+  const getChannelName = (channel: Channel) => {
+    if (channel.type === 'dm') {
+      return getOtherParticipant(channel)?.full_name || 'User';
+    }
+    return channel.container?.title || channel.name || 'Project Chat';
   };
 
+  const getInitials = (name: string | null) => {
+    const d = name || 'U';
+    return d.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  };
+
+  // Filter channels by search
+  const filterBySearch = (channel: Channel) => {
+    if (!searchQuery.trim()) return true;
+    const name = getChannelName(channel).toLowerCase();
+    return name.includes(searchQuery.toLowerCase());
+  };
+
+  const sortedDmChannels = [...dmChannels].filter(filterBySearch).sort(sortByRecency);
+  const sortedProjectChannels = [...projectChannels].filter(filterBySearch).sort(sortByRecency);
+
   const handleDeleteChannel = async () => {
-    if (!deleteChannelTarget || !user) return;
+    if (!deleteChannelTarget || !onDeleteChannel) return;
     setIsDeletingChannel(true);
     try {
-      // Remove user's participation from the channel
-      await supabase
-        .from('channel_participants')
-        .delete()
-        .eq('channel_id', deleteChannelTarget.id)
-        .eq('user_id', user.id);
-      
-      setDeleteChannelTarget(null);
-      onChannelDeleted?.();
-    } catch (error) {
-      console.error('Error deleting chat:', error);
+      const success = await onDeleteChannel(deleteChannelTarget.id);
+      if (success) {
+        setDeleteChannelTarget(null);
+        onChannelDeleted?.();
+      }
     } finally {
       setIsDeletingChannel(false);
     }
   };
 
-  const renderChannelItem = (channel: Channel) => {
-    const isSelected = channel.id === selectedChannelId;
-    const isDM = channel.type === 'dm';
-    const otherUser = isDM ? getOtherParticipant(channel) : null;
-    const displayName = isDM
-      ? otherUser?.full_name || 'User'
-      : channel.project?.title || channel.name || 'Project Chat';
-    const unreadCount = unreadCounts[channel.id] || 0;
-
-    return (
-      <div key={channel.id} className="group relative">
-        <button
-          onClick={() => onSelectChannel(channel.id)}
-          className={cn(
-            'w-full flex items-center gap-3 p-3 rounded-lg transition-colors text-left',
-            isSelected
-              ? 'bg-primary/10 text-primary'
-              : 'hover:bg-muted/50 text-foreground'
-          )}
-        >
-          {/* Avatar with presence indicator */}
-          {isDM ? (
-            <div className="relative">
-              <Avatar className="w-10 h-10 border border-border/50">
-                <AvatarImage src={otherUser?.avatar_url || undefined} />
-                <AvatarFallback className="bg-primary/20 text-primary text-sm">
-                  {getInitials(otherUser?.full_name || null, otherUser?.email || '')}
-                </AvatarFallback>
-              </Avatar>
-              {/* Online indicator */}
-              {otherUser && isUserOnline && (
-                <span
-                  className={cn(
-                    "absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-background",
-                    isUserOnline(otherUser.id) ? "bg-green-500" : "bg-muted-foreground/50"
-                  )}
-                  title={isUserOnline(otherUser.id) ? "Online" : "Offline"}
-                />
-              )}
-            </div>
-          ) : (
-            <div className={cn(
-              "w-10 h-10 rounded-full flex items-center justify-center",
-              channel.is_archived ? "bg-muted" : "bg-secondary"
-            )}>
-              <FolderKanban className="w-5 h-5 text-muted-foreground" />
-            </div>
-          )}
-
-          {/* Content */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <span className={cn(
-                "font-medium truncate",
-                channel.is_archived && "text-muted-foreground"
-              )}>
-                {displayName}
-              </span>
-              {channel.is_archived && (
-                <Lock className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-              )}
-            </div>
-            {channel.last_message && (
-              <p className="text-sm text-muted-foreground truncate">
-                {channel.last_message.content}
-              </p>
-            )}
-          </div>
-
-          {/* Time & Unread Badge */}
-          <div className="flex flex-col items-end gap-1 flex-shrink-0">
-            {channel.last_message && (
-              <span className="text-xs text-muted-foreground">
-                {formatDistanceToNow(new Date(channel.last_message.created_at), {
-                  addSuffix: false,
-                })}
-              </span>
-            )}
-            {unreadCount > 0 && (
-              <Badge className="bg-primary text-primary-foreground text-xs px-1.5 py-0.5 min-w-[20px] text-center">
-                {unreadCount > 99 ? '99+' : unreadCount}
-              </Badge>
-            )}
-          </div>
-        </button>
-
-        {/* Delete button for DMs - appears on hover */}
-        {isDM && (
-          <button
-            onClick={(e) => { e.stopPropagation(); setDeleteChannelTarget(channel); }}
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-            title="Delete chat"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-        )}
-      </div>
-    );
-  };
+  const dmUnreadTotal = sortedDmChannels.reduce((sum, c) => sum + (unreadCounts[c.id] || 0), 0);
+  const projectUnreadTotal = sortedProjectChannels.reduce((sum, c) => sum + (unreadCounts[c.id] || 0), 0);
 
   if (loading) {
     return (
       <div className="h-full flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Loading...</div>
+        <div className="animate-pulse text-muted-foreground text-sm">Loading...</div>
       </div>
     );
   }
 
   return (
     <div className="h-full flex flex-col">
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'dm' | 'project')} className="flex-1 flex flex-col">
-        <div className="p-4 border-b border-border/50">
-          <TabsList className="w-full">
-            <TabsTrigger value="dm" className="flex-1 gap-2">
-              <MessageSquare className="w-4 h-4" />
-              Direct
-              {dmChannels.length > 0 && (
-                <Badge variant="secondary" className="ml-1">
-                  {dmChannels.length}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="project" className="flex-1 gap-2">
-              <FolderKanban className="w-4 h-4" />
-              Projects
-              {activeProjectChannels.length > 0 && (
-                <Badge variant="secondary" className="ml-1">
-                  {activeProjectChannels.length}
-                </Badge>
-              )}
-            </TabsTrigger>
-          </TabsList>
+      {/* Search */}
+      <div className="px-3 py-2">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search conversations..."
+            className="pl-8 h-8 text-sm bg-muted/50 border-0 focus-visible:ring-1 focus-visible:ring-primary/30"
+          />
         </div>
+      </div>
 
-        <TabsContent value="dm" className="flex-1 m-0 overflow-hidden">
-          <div className="p-2">
-            {onNewDM && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full mb-2"
-                onClick={onNewDM}
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                New Message
-              </Button>
-            )}
-          </div>
-          <ScrollArea className="flex-1 px-2">
-            {sortedDmChannels.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">No direct messages yet</p>
-              </div>
-            ) : (
-              <div className="space-y-1">
-                {sortedDmChannels.map(renderChannelItem)}
-              </div>
-            )}
-          </ScrollArea>
-        </TabsContent>
+      <ScrollArea className="flex-1">
+        <div className="px-2 pb-4">
+          {/* Direct Messages Section */}
+          <div className="mb-1">
+            <button
+              onClick={() => setDmExpanded(!dmExpanded)}
+              className="flex items-center justify-between w-full px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
+            >
+              <span className="flex items-center gap-1.5">
+                <ChevronDown className={cn("w-3 h-3 transition-transform", !dmExpanded && "-rotate-90")} />
+                Direct Messages
+                {dmUnreadTotal > 0 && (
+                  <Badge className="bg-primary text-primary-foreground text-[10px] px-1 py-0 min-w-[16px] h-4">
+                    {dmUnreadTotal}
+                  </Badge>
+                )}
+              </span>
+              {onNewDM && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onNewDM(); }}
+                  className="p-0.5 rounded hover:bg-muted/80 text-muted-foreground hover:text-foreground"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </button>
 
-        <TabsContent value="project" className="flex-1 m-0 overflow-hidden">
-          <ScrollArea className="flex-1 px-2 pt-2">
-            {projectChannels.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <FolderKanban className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">No project chats yet</p>
-                <p className="text-xs mt-1">Chats are created when you're added to projects</p>
-              </div>
-            ) : (
-              <div className="space-y-1">
-                {/* Active project chats */}
-                {activeProjectChannels.map(renderChannelItem)}
+            {dmExpanded && (
+              <div className="space-y-0.5">
+                {sortedDmChannels.length === 0 ? (
+                  <p className="px-2 py-3 text-xs text-muted-foreground text-center">No direct messages</p>
+                ) : (
+                  sortedDmChannels.map(channel => {
+                    const isSelected = channel.id === selectedChannelId;
+                    const otherUser = getOtherParticipant(channel);
+                    const unread = unreadCounts[channel.id] || 0;
+                    const online = otherUser && isUserOnline ? isUserOnline(otherUser.id) : false;
 
-                {/* Archived section */}
-                {archivedProjectChannels.length > 0 && (
-                  <Collapsible open={showArchived} onOpenChange={setShowArchived} className="mt-4">
-                    <CollapsibleTrigger asChild>
-                      <Button variant="ghost" size="sm" className="w-full justify-between text-muted-foreground">
-                        <div className="flex items-center gap-2">
-                          <Archive className="w-4 h-4" />
-                          <span>Archived ({archivedProjectChannels.length})</span>
-                        </div>
-                        <ChevronDown className={cn(
-                          "w-4 h-4 transition-transform",
-                          showArchived && "rotate-180"
-                        )} />
-                      </Button>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="space-y-1 mt-1">
-                      {archivedProjectChannels.map(renderChannelItem)}
-                    </CollapsibleContent>
-                  </Collapsible>
+                    return (
+                      <div key={channel.id} className="group relative">
+                        <button
+                          onClick={() => onSelectChannel(channel.id)}
+                          className={cn(
+                            'w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-colors text-left text-sm',
+                            isSelected
+                              ? 'bg-primary/10 text-primary font-medium'
+                              : 'hover:bg-muted/60 text-foreground/80'
+                          )}
+                        >
+                          <div className="relative flex-shrink-0">
+                            <Avatar className="w-7 h-7">
+                              <AvatarImage src={otherUser?.avatar_url || undefined} />
+                              <AvatarFallback className="bg-muted text-muted-foreground text-[10px]">
+                                {getInitials(otherUser?.full_name || null)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span
+                              className={cn(
+                                "absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-background",
+                                online ? "bg-green-500" : "bg-muted-foreground/40"
+                              )}
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <span className="truncate block">{otherUser?.full_name || 'User'}</span>
+                          </div>
+                          {unread > 0 && (
+                            <Badge className="bg-primary text-primary-foreground text-[10px] px-1 py-0 min-w-[16px] h-4 flex-shrink-0">
+                              {unread > 99 ? '99+' : unread}
+                            </Badge>
+                          )}
+                        </button>
+                        {/* Delete */}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setDeleteChannelTarget(channel); }}
+                          className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                          title="Delete chat"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    );
+                  })
                 )}
               </div>
             )}
-          </ScrollArea>
-        </TabsContent>
-      </Tabs>
+          </div>
+
+          {/* Project Channels Section */}
+          <div className="mt-3">
+            <button
+              onClick={() => setProjectExpanded(!projectExpanded)}
+              className="flex items-center justify-between w-full px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
+            >
+              <span className="flex items-center gap-1.5">
+                <ChevronDown className={cn("w-3 h-3 transition-transform", !projectExpanded && "-rotate-90")} />
+                Channels
+                {projectUnreadTotal > 0 && (
+                  <Badge className="bg-primary text-primary-foreground text-[10px] px-1 py-0 min-w-[16px] h-4">
+                    {projectUnreadTotal}
+                  </Badge>
+                )}
+              </span>
+            </button>
+
+            {projectExpanded && (
+              <div className="space-y-0.5">
+                {sortedProjectChannels.length === 0 ? (
+                  <p className="px-2 py-3 text-xs text-muted-foreground text-center">No project channels</p>
+                ) : (
+                  sortedProjectChannels.map(channel => {
+                    const isSelected = channel.id === selectedChannelId;
+                    const displayName = channel.container?.title || channel.name || 'Project';
+                    const unread = unreadCounts[channel.id] || 0;
+
+                    return (
+                      <div key={channel.id} className="group relative">
+                        <button
+                          onClick={() => onSelectChannel(channel.id)}
+                          className={cn(
+                            'w-full flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors text-left text-sm',
+                            isSelected
+                              ? 'bg-primary/10 text-primary font-medium'
+                              : 'hover:bg-muted/60 text-foreground/80'
+                          )}
+                        >
+                          <Hash className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                          <span className="truncate flex-1">{displayName.toLowerCase().replace(/\s+/g, '-')}</span>
+                          {unread > 0 && (
+                            <Badge className="bg-primary text-primary-foreground text-[10px] px-1 py-0 min-w-[16px] h-4 flex-shrink-0">
+                              {unread > 99 ? '99+' : unread}
+                            </Badge>
+                          )}
+                        </button>
+                        {/* Delete */}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setDeleteChannelTarget(channel); }}
+                          className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                          title="Delete channel"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </ScrollArea>
 
       {/* Delete Chat Confirmation */}
       <AlertDialog open={!!deleteChannelTarget} onOpenChange={(open) => !open && setDeleteChannelTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this chat?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will remove the conversation from your list. The other person will still have access to their copy.
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="w-5 h-5" />
+              Delete this conversation?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>
+                This action <strong>cannot be undone</strong>. All messages, attachments, and reactions in this 
+                conversation will be permanently deleted for all participants.
+              </p>
+              {deleteChannelTarget && (
+                <p className="text-foreground font-medium">
+                  {deleteChannelTarget.type === 'dm'
+                    ? `Chat with ${getOtherParticipant(deleteChannelTarget)?.full_name || 'User'}`
+                    : `# ${(deleteChannelTarget.container?.title || deleteChannelTarget.name || 'Project').toLowerCase().replace(/\s+/g, '-')}`
+                  }
+                </p>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -343,7 +337,7 @@ export function ChatList({
               disabled={isDeletingChannel}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isDeletingChannel ? 'Deleting…' : 'Delete'}
+              {isDeletingChannel ? 'Deleting…' : 'Delete permanently'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
