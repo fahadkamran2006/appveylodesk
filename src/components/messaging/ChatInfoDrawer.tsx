@@ -241,7 +241,7 @@ export function ChatInfoDrawer({
         <SheetHeader className="p-6 pb-2">
           <SheetTitle className="flex items-center gap-2">
             <Users className="w-5 h-5 text-primary" />
-            {isDM ? 'Chat Info' : (channel.project?.title || channel.name || 'Group Info')}
+            {isDM ? 'Chat Info' : ((channel as any).container?.title || channel.name || 'Group Info')}
           </SheetTitle>
         </SheetHeader>
 
