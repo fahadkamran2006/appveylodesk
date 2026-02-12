@@ -32,6 +32,7 @@ import { useUploadContext } from '@/contexts/UploadContext';
 import { format } from 'date-fns';
 import { isDefinitelyBunnyStreamUrl } from '@/lib/bunnyStream';
 import { supabase } from '@/integrations/supabase/client';
+import { useDownloadContext } from '@/contexts/DownloadContext';
 
 interface FileManagerProps {
   projectId: string;
@@ -92,6 +93,7 @@ export function FileManager({
   const { deleteDeliverable, formatBytes, loading } = useStorage();
   const { toast } = useToast();
   const { addToQueue } = useUploadContext();
+  const { startDownload } = useDownloadContext();
   const [deleteTarget, setDeleteTarget] = useState<Deliverable | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -125,76 +127,9 @@ export function FileManager({
     }
   }, [deleteTarget, deleteDeliverable, onFileDeleted]);
 
-  const handleDownload = useCallback(async (deliverable: Deliverable) => {
-    // Use strict check: only route to edge function for actual Bunny Stream videos
-    const isBunnyStream = isDefinitelyBunnyStreamUrl(deliverable.file_url);
-    
-    if (isBunnyStream) {
-      toast({ title: 'Download started', description: `Preparing ${deliverable.file_name}…` });
-      // Use the edge function Storage API proxy for proper filename download
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData?.session?.access_token;
-      
-      if (!accessToken) {
-        console.error('No access token for download');
-        window.open(deliverable.file_url, '_blank');
-        return;
-      }
-      
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const downloadUrl = `${supabaseUrl}/functions/v1/bunny-ops`;
-      
-      try {
-        const response = await fetch(downloadUrl, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            action: 'download_stream',
-            deliverableId: deliverable.id,
-          }),
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Download failed: ${response.status}`);
-        }
-        
-        const disposition = response.headers.get('Content-Disposition');
-        let filename = deliverable.file_name || 'video.mp4';
-        if (disposition) {
-          const match = disposition.match(/filename="(.+)"/);
-          if (match) filename = match[1];
-        }
-        
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      } catch (error) {
-        console.error('Download error:', error);
-        window.open(deliverable.file_url, '_blank');
-      }
-      return;
-    }
-    
-    // For regular CDN files (images, PDFs, etc.), use anchor download method
-    // This works better than window.open for triggering actual downloads
-    const a = document.createElement('a');
-    a.href = deliverable.file_url;
-    a.download = deliverable.file_name;
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  }, []);
+  const handleDownload = useCallback((deliverable: Deliverable) => {
+    startDownload(deliverable.id, deliverable.file_name, deliverable.file_url, deliverable.file_size || undefined);
+  }, [startDownload]);
 
   return (
     <div className={cn('flex flex-col h-full', className)}>

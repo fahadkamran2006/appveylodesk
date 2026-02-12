@@ -9,7 +9,9 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { ThemeProvider } from "@/hooks/useTheme";
 import { SidebarProvider } from "@/hooks/useSidebar";
 import { UploadProvider } from "@/contexts/UploadContext";
+import { DownloadProvider } from "@/contexts/DownloadContext";
 import { GlobalUploadTray } from "@/components/upload/GlobalUploadTray";
+import { GlobalDownloadTray } from "@/components/download/GlobalDownloadTray";
 
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
@@ -70,7 +72,9 @@ const App = () => (
             <BrowserRouter>
               <AuthProvider>
                 <UploadProvider>
+                <DownloadProvider>
                   <GlobalUploadTray />
+                  <GlobalDownloadTray />
                 <Routes>
                   {/* Public invite signup routes (must remain unguarded) */}
                   <Route path="/join-client" element={<JoinClient />} />
@@ -130,6 +134,7 @@ const App = () => (
                   {/* Catch-all must be last */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
+                </DownloadProvider>
                 </UploadProvider>
               </AuthProvider>
             </BrowserRouter>

@@ -18,6 +18,7 @@ import {
   RotateCw,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useDownloadContext } from '@/contexts/DownloadContext';
 
 // Bunny Stream Library ID
 const BUNNY_STREAM_LIBRARY_ID = '582147';
@@ -212,8 +213,7 @@ export function FilePreviewModal({
   const [isStreamVideo, setIsStreamVideo] = useState(false);
   const [streamVideoId, setStreamVideoId] = useState<string | null>(null);
   const [isVideoProcessing, setIsVideoProcessing] = useState(false);
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [downloadFailed, setDownloadFailed] = useState(false);
+  const { startDownload } = useDownloadContext();
 
   // Reset editing state & zoom/rotation when file changes
   useEffect(() => {
@@ -342,23 +342,10 @@ export function FilePreviewModal({
     }
   };
 
-  const handleDownload = async () => {
-    // For Bunny Stream videos, use the edge function proxy for proper filename
-    if (isStreamVideo && streamVideoId && file) {
-      setIsDownloading(true);
-      setDownloadFailed(false);
-      await downloadStreamVideo(
-        file.id,
-        file.file_name,
-        () => {}, // onStart
-        () => setDownloadFailed(true), // onError
-      );
-      setIsDownloading(false);
-      return;
+  const handleDownload = () => {
+    if (file) {
+      startDownload(file.id, file.file_name, file.file_url, file.file_size);
     }
-    
-    // For other files, use the provided onDownload handler
-    onDownload?.();
   };
 
   return (
@@ -448,21 +435,9 @@ export function FilePreviewModal({
                 </Button>
               </>
             )}
-            {(onDownload || (isStreamVideo && streamVideoId)) && !isVideoProcessing && (
-              <Button size="icon" variant="ghost" onClick={handleDownload} disabled={isDownloading}>
-                {isDownloading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Download className="w-4 h-4" />
-                )}
-              </Button>
-            )}
-            {isDownloading && (
-              <span className="text-xs text-muted-foreground whitespace-nowrap">Downloading…</span>
-            )}
-            {downloadFailed && !isDownloading && (
-              <Button size="sm" variant="outline" onClick={handleDownload} className="text-xs">
-                Retry Download
+            {!isVideoProcessing && (
+              <Button size="icon" variant="ghost" onClick={handleDownload}>
+                <Download className="w-4 h-4" />
               </Button>
             )}
           </div>
