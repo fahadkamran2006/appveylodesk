@@ -1,20 +1,30 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { useBranding } from '@/contexts/BrandingContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Palette, Upload, Loader2, Lock, Command } from 'lucide-react';
+import { Palette, Upload, Loader2, Lock, Command, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
-interface AgencyBranding {
-  logo_url?: string;
-  primary_color?: string;
-  agency_name?: string;
+interface AgencyBrandingForm {
+  logo_url: string;
+  primary_color: string;
+  agency_name: string;
+  enabled: boolean;
 }
+
+const DEFAULT_BRANDING: AgencyBrandingForm = {
+  logo_url: '',
+  primary_color: '#6366f1',
+  agency_name: '',
+  enabled: false,
+};
 
 interface BrandingSettingsProps {
   className?: string;
@@ -22,16 +32,14 @@ interface BrandingSettingsProps {
 
 export function BrandingSettings({ className }: BrandingSettingsProps) {
   const { user } = useAuth();
+  const { refetch: refetchBranding } = useBranding();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [planTier, setPlanTier] = useState<string>('starter');
   const [agencyId, setAgencyId] = useState<string | null>(null);
-  const [branding, setBranding] = useState<AgencyBranding>({
-    logo_url: '',
-    primary_color: '#6366f1',
-    agency_name: '',
-  });
+  const [agencyName, setAgencyName] = useState('');
+  const [branding, setBranding] = useState<AgencyBrandingForm>({ ...DEFAULT_BRANDING });
 
   const canWhiteLabel = planTier === 'growth' || planTier === 'scale';
 
@@ -58,11 +66,13 @@ export function BrandingSettings({ className }: BrandingSettingsProps) {
 
         if (agency) {
           setPlanTier(agency.plan_tier || 'starter');
-          const existingBranding = agency.branding as AgencyBranding | null;
+          setAgencyName(agency.name || '');
+          const existingBranding = agency.branding as Record<string, any> | null;
           setBranding({
             logo_url: existingBranding?.logo_url || '',
             primary_color: existingBranding?.primary_color || '#6366f1',
             agency_name: existingBranding?.agency_name || agency.name || '',
+            enabled: existingBranding?.enabled === true,
           });
         }
       } catch (error) {
@@ -79,13 +89,11 @@ export function BrandingSettings({ className }: BrandingSettingsProps) {
     const file = e.target.files?.[0];
     if (!file || !agencyId) return;
 
-    // Validate file type
     if (!file.type.startsWith('image/')) {
       toast.error('Please upload an image file');
       return;
     }
 
-    // Validate file size (max 2MB)
     if (file.size > 2 * 1024 * 1024) {
       toast.error('Image must be less than 2MB');
       return;
@@ -94,7 +102,7 @@ export function BrandingSettings({ className }: BrandingSettingsProps) {
     setIsUploading(true);
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `${agencyId}/logo.${fileExt}`;
+      const fileName = `agency-logos/${agencyId}/logo.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
@@ -125,10 +133,11 @@ export function BrandingSettings({ className }: BrandingSettingsProps) {
 
     setIsSaving(true);
     try {
-      const brandingJson: { [key: string]: string | null } = {
+      const brandingJson: Record<string, any> = {
         logo_url: branding.logo_url || null,
         primary_color: branding.primary_color || null,
         agency_name: branding.agency_name || null,
+        enabled: branding.enabled,
       };
 
       const { error } = await supabase
@@ -142,12 +151,23 @@ export function BrandingSettings({ className }: BrandingSettingsProps) {
       if (error) throw error;
 
       toast.success('Branding settings saved');
+      refetchBranding();
     } catch (error: any) {
       console.error('Error saving branding:', error);
       toast.error(error.message || 'Failed to save branding');
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleReset = () => {
+    setBranding({
+      logo_url: '',
+      primary_color: '#6366f1',
+      agency_name: agencyName || '',
+      enabled: false,
+    });
+    toast.info('Branding reset to defaults. Click "Save Branding" to apply.');
   };
 
   if (isLoading) {
@@ -197,6 +217,20 @@ export function BrandingSettings({ className }: BrandingSettingsProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Enable/Disable Toggle */}
+        <div className="flex items-center justify-between p-4 rounded-lg border border-border/50 bg-surface-elevated">
+          <div className="space-y-0.5">
+            <Label className="text-base font-medium">Use Custom Branding</Label>
+            <p className="text-sm text-muted-foreground">
+              Replace Veylodesk branding with your own across all dashboards
+            </p>
+          </div>
+          <Switch
+            checked={branding.enabled}
+            onCheckedChange={(checked) => setBranding(prev => ({ ...prev, enabled: checked }))}
+          />
+        </div>
+
         {/* Logo Upload */}
         <div className="space-y-3">
           <Label>Agency Logo</Label>
@@ -278,7 +312,7 @@ export function BrandingSettings({ className }: BrandingSettingsProps) {
             />
           </div>
           <p className="text-xs text-muted-foreground">
-            Used for accents across the platform (coming soon)
+            Used for accents across the platform
           </p>
         </div>
 
@@ -305,21 +339,31 @@ export function BrandingSettings({ className }: BrandingSettingsProps) {
           </div>
         </div>
 
-        {/* Save Button */}
-        <Button
-          onClick={handleSave}
-          disabled={isSaving}
-          className="w-full sm:w-auto"
-        >
-          {isSaving ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Saving...
-            </>
-          ) : (
-            'Save Branding'
-          )}
-        </Button>
+        {/* Action Buttons */}
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="flex-1 sm:flex-none"
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              'Save Branding'
+            )}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleReset}
+            disabled={isSaving}
+          >
+            <RotateCcw className="w-4 h-4 mr-2" />
+            Reset to Default
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );
