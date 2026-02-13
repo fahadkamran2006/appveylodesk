@@ -10,6 +10,7 @@ import { ThemeProvider } from "@/hooks/useTheme";
 import { SidebarProvider } from "@/hooks/useSidebar";
 import { UploadProvider } from "@/contexts/UploadContext";
 import { DownloadProvider } from "@/contexts/DownloadContext";
+import { BrandingProvider } from "@/contexts/BrandingContext";
 import { GlobalUploadTray } from "@/components/upload/GlobalUploadTray";
 import { GlobalDownloadTray } from "@/components/download/GlobalDownloadTray";
 
@@ -71,6 +72,7 @@ const App = () => (
             <Sonner />
             <BrowserRouter>
               <AuthProvider>
+                <BrandingProvider>
                 <UploadProvider>
                 <DownloadProvider>
                   <GlobalUploadTray />
@@ -136,6 +138,7 @@ const App = () => (
                 </Routes>
                 </DownloadProvider>
                 </UploadProvider>
+                </BrandingProvider>
               </AuthProvider>
             </BrowserRouter>
           </SidebarProvider>

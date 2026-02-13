@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
+import { useBranding } from '@/contexts/BrandingContext';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { cn } from '@/lib/utils';
 
@@ -21,16 +22,31 @@ export const ClientSidebar = () => {
   const location = useLocation();
   const { signOut } = useAuth();
   const { totalUnread } = useUnreadMessages();
+  const { branding, isCustomBrandingActive } = useBranding();
+
+  const showCustomLogo = isCustomBrandingActive && branding?.logo_url;
 
   return (
     <aside className="w-64 bg-surface-dark border-r border-border/50 flex flex-col sticky top-0 h-screen overflow-y-auto">
       <div className="p-6 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-lg bg-gradient-primary flex items-center justify-center">
-            <Command className="w-5 h-5 text-primary-foreground" />
-          </div>
+          {showCustomLogo ? (
+            <img 
+              src={branding.logo_url} 
+              alt={branding.agency_name || 'Agency'} 
+              className="w-9 h-9 rounded-lg object-cover"
+            />
+          ) : (
+            <div className="w-9 h-9 rounded-lg bg-gradient-primary flex items-center justify-center">
+              <Command className="w-5 h-5 text-primary-foreground" />
+            </div>
+          )}
           <span className="text-xl font-bold text-foreground">
-            Veylo<span className="text-gradient">desk</span>
+            {isCustomBrandingActive && branding?.agency_name ? (
+              branding.agency_name
+            ) : (
+              <>Veylo<span className="text-gradient">desk</span></>
+            )}
           </span>
         </Link>
         <ThemeToggle />

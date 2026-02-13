@@ -1,16 +1,15 @@
 import { Link, useLocation } from 'react-router-dom';
-import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 import { useSidebar } from '@/hooks/useSidebar';
 import { useAgencyLimits } from '@/hooks/useAgencyLimits';
+import { useBranding } from '@/contexts/BrandingContext';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/integrations/supabase/client';
 import {
   Command,
   LayoutDashboard,
@@ -37,12 +36,6 @@ interface NavItem {
   label: string;
   icon: React.ElementType;
   href: string;
-}
-
-interface AgencyBranding {
-  logo_url?: string;
-  primary_color?: string;
-  agency_name?: string;
 }
 
 const adminNavItems: NavItem[] = [
@@ -84,14 +77,12 @@ interface CollapsibleSidebarProps {
 
 export function CollapsibleSidebar({ role = 'admin' }: CollapsibleSidebarProps) {
   const location = useLocation();
-  const { signOut, user } = useAuth();
+  const { signOut } = useAuth();
   const { totalUnread } = useUnreadMessages();
   const { isCollapsed, toggleSidebar } = useSidebar();
   const { planTier, storageUsedBytes, storageLimitBytes, formatBytes, getStoragePercentage, loading: limitsLoading } = useAgencyLimits();
-  const [branding, setBranding] = useState<AgencyBranding | null>(null);
-  const [canWhiteLabel, setCanWhiteLabel] = useState(false);
+  const { branding, isCustomBrandingActive } = useBranding();
 
-  // Plan badge icons
   const getPlanIcon = () => {
     switch (planTier) {
       case 'scale': return Rocket;
@@ -116,47 +107,7 @@ export function CollapsibleSidebar({ role = 'admin' }: CollapsibleSidebarProps) 
       ? clientNavItems 
       : editorNavItems;
 
-  // Fetch agency branding for white-label support
-  useEffect(() => {
-    const fetchBranding = async () => {
-      if (!user) return;
-
-      try {
-        // Get user's agency
-        const { data: userRole } = await supabase
-          .from('user_roles')
-          .select('agency_id')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (!userRole?.agency_id) return;
-
-        // Get agency with plan tier and branding
-        const { data: agency } = await supabase
-          .from('agencies')
-          .select('plan_tier, branding')
-          .eq('id', userRole.agency_id)
-          .single();
-
-        if (agency) {
-          // Only enable white-label for growth and scale tiers
-          const tier = agency.plan_tier as string;
-          if (tier === 'growth' || tier === 'scale') {
-            setCanWhiteLabel(true);
-            if (agency.branding) {
-              setBranding(agency.branding as AgencyBranding);
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching branding:', error);
-      }
-    };
-
-    fetchBranding();
-  }, [user]);
-
-  const showCustomLogo = canWhiteLabel && branding?.logo_url;
+  const showCustomLogo = isCustomBrandingActive && branding?.logo_url;
 
   return (
     <aside 
@@ -184,7 +135,7 @@ export function CollapsibleSidebar({ role = 'admin' }: CollapsibleSidebarProps) 
           )}
           {!isCollapsed && (
             <span className="text-xl font-bold text-foreground whitespace-nowrap">
-              {showCustomLogo && branding?.agency_name ? (
+              {isCustomBrandingActive && branding?.agency_name ? (
                 branding.agency_name
               ) : (
                 <>Veylo<span className="text-gradient">desk</span></>

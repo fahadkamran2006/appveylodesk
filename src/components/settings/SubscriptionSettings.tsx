@@ -22,8 +22,8 @@ const PLAN_DETAILS = {
     bgColor: 'bg-blue-500/10',
     clients: 5,
     storage: '200 GB',
-    monthlyPrice: 29,
-    yearlyPrice: 290,
+    monthlyPrice: 49,
+    yearlyPrice: 490,
   },
   growth: {
     name: 'Growth',
@@ -303,7 +303,7 @@ export const SubscriptionSettings = ({ className }: SubscriptionSettingsProps) =
             </div>
 
             <div className="grid gap-3">
-              {Object.entries(PLAN_DETAILS).map(([key, plan]) => {
+              {Object.entries(PLAN_DETAILS).filter(([key]) => key !== planTier).map(([key, plan]) => {
                 const PlanIcon = plan.icon;
                 const price = billingInterval === 'yearly' ? plan.yearlyPrice : plan.monthlyPrice;
                 
