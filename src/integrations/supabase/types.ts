@@ -1111,6 +1111,30 @@ export type Database = {
           },
         ]
       }
+      tool_leads: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          input_data: Json | null
+          tool_used: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          input_data?: Json | null
+          tool_used: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          input_data?: Json | null
+          tool_used?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           agency_id: string
