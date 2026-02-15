@@ -76,6 +76,7 @@ export default defineConfig(({ mode }) => ({
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB limit
         // Prevent SW from intercepting OAuth broker paths
         navigateFallbackDenylist: [/^\/~oauth/, /^\/--oauth/],
+        importScripts: ['/custom-sw.js'],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
