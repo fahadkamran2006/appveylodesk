@@ -317,7 +317,7 @@ export function useNotificationPreferences() {
     const pref = preferences.find(p => p.notification_type === type);
     return {
       in_app_enabled: pref?.in_app_enabled ?? true,
-      email_enabled: pref?.email_enabled ?? true,
+      email_enabled: pref?.email_enabled ?? false,
     };
   }, [preferences]);
 

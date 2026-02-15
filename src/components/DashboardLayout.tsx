@@ -4,6 +4,7 @@ import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { SubscriptionGuard } from '@/components/SubscriptionGuard';
 import { DashboardHeader } from '@/components/notifications/DashboardHeader';
+import { usePushNotificationListener } from '@/hooks/usePushNotifications';
 import { cn } from '@/lib/utils';
 
 interface DashboardLayoutProps {
@@ -22,6 +23,9 @@ const UNLOCKED_ADMIN_ROUTES = [
 
 export function DashboardLayout({ role, children, className, hideHeader = false }: DashboardLayoutProps) {
   const location = useLocation();
+  
+  // Activate push notification listener for all dashboard users
+  usePushNotificationListener();
   
   // Determine if this route should bypass the subscription guard
   const shouldBypassGuard = role === 'admin' && UNLOCKED_ADMIN_ROUTES.some(
