@@ -35,3 +35,9 @@ verify_jwt = false
 
 [functions.get-portal-url]
 verify_jwt = false
+
+[functions.send-web-push]
+verify_jwt = false
+
+[functions.get-vapid-key]
+verify_jwt = false
