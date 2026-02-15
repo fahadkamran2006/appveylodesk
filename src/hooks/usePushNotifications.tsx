@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 
 interface PushNotificationState {
   isSupported: boolean;
@@ -135,13 +136,41 @@ export function usePushNotificationListener() {
   useEffect(() => {
     if (!user || !isSupported || permission !== 'granted') return;
 
-    // The service worker will handle showing notifications when the app is in background
-    // For foreground, we can optionally show notifications through the hook
-    
-    // Listen for service worker messages
+    // Subscribe to realtime notification inserts and show push alerts
+    const channel = supabase
+      .channel(`push-notifications:${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const notification = payload.new as {
+            title: string;
+            message: string;
+            link?: string;
+            type: string;
+          };
+
+          // Show browser/PWA push notification
+          showNotification(notification.title, {
+            body: notification.message,
+            tag: notification.type,
+            data: { 
+              type: notification.type,
+              url: notification.link,
+            },
+          });
+        }
+      )
+      .subscribe();
+
+    // Listen for service worker messages (notification clicks)
     const handleServiceWorkerMessage = (event: MessageEvent) => {
       if (event.data && event.data.type === 'NOTIFICATION_CLICK') {
-        // Handle notification click - navigate to relevant page
         const { url } = event.data;
         if (url) {
           window.focus();
@@ -153,6 +182,7 @@ export function usePushNotificationListener() {
     navigator.serviceWorker?.addEventListener('message', handleServiceWorkerMessage);
 
     return () => {
+      supabase.removeChannel(channel);
       navigator.serviceWorker?.removeEventListener('message', handleServiceWorkerMessage);
     };
   }, [user, isSupported, permission, showNotification]);

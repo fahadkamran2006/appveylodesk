@@ -8,6 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { PushNotificationToggle } from '@/components/notifications/PushNotificationToggle';
 
 interface NotificationSettingsProps {
   className?: string;
@@ -164,6 +165,9 @@ export function NotificationSettings({ className }: NotificationSettingsProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Push Notification Permission */}
+        <PushNotificationToggle />
+
         {/* Channel Legend */}
         <div className="flex items-center gap-4 p-3 rounded-lg bg-muted/50">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">

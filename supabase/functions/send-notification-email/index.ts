@@ -68,8 +68,8 @@ const handler = async (req: Request): Promise<Response> => {
       .eq("notification_type", payload.type)
       .maybeSingle();
 
-    // Default to enabled if no preference exists
-    const emailEnabled = preference?.email_enabled ?? true;
+    // Default to disabled if no preference exists
+    const emailEnabled = preference?.email_enabled ?? false;
 
     if (!emailEnabled) {
       console.log(`Email notifications disabled for user ${payload.user_id} and type ${payload.type}`);
