@@ -9,7 +9,7 @@ interface PushNotificationToggleProps {
 }
 
 export function PushNotificationToggle({ className }: PushNotificationToggleProps) {
-  const { isSupported, permission, requestPermission } = usePushNotifications();
+  const { isSupported, permission, isSubscribed, requestPermission } = usePushNotifications();
   const [isRequesting, setIsRequesting] = useState(false);
 
   if (!isSupported) {
@@ -48,7 +48,9 @@ export function PushNotificationToggle({ className }: PushNotificationToggleProp
         <p className="text-sm font-medium text-foreground">Push Notifications</p>
         <p className="text-xs text-muted-foreground">
           {permission === 'granted' 
-            ? 'You will receive push notifications'
+            ? isSubscribed 
+              ? 'Push notifications active — works even when closed'
+              : 'Subscribing to push notifications...'
             : permission === 'denied'
             ? 'Notifications blocked. Enable in browser settings.'
             : 'Get notified about messages, invoices & projects'}
