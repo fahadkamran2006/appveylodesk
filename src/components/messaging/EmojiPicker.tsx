@@ -1,4 +1,3 @@
-import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { SmilePlus } from 'lucide-react';
 import { useState } from 'react';
@@ -13,21 +12,28 @@ export function EmojiPicker({ onSelect }: EmojiPickerProps) {
   const [open, setOpen] = useState(false);
 
   return (
-    <Popover open={open} onOpenChange={setOpen} modal>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
           className="p-1 rounded hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
-          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            setOpen(prev => !prev);
+          }}
         >
           <SmilePlus className="w-4 h-4" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-2" side="top" align="start" onPointerDownOutside={(e) => e.preventDefault()}>
+      <PopoverContent className="w-auto p-2" side="top" align="start" sideOffset={8}>
         <div className="flex gap-1">
           {QUICK_EMOJIS.map(emoji => (
             <button
               key={emoji}
-              onClick={() => { onSelect(emoji); setOpen(false); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelect(emoji);
+                setOpen(false);
+              }}
               className="w-8 h-8 flex items-center justify-center rounded hover:bg-muted text-lg transition-colors"
             >
               {emoji}
