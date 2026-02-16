@@ -33,6 +33,8 @@ const MessagesPage = () => {
     channel: selectedChannel,
     loading: messagesLoading,
     sendMessage,
+    editMessage,
+    deleteMessage,
   } = useChannelMessages(selectedChannelId);
 
   const { unreadCounts, markChannelAsRead } = useUnreadMessages();
@@ -140,6 +142,8 @@ const MessagesPage = () => {
               messages={messages as any}
               loading={messagesLoading}
               onSendMessage={sendMessage}
+              onEditMessage={editMessage}
+              onDeleteMessage={deleteMessage}
               onBack={() => setSelectedChannelId(null)}
               showBackButton={!!selectedChannelId}
             />

@@ -56,6 +56,8 @@ interface ChatWindowProps {
   messages: Message[];
   loading?: boolean;
   onSendMessage: (content: string, attachmentUrl?: string, attachmentType?: string, parentId?: string | null) => Promise<boolean>;
+  onEditMessage?: (messageId: string, newContent: string) => Promise<boolean>;
+  onDeleteMessage?: (messageId: string) => Promise<boolean>;
   onBack?: () => void;
   showBackButton?: boolean;
 }
@@ -69,7 +71,7 @@ function shouldGroup(prev: Message | undefined, curr: Message): boolean {
   return diff < GROUP_THRESHOLD_MS;
 }
 
-export function ChatWindow({ channel, messages, loading, onSendMessage, onBack, showBackButton }: ChatWindowProps) {
+export function ChatWindow({ channel, messages, loading, onSendMessage, onEditMessage, onDeleteMessage, onBack, showBackButton }: ChatWindowProps) {
   const { user, userRole } = useAuth();
   const { agencyId, refetch: refetchChannels } = useMessaging();
   const [messageInput, setMessageInput] = useState('');
@@ -359,6 +361,8 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onBack, 
                       reactions={getReactionSummary(message.id)}
                       onReply={(msg) => setReplyingTo(msg)}
                       onReact={(msgId, emoji) => toggleReaction(msgId, emoji)}
+                      onEdit={isOwn ? onEditMessage : undefined}
+                      onDelete={isOwn ? onDeleteMessage : undefined}
                     />
                   );
                 })}
