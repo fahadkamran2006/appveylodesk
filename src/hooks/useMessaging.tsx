@@ -433,20 +433,32 @@ export function useChannelMessages(channelId: string | null) {
         table: 'messages',
         filter: `channel_id=eq.${channelId}`,
       }, async (payload) => {
-        const profiles = await fetchProfilesWithRetry([payload.new.sender_id], 2, 300);
-        const profile = profiles.find(p => p.id === payload.new.sender_id);
+        const newMsg = payload.new as Message;
+        
+        // Deduplicate: skip if message already exists
+        setMessages(prev => {
+          if (prev.some(m => m.id === newMsg.id)) return prev;
+          return prev; // Don't add here, let the profile fetch finish first
+        });
+
+        const profiles = await fetchProfilesWithRetry([newMsg.sender_id], 2, 300);
+        const profile = profiles.find(p => p.id === newMsg.sender_id);
 
         const newMessage: MessageWithSender = {
-          ...(payload.new as Message),
+          ...newMsg,
           sender: profile || {
-            id: payload.new.sender_id,
+            id: newMsg.sender_id,
             full_name: null,
             email: '',
             avatar_url: null,
           },
         };
 
-        setMessages(prev => [...prev, newMessage]);
+        setMessages(prev => {
+          // Deduplicate again after async profile fetch
+          if (prev.some(m => m.id === newMessage.id)) return prev;
+          return [...prev, newMessage];
+        });
       })
       .subscribe();
 

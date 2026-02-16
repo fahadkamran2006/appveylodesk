@@ -408,7 +408,7 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onBack, 
         )}
 
         {/* Input */}
-        <div className="p-4 border-t border-border/50">
+        <div className="p-3 border-t border-border/30">
           {isArchived ? (
             <div className="flex items-center justify-center gap-2 text-muted-foreground py-2">
               <Lock className="w-4 h-4" />
@@ -429,13 +429,14 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onBack, 
                 onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
                 placeholder={pendingAttachment ? "Add a caption..." : replyingTo ? "Reply..." : "Type a message..."}
-                className="flex-1 bg-surface-elevated border-border/50"
+                className="flex-1 bg-card border-border/30 rounded-full px-4"
                 disabled={uploadProgress.uploading}
               />
               <Button
                 onClick={handleSend}
                 disabled={(!messageInput.trim() && !pendingAttachment) || uploadProgress.uploading}
                 size="icon"
+                className="rounded-full shrink-0"
               >
                 <Send className="w-4 h-4" />
               </Button>

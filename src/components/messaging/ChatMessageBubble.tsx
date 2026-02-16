@@ -59,13 +59,9 @@ function linkifyText(text: string): string {
 
 /** Basic markdown: **bold**, *italic*, `code`, ```code blocks``` */
 function parseMarkdown(text: string): string {
-  // Code blocks first
   let result = text.replace(/```([^`]+)```/g, '<code class="block bg-background/30 rounded px-2 py-1 text-xs font-mono my-1 whitespace-pre-wrap">$1</code>');
-  // Inline code
   result = result.replace(/`([^`]+)`/g, '<code class="bg-background/30 rounded px-1 py-0.5 text-xs font-mono">$1</code>');
-  // Bold
   result = result.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-  // Italic
   result = result.replace(/\*(.+?)\*/g, '<em>$1</em>');
   return result;
 }
@@ -84,7 +80,6 @@ function renderMessageContent(content: string) {
       />
     );
   }
-  // Plain text: apply markdown then linkify
   const processed = linkifyText(parseMarkdown(content));
   return (
     <div
@@ -122,70 +117,77 @@ export function ChatMessageBubble({
     else { video.pause(); setVideoPlaying(false); }
   };
 
+  const actionButtons = showActions && !isMuted && !isOptimistic && (
+    <div className={cn(
+      'flex items-center gap-0.5 self-center transition-opacity',
+      'opacity-0 group-hover:opacity-100',
+    )}>
+      {onReply && (
+        <button
+          onClick={() => onReply(message)}
+          className="p-1.5 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <Reply className="w-3.5 h-3.5" />
+        </button>
+      )}
+      {onReact && (
+        <EmojiPicker onSelect={(emoji) => onReact(message.id, emoji)} />
+      )}
+    </div>
+  );
+
   return (
     <>
       <motion.div
         layout="position"
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: isOptimistic ? 0.5 : 1, y: 0 }}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: isOptimistic ? 0.6 : 1, y: 0 }}
         exit={{ opacity: 0, y: -8 }}
-        transition={{ duration: 0.2, ease: 'easeOut' }}
+        transition={{ duration: 0.15, ease: 'easeOut' }}
         className={cn(
-          'group flex gap-3 relative',
-          isOwn && 'flex-row-reverse',
+          'group flex gap-2 relative px-2',
+          isOwn ? 'flex-row-reverse' : 'flex-row',
           isMuted && 'opacity-50',
-          isGrouped ? 'mt-0.5' : 'mt-3',
+          isGrouped ? 'mt-0.5' : 'mt-4',
         )}
         onMouseEnter={() => setShowActions(true)}
         onMouseLeave={() => setShowActions(false)}
         onTouchStart={() => setShowActions(true)}
       >
         {/* Avatar or spacer */}
-        {showAvatar && !isOwn ? (
-          <Avatar className="w-8 h-8 border border-border/50 flex-shrink-0 mt-1">
-            <AvatarImage src={message.sender.avatar_url || undefined} />
-            <AvatarFallback className="bg-primary/20 text-primary text-xs">
-              {getInitials(message.sender.full_name, message.sender.email)}
-            </AvatarFallback>
-          </Avatar>
-        ) : !isOwn ? (
-          <div className="w-8 flex-shrink-0" />
-        ) : null}
-
-        {/* Actions on opposite side of bubble */}
-        {isOwn && showActions && !isMuted && !isOptimistic && (
-          <div className="flex items-center gap-0.5 self-center opacity-0 group-hover:opacity-100 transition-opacity">
-            {onReply && (
-              <button
-                onClick={() => onReply(message)}
-                className="p-1 rounded hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <Reply className="w-3.5 h-3.5" />
-              </button>
-            )}
-            {onReact && (
-              <EmojiPicker onSelect={(emoji) => onReact(message.id, emoji)} />
-            )}
-          </div>
+        {!isOwn && (
+          showAvatar ? (
+            <Avatar className="w-7 h-7 border border-border/30 flex-shrink-0 mt-1">
+              <AvatarImage src={message.sender.avatar_url || undefined} />
+              <AvatarFallback className="bg-primary/15 text-primary text-[10px] font-medium">
+                {getInitials(message.sender.full_name, message.sender.email)}
+              </AvatarFallback>
+            </Avatar>
+          ) : (
+            <div className="w-7 flex-shrink-0" />
+          )
         )}
 
-        <div className="max-w-[70%]">
+        {/* Action buttons - always on the OPPOSITE side of the bubble */}
+        {/* For own messages (right side), actions go on the LEFT */}
+        {isOwn && actionButtons}
+
+        <div className={cn('max-w-[65%] min-w-[80px]', isOwn && 'items-end')}>
           <div className={cn(
-            'rounded-2xl overflow-hidden',
+            'rounded-2xl overflow-hidden shadow-sm',
             isOwn
-              ? 'bg-primary text-primary-foreground'
-              : 'bg-muted text-foreground',
+              ? 'bg-primary text-primary-foreground rounded-br-md'
+              : 'bg-card border border-border/40 text-foreground rounded-bl-md',
             // Tighter radius on grouped edges
-            isOwn
-              ? (isGrouped ? 'rounded-tr-md' : '') + (isLastInGroup ? ' rounded-br-md' : '')
-              : (isGrouped ? 'rounded-tl-md' : '') + (isLastInGroup ? ' rounded-bl-md' : ''),
+            isOwn && isGrouped && 'rounded-tr-md',
+            !isOwn && isGrouped && 'rounded-tl-md',
           )}>
             {/* Sender name - only on first message in group */}
             {showAvatar && !isOwn && (
-              <div className="px-4 pt-2">
-                <p className="text-xs font-medium opacity-70">
+              <div className="px-3 pt-2">
+                <p className="text-[11px] font-semibold text-primary">
                   {displayName}
-                  {isMuted && ' (muted)'}
+                  {isMuted && <span className="text-muted-foreground font-normal"> (muted)</span>}
                 </p>
               </div>
             )}
@@ -196,7 +198,7 @@ export function ChatMessageBubble({
                 'mx-2 mt-2 px-3 py-1.5 rounded-lg border-l-2',
                 isOwn
                   ? 'bg-primary-foreground/10 border-primary-foreground/40'
-                  : 'bg-background/50 border-primary/50'
+                  : 'bg-muted/50 border-primary/50'
               )}>
                 <p className={cn('text-[11px] font-medium', isOwn ? 'text-primary-foreground/80' : 'text-primary')}>
                   {parentMessage.sender.full_name || 'User'}
@@ -212,16 +214,16 @@ export function ChatMessageBubble({
               <div className="p-1">
                 {isImage && (
                   <div className="relative group/img cursor-pointer" onClick={() => setLightboxOpen(true)}>
-                    <img src={message.attachment_url!} alt="Attachment" className="max-w-full max-h-[300px] rounded-lg object-cover" loading="lazy" />
-                    <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/30 transition-colors rounded-lg flex items-center justify-center">
+                    <img src={message.attachment_url!} alt="Attachment" className="max-w-full max-h-[300px] rounded-xl object-cover" loading="lazy" />
+                    <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/30 transition-colors rounded-xl flex items-center justify-center">
                       <Maximize2 className="w-6 h-6 text-white opacity-0 group-hover/img:opacity-100 transition-opacity" />
                     </div>
                   </div>
                 )}
                 {isVideo && (
-                  <div className="relative rounded-lg overflow-hidden">
+                  <div className="relative rounded-xl overflow-hidden">
                     <video
-                      src={message.attachment_url!} className="max-w-full max-h-[300px] rounded-lg"
+                      src={message.attachment_url!} className="max-w-full max-h-[300px] rounded-xl"
                       playsInline onEnded={() => setVideoPlaying(false)}
                       onClick={(e) => handleVideoToggle(e.currentTarget)}
                     />
@@ -240,24 +242,24 @@ export function ChatMessageBubble({
 
             {/* Text */}
             {message.content && (
-              <div className="px-4 py-2">
+              <div className="px-3 py-1.5">
                 {renderMessageContent(message.content)}
               </div>
             )}
 
             {/* Timestamp & Read Status */}
-            <div className={cn('px-4 pb-1.5 flex items-center justify-end gap-1', !message.content && hasAttachment && 'pt-1')}>
-              <p className={cn('text-[10px]', isOwn ? 'text-primary-foreground/70' : 'text-muted-foreground')}>
+            <div className={cn('px-3 pb-1.5 flex items-center justify-end gap-1', !message.content && hasAttachment && 'pt-1')}>
+              <p className={cn('text-[10px]', isOwn ? 'text-primary-foreground/60' : 'text-muted-foreground/70')}>
                 {format(new Date(message.created_at), 'h:mm a')}
               </p>
               {isOwn && isDM && (
-                <span className={cn('flex items-center', isRead ? 'text-blue-400' : isOwn ? 'text-primary-foreground/70' : 'text-muted-foreground')}>
+                <span className={cn('flex items-center', isRead ? 'text-blue-400' : isOwn ? 'text-primary-foreground/60' : 'text-muted-foreground')}>
                   {isOptimistic ? (
                     <Clock className="w-3 h-3" />
                   ) : isRead ? (
-                    <CheckCheck className="w-3.5 h-3.5" />
+                    <CheckCheck className="w-3 h-3" />
                   ) : isDelivered ? (
-                    <Check className="w-3.5 h-3.5" />
+                    <Check className="w-3 h-3" />
                   ) : null}
                 </span>
               )}
@@ -272,22 +274,8 @@ export function ChatMessageBubble({
           />
         </div>
 
-        {/* Actions on opposite side of bubble (for others' messages) */}
-        {!isOwn && showActions && !isMuted && !isOptimistic && (
-          <div className="flex items-center gap-0.5 self-center opacity-0 group-hover:opacity-100 transition-opacity">
-            {onReply && (
-              <button
-                onClick={() => onReply(message)}
-                className="p-1 rounded hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <Reply className="w-3.5 h-3.5" />
-              </button>
-            )}
-            {onReact && (
-              <EmojiPicker onSelect={(emoji) => onReact(message.id, emoji)} />
-            )}
-          </div>
-        )}
+        {/* For others' messages (left side), actions go on the RIGHT */}
+        {!isOwn && actionButtons}
       </motion.div>
 
       {/* Image Lightbox */}
