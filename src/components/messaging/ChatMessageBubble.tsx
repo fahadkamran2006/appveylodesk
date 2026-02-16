@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { Play, Maximize2, Check, CheckCheck, Reply, Clock } from 'lucide-react';
+import { Play, Maximize2, Check, CheckCheck, Reply, Clock, Pencil, Trash2, X, Check as CheckIcon } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import DOMPurify from 'dompurify';
 import { EmojiPicker } from './EmojiPicker';
 import { MessageReactions } from './MessageReactions';
@@ -49,6 +50,8 @@ interface ChatMessageBubbleProps {
   reactions?: ReactionSummary[];
   onReply?: (message: Message) => void;
   onReact?: (messageId: string, emoji: string) => void;
+  onEdit?: (messageId: string, newContent: string) => Promise<boolean>;
+  onDelete?: (messageId: string) => Promise<boolean>;
 }
 
 /** Convert URLs in plain text to clickable links */
@@ -96,11 +99,14 @@ export function ChatMessageBubble({
   message, isOwn, showAvatar, isMuted, isDM,
   isDelivered = true, isRead = false,
   isOptimistic = false, isGrouped = false, isLastInGroup = true,
-  parentMessage, reactions = [], onReply, onReact,
+  parentMessage, reactions = [], onReply, onReact, onEdit, onDelete,
 }: ChatMessageBubbleProps) {
   const [videoPlaying, setVideoPlaying] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [showActions, setShowActions] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(message.content);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const getInitials = (name: string | null, email: string) => {
     const d = name || email || 'U';
@@ -117,11 +123,44 @@ export function ChatMessageBubble({
     else { video.pause(); setVideoPlaying(false); }
   };
 
-  const actionButtons = showActions && !isMuted && !isOptimistic && (
+  const handleEdit = async () => {
+    if (!editContent.trim() || editContent.trim() === message.content) {
+      setIsEditing(false);
+      setEditContent(message.content);
+      return;
+    }
+    const success = await onEdit?.(message.id, editContent.trim());
+    if (success) setIsEditing(false);
+  };
+
+  const handleDelete = async () => {
+    await onDelete?.(message.id);
+    setShowDeleteConfirm(false);
+  };
+
+  const actionButtons = showActions && !isMuted && !isOptimistic && !isEditing && (
     <div className={cn(
       'flex items-center gap-0.5 self-center transition-opacity',
       'opacity-0 group-hover:opacity-100',
     )}>
+      {isOwn && onEdit && message.content && (
+        <button
+          onClick={() => { setIsEditing(true); setEditContent(message.content); }}
+          className="p-1.5 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+          title="Edit"
+        >
+          <Pencil className="w-3.5 h-3.5" />
+        </button>
+      )}
+      {isOwn && onDelete && (
+        <button
+          onClick={() => setShowDeleteConfirm(true)}
+          className="p-1.5 rounded-full hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-colors"
+          title="Delete"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      )}
       {onReply && (
         <button
           onClick={() => onReply(message)}
@@ -168,8 +207,7 @@ export function ChatMessageBubble({
           )
         )}
 
-        {/* Action buttons - always on the OPPOSITE side of the bubble */}
-        {/* For own messages (right side), actions go on the LEFT */}
+        {/* For own messages, actions on the LEFT */}
         {isOwn && actionButtons}
 
         <div className={cn('max-w-[65%] min-w-[80px]', isOwn && 'items-end')}>
@@ -178,11 +216,10 @@ export function ChatMessageBubble({
             isOwn
               ? 'bg-primary text-primary-foreground rounded-br-md'
               : 'bg-card border border-border/40 text-foreground rounded-bl-md',
-            // Tighter radius on grouped edges
             isOwn && isGrouped && 'rounded-tr-md',
             !isOwn && isGrouped && 'rounded-tl-md',
           )}>
-            {/* Sender name - only on first message in group */}
+            {/* Sender name */}
             {showAvatar && !isOwn && (
               <div className="px-3 pt-2">
                 <p className="text-[11px] font-semibold text-primary">
@@ -240,12 +277,34 @@ export function ChatMessageBubble({
               </div>
             )}
 
-            {/* Text */}
-            {message.content && (
+            {/* Text or Edit mode */}
+            {isEditing ? (
+              <div className="px-2 py-2">
+                <Input
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleEdit();
+                    if (e.key === 'Escape') { setIsEditing(false); setEditContent(message.content); }
+                  }}
+                  className="text-sm bg-background/20 border-primary-foreground/30 text-primary-foreground placeholder:text-primary-foreground/50"
+                  autoFocus
+                />
+                <div className="flex items-center gap-1 mt-1">
+                  <button onClick={handleEdit} className="p-1 rounded hover:bg-primary-foreground/20 text-primary-foreground/80">
+                    <Check className="w-3.5 h-3.5" />
+                  </button>
+                  <button onClick={() => { setIsEditing(false); setEditContent(message.content); }} className="p-1 rounded hover:bg-primary-foreground/20 text-primary-foreground/80">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="text-[10px] text-primary-foreground/50 ml-1">Enter to save, Esc to cancel</span>
+                </div>
+              </div>
+            ) : message.content ? (
               <div className="px-3 py-1.5">
                 {renderMessageContent(message.content)}
               </div>
-            )}
+            ) : null}
 
             {/* Timestamp & Read Status */}
             <div className={cn('px-3 pb-1.5 flex items-center justify-end gap-1', !message.content && hasAttachment && 'pt-1')}>
@@ -274,9 +333,28 @@ export function ChatMessageBubble({
           />
         </div>
 
-        {/* For others' messages (left side), actions go on the RIGHT */}
+        {/* For others' messages, actions on the RIGHT */}
         {!isOwn && actionButtons}
       </motion.div>
+
+      {/* Delete Confirmation */}
+      {showDeleteConfirm && (
+        <div className={cn('flex gap-2 items-center px-4 py-2', isOwn ? 'justify-end' : 'justify-start')}>
+          <span className="text-xs text-muted-foreground">Delete this message?</span>
+          <button
+            onClick={handleDelete}
+            className="text-xs px-2 py-1 rounded bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
+          >
+            Delete
+          </button>
+          <button
+            onClick={() => setShowDeleteConfirm(false)}
+            className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground hover:bg-muted/80 transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
 
       {/* Image Lightbox */}
       <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>

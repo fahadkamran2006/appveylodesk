@@ -421,7 +421,7 @@ export function useChannelMessages(channelId: string | null) {
     fetchMessages();
   }, [fetchMessages]);
 
-  // Real-time subscription for new messages
+  // Real-time subscription for messages (INSERT, UPDATE, DELETE)
   useEffect(() => {
     if (!channelId) return;
 
@@ -434,12 +434,6 @@ export function useChannelMessages(channelId: string | null) {
         filter: `channel_id=eq.${channelId}`,
       }, async (payload) => {
         const newMsg = payload.new as Message;
-        
-        // Deduplicate: skip if message already exists
-        setMessages(prev => {
-          if (prev.some(m => m.id === newMsg.id)) return prev;
-          return prev; // Don't add here, let the profile fetch finish first
-        });
 
         const profiles = await fetchProfilesWithRetry([newMsg.sender_id], 2, 300);
         const profile = profiles.find(p => p.id === newMsg.sender_id);
@@ -455,10 +449,30 @@ export function useChannelMessages(channelId: string | null) {
         };
 
         setMessages(prev => {
-          // Deduplicate again after async profile fetch
           if (prev.some(m => m.id === newMessage.id)) return prev;
           return [...prev, newMessage];
         });
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'messages',
+        filter: `channel_id=eq.${channelId}`,
+      }, (payload) => {
+        const updated = payload.new as Message;
+        setMessages(prev => prev.map(m => 
+          m.id === updated.id ? { ...m, content: updated.content } : m
+        ));
+      })
+      .on('postgres_changes', {
+        event: 'DELETE',
+        schema: 'public',
+        table: 'messages',
+      }, (payload) => {
+        const deletedId = (payload.old as any).id;
+        if (deletedId) {
+          setMessages(prev => prev.filter(m => m.id !== deletedId));
+        }
       })
       .subscribe();
 
@@ -503,11 +517,58 @@ export function useChannelMessages(channelId: string | null) {
     }
   };
 
+  // Edit message
+  const editMessage = async (messageId: string, newContent: string): Promise<boolean> => {
+    if (!user || !newContent.trim()) return false;
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .update({ content: newContent.trim() })
+        .eq('id', messageId)
+        .eq('sender_id', user.id);
+      if (error) throw error;
+      // Update locally immediately
+      setMessages(prev => prev.map(m => 
+        m.id === messageId ? { ...m, content: newContent.trim() } : m
+      ));
+      return true;
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message || 'Failed to edit message', variant: 'destructive' });
+      return false;
+    }
+  };
+
+  // Delete message (hard delete from DB, including reactions and read receipts)
+  const deleteMessage = async (messageId: string): Promise<boolean> => {
+    if (!user) return false;
+    try {
+      // Delete reactions for this message first
+      await supabase.from('message_reactions').delete().eq('message_id', messageId);
+      // Delete read receipts for this message
+      await supabase.from('message_read_receipts').delete().eq('message_id', messageId);
+      // Delete the message itself
+      const { error } = await supabase
+        .from('messages')
+        .delete()
+        .eq('id', messageId)
+        .eq('sender_id', user.id);
+      if (error) throw error;
+      // Remove locally immediately
+      setMessages(prev => prev.filter(m => m.id !== messageId));
+      return true;
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message || 'Failed to delete message', variant: 'destructive' });
+      return false;
+    }
+  };
+
   return {
     messages,
     channel,
     loading,
     sendMessage,
+    editMessage,
+    deleteMessage,
     refetch: fetchMessages,
   };
 }
