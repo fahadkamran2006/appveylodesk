@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { Play, Maximize2, Check, CheckCheck, Reply, Clock, Pencil, Trash2, X, Check as CheckIcon } from 'lucide-react';
+import { Play, Maximize2, Check, CheckCheck, Reply, Clock, Pencil, Trash2, X, MoreHorizontal, Mic } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import DOMPurify from 'dompurify';
@@ -69,7 +69,7 @@ function parseMarkdown(text: string): string {
   return result;
 }
 
-function renderMessageContent(content: string) {
+function renderMessageContent(content: string, isOwn: boolean) {
   const hasHtml = /<[^>]+>/.test(content);
   if (hasHtml) {
     const sanitized = DOMPurify.sanitize(content, {
@@ -78,7 +78,7 @@ function renderMessageContent(content: string) {
     });
     return (
       <div
-        className="text-sm whitespace-pre-wrap break-words prose prose-sm max-w-none dark:prose-invert"
+        className="text-[14px] leading-[18px] whitespace-pre-wrap break-words"
         dangerouslySetInnerHTML={{ __html: sanitized }}
       />
     );
@@ -86,13 +86,29 @@ function renderMessageContent(content: string) {
   const processed = linkifyText(parseMarkdown(content));
   return (
     <div
-      className="text-sm whitespace-pre-wrap break-words"
+      className="text-[14px] leading-[18px] whitespace-pre-wrap break-words"
       dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(processed, {
         ALLOWED_TAGS: ['strong', 'b', 'em', 'i', 'code', 'a'],
         ALLOWED_ATTR: ['href', 'target', 'rel', 'class'],
       }) }}
     />
   );
+}
+
+/** Check if content is a voice message marker */
+function isVoiceMessage(content: string): boolean {
+  return content.startsWith('[voice:') && content.endsWith(']');
+}
+
+function getVoiceDuration(content: string): number {
+  const match = content.match(/\[voice:(\d+)\]/);
+  return match ? parseInt(match[1], 10) : 0;
+}
+
+function formatDuration(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
 export function ChatMessageBubble({
@@ -107,6 +123,7 @@ export function ChatMessageBubble({
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [voicePlaying, setVoicePlaying] = useState(false);
 
   const getInitials = (name: string | null, email: string) => {
     const d = name || email || 'U';
@@ -117,6 +134,8 @@ export function ChatMessageBubble({
   const hasAttachment = message.attachment_url && message.attachment_type;
   const isImage = message.attachment_type === 'image';
   const isVideo = message.attachment_type === 'video';
+  const isAudio = message.attachment_type === 'audio';
+  const isVoice = isVoiceMessage(message.content);
 
   const handleVideoToggle = (video: HTMLVideoElement) => {
     if (video.paused) { video.play(); setVideoPlaying(true); }
@@ -138,39 +157,47 @@ export function ChatMessageBubble({
     setShowDeleteConfirm(false);
   };
 
+  // Instagram-style: actions appear inline next to the bubble on hover
   const actionButtons = showActions && !isMuted && !isOptimistic && !isEditing && (
     <div className={cn(
-      'flex items-center gap-0.5 self-center transition-opacity',
-      'opacity-0 group-hover:opacity-100',
+      'flex items-center gap-0.5 self-center opacity-0 group-hover:opacity-100 transition-opacity',
     )}>
-      {isOwn && onEdit && message.content && (
-        <button
-          onClick={() => { setIsEditing(true); setEditContent(message.content); }}
-          className="p-1.5 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-          title="Edit"
-        >
-          <Pencil className="w-3.5 h-3.5" />
-        </button>
-      )}
-      {isOwn && onDelete && (
-        <button
-          onClick={() => setShowDeleteConfirm(true)}
-          className="p-1.5 rounded-full hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-colors"
-          title="Delete"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
+      {onReact && (
+        <EmojiPicker onSelect={(emoji) => onReact(message.id, emoji)} />
       )}
       {onReply && (
         <button
           onClick={() => onReply(message)}
-          className="p-1.5 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+          className="p-1.5 rounded-full hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
         >
-          <Reply className="w-3.5 h-3.5" />
+          <Reply className="w-4 h-4" />
         </button>
       )}
-      {onReact && (
-        <EmojiPicker onSelect={(emoji) => onReact(message.id, emoji)} />
+      {isOwn && (onEdit || onDelete) && (
+        <div className="relative group/more">
+          <button className="p-1.5 rounded-full hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors">
+            <MoreHorizontal className="w-4 h-4" />
+          </button>
+          <div className="absolute hidden group-hover/more:flex flex-col z-20 bg-popover border border-border rounded-lg shadow-lg py-1 min-w-[120px]"
+            style={isOwn ? { right: 0, top: '100%' } : { left: 0, top: '100%' }}>
+            {onEdit && message.content && !isVoice && (
+              <button
+                onClick={() => { setIsEditing(true); setEditContent(message.content); }}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm text-foreground hover:bg-muted/60 transition-colors"
+              >
+                <Pencil className="w-3.5 h-3.5" /> Edit
+              </button>
+            )}
+            {onDelete && (
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm text-destructive hover:bg-destructive/10 transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Delete
+              </button>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
@@ -179,26 +206,26 @@ export function ChatMessageBubble({
     <>
       <motion.div
         layout="position"
-        initial={{ opacity: 0, y: 8 }}
+        initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: isOptimistic ? 0.6 : 1, y: 0 }}
-        exit={{ opacity: 0, y: -8 }}
-        transition={{ duration: 0.15, ease: 'easeOut' }}
+        exit={{ opacity: 0, y: -6 }}
+        transition={{ duration: 0.12, ease: 'easeOut' }}
         className={cn(
-          'group flex gap-2 relative px-2',
+          'group flex gap-2 relative px-4',
           isOwn ? 'flex-row-reverse' : 'flex-row',
           isMuted && 'opacity-50',
-          isGrouped ? 'mt-0.5' : 'mt-4',
+          isGrouped ? 'mt-[2px]' : 'mt-3',
         )}
         onMouseEnter={() => setShowActions(true)}
         onMouseLeave={() => setShowActions(false)}
         onTouchStart={() => setShowActions(true)}
       >
-        {/* Avatar or spacer */}
+        {/* Avatar or spacer — only for others */}
         {!isOwn && (
-          showAvatar ? (
-            <Avatar className="w-7 h-7 border border-border/30 flex-shrink-0 mt-1">
+          isLastInGroup && showAvatar ? (
+            <Avatar className="w-7 h-7 flex-shrink-0 mt-auto">
               <AvatarImage src={message.sender.avatar_url || undefined} />
-              <AvatarFallback className="bg-primary/15 text-primary text-[10px] font-medium">
+              <AvatarFallback className="bg-muted text-muted-foreground text-[10px] font-medium">
                 {getInitials(message.sender.full_name, message.sender.email)}
               </AvatarFallback>
             </Avatar>
@@ -207,40 +234,42 @@ export function ChatMessageBubble({
           )
         )}
 
-        {/* For own messages, actions on the LEFT */}
+        {/* Actions on left for own messages */}
         {isOwn && actionButtons}
 
-        <div className={cn('max-w-[65%] min-w-[80px]', isOwn && 'items-end')}>
-          <div className={cn(
-            'rounded-2xl overflow-hidden shadow-sm',
-            isOwn
-              ? 'bg-primary text-primary-foreground rounded-br-md'
-              : 'bg-card border border-border/40 text-foreground rounded-bl-md',
-            isOwn && isGrouped && 'rounded-tr-md',
-            !isOwn && isGrouped && 'rounded-tl-md',
-          )}>
-            {/* Sender name */}
-            {showAvatar && !isOwn && (
-              <div className="px-3 pt-2">
-                <p className="text-[11px] font-semibold text-primary">
-                  {displayName}
-                  {isMuted && <span className="text-muted-foreground font-normal"> (muted)</span>}
-                </p>
-              </div>
-            )}
+        <div className={cn('max-w-[65%] min-w-[60px]', isOwn && 'items-end')}>
+          {/* Sender name for groups */}
+          {showAvatar && !isOwn && !isDM && (
+            <p className="text-[11px] font-medium text-muted-foreground mb-0.5 ml-1">
+              {displayName}
+            </p>
+          )}
 
-            {/* Reply Preview */}
+          <div className={cn(
+            'rounded-2xl overflow-hidden',
+            isOwn
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-secondary text-foreground',
+            // Instagram-style rounded corners
+            isOwn && isGrouped && !isLastInGroup && 'rounded-br-md rounded-tr-md',
+            isOwn && isLastInGroup && isGrouped && 'rounded-br-md',
+            isOwn && !isGrouped && isLastInGroup && 'rounded-br-md',
+            !isOwn && isGrouped && !isLastInGroup && 'rounded-bl-md rounded-tl-md',
+            !isOwn && isLastInGroup && isGrouped && 'rounded-bl-md',
+            !isOwn && !isGrouped && isLastInGroup && 'rounded-bl-md',
+          )}>
+            {/* Reply Preview — Instagram style */}
             {parentMessage && (
               <div className={cn(
-                'mx-2 mt-2 px-3 py-1.5 rounded-lg border-l-2',
+                'mx-2 mt-2 px-3 py-1.5 rounded-lg text-[12px]',
                 isOwn
-                  ? 'bg-primary-foreground/10 border-primary-foreground/40'
-                  : 'bg-muted/50 border-primary/50'
+                  ? 'bg-primary-foreground/10'
+                  : 'bg-muted/60'
               )}>
-                <p className={cn('text-[11px] font-medium', isOwn ? 'text-primary-foreground/80' : 'text-primary')}>
+                <p className={cn('font-medium', isOwn ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
                   {parentMessage.sender.full_name || 'User'}
                 </p>
-                <p className={cn('text-[11px] truncate', isOwn ? 'text-primary-foreground/60' : 'text-muted-foreground')}>
+                <p className={cn('truncate', isOwn ? 'text-primary-foreground/60' : 'text-muted-foreground/80')}>
                   {parentMessage.content || '📎 Attachment'}
                 </p>
               </div>
@@ -248,32 +277,88 @@ export function ChatMessageBubble({
 
             {/* Attachment */}
             {hasAttachment && (
-              <div className="p-1">
+              <div className={cn(message.content && !isVoice ? 'p-1 pb-0' : 'p-1')}>
                 {isImage && (
-                  <div className="relative group/img cursor-pointer" onClick={() => setLightboxOpen(true)}>
-                    <img src={message.attachment_url!} alt="Attachment" className="max-w-full max-h-[300px] rounded-xl object-cover" loading="lazy" />
-                    <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/30 transition-colors rounded-xl flex items-center justify-center">
-                      <Maximize2 className="w-6 h-6 text-white opacity-0 group-hover/img:opacity-100 transition-opacity" />
+                  <div className="relative cursor-pointer group/img" onClick={() => setLightboxOpen(true)}>
+                    <img src={message.attachment_url!} alt="Attachment" className="max-w-full max-h-[280px] rounded-xl object-cover" loading="lazy" />
+                    <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/20 transition-colors rounded-xl flex items-center justify-center">
+                      <Maximize2 className="w-5 h-5 text-white opacity-0 group-hover/img:opacity-100 transition-opacity" />
                     </div>
                   </div>
                 )}
                 {isVideo && (
                   <div className="relative rounded-xl overflow-hidden">
                     <video
-                      src={message.attachment_url!} className="max-w-full max-h-[300px] rounded-xl"
+                      src={message.attachment_url!} className="max-w-full max-h-[280px] rounded-xl"
                       playsInline onEnded={() => setVideoPlaying(false)}
                       onClick={(e) => handleVideoToggle(e.currentTarget)}
                     />
                     {!videoPlaying && (
                       <div className="absolute inset-0 flex items-center justify-center bg-black/30 cursor-pointer"
                         onClick={(e) => { handleVideoToggle((e.currentTarget.previousSibling as HTMLVideoElement)); }}>
-                        <div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center">
-                          <Play className="w-6 h-6 text-primary ml-1" />
+                        <div className="w-10 h-10 rounded-full bg-white/90 flex items-center justify-center">
+                          <Play className="w-5 h-5 text-primary ml-0.5" />
                         </div>
                       </div>
                     )}
                   </div>
                 )}
+                {isAudio && (
+                  <div className="px-3 py-2">
+                    <audio src={message.attachment_url!} controls className="max-w-full h-8" />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Voice message waveform */}
+            {isVoice && hasAttachment && (
+              <div className="px-3 py-2 flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    const audio = document.getElementById(`voice-${message.id}`) as HTMLAudioElement;
+                    if (audio) {
+                      if (audio.paused) { audio.play(); setVoicePlaying(true); }
+                      else { audio.pause(); setVoicePlaying(false); }
+                    }
+                  }}
+                  className={cn(
+                    'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0',
+                    isOwn ? 'bg-primary-foreground/20' : 'bg-muted'
+                  )}
+                >
+                  {voicePlaying ? (
+                    <div className="flex gap-[2px] items-center h-3">
+                      <span className="w-[2px] h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-[2px] h-3 bg-current rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="w-[2px] h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                  ) : (
+                    <Play className="w-3.5 h-3.5 ml-0.5" />
+                  )}
+                </button>
+                {/* Waveform bars */}
+                <div className="flex items-center gap-[2px] flex-1 h-6">
+                  {Array.from({ length: 24 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className={cn(
+                        'w-[2px] rounded-full',
+                        isOwn ? 'bg-primary-foreground/40' : 'bg-muted-foreground/40'
+                      )}
+                      style={{ height: `${Math.max(4, Math.random() * 20)}px` }}
+                    />
+                  ))}
+                </div>
+                <span className={cn('text-[11px] flex-shrink-0', isOwn ? 'text-primary-foreground/60' : 'text-muted-foreground')}>
+                  {formatDuration(getVoiceDuration(message.content))}
+                </span>
+                <audio
+                  id={`voice-${message.id}`}
+                  src={message.attachment_url!}
+                  onEnded={() => setVoicePlaying(false)}
+                  className="hidden"
+                />
               </div>
             )}
 
@@ -297,22 +382,26 @@ export function ChatMessageBubble({
                   <button onClick={() => { setIsEditing(false); setEditContent(message.content); }} className="p-1 rounded hover:bg-primary-foreground/20 text-primary-foreground/80">
                     <X className="w-3.5 h-3.5" />
                   </button>
-                  <span className="text-[10px] text-primary-foreground/50 ml-1">Enter to save, Esc to cancel</span>
+                  <span className="text-[10px] text-primary-foreground/50 ml-1">Enter · Esc</span>
                 </div>
               </div>
-            ) : message.content ? (
-              <div className="px-3 py-1.5">
-                {renderMessageContent(message.content)}
+            ) : message.content && !isVoice ? (
+              <div className="px-3 py-[6px]">
+                {renderMessageContent(message.content, isOwn)}
               </div>
             ) : null}
 
-            {/* Timestamp & Read Status */}
-            <div className={cn('px-3 pb-1.5 flex items-center justify-end gap-1', !message.content && hasAttachment && 'pt-1')}>
-              <p className={cn('text-[10px]', isOwn ? 'text-primary-foreground/60' : 'text-muted-foreground/70')}>
+            {/* Timestamp & Read Status — inside bubble */}
+            <div className={cn(
+              'px-3 pb-1 flex items-center gap-1',
+              isOwn ? 'justify-end' : 'justify-end',
+              !message.content && hasAttachment && 'pt-0.5'
+            )}>
+              <p className={cn('text-[10px]', isOwn ? 'text-primary-foreground/50' : 'text-muted-foreground/60')}>
                 {format(new Date(message.created_at), 'h:mm a')}
               </p>
               {isOwn && isDM && (
-                <span className={cn('flex items-center', isRead ? 'text-blue-400' : isOwn ? 'text-primary-foreground/60' : 'text-muted-foreground')}>
+                <span className={cn('flex items-center', isRead ? 'text-blue-400' : isOwn ? 'text-primary-foreground/50' : 'text-muted-foreground')}>
                   {isOptimistic ? (
                     <Clock className="w-3 h-3" />
                   ) : isRead ? (
@@ -333,7 +422,7 @@ export function ChatMessageBubble({
           />
         </div>
 
-        {/* For others' messages, actions on the RIGHT */}
+        {/* Actions on right for others' messages */}
         {!isOwn && actionButtons}
       </motion.div>
 
@@ -343,13 +432,13 @@ export function ChatMessageBubble({
           <span className="text-xs text-muted-foreground">Delete this message?</span>
           <button
             onClick={handleDelete}
-            className="text-xs px-2 py-1 rounded bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
+            className="text-xs px-2.5 py-1 rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
           >
             Delete
           </button>
           <button
             onClick={() => setShowDeleteConfirm(false)}
-            className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground hover:bg-muted/80 transition-colors"
+            className="text-xs px-2.5 py-1 rounded-md bg-muted text-muted-foreground hover:bg-muted/80 transition-colors"
           >
             Cancel
           </button>
