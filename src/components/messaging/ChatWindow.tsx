@@ -1,10 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Send, Lock, MoreVertical, VolumeX, Volume2, FolderKanban, MessageSquare, Trash2, ArrowLeft, Info, ArrowDown } from 'lucide-react';
+import { Send, Lock, MoreVertical, VolumeX, Volume2, FolderKanban, MessageSquare, Trash2, ArrowLeft, Info, ArrowDown, Smile, Image as ImageIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { useChannelMutes, useMessaging } from '@/hooks/useMessaging';
@@ -13,11 +12,13 @@ import { useChatAttachments } from '@/hooks/useChatAttachments';
 import { useReadReceipts } from '@/hooks/useReadReceipts';
 import { useClearChat } from '@/hooks/useClearChat';
 import { useMessageReactions } from '@/hooks/useMessageReactions';
-import { ChatAttachmentButton } from './ChatAttachmentButton';
 import { ChatMessageBubble } from './ChatMessageBubble';
 import { ChatInfoDrawer } from './ChatInfoDrawer';
 import { ReplyPreview } from './ReplyPreview';
+import { VoiceRecordButton } from './VoiceRecordButton';
+import { EmojiPicker } from './EmojiPicker';
 import { AnimatePresence } from 'framer-motion';
+import { format, isToday, isYesterday, isSameDay } from 'date-fns';
 
 interface Sender {
   id: string;
@@ -62,7 +63,7 @@ interface ChatWindowProps {
   showBackButton?: boolean;
 }
 
-const GROUP_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
+const GROUP_THRESHOLD_MS = 5 * 60 * 1000;
 
 function shouldGroup(prev: Message | undefined, curr: Message): boolean {
   if (!prev) return false;
@@ -71,12 +72,17 @@ function shouldGroup(prev: Message | undefined, curr: Message): boolean {
   return diff < GROUP_THRESHOLD_MS;
 }
 
+function getDateLabel(date: Date): string {
+  if (isToday(date)) return 'Today';
+  if (isYesterday(date)) return 'Yesterday';
+  return format(date, 'MMM d, yyyy');
+}
+
 export function ChatWindow({ channel, messages, loading, onSendMessage, onEditMessage, onDeleteMessage, onBack, showBackButton }: ChatWindowProps) {
   const { user, userRole } = useAuth();
   const { agencyId, refetch: refetchChannels } = useMessaging();
   const [messageInput, setMessageInput] = useState('');
   const [sending, setSending] = useState(false);
-  const [pendingAttachment, setPendingAttachment] = useState<{ url: string; type: string } | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showInfoDrawer, setShowInfoDrawer] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
@@ -85,6 +91,7 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onEditMe
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { mutedUsers, muteUser, unmuteUser, isUserMuted } = useChannelMutes(channel?.id || null);
   const { typingUsers, onTyping, stopTyping } = useTypingIndicator(channel?.id || null);
@@ -98,39 +105,28 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onEditMe
     ? messages.filter(m => new Date(m.created_at) > new Date(clearedAt))
     : messages;
 
-  // Merge real + optimistic, filter out optimistic once real arrives
-  const optimisticIds = new Set(optimisticMessages.map(m => m.id));
   const realIds = new Set(visibleMessages.map(m => m.id));
   const pendingOptimistic = optimisticMessages.filter(m => !realIds.has(m.id));
   const allMessages = [...visibleMessages, ...pendingOptimistic];
 
-  // Remove confirmed optimistic messages
   useEffect(() => {
     setOptimisticMessages(prev => prev.filter(m => !realIds.has(m.id)));
   }, [messages]);
 
-  // Clear optimistic messages on channel change
   useEffect(() => {
     setOptimisticMessages([]);
   }, [channel?.id]);
 
-  // Scroll tracking
   const handleScroll = useCallback(() => {
     const el = scrollContainerRef.current;
     if (!el) return;
-    const threshold = 100;
-    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
-    setIsAtBottom(atBottom);
+    setIsAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 100);
   }, []);
 
-  // Auto-scroll to bottom when new messages arrive (only if already at bottom)
   useEffect(() => {
-    if (isAtBottom) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
+    if (isAtBottom) messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [allMessages.length, isAtBottom]);
 
-  // Force scroll to bottom on channel change
   useEffect(() => {
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
@@ -157,52 +153,55 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onEditMe
   const getOtherParticipant = () => channel?.participants.find(p => p.user_id !== user?.id)?.profile;
 
   const handleSend = async () => {
-    if ((!messageInput.trim() && !pendingAttachment) || sending) return;
+    if ((!messageInput.trim()) || sending) return;
     setSending(true);
     stopTyping();
 
     const content = messageInput;
-    const attachment = pendingAttachment;
     const parentId = replyingTo?.id || null;
 
-    // Create optimistic message
     if (user) {
       const optimistic: Message = {
         id: `optimistic-${Date.now()}`,
         content,
         created_at: new Date().toISOString(),
         sender_id: user.id,
-        sender: {
-          id: user.id,
-          full_name: user.user_metadata?.full_name || null,
-          email: user.email || '',
-          avatar_url: user.user_metadata?.avatar_url || null,
-        },
-        attachment_url: attachment?.url || null,
-        attachment_type: attachment?.type || null,
-        parent_id: parentId,
+        sender: { id: user.id, full_name: user.user_metadata?.full_name || null, email: user.email || '', avatar_url: user.user_metadata?.avatar_url || null },
+        attachment_url: null, attachment_type: null, parent_id: parentId,
       };
       setOptimisticMessages(prev => [...prev, optimistic]);
       setMessageInput('');
-      setPendingAttachment(null);
       setReplyingTo(null);
       setIsAtBottom(true);
     }
 
-    const success = await onSendMessage(content, attachment?.url, attachment?.type, parentId);
+    const success = await onSendMessage(content, undefined, undefined, parentId);
     if (!success && user) {
-      // Remove failed optimistic message
       setOptimisticMessages(prev => prev.filter(m => !m.id.startsWith('optimistic-')));
       setMessageInput(content);
-      setPendingAttachment(attachment);
     }
     setSending(false);
   };
 
-  const handleFileSelect = async (file: File) => {
-    if (!channel?.id) return;
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !channel?.id) return;
+    e.target.value = '';
+
     const result = await uploadChatAttachment(file, channel.id);
-    if (result) setPendingAttachment(result);
+    if (result) {
+      await onSendMessage('', result.url, result.type);
+    }
+  };
+
+  const handleVoiceSend = async (blob: Blob, durationSeconds: number) => {
+    if (!channel?.id) return;
+    // Upload the voice blob as a file
+    const file = new File([blob], `voice-${Date.now()}.webm`, { type: 'audio/webm' });
+    const result = await uploadChatAttachment(file, channel.id);
+    if (result) {
+      await onSendMessage(`[voice:${durationSeconds}]`, result.url, 'audio');
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -233,11 +232,11 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onEditMe
 
   if (!channel) {
     return (
-      <div className="h-full flex items-center justify-center bg-surface-dark">
+      <div className="h-full flex items-center justify-center bg-background">
         <div className="text-center">
-          <MessageSquare className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
-          <h3 className="text-lg font-medium text-foreground mb-2">Select a conversation</h3>
-          <p className="text-sm text-muted-foreground">Choose a chat from the sidebar to start messaging</p>
+          <MessageSquare className="w-12 h-12 mx-auto mb-4 text-muted-foreground/30" />
+          <h3 className="text-lg font-medium text-foreground mb-1">Your Messages</h3>
+          <p className="text-sm text-muted-foreground">Select a conversation to start messaging</p>
         </div>
       </div>
     );
@@ -247,48 +246,108 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onEditMe
   const isArchived = channel.is_archived;
   const otherUser = isDM ? getOtherParticipant() : null;
   const canMute = channel.type === 'project' && (userRole === 'client' || userRole === 'admin');
+  const hasInput = messageInput.trim().length > 0;
+
+  // Build date-separated message groups
+  const renderMessages = () => {
+    const elements: React.ReactNode[] = [];
+    let lastDate: string | null = null;
+
+    allMessages.forEach((message, index) => {
+      const msgDate = new Date(message.created_at);
+      const dateLabel = getDateLabel(msgDate);
+
+      if (dateLabel !== lastDate) {
+        lastDate = dateLabel;
+        elements.push(
+          <div key={`date-${dateLabel}-${index}`} className="flex items-center justify-center my-4">
+            <span className="text-[11px] text-muted-foreground/60 font-medium px-3 py-1">
+              {dateLabel}
+            </span>
+          </div>
+        );
+      }
+
+      const isOwn = message.sender_id === user?.id;
+      const isOptimistic = message.id.startsWith('optimistic-');
+      const grouped = shouldGroup(allMessages[index - 1], message) && !lastDate;
+      const isLastInGroup = index === allMessages.length - 1 || !shouldGroup(message, allMessages[index + 1]);
+      const isMuted = isUserMuted(message.sender_id);
+      const otherUserId = otherUser?.id;
+      const isRead = isDM && isOwn && otherUserId ? isMessageRead(message.id, otherUserId) : false;
+      const parentMessage = message.parent_id ? messageMap.get(message.parent_id) || null : null;
+
+      // Check if previous message in same date group is from same sender
+      const prevInGroup = index > 0 ? allMessages[index - 1] : undefined;
+      const isGroupedInDate = prevInGroup
+        && prevInGroup.sender_id === message.sender_id
+        && isSameDay(new Date(prevInGroup.created_at), msgDate)
+        && (msgDate.getTime() - new Date(prevInGroup.created_at).getTime()) < GROUP_THRESHOLD_MS;
+
+      elements.push(
+        <ChatMessageBubble
+          key={message.id}
+          message={message}
+          isOwn={isOwn}
+          showAvatar={!isGroupedInDate}
+          isMuted={isMuted}
+          isDM={isDM}
+          isDelivered={!isOptimistic}
+          isRead={isRead}
+          isOptimistic={isOptimistic}
+          isGrouped={!!isGroupedInDate}
+          isLastInGroup={isLastInGroup}
+          parentMessage={parentMessage}
+          reactions={getReactionSummary(message.id)}
+          onReply={(msg) => setReplyingTo(msg)}
+          onReact={(msgId, emoji) => toggleReaction(msgId, emoji)}
+          onEdit={isOwn ? onEditMessage : undefined}
+          onDelete={isOwn ? onDeleteMessage : undefined}
+        />
+      );
+    });
+
+    return elements;
+  };
 
   return (
     <>
-      <div className="h-full flex flex-col bg-surface-dark">
-        {/* Header */}
-        <div className="p-4 border-b border-border/50 flex items-center justify-between">
+      <div className="h-full flex flex-col bg-background">
+        {/* Header — Instagram style: clean, minimal */}
+        <div className="px-4 py-3 border-b border-border/40 flex items-center justify-between">
           <div className="flex items-center gap-3">
             {showBackButton && (
-              <Button variant="ghost" size="icon" onClick={onBack} className="md:hidden">
+              <Button variant="ghost" size="icon" onClick={onBack} className="md:hidden -ml-1">
                 <ArrowLeft className="w-5 h-5" />
               </Button>
             )}
             {isDM ? (
-              <Avatar className="w-10 h-10 border border-border/50">
+              <Avatar className="w-9 h-9">
                 <AvatarImage src={otherUser?.avatar_url || undefined} />
-                <AvatarFallback className="bg-primary/20 text-primary">
+                <AvatarFallback className="bg-muted text-muted-foreground text-xs font-medium">
                   {getInitials(otherUser?.full_name || null, otherUser?.email || '')}
                 </AvatarFallback>
               </Avatar>
             ) : (
-              <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
-                <FolderKanban className="w-5 h-5 text-muted-foreground" />
+              <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center">
+                <FolderKanban className="w-4.5 h-4.5 text-muted-foreground" />
               </div>
             )}
             <div>
-              <div className="flex items-center gap-2">
-                <h2 className="font-semibold text-foreground">{getChannelDisplayName()}</h2>
-                {isArchived && <Lock className="w-4 h-4 text-muted-foreground" />}
-              </div>
+              <h2 className="font-semibold text-foreground text-[15px] leading-tight">{getChannelDisplayName()}</h2>
               {!isDM && channel.participants.length > 0 && (
-                <p className="text-sm text-muted-foreground">{channel.participants.length} participants</p>
+                <p className="text-xs text-muted-foreground">{channel.participants.length} members</p>
               )}
             </div>
           </div>
 
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" onClick={() => setShowInfoDrawer(true)}>
+          <div className="flex items-center gap-0.5">
+            <Button variant="ghost" size="icon" onClick={() => setShowInfoDrawer(true)} className="text-muted-foreground hover:text-foreground">
               <Info className="w-5 h-5" />
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
                   <MoreVertical className="w-5 h-5" />
                 </Button>
               </DropdownMenuTrigger>
@@ -317,57 +376,26 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onEditMe
         <div
           ref={scrollContainerRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto p-4 relative"
+          className="flex-1 overflow-y-auto py-2 relative"
         >
           {loading ? (
             <div className="h-full flex items-center justify-center">
-              <div className="animate-pulse text-muted-foreground">Loading messages...</div>
+              <div className="animate-pulse text-muted-foreground text-sm">Loading messages...</div>
             </div>
           ) : allMessages.length === 0 ? (
             <div className="h-full flex items-center justify-center">
               <div className="text-center text-muted-foreground">
-                <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p>No messages yet</p>
-                <p className="text-sm">Start the conversation!</p>
+                <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                <p className="text-sm">No messages yet</p>
+                <p className="text-xs text-muted-foreground/60 mt-0.5">Start the conversation!</p>
               </div>
             </div>
           ) : (
-            <div className="space-y-0.5">
+            <div>
               <AnimatePresence initial={false}>
-                {allMessages.map((message, index) => {
-                  const isOwn = message.sender_id === user?.id;
-                  const isOptimistic = message.id.startsWith('optimistic-');
-                  const grouped = shouldGroup(allMessages[index - 1], message);
-                  const isLastInGroup = index === allMessages.length - 1 || !shouldGroup(message, allMessages[index + 1]);
-                  const isMuted = isUserMuted(message.sender_id);
-                  const otherUserId = otherUser?.id;
-                  const isRead = isDM && isOwn && otherUserId ? isMessageRead(message.id, otherUserId) : false;
-                  const parentMessage = message.parent_id ? messageMap.get(message.parent_id) || null : null;
-
-                  return (
-                    <ChatMessageBubble
-                      key={message.id}
-                      message={message}
-                      isOwn={isOwn}
-                      showAvatar={!grouped}
-                      isMuted={isMuted}
-                      isDM={isDM}
-                      isDelivered={!isOptimistic}
-                      isRead={isRead}
-                      isOptimistic={isOptimistic}
-                      isGrouped={grouped}
-                      isLastInGroup={isLastInGroup}
-                      parentMessage={parentMessage}
-                      reactions={getReactionSummary(message.id)}
-                      onReply={(msg) => setReplyingTo(msg)}
-                      onReact={(msgId, emoji) => toggleReaction(msgId, emoji)}
-                      onEdit={isOwn ? onEditMessage : undefined}
-                      onDelete={isOwn ? onDeleteMessage : undefined}
-                    />
-                  );
-                })}
+                {renderMessages()}
               </AnimatePresence>
-              <div ref={messagesEndRef} />
+              <div ref={messagesEndRef} className="h-1" />
             </div>
           )}
 
@@ -375,21 +403,21 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onEditMe
           {!isAtBottom && (
             <button
               onClick={scrollToBottom}
-              className="sticky bottom-2 left-1/2 -translate-x-1/2 z-10 w-9 h-9 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90 transition-all animate-fade-in mx-auto"
+              className="sticky bottom-3 left-1/2 -translate-x-1/2 z-10 w-8 h-8 rounded-full bg-card border border-border shadow-md flex items-center justify-center hover:bg-muted transition-all mx-auto"
             >
-              <ArrowDown className="w-4 h-4" />
+              <ArrowDown className="w-4 h-4 text-foreground" />
             </button>
           )}
         </div>
 
         {/* Typing Indicator */}
         {typingUsers.length > 0 && (
-          <div className="px-4 py-2 border-t border-border/30">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <div className="flex gap-1">
-                <span className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                <span className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                <span className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+          <div className="px-5 py-1.5">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <div className="flex gap-0.5">
+                <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
               </div>
               <span>
                 {typingUsers.length === 1
@@ -411,39 +439,77 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onEditMe
           />
         )}
 
-        {/* Input */}
-        <div className="p-3 border-t border-border/30">
+        {/* Upload progress overlay */}
+        {uploadProgress.uploading && (
+          <div className="px-4 py-2 border-t border-border/30">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <div className="flex-1">
+                <p className="truncate">{uploadProgress.fileName}</p>
+                <div className="w-full bg-muted rounded-full h-1 mt-1">
+                  <div className="bg-primary h-1 rounded-full transition-all" style={{ width: `${uploadProgress.progress}%` }} />
+                </div>
+              </div>
+              <button onClick={cancelUpload} className="text-muted-foreground hover:text-foreground">✕</button>
+            </div>
+          </div>
+        )}
+
+        {/* Input — Instagram style: emoji on left, input, then mic/image/send on right */}
+        <div className="px-3 py-2 border-t border-border/30">
           {isArchived ? (
             <div className="flex items-center justify-center gap-2 text-muted-foreground py-2">
               <Lock className="w-4 h-4" />
-              <span className="text-sm">This chat is archived (project completed)</span>
+              <span className="text-sm">This chat is archived</span>
             </div>
           ) : (
-            <div className="flex gap-2 items-center">
-              <ChatAttachmentButton
-                onSelectFile={handleFileSelect}
-                uploading={uploadProgress.uploading}
-                progress={uploadProgress.progress}
-                fileName={uploadProgress.fileName}
-                onCancelUpload={cancelUpload}
-                disabled={sending}
+            <div className="flex items-center gap-1">
+              {/* Emoji */}
+              <EmojiPicker onSelect={(emoji) => setMessageInput(prev => prev + emoji)} />
+
+              {/* Input */}
+              <div className="flex-1 relative">
+                <input
+                  value={messageInput}
+                  onChange={handleInputChange}
+                  onKeyDown={handleKeyDown}
+                  placeholder={replyingTo ? "Reply..." : "Message..."}
+                  disabled={uploadProgress.uploading}
+                  className="w-full bg-transparent text-foreground text-[14px] placeholder:text-muted-foreground/50 outline-none py-2 px-1"
+                />
+              </div>
+
+              {/* Right side actions */}
+              {hasInput ? (
+                <button
+                  onClick={handleSend}
+                  disabled={sending}
+                  className="p-2 text-primary font-semibold text-[14px] hover:text-primary/80 transition-colors disabled:opacity-40"
+                >
+                  Send
+                </button>
+              ) : (
+                <div className="flex items-center gap-0.5">
+                  <VoiceRecordButton
+                    onSendVoice={handleVoiceSend}
+                    disabled={uploadProgress.uploading}
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadProgress.uploading}
+                    className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors disabled:opacity-40"
+                  >
+                    <ImageIcon className="w-5 h-5" />
+                  </button>
+                </div>
+              )}
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,video/*"
+                className="hidden"
+                onChange={handleFileSelect}
               />
-              <Input
-                value={messageInput}
-                onChange={handleInputChange}
-                onKeyDown={handleKeyDown}
-                placeholder={pendingAttachment ? "Add a caption..." : replyingTo ? "Reply..." : "Type a message..."}
-                className="flex-1 bg-card border-border/30 rounded-full px-4"
-                disabled={uploadProgress.uploading}
-              />
-              <Button
-                onClick={handleSend}
-                disabled={(!messageInput.trim() && !pendingAttachment) || uploadProgress.uploading}
-                size="icon"
-                className="rounded-full shrink-0"
-              >
-                <Send className="w-4 h-4" />
-              </Button>
             </div>
           )}
         </div>
