@@ -143,16 +143,63 @@ Deno.serve(async (req) => {
 
     const tierConfig = TIER_CONFIG[tier as keyof typeof TIER_CONFIG];
 
+    // Get subscription status from Lemon Squeezy
+    const subscriptionStatus = subscriptionData?.status?.toLowerCase() || "";
+    
     switch (eventType) {
       case "subscription_created":
       case "subscription_updated": {
+        // Handle cancelled/expired status within subscription_updated
+        if (subscriptionStatus === "expired") {
+          const { error } = await supabase
+            .from("agencies")
+            .update({
+              plan_tier: "starter",
+              subscription_plan: "starter",
+              max_clients: TIER_CONFIG.starter.max_clients,
+              storage_limit_bytes: TIER_CONFIG.starter.storage_bytes,
+              billing_interval: "monthly",
+              subscription_ends_at: null,
+              lemon_squeezy_customer_id: customerId,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", agencyId);
+
+          if (error) {
+            console.error("Error downgrading expired agency:", error);
+            throw error;
+          }
+          console.log(`Downgraded agency ${agencyId} to starter (expired via subscription_updated)`);
+          break;
+        }
+
+        if (subscriptionStatus === "cancelled" || subscriptionData?.cancelled === true) {
+          const endsAt = subscriptionData?.ends_at;
+          const { error } = await supabase
+            .from("agencies")
+            .update({
+              subscription_ends_at: endsAt,
+              lemon_squeezy_customer_id: customerId,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", agencyId);
+
+          if (error) {
+            console.error("Error updating cancelled subscription:", error);
+            throw error;
+          }
+          console.log(`Marked agency ${agencyId} as cancelled via subscription_updated, ends at ${endsAt}`);
+          break;
+        }
+
+        // Active subscription
         const endsAt = subscriptionData?.ends_at || subscriptionData?.renews_at;
         
         const { error } = await supabase
           .from("agencies")
           .update({
             plan_tier: tier,
-            subscription_plan: tier, // Keep legacy column in sync
+            subscription_plan: tier,
             max_clients: tierConfig.max_clients,
             storage_limit_bytes: tierConfig.storage_bytes,
             billing_interval: interval,
@@ -172,13 +219,13 @@ Deno.serve(async (req) => {
       }
 
       case "subscription_cancelled": {
-        // Mark subscription as cancelled but keep access until end date
         const endsAt = subscriptionData?.ends_at;
         
         const { error } = await supabase
           .from("agencies")
           .update({
             subscription_ends_at: endsAt,
+            lemon_squeezy_customer_id: customerId,
             updated_at: new Date().toISOString(),
           })
           .eq("id", agencyId);
@@ -193,7 +240,6 @@ Deno.serve(async (req) => {
       }
 
       case "subscription_expired": {
-        // Downgrade to starter tier
         const { error } = await supabase
           .from("agencies")
           .update({
@@ -203,6 +249,7 @@ Deno.serve(async (req) => {
             storage_limit_bytes: TIER_CONFIG.starter.storage_bytes,
             billing_interval: "monthly",
             subscription_ends_at: null,
+            lemon_squeezy_customer_id: customerId,
             updated_at: new Date().toISOString(),
           })
           .eq("id", agencyId);
@@ -213,6 +260,12 @@ Deno.serve(async (req) => {
         }
         
         console.log(`Downgraded agency ${agencyId} to starter tier`);
+        break;
+      }
+
+      case "subscription_payment_success": {
+        // Just log - the subscription_updated event handles the actual update
+        console.log(`Payment success for agency ${agencyId}`);
         break;
       }
 
