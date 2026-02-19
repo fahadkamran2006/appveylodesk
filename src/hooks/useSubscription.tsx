@@ -25,18 +25,11 @@ export const useSubscription = (): SubscriptionStatus => {
       if (authLoading) return;
       
       if (!user) {
-        setSubscriptionStatus({
-          isActive: false,
-          planTier: null,
-          subscriptionEndsAt: null,
-          loading: false,
-          agencyId: null,
-        });
+        setSubscriptionStatus({ isActive: false, planTier: null, subscriptionEndsAt: null, loading: false, agencyId: null });
         return;
       }
 
       try {
-        // Get user's agency
         const { data: profile } = await supabase
           .from('profiles')
           .select('agency_id')
@@ -44,17 +37,10 @@ export const useSubscription = (): SubscriptionStatus => {
           .maybeSingle();
 
         if (!profile?.agency_id) {
-          setSubscriptionStatus({
-            isActive: false,
-            planTier: null,
-            subscriptionEndsAt: null,
-            loading: false,
-            agencyId: null,
-          });
+          setSubscriptionStatus({ isActive: false, planTier: null, subscriptionEndsAt: null, loading: false, agencyId: null });
           return;
         }
 
-        // Get agency subscription details
         const { data: agency } = await supabase
           .from('agencies')
           .select('plan_tier, subscription_ends_at')
@@ -62,22 +48,12 @@ export const useSubscription = (): SubscriptionStatus => {
           .maybeSingle();
 
         if (!agency) {
-          setSubscriptionStatus({
-            isActive: false,
-            planTier: null,
-            subscriptionEndsAt: null,
-            loading: false,
-            agencyId: profile.agency_id,
-          });
+          setSubscriptionStatus({ isActive: false, planTier: null, subscriptionEndsAt: null, loading: false, agencyId: profile.agency_id });
           return;
         }
 
-        // Check if subscription is active
-        // Active if subscription_ends_at is null (never set) OR in the future
         const now = new Date();
         const endsAt = agency.subscription_ends_at ? new Date(agency.subscription_ends_at) : null;
-        
-        // For active subscription: ends_at must be set AND be in the future
         const isActive = endsAt !== null && endsAt > now;
 
         setSubscriptionStatus({
@@ -89,13 +65,7 @@ export const useSubscription = (): SubscriptionStatus => {
         });
       } catch (error) {
         console.error('Error checking subscription:', error);
-        setSubscriptionStatus({
-          isActive: false,
-          planTier: null,
-          subscriptionEndsAt: null,
-          loading: false,
-          agencyId: null,
-        });
+        setSubscriptionStatus({ isActive: false, planTier: null, subscriptionEndsAt: null, loading: false, agencyId: null });
       }
     };
 
@@ -105,27 +75,57 @@ export const useSubscription = (): SubscriptionStatus => {
   return subscriptionStatus;
 };
 
-// Checkout URL generator
-export const CHECKOUT_LINKS = {
+// Paddle Price IDs
+const PADDLE_PRICES = {
   starter: {
-    monthly: 'https://veylodesk.lemonsqueezy.com/checkout/buy/bb7da811-c5c6-43aa-aec0-2cc3e8268a3e?enabled=1294953',
-    yearly: 'https://veylodesk.lemonsqueezy.com/checkout/buy/570a4f07-132e-4aac-9717-34e47aba61fa?enabled=1294952',
+    monthly: 'pri_01khrz050sv0w1a4ewyvv5arb1',
+    yearly: 'pri_01khs05dqng1qr8xck4afwdf6y',
   },
   growth: {
-    monthly: 'https://veylodesk.lemonsqueezy.com/checkout/buy/56b69aaf-41d8-44ff-beae-af5617e18673?enabled=1294944',
-    yearly: 'https://veylodesk.lemonsqueezy.com/checkout/buy/cc48914b-bd61-476f-9092-ff7a7f2096f2?enabled=1294943',
+    monthly: 'pri_01khs06hcgeff068rncwjnqxns',
+    yearly: 'pri_01khs0896ryegzxcpra0sxbnn6',
   },
   scale: {
-    monthly: 'https://veylodesk.lemonsqueezy.com/checkout/buy/e3acb0e8-3321-402c-830b-99f7b431e847?enabled=1294947',
-    yearly: 'https://veylodesk.lemonsqueezy.com/checkout/buy/23af3ace-41d0-437c-9abf-f5449cf4a479?enabled=1294946',
+    monthly: 'pri_01khs09b0z4rm4mkz1wk3b38ms',
+    yearly: 'pri_01khs0as29km3edtr84n7fxfbs',
   },
 };
 
-export const getCheckoutUrl = (
+export const getPaddlePriceId = (
+  plan: 'starter' | 'growth' | 'scale',
+  interval: 'monthly' | 'yearly'
+): string => {
+  return PADDLE_PRICES[plan][interval];
+};
+
+// Open Paddle checkout overlay
+export const openPaddleCheckout = (
   plan: 'starter' | 'growth' | 'scale',
   interval: 'monthly' | 'yearly',
-  agencyId: string
-): string => {
-  const baseUrl = CHECKOUT_LINKS[plan][interval];
-  return `${baseUrl}&checkout[custom][agency_id]=${agencyId}`;
+  agencyId: string,
+  userEmail?: string
+) => {
+  const priceId = getPaddlePriceId(plan, interval);
+  
+  const checkoutSettings: any = {
+    items: [{ priceId, quantity: 1 }],
+    customData: { agency_id: agencyId },
+    settings: {
+      displayMode: 'overlay',
+      theme: 'dark',
+      successUrl: `${window.location.origin}/admin/dashboard`,
+    },
+  };
+
+  if (userEmail) {
+    checkoutSettings.customer = { email: userEmail };
+  }
+
+  // @ts-ignore - Paddle is loaded globally
+  if (window.Paddle) {
+    // @ts-ignore
+    window.Paddle.Checkout.open(checkoutSettings);
+  } else {
+    console.error('Paddle.js not loaded');
+  }
 };

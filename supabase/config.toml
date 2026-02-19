@@ -18,7 +18,7 @@ verify_jwt = false
 [functions.storage-ops]
 verify_jwt = false
 
-[functions.lemon-webhook]
+[functions.paddle-webhook]
 verify_jwt = false
 
 [functions.send-notification-email]
@@ -31,9 +31,6 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.sync-subscription]
-verify_jwt = false
-
-[functions.get-portal-url]
 verify_jwt = false
 
 [functions.send-web-push]

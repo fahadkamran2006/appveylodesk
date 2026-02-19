@@ -24,10 +24,10 @@ export type Database = {
           created_by: string | null
           id: string
           invoice_footer: string | null
-          lemon_squeezy_customer_id: string | null
           logo_url: string | null
           max_clients: number
           name: string
+          paddle_customer_id: string | null
           plan_tier: string
           storage_limit_bytes: number
           storage_used_bytes: number
@@ -45,10 +45,10 @@ export type Database = {
           created_by?: string | null
           id?: string
           invoice_footer?: string | null
-          lemon_squeezy_customer_id?: string | null
           logo_url?: string | null
           max_clients?: number
           name: string
+          paddle_customer_id?: string | null
           plan_tier?: string
           storage_limit_bytes?: number
           storage_used_bytes?: number
@@ -66,10 +66,10 @@ export type Database = {
           created_by?: string | null
           id?: string
           invoice_footer?: string | null
-          lemon_squeezy_customer_id?: string | null
           logo_url?: string | null
           max_clients?: number
           name?: string
+          paddle_customer_id?: string | null
           plan_tier?: string
           storage_limit_bytes?: number
           storage_used_bytes?: number

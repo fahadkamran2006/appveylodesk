@@ -7,7 +7,7 @@ import { Check, ArrowRight, Loader2 } from "lucide-react";
 import Navbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
 import { useAuth } from "@/hooks/useAuth";
-import { useSubscription, getCheckoutUrl } from "@/hooks/useSubscription";
+import { useSubscription, openPaddleCheckout } from "@/hooks/useSubscription";
 
 interface PlanFeature {
   text: string;
@@ -109,10 +109,8 @@ const Pricing = () => {
     
     // Build checkout URL with agency_id
     const interval = isYearly ? 'yearly' : 'monthly';
-    const checkoutUrl = getCheckoutUrl(plan.key, interval, agencyId);
-    
-    // Redirect to Lemon Squeezy checkout
-    window.location.href = checkoutUrl;
+    openPaddleCheckout(plan.key, interval, agencyId);
+    setTimeout(() => setLoadingPlan(null), 2000);
   };
 
   return (

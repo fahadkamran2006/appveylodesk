@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
-import { getCheckoutUrl } from '@/hooks/useSubscription';
+import { openPaddleCheckout } from '@/hooks/useSubscription';
 import { Command, Loader2, Building2, Users, UserPlus, Plus, X, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -222,9 +222,8 @@ const Onboarding = () => {
         // Clear the stored plan
         localStorage.removeItem('selected_plan');
         localStorage.removeItem('selected_interval');
-        // Redirect directly to Lemon Squeezy checkout
-        const checkoutUrl = getCheckoutUrl(selectedPlan, selectedInterval, profile.agency_id);
-        window.location.href = checkoutUrl;
+        // Open Paddle checkout overlay
+        openPaddleCheckout(selectedPlan as 'starter' | 'growth' | 'scale', selectedInterval as 'monthly' | 'yearly', profile.agency_id);
       } else {
         // No plan selected, redirect to subscribe page to choose
         navigate('/subscribe');
