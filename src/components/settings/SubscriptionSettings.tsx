@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useSubscription, getCheckoutUrl } from '@/hooks/useSubscription';
+import { useSubscription, openPaddleCheckout } from '@/hooks/useSubscription';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -78,8 +78,7 @@ export const SubscriptionSettings = ({ className }: SubscriptionSettingsProps) =
 
   const handleUpgrade = (plan: 'starter' | 'growth' | 'scale') => {
     if (!agencyId) return;
-    const url = getCheckoutUrl(plan, billingInterval, agencyId);
-    window.open(url, '_blank');
+    openPaddleCheckout(plan, billingInterval, agencyId);
   };
 
   const openCustomerPortal = async () => {

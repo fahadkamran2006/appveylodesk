@@ -4,7 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Check, ArrowRight, Loader2, Sparkles, Command } from 'lucide-react';
-import { useSubscription, getCheckoutUrl } from '@/hooks/useSubscription';
+import { useSubscription, openPaddleCheckout } from '@/hooks/useSubscription';
 import { supabase } from '@/integrations/supabase/client';
 
 interface PlanFeature {
@@ -116,8 +116,8 @@ const Subscribe = () => {
     
     setLoadingPlan(plan.key);
     const interval = isYearly ? 'yearly' : 'monthly';
-    const checkoutUrl = getCheckoutUrl(plan.key, interval, agencyId);
-    window.location.href = checkoutUrl;
+    openPaddleCheckout(plan.key, interval, agencyId);
+    setTimeout(() => setLoadingPlan(null), 2000);
   };
 
   if (loading) {
