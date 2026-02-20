@@ -83,7 +83,7 @@ const PADDLE_PRICES = {
   },
   growth: {
     monthly: 'pri_01khs06hcgeff068rncwjnqxns',
-    yearly: 'pri_01khs0896ryegzxcpra0sxbnn6',
+    yearly: 'pri_01khwaq26mchmtmw4w9d0ffgrz',
   },
   scale: {
     monthly: 'pri_01khs09b0z4rm4mkz1wk3b38ms',
