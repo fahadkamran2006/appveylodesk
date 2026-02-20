@@ -218,16 +218,22 @@ const Onboarding = () => {
       const selectedPlan = localStorage.getItem('selected_plan') as 'starter' | 'growth' | 'scale' | null;
       const selectedInterval = (localStorage.getItem('selected_interval') as 'monthly' | 'yearly') || 'yearly';
       
-      if (selectedPlan && ['starter', 'growth', 'scale'].includes(selectedPlan)) {
-        // Clear the stored plan
-        localStorage.removeItem('selected_plan');
-        localStorage.removeItem('selected_interval');
-        // Open Paddle checkout overlay
-        openPaddleCheckout(selectedPlan as 'starter' | 'growth' | 'scale', selectedInterval as 'monthly' | 'yearly', profile.agency_id);
-      } else {
-        // No plan selected, redirect to subscribe page to choose
-        navigate('/subscribe');
-      }
+      // Clear stored plan values
+      localStorage.removeItem('selected_plan');
+      localStorage.removeItem('selected_interval');
+      
+      // Navigate to dashboard first, then open checkout overlay
+      navigate('/admin/dashboard');
+      
+      // Small delay to let the page render before opening overlay
+      setTimeout(() => {
+        if (selectedPlan && ['starter', 'growth', 'scale'].includes(selectedPlan)) {
+          openPaddleCheckout(selectedPlan as 'starter' | 'growth' | 'scale', selectedInterval as 'monthly' | 'yearly', profile.agency_id, user?.email);
+        } else {
+          // Default to Growth yearly if no plan was pre-selected
+          openPaddleCheckout('growth', 'yearly', profile.agency_id, user?.email);
+        }
+      }, 500);
     } catch (error: any) {
       toast.error(error.message || 'Failed to complete onboarding');
     } finally {
