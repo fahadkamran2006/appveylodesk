@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useSubscription, openPaddleCheckout } from '@/hooks/useSubscription';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -52,6 +53,7 @@ export const SubscriptionSettings = ({ className }: SubscriptionSettingsProps) =
   const { currentClients, maxClients, storageUsedBytes, storageLimitBytes, formatBytes, refetch: refetchLimits } = useAgencyLimits();
   const [billingInterval, setBillingInterval] = useState<'monthly' | 'yearly'>('yearly');
   const [syncLoading, setSyncLoading] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
 
   if (loading) {
     return (
@@ -80,8 +82,31 @@ export const SubscriptionSettings = ({ className }: SubscriptionSettingsProps) =
     openPaddleCheckout(plan, billingInterval, agencyId);
   };
 
-  const openCustomerPortal = () => {
-    window.open('https://customer-portal.paddle.com/cpl_01k5h492fx58w07rt521gam0rg', '_blank');
+  const openCustomerPortal = async () => {
+    setPortalLoading(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session?.session?.access_token) {
+        toast.error('Please log in first');
+        setPortalLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('get-portal-url', {
+        headers: { Authorization: `Bearer ${session.session.access_token}` },
+      });
+
+      if (error || !data?.url) {
+        // Fallback to static portal link
+        window.open('https://customer-portal.paddle.com/cpl_01k5h492fx58w07rt521gam0rg', '_blank');
+      } else {
+        window.open(data.url, '_blank');
+      }
+    } catch {
+      window.open('https://customer-portal.paddle.com/cpl_01k5h492fx58w07rt521gam0rg', '_blank');
+    } finally {
+      setPortalLoading(false);
+    }
   };
 
   const syncSubscription = async () => {
@@ -203,8 +228,13 @@ export const SubscriptionSettings = ({ className }: SubscriptionSettingsProps) =
                 variant="outline"
                 className="flex-1"
                 onClick={openCustomerPortal}
+                disabled={portalLoading}
               >
-                <ExternalLink className="w-4 h-4 mr-2" />
+                {portalLoading ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                )}
                 Manage Billing & Invoices
               </Button>
               <Button

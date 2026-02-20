@@ -16,7 +16,7 @@ const PRICE_TO_TIER: Record<string, { tier: string; interval: string }> = {
   "pri_01khrz050sv0w1a4ewyvv5arb1": { tier: "starter", interval: "monthly" },
   "pri_01khs05dqng1qr8xck4afwdf6y": { tier: "starter", interval: "yearly" },
   "pri_01khs06hcgeff068rncwjnqxns": { tier: "growth", interval: "monthly" },
-  "pri_01khs0896ryegzxcpra0sxbnn6": { tier: "growth", interval: "yearly" },
+  "pri_01khwaq26mchmtmw4w9d0ffgrz": { tier: "growth", interval: "yearly" },
   "pri_01khs09b0z4rm4mkz1wk3b38ms": { tier: "scale", interval: "monthly" },
   "pri_01khs0as29km3edtr84n7fxfbs": { tier: "scale", interval: "yearly" },
 };
