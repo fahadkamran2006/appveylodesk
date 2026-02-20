@@ -51,7 +51,6 @@ export const SubscriptionSettings = ({ className }: SubscriptionSettingsProps) =
   const { isActive, planTier, subscriptionEndsAt, loading, agencyId } = useSubscription();
   const { currentClients, maxClients, storageUsedBytes, storageLimitBytes, formatBytes, refetch: refetchLimits } = useAgencyLimits();
   const [billingInterval, setBillingInterval] = useState<'monthly' | 'yearly'>('yearly');
-  const [portalLoading, setPortalLoading] = useState(false);
   const [syncLoading, setSyncLoading] = useState(false);
 
   if (loading) {
@@ -81,42 +80,8 @@ export const SubscriptionSettings = ({ className }: SubscriptionSettingsProps) =
     openPaddleCheckout(plan, billingInterval, agencyId);
   };
 
-  const openCustomerPortal = async () => {
-    setPortalLoading(true);
-    try {
-      const { data: session } = await supabase.auth.getSession();
-      if (!session?.session?.access_token) {
-        toast.error('Please log in to manage your subscription');
-        return;
-      }
-
-      const { data, error } = await supabase.functions.invoke('get-portal-url', {
-        headers: {
-          Authorization: `Bearer ${session.session.access_token}`,
-        },
-      });
-
-      if (error) {
-        console.error('Portal URL error:', error);
-        toast.error('Failed to open billing portal');
-        return;
-      }
-
-      if (data?.fallback && data?.message) {
-        toast.info(data.message);
-      }
-
-      if (data?.url) {
-        window.open(data.url, '_blank');
-      } else {
-        toast.error('Could not retrieve billing portal URL');
-      }
-    } catch (err) {
-      console.error('Portal error:', err);
-      toast.error('Failed to open billing portal');
-    } finally {
-      setPortalLoading(false);
-    }
+  const openCustomerPortal = () => {
+    window.open('https://customer-portal.paddle.com/cpl_01k5h492fx58w07rt521gam0rg', '_blank');
   };
 
   const syncSubscription = async () => {
@@ -238,13 +203,8 @@ export const SubscriptionSettings = ({ className }: SubscriptionSettingsProps) =
                 variant="outline"
                 className="flex-1"
                 onClick={openCustomerPortal}
-                disabled={portalLoading}
               >
-                {portalLoading ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                )}
+                <ExternalLink className="w-4 h-4 mr-2" />
                 Manage Billing & Invoices
               </Button>
               <Button
@@ -355,7 +315,6 @@ export const SubscriptionSettings = ({ className }: SubscriptionSettingsProps) =
               <button 
                 onClick={openCustomerPortal} 
                 className="text-primary hover:underline font-medium"
-                disabled={portalLoading}
               >
                 Customer Portal
               </button>{' '}
