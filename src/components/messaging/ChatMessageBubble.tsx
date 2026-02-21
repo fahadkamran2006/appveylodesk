@@ -160,7 +160,7 @@ export function ChatMessageBubble({
   // Instagram-style: actions appear inline next to the bubble on hover
   const actionButtons = showActions && !isMuted && !isOptimistic && !isEditing && (
     <div className={cn(
-      'flex items-center gap-0.5 self-center opacity-0 group-hover:opacity-100 transition-opacity',
+      'flex items-center gap-0.5 self-center opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0',
     )}>
       {onReact && (
         <EmojiPicker onSelect={(emoji) => onReact(message.id, emoji)} />
@@ -179,7 +179,7 @@ export function ChatMessageBubble({
             <MoreHorizontal className="w-4 h-4" />
           </button>
           <div className="absolute hidden group-hover/more:flex flex-col z-20 bg-popover border border-border rounded-lg shadow-lg py-1 min-w-[120px]"
-            style={isOwn ? { right: 0, top: '100%' } : { left: 0, top: '100%' }}>
+            style={{ right: 0, top: '100%' }}>
             {onEdit && message.content && !isVoice && (
               <button
                 onClick={() => { setIsEditing(true); setEditContent(message.content); }}
