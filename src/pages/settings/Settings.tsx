@@ -228,15 +228,6 @@ const SettingsPage = () => {
                 </CardContent>
               </Card>
 
-              {/* Subscription Management - Admin Only */}
-              {userRole === 'admin' && (
-                <SubscriptionSettings />
-              )}
-
-              {/* Storage Management - Admin Only */}
-              {userRole === 'admin' && (
-                <StorageManagement />
-              )}
 
               {/* Branding Settings - Admin Only */}
               {userRole === 'admin' && (
