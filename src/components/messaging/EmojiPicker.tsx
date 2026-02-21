@@ -16,11 +16,7 @@ export function EmojiPicker({ onSelect }: EmojiPickerProps) {
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
-          onClick={(e) => {
-            e.stopPropagation();
-            e.preventDefault();
-          }}
+          className="p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
         >
           <Smile className="w-5 h-5" />
         </button>
