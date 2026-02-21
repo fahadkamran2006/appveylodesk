@@ -506,7 +506,7 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onEditMe
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*,video/*"
+                accept="image/*,video/*,audio/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar"
                 className="hidden"
                 onChange={handleFileSelect}
               />
