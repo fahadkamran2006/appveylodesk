@@ -159,9 +159,7 @@ export function ChatMessageBubble({
 
   // Instagram-style: actions appear inline next to the bubble on hover
   const actionButtons = showActions && !isMuted && !isOptimistic && !isEditing && (
-    <div className={cn(
-      'flex items-center gap-0.5 self-center opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0',
-    )}>
+    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
       {onReact && (
         <EmojiPicker onSelect={(emoji) => onReact(message.id, emoji)} />
       )}
@@ -211,7 +209,7 @@ export function ChatMessageBubble({
         exit={{ opacity: 0, y: -6 }}
         transition={{ duration: 0.12, ease: 'easeOut' }}
         className={cn(
-          'group flex gap-2 relative px-4',
+      'group flex items-end gap-1.5 relative px-4',
           isOwn ? 'flex-row-reverse' : 'flex-row',
           isMuted && 'opacity-50',
           isGrouped ? 'mt-[2px]' : 'mt-3',
@@ -234,7 +232,7 @@ export function ChatMessageBubble({
           )
         )}
 
-        {/* Actions on left for own messages */}
+        {/* Actions: left of own bubbles, right of others' */}
         {isOwn && actionButtons}
 
         <div className={cn('max-w-[65%] min-w-[60px]', isOwn && 'items-end')}>
