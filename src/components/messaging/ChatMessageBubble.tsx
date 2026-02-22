@@ -232,8 +232,7 @@ export function ChatMessageBubble({
           )
         )}
 
-        {/* Actions: left of own bubbles, right of others' */}
-        {isOwn && actionButtons}
+
 
         <div className={cn('max-w-[65%] min-w-[60px]', isOwn && 'items-end')}>
           {/* Sender name for groups */}
@@ -420,8 +419,8 @@ export function ChatMessageBubble({
           />
         </div>
 
-        {/* Actions on right for others' messages */}
-        {!isOwn && actionButtons}
+        {/* Actions: left of own (via flex-row-reverse), right of others */}
+        {actionButtons}
       </motion.div>
 
       {/* Delete Confirmation */}
