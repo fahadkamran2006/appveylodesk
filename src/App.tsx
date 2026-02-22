@@ -21,6 +21,8 @@ import Login from "./pages/auth/Login";
 import Signup from "./pages/auth/Signup";
 import AuthCallback from "./pages/auth/AuthCallback";
 import OAuthInitiateProxy from "./pages/auth/OAuthInitiateProxy";
+import ForgotPassword from "./pages/auth/ForgotPassword";
+import ResetPassword from "./pages/auth/ResetPassword";
 import JoinClient from "./pages/JoinClient";
 import JoinTeam from "./pages/JoinTeam";
 
@@ -86,6 +88,8 @@ const App = () => (
                   <Route path="/auth/login" element={<Login />} />
                   <Route path="/auth/signup" element={<Signup />} />
                   <Route path="/auth/callback" element={<AuthCallback />} />
+                  <Route path="/auth/forgot-password" element={<ForgotPassword />} />
+                  <Route path="/auth/reset-password" element={<ResetPassword />} />
                   <Route path="/" element={<Index />} />
                   <Route path="/pricing" element={<Pricing />} />
                   <Route path="/subscribe" element={<Subscribe />} />
