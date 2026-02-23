@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.get-vapid-key]
 verify_jwt = false
+
+[functions.super-admin-stats]
+verify_jwt = false

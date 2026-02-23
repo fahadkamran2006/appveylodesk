@@ -55,6 +55,8 @@ import MessagesPage from "./pages/messages/MessagesPage";
 import StoragePage from "./pages/storage/StoragePage";
 import CalendarPage from "./pages/Calendar";
 import InvoiceDetailPage from "./pages/invoices/InvoiceDetail";
+import { SuperAdminGuard } from "./components/super-admin/SuperAdminGuard";
+import SuperAdminDashboard from "./pages/super-admin/SuperAdminDashboard";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -132,6 +134,9 @@ const App = () => (
                   <Route path="/editor/messages" element={<MessagesPage />} />
                   <Route path="/editor/calendar" element={<CalendarPage />} />
                   <Route path="/editor/settings" element={<SettingsPage />} />
+
+                  {/* Super Admin (hidden) */}
+                  <Route path="/super-admin" element={<SuperAdminGuard><SuperAdminDashboard /></SuperAdminGuard>} />
 
                   {/* OAuth broker proxy routes - must be before catch-all */}
                   <Route path="/~oauth/initiate" element={<OAuthInitiateProxy />} />
