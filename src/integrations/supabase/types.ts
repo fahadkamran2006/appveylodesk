@@ -1141,6 +1141,30 @@ export type Database = {
         }
         Relationships: []
       }
+      system_logs: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          message: string
+          metadata: Json | null
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          message: string
+          metadata?: Json | null
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          message?: string
+          metadata?: Json | null
+        }
+        Relationships: []
+      }
       tool_leads: {
         Row: {
           created_at: string
@@ -1249,6 +1273,21 @@ export type Database = {
         Returns: string
       }
       generate_invoice_number: { Args: { _agency_id: string }; Returns: string }
+      get_admin_agency_stats: {
+        Args: never
+        Returns: {
+          agency_id: string
+          agency_name: string
+          client_count: number
+          created_at: string
+          editor_count: number
+          plan_tier: string
+          storage_limit_bytes: number
+          storage_used_bytes: number
+          subscription_ends_at: string
+          subscription_plan: string
+        }[]
+      }
       get_admin_performance_metrics: {
         Args: { _agency_id: string }
         Returns: {
@@ -1294,6 +1333,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      insert_system_log: {
+        Args: { _event_type: string; _message: string; _metadata?: Json }
+        Returns: undefined
+      }
       is_channel_member: {
         Args: { _channel_id: string; _user_id: string }
         Returns: boolean
@@ -1310,6 +1353,7 @@ export type Database = {
         Args: { _project_id: string; _user_id: string }
         Returns: boolean
       }
+      is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       project_belongs_to_agency: {
         Args: { _agency_id: string; _project_id: string }
         Returns: boolean
