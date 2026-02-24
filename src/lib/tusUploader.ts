@@ -177,14 +177,36 @@ export function createTusUpload(options: TusUploadOptions): TusUploadController 
     onError: (error: Error | tus.DetailedError) => {
       console.error('TUS upload error:', error);
       
-      // Check if it's a detailed error with more info
+      // Check if it's a 423 Locked error — clear stale fingerprint and retry fresh
+      let is423 = false;
       if ('originalResponse' in error) {
         const detailedError = error as tus.DetailedError;
+        const statusCode = detailedError.originalResponse?.getStatus?.();
         console.error('TUS detailed error:', {
           causingError: detailedError.causingError,
           originalRequest: detailedError.originalRequest,
           originalResponse: detailedError.originalResponse,
+          statusCode,
         });
+        if (statusCode === 423) {
+          is423 = true;
+        }
+      }
+      
+      // Also check the error message string for 423
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      if (errorMsg.includes('423') || errorMsg.includes('locked')) {
+        is423 = true;
+      }
+
+      if (is423) {
+        console.log('Upload locked (423) — clearing stale fingerprint and retrying fresh...');
+        clearStoredUploadUrl(fingerprint);
+        // Small delay then retry without resuming from previous
+        setTimeout(() => {
+          upload.start();
+        }, 2000);
+        return;
       }
       
       onError(error instanceof Error ? error : new Error(String(error)));
