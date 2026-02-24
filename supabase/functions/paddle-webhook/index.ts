@@ -90,6 +90,13 @@ Deno.serve(async (req) => {
       const valid = await verifyPaddleSignature(paddleSignature, body, webhookSecret);
       if (!valid) {
         console.error("Invalid Paddle webhook signature");
+        // Log webhook failure to system_logs
+        const _sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+        await _sb.rpc("insert_system_log", {
+          _event_type: "webhook_failure",
+          _message: "Invalid Paddle webhook signature",
+          _metadata: { source: "paddle", reason: "invalid_signature" },
+        });
         return new Response(JSON.stringify({ error: "Invalid signature" }), {
           status: 401,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -241,6 +248,15 @@ Deno.serve(async (req) => {
   } catch (error: unknown) {
     console.error("Webhook error:", error);
     const message = error instanceof Error ? error.message : "Unknown error";
+    // Log webhook failure to system_logs
+    try {
+      const _sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      await _sb.rpc("insert_system_log", {
+        _event_type: "webhook_failure",
+        _message: `Paddle webhook processing failed: ${message}`,
+        _metadata: { source: "paddle", error: message },
+      });
+    } catch (_) { /* best-effort logging */ }
     return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

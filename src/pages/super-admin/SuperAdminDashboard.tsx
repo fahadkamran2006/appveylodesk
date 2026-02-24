@@ -1,6 +1,7 @@
 import { useSuperAdminStats, AgencyStat } from "@/hooks/useSuperAdminStats";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import AgencyDrilldownSheet from "@/components/super-admin/AgencyDrilldownSheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -25,6 +26,7 @@ export default function SuperAdminDashboard() {
   const { data, isLoading, error } = useSuperAdminStats();
   const [sortKey, setSortKey] = useState<SortKey>("revenue");
   const [sortAsc, setSortAsc] = useState(false);
+  const [selectedAgency, setSelectedAgency] = useState<AgencyStat | null>(null);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortAsc(!sortAsc);
@@ -91,7 +93,7 @@ export default function SuperAdminDashboard() {
                     </TableHeader>
                     <TableBody>
                       {sorted.map((a) => (
-                        <TableRow key={a.id}>
+                        <TableRow key={a.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedAgency(a)}>
                           <TableCell className="font-medium">{a.name}</TableCell>
                           <TableCell><Badge variant="outline" className="capitalize">{a.plan_tier}</Badge></TableCell>
                           <TableCell>{a.is_active ? <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-200">Active</Badge> : <Badge variant="destructive">Churned</Badge>}</TableCell>
@@ -163,6 +165,12 @@ export default function SuperAdminDashboard() {
           </TabsContent>
         </Tabs>
       </main>
+
+      <AgencyDrilldownSheet
+        agency={selectedAgency}
+        open={!!selectedAgency}
+        onOpenChange={(open) => !open && setSelectedAgency(null)}
+      />
     </div>
   );
 }

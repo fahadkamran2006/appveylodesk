@@ -51,6 +51,99 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    // Check if this is a drill-down request
+    const url = new URL(req.url);
+    const agencyId = url.searchParams.get("agency_id");
+
+    if (agencyId) {
+      // Drill-down: fetch detailed agency data
+      const { data: agency } = await supabase
+        .from("agencies")
+        .select("*")
+        .eq("id", agencyId)
+        .single();
+
+      if (!agency) {
+        return new Response(JSON.stringify({ error: "Agency not found" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Fetch members with roles
+      const { data: members } = await supabase
+        .from("user_roles")
+        .select("user_id, role, created_at")
+        .eq("agency_id", agencyId);
+
+      // Fetch profiles for members
+      const memberIds = (members || []).map((m: any) => m.user_id);
+      const { data: profiles } = memberIds.length > 0
+        ? await supabase
+            .from("profiles")
+            .select("id, email, full_name, avatar_url")
+            .in("id", memberIds)
+        : { data: [] };
+
+      const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
+      const memberList = (members || []).map((m: any) => ({
+        ...m,
+        ...(profileMap.get(m.user_id) || {}),
+      }));
+
+      // Fetch projects
+      const { data: projects } = await supabase
+        .from("projects")
+        .select("id, title, status, client_id, due_date, budget, created_at, completed_at")
+        .eq("agency_id", agencyId)
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      // Fetch invoices summary
+      const { data: invoices } = await supabase
+        .from("invoices")
+        .select("id, amount, status, created_at")
+        .eq("agency_id", agencyId)
+        .order("created_at", { ascending: false })
+        .limit(20);
+
+      const totalInvoiced = (invoices || []).reduce((s: number, i: any) => s + Number(i.amount), 0);
+      const totalPaid = (invoices || []).filter((i: any) => i.status === "paid").reduce((s: number, i: any) => s + Number(i.amount), 0);
+
+      // Storage breakdown by project (top 10)
+      const { data: storageBreakdown } = await supabase
+        .rpc("get_admin_agency_stats")
+        .then(() =>
+          supabase
+            .from("deliverables")
+            .select("project_id, file_size")
+            .in(
+              "project_id",
+              (projects || []).map((p: any) => p.id)
+            )
+        );
+
+      const projectStorageMap: Record<string, number> = {};
+      for (const d of storageBreakdown || []) {
+        projectStorageMap[d.project_id] = (projectStorageMap[d.project_id] || 0) + Number(d.file_size || 0);
+      }
+
+      const projectsWithStorage = (projects || []).map((p: any) => ({
+        ...p,
+        storage_bytes: projectStorageMap[p.id] || 0,
+      }));
+
+      return new Response(
+        JSON.stringify({
+          agency,
+          members: memberList,
+          projects: projectsWithStorage,
+          invoices_summary: { total_invoiced: totalInvoiced, total_paid: totalPaid, count: (invoices || []).length },
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Fetch agency stats via security definer function
     const { data: agencies, error: agenciesErr } = await supabase.rpc(
       "get_admin_agency_stats"
