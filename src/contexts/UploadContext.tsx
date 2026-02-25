@@ -267,20 +267,44 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
     return newItems.map(item => item.id);
   }, [toast, user]);
 
+  // Cleanup orphaned Bunny Stream video when upload is cancelled/removed
+  const cleanupOrphanedVideo = useCallback(async (videoId: string) => {
+    try {
+      console.log(`Cleaning up orphaned Bunny Stream video: ${videoId}`);
+      await supabase.functions.invoke('presigned-upload', {
+        body: { action: 'cleanup', videoId },
+      });
+    } catch (err) {
+      console.error('Failed to cleanup orphaned video:', err);
+    }
+  }, []);
+
   const removeFromQueue = useCallback((uploadId: string) => {
     setState(prev => {
+      const item = prev.queue.find(q => q.id === uploadId);
+      
       if (prev.currentUploadId === uploadId && abortControllerRef.current) {
         abortControllerRef.current.abort();
         abortControllerRef.current = null;
       }
       
+      // If item had a videoId but wasn't completed, clean up the orphaned video
+      if (item?.videoId && item.status !== 'completed') {
+        cleanupOrphanedVideo(item.videoId);
+      }
+      
+      // Abort TUS controller if active
+      if (item?.tusController) {
+        item.tusController.abort();
+      }
+      
       return {
         ...prev,
-        queue: prev.queue.filter(item => item.id !== uploadId),
+        queue: prev.queue.filter(q => q.id !== uploadId),
         currentUploadId: prev.currentUploadId === uploadId ? null : prev.currentUploadId,
       };
     });
-  }, []);
+  }, [cleanupOrphanedVideo]);
 
   const clearCompleted = useCallback(() => {
     setState(prev => ({
@@ -409,11 +433,15 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
       abortControllerRef.current = null;
     }
     
-    // Abort all queued TUS uploads
+    // Clean up orphaned videos and abort all queued TUS uploads
     setState(prev => {
       prev.queue.forEach(q => {
         if (q.tusController) {
           q.tusController.abort();
+        }
+        // Cleanup orphaned videos for non-completed uploads
+        if (q.videoId && q.status !== 'completed') {
+          cleanupOrphanedVideo(q.videoId);
         }
       });
       return {
@@ -423,13 +451,14 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
         currentUploadId: null,
       };
     });
-  }, []);
+  }, [cleanupOrphanedVideo]);
 
   // Upload using presigned URL flow
   const uploadFile = useCallback(async (item: QueuedUpload): Promise<boolean> => {
     if (!user || !session?.access_token) return false;
 
     abortControllerRef.current = new AbortController();
+    let streamVideoId: string | null = null;
 
     try {
       const shouldUseStream = isVideoFile(item.file.name);
@@ -447,6 +476,18 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
 
       if (initError) throw initError;
       if (!initData?.ok) throw new Error(initData?.error || 'Failed to get upload credentials');
+
+      // Track videoId for cleanup on failure
+      if (initData.videoId) {
+        streamVideoId = initData.videoId;
+        // Also store on the queue item immediately
+        setState(prev => ({
+          ...prev,
+          queue: prev.queue.map(q =>
+            q.id === item.id ? { ...q, videoId: initData.videoId, cdnUrl: initData.cdnUrl } : q
+          ),
+        }));
+      }
 
       // Step 2: Upload directly to Bunny
       if (initData.uploadType === 'storage') {
@@ -518,8 +559,13 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
       if (finalizeError) throw finalizeError;
       if (!finalizeData?.ok) throw new Error(finalizeData?.error || 'Failed to save file record');
 
+      streamVideoId = null; // Upload succeeded, don't clean up
       return true;
     } catch (error: any) {
+      // Clean up orphaned Bunny Stream video on failure
+      if (streamVideoId) {
+        cleanupOrphanedVideo(streamVideoId);
+      }
       if (error.message === 'Upload cancelled') {
         return false;
       }
@@ -528,7 +574,7 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
     } finally {
       abortControllerRef.current = null;
     }
-  }, [user, session, isVideoFile]);
+  }, [user, session, isVideoFile, cleanupOrphanedVideo]);
 
   // Process queue
   const processQueue = useCallback(async () => {
@@ -601,6 +647,28 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
       processQueue();
     }
   }, [state.queue, state.isPaused, processQueue]);
+
+  // Warn users before leaving with active uploads & clean up orphaned videos
+  useEffect(() => {
+    const hasActiveUploads = state.queue.some(q => q.status === 'uploading' || q.status === 'pending');
+    
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasActiveUploads) {
+        e.preventDefault();
+        // Clean up orphaned videos for in-progress stream uploads
+        state.queue.forEach(q => {
+          if (q.videoId && q.status !== 'completed') {
+            // Use sendBeacon for reliability during page unload
+            const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/presigned-upload`;
+            navigator.sendBeacon(url, JSON.stringify({ action: 'cleanup', videoId: q.videoId }));
+          }
+        });
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [state.queue]);
 
   const getQueueStats = useCallback((): UploadQueueStats => {
     const pending = state.queue.filter(q => q.status === 'pending').length;

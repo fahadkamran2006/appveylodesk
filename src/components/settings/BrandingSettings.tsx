@@ -128,16 +128,17 @@ export function BrandingSettings({ className }: BrandingSettingsProps) {
     }
   };
 
-  const handleSave = async () => {
+  const saveBranding = async (brandingOverride?: AgencyBrandingForm) => {
     if (!agencyId) return;
 
+    const data = brandingOverride || branding;
     setIsSaving(true);
     try {
       const brandingJson: Record<string, any> = {
-        logo_url: branding.logo_url || null,
-        primary_color: branding.primary_color || null,
-        agency_name: branding.agency_name || null,
-        enabled: branding.enabled,
+        logo_url: data.logo_url || null,
+        primary_color: data.primary_color || null,
+        agency_name: data.agency_name || null,
+        enabled: data.enabled,
       };
 
       const { error } = await supabase
@@ -158,6 +159,14 @@ export function BrandingSettings({ className }: BrandingSettingsProps) {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleSave = () => saveBranding();
+
+  const handleToggleEnabled = (checked: boolean) => {
+    const updated = { ...branding, enabled: checked };
+    setBranding(updated);
+    saveBranding(updated);
   };
 
   const handleReset = () => {
@@ -227,7 +236,8 @@ export function BrandingSettings({ className }: BrandingSettingsProps) {
           </div>
           <Switch
             checked={branding.enabled}
-            onCheckedChange={(checked) => setBranding(prev => ({ ...prev, enabled: checked }))}
+            onCheckedChange={handleToggleEnabled}
+            disabled={isSaving}
           />
         </div>
 

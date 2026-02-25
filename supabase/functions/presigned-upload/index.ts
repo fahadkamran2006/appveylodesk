@@ -260,6 +260,52 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
+    // CLEANUP: Delete an orphaned Bunny Stream video (e.g. cancelled upload)
+    if (action === "cleanup") {
+      const { videoId } = body;
+      if (!videoId) {
+        return new Response(JSON.stringify({ error: "Missing videoId" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Only allow cleanup if this video doesn't have a finalized deliverable
+      const { data: existing } = await service
+        .from("deliverables")
+        .select("id")
+        .ilike("file_url", `%${videoId}%`)
+        .maybeSingle();
+
+      if (existing) {
+        return new Response(JSON.stringify({ error: "Video is linked to a deliverable, cannot clean up" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Delete from Bunny Stream
+      if (isBunnyStreamConfigured()) {
+        try {
+          const deleteResp = await fetch(
+            `https://video.bunnycdn.com/library/${BUNNY_STREAM_LIBRARY_ID}/videos/${videoId}`,
+            {
+              method: "DELETE",
+              headers: { "AccessKey": BUNNY_STREAM_API_KEY },
+            }
+          );
+          console.log(`Bunny Stream cleanup: video ${videoId}, status ${deleteResp.status}`);
+        } catch (err) {
+          console.error("Bunny Stream cleanup error:", err);
+        }
+      }
+
+      return new Response(JSON.stringify({ ok: true, cleaned: videoId }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     return new Response(JSON.stringify({ error: "Invalid action" }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
