@@ -259,7 +259,7 @@ const ClientDashboard = () => {
         <meta name="description" content="View your projects, track video progress, and manage invoices." />
       </Helmet>
 
-      <DashboardLayout role="client">
+      <DashboardLayout role="client" hideHeader>
         <motion.div 
           variants={containerVariants} 
           initial="hidden" 

@@ -91,8 +91,22 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
           signal: abortController.signal,
         };
       } else {
-        fetchUrl = fileUrl;
-        fetchOptions = { signal: abortController.signal };
+        // For non-stream files (PDFs, images, etc.), use direct anchor download
+        // to avoid CORS issues with cross-origin fetch()
+        try {
+          const a = document.createElement('a');
+          a.href = fileUrl;
+          a.download = fileName;
+          a.target = '_blank';
+          a.rel = 'noopener noreferrer';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          updateDownload(id, { status: 'completed', progress: 100, speed: 0, remainingTime: 0 });
+        } catch (err: any) {
+          updateDownload(id, { status: 'failed', error: err.message || 'Download failed', speed: 0, remainingTime: 0 });
+        }
+        return;
       }
 
       const response = await fetch(fetchUrl, fetchOptions);
