@@ -1,6 +1,6 @@
 import { Helmet } from 'react-helmet-async';
-import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
 import { useAuth } from '@/hooks/useAuth';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { Calendar as CalendarIcon, Clock } from 'lucide-react';
 
 export default function CalendarPage() {
@@ -13,10 +13,7 @@ export default function CalendarPage() {
         <meta name="description" content="View your upcoming events and deadlines" />
       </Helmet>
 
-      <div className="flex min-h-screen bg-background">
-        <CollapsibleSidebar role={userRole || 'client'} />
-
-        <main className="flex-1 p-8 overflow-auto">
+      <DashboardLayout role={(userRole as 'admin' | 'client' | 'editor') || 'client'}>
           <div className="max-w-4xl mx-auto">
             <div className="mb-8">
               <h1 className="text-3xl font-bold text-foreground">Calendar</h1>
@@ -50,8 +47,7 @@ export default function CalendarPage() {
               </div>
             </div>
           </div>
-        </main>
-      </div>
+      </DashboardLayout>
     </>
   );
 }

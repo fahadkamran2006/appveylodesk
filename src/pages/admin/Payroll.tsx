@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/hooks/useAuth';
 import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
+import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { Button } from '@/components/ui/button';
 import { AddBonusModal } from '@/components/admin/AddBonusModal';
 import { PayrollPaymentModal } from '@/components/admin/PayrollPaymentModal';
@@ -557,6 +558,7 @@ const AdminPayroll = () => {
         agencyId={agencyId}
         onSuccess={fetchPayrollData}
       />
+      <MobileBottomNav role="admin" />
     </>
   );
 };

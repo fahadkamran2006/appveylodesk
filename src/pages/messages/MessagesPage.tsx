@@ -10,6 +10,7 @@ import { ChatList } from '@/components/messaging/ChatList';
 import { ChatWindow } from '@/components/messaging/ChatWindow';
 import { NewDMModal } from '@/components/messaging/NewDMModal';
 import { MessageSquare } from 'lucide-react';
+import { MobileBottomNav } from '@/components/MobileBottomNav';
 
 const MessagesPage = () => {
   const { user, userRole, loading: authLoading } = useAuth();
@@ -107,7 +108,7 @@ const MessagesPage = () => {
           <CollapsibleSidebar role={getSidebarRole()} />
         </div>
 
-        <main className="flex-1 flex h-full overflow-hidden">
+        <main className="flex-1 flex h-full overflow-hidden pb-16 md:pb-0">
           {/* Slack-style sidebar */}
           <div className={`
             ${showChatListOnMobile ? 'flex' : 'hidden'} md:flex
@@ -150,6 +151,8 @@ const MessagesPage = () => {
           </div>
         </main>
       </div>
+
+      <MobileBottomNav role={getSidebarRole()} />
 
       <NewDMModal
         open={showNewDM}
