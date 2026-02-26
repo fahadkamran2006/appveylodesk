@@ -5,6 +5,7 @@ import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
+import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -1324,6 +1325,7 @@ const StoragePage = () => {
       </Dialog>
 
       {/* Upload queue handled by GlobalUploadTray in App.tsx */}
+      <MobileBottomNav role={userRole === 'admin' ? 'admin' : userRole === 'client' ? 'client' : 'editor'} />
     </>
   );
 };

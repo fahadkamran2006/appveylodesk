@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
+import { DashboardLayout } from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -168,10 +168,7 @@ const ClientInvoices = () => {
         <meta name="description" content="View and pay your invoices." />
       </Helmet>
 
-      <div className="min-h-screen bg-background flex">
-        <CollapsibleSidebar role="client" />
-
-        <main className="flex-1 p-8">
+      <DashboardLayout role="client">
           <div className="mb-8">
             <h1 className="text-2xl font-bold text-foreground">My Invoices</h1>
             <p className="text-muted-foreground">View and pay your project invoices.</p>
@@ -290,8 +287,7 @@ const ClientInvoices = () => {
               </div>
             )}
           </div>
-        </main>
-      </div>
+      </DashboardLayout>
 
       {/* Upload Payment Proof Modal */}
       <Dialog open={uploadModalOpen} onOpenChange={setUploadModalOpen}>

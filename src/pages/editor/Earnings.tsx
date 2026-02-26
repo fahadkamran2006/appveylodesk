@@ -4,6 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
+import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { DollarSign, CheckCircle2, Clock, TrendingUp, Briefcase, Gift, Wallet } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -184,8 +185,9 @@ const EditorEarnings = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background flex">
-        <CollapsibleSidebar role="editor" />
-
+        <div className="hidden md:block">
+          <CollapsibleSidebar role="editor" />
+        </div>
         <main className="flex-1 p-4 md:p-8 pb-24 md:pb-8">
           <div className="mb-8">
             <h1 className="text-2xl font-bold text-foreground">My Earnings</h1>
@@ -457,6 +459,7 @@ const EditorEarnings = () => {
           </div>
         </main>
       </div>
+      <MobileBottomNav role="editor" />
     </>
   );
 };

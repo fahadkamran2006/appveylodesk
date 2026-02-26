@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/hooks/useAuth';
 import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
+import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { Button } from '@/components/ui/button';
 import { PersonCard } from '@/components/PersonCard';
 import { PersonDetailSheet } from '@/components/PersonDetailSheet';
@@ -165,9 +166,11 @@ const AdminClients = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background flex">
-        <CollapsibleSidebar role="admin" />
+        <div className="hidden md:block">
+          <CollapsibleSidebar role="admin" />
+        </div>
 
-        <main className="flex-1 p-8">
+        <main className="flex-1 p-4 md:p-8 pb-24 md:pb-8">
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <div>
@@ -348,6 +351,7 @@ const AdminClients = () => {
         memberType="client"
         onSuccess={fetchClients}
       />
+      <MobileBottomNav role="admin" />
     </>
   );
 };

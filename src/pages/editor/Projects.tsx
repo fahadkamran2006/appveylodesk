@@ -6,6 +6,7 @@ import { Clock, Upload } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
+import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -149,9 +150,11 @@ export default function EditorProjects() {
       </Helmet>
 
       <div className="flex min-h-screen bg-background">
-        <CollapsibleSidebar role="editor" />
+        <div className="hidden md:block">
+          <CollapsibleSidebar role="editor" />
+        </div>
 
-        <main className="flex-1 p-8 overflow-auto">
+        <main className="flex-1 p-4 md:p-8 pb-24 md:pb-8 overflow-auto">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-foreground">My Projects</h1>
             <p className="text-muted-foreground mt-1">Manage your assigned projects and upload deliverables</p>
@@ -255,6 +258,7 @@ export default function EditorProjects() {
         onOpenChange={(open) => !open && setSelectedProjectId(null)}
         onProjectDeleted={fetchProjects}
       />
+      <MobileBottomNav role="editor" />
     </>
   );
 }

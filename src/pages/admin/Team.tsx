@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/hooks/useAuth';
 import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
+import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { Button } from '@/components/ui/button';
 import { PersonCard } from '@/components/PersonCard';
 import { PersonDetailSheet } from '@/components/PersonDetailSheet';
@@ -352,6 +353,7 @@ const AdminTeam = () => {
         memberType="editor"
         onSuccess={fetchTeamData}
       />
+      <MobileBottomNav role="admin" />
     </>
   );
 };
