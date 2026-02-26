@@ -7,12 +7,15 @@ import { DashboardLayout } from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
   Clock, Download, FolderKanban, Receipt, Video, Eye, 
   ArrowRight, Sparkles, CheckCircle2, CircleDot,
   ChevronRight, TrendingUp, FileVideo, Calendar
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useProfile } from '@/hooks/useProfile';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -75,6 +78,25 @@ const itemVariants = {
   hidden: { opacity: 0, y: 12 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.25, 0.1, 0.25, 1] as const } },
 };
+
+function ProfileAvatar() {
+  const { profile } = useProfile();
+  const initials = profile?.full_name
+    ? profile.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+    : 'U';
+  return (
+    <div className="hidden sm:flex items-center gap-3 pl-3 border-l border-border">
+      <div className="text-right hidden md:block">
+        <p className="text-sm font-medium text-foreground truncate max-w-[120px]">{profile?.full_name || 'User'}</p>
+        <p className="text-xs text-muted-foreground truncate max-w-[120px]">{profile?.email}</p>
+      </div>
+      <Avatar className="h-9 w-9 ring-2 ring-primary/10">
+        <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.full_name || 'User'} />
+        <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">{initials}</AvatarFallback>
+      </Avatar>
+    </div>
+  );
+}
 
 const ClientDashboard = () => {
   const { user, userRole, loading } = useAuth();
@@ -264,10 +286,10 @@ const ClientDashboard = () => {
           variants={containerVariants} 
           initial="hidden" 
           animate="visible"
-          className="space-y-6 md:space-y-8 max-w-7xl"
+          className="space-y-6 md:space-y-8"
         >
-          {/* Hero Section */}
-          <motion.div variants={itemVariants} className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+          {/* Hero Section with Notification Bell & Profile */}
+          <motion.div variants={itemVariants} className="flex items-start sm:items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight">
                 {getGreeting()}, {userName || 'there'} 👋
@@ -276,14 +298,31 @@ const ClientDashboard = () => {
                 Here's what's happening with your projects.
               </p>
             </div>
+            <div className="flex items-center gap-3 flex-shrink-0">
+              <Button 
+                onClick={() => setRequestVideoModalOpen(true)}
+                className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg shadow-primary/20 transition-all duration-300 hover:shadow-xl hover:shadow-primary/30 group hidden sm:flex"
+                size="lg"
+              >
+                <Video className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
+                Request New Video
+                <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-0.5 transition-transform" />
+              </Button>
+              <NotificationBell />
+              <ProfileAvatar />
+            </div>
+          </motion.div>
+
+          {/* Mobile Request Button */}
+          <motion.div variants={itemVariants} className="sm:hidden">
             <Button 
               onClick={() => setRequestVideoModalOpen(true)}
-              className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg shadow-primary/20 transition-all duration-300 hover:shadow-xl hover:shadow-primary/30 group"
+              className="w-full bg-gradient-to-r from-primary to-primary/80 shadow-lg shadow-primary/20 group"
               size="lg"
             >
-              <Video className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
+              <Video className="w-4 h-4 mr-2" />
               Request New Video
-              <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-0.5 transition-transform" />
+              <ArrowRight className="w-4 h-4 ml-1" />
             </Button>
           </motion.div>
 
