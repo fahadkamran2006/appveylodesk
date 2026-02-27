@@ -299,32 +299,24 @@ const ClientDashboard = () => {
               </p>
             </div>
             <div className="flex items-center gap-3 flex-shrink-0">
-              <Button 
-                onClick={() => setRequestVideoModalOpen(true)}
-                className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg shadow-primary/20 transition-all duration-300 hover:shadow-xl hover:shadow-primary/30 group hidden sm:flex"
-                size="lg"
-              >
-                <Video className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
-                Request New Video
-                <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-0.5 transition-transform" />
-              </Button>
+              {/* Desktop CTA removed — unified card below */}
               <NotificationBell />
               <ProfileAvatar />
             </div>
           </motion.div>
 
-          {/* Mobile Request Card — dashed CTA */}
-          <motion.div variants={itemVariants} className="sm:hidden">
+          {/* Request CTA Card — works on mobile & desktop */}
+          <motion.div variants={itemVariants}>
             <div 
               onClick={() => setRequestVideoModalOpen(true)}
-              className="rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 p-4 flex items-center gap-4 cursor-pointer active:scale-[0.98] transition-transform"
+              className="rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 hover:bg-primary/10 p-4 md:p-5 flex items-center gap-4 cursor-pointer active:scale-[0.98] hover:border-primary/60 transition-all duration-200"
             >
-              <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <Sparkles className="w-5 h-5 text-primary" />
+              <div className="w-11 h-11 md:w-12 md:h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <Sparkles className="w-5 h-5 md:w-6 md:h-6 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-sm font-semibold text-foreground">Start a New Project ✨</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">Submit a request and we'll get back to you</p>
+                <h3 className="text-sm md:text-base font-semibold text-foreground">Start a New Project ✨</h3>
+                <p className="text-xs md:text-sm text-muted-foreground mt-0.5">Submit a request and we'll get back to you</p>
               </div>
               <Button 
                 size="sm"
