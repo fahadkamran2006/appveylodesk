@@ -11,6 +11,7 @@ import { ChatWindow } from '@/components/messaging/ChatWindow';
 import { NewDMModal } from '@/components/messaging/NewDMModal';
 import { MessageSquare } from 'lucide-react';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
+import { cn } from '@/lib/utils';
 
 const MessagesPage = () => {
   const { user, userRole, loading: authLoading } = useAuth();
@@ -95,6 +96,7 @@ const MessagesPage = () => {
   }
 
   const showChatListOnMobile = !selectedChannelId;
+  const isChatOpenOnMobile = !!selectedChannelId;
 
   return (
     <>
@@ -103,12 +105,16 @@ const MessagesPage = () => {
         <meta name="description" content="Communicate with your team and clients." />
       </Helmet>
 
-      <div className="h-screen bg-background flex overflow-hidden">
+      <div className="h-[100dvh] bg-background flex overflow-hidden">
         <div className="hidden md:block">
           <CollapsibleSidebar role={getSidebarRole()} />
         </div>
 
-        <main className="flex-1 flex h-full overflow-hidden pb-16 md:pb-0">
+        <main className={cn(
+          "flex-1 flex h-full overflow-hidden",
+          // Only add bottom padding when showing chat list (bottom nav visible)
+          showChatListOnMobile ? "pb-16 md:pb-0" : "pb-0"
+        )}>
           {/* Slack-style sidebar */}
           <div className={`
             ${showChatListOnMobile ? 'flex' : 'hidden'} md:flex
@@ -152,7 +158,8 @@ const MessagesPage = () => {
         </main>
       </div>
 
-      <MobileBottomNav role={getSidebarRole()} />
+      {/* Hide bottom nav when chat is open on mobile — like WhatsApp */}
+      {!isChatOpenOnMobile && <MobileBottomNav role={getSidebarRole()} />}
 
       <NewDMModal
         open={showNewDM}
