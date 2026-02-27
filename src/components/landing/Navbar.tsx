@@ -76,37 +76,63 @@ const Navbar = () => {
           </button>
         </div>
 
-        {/* Mobile Menu */}
+        {/* Mobile Menu — Full-screen overlay */}
         {isMobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-border/50 animate-fade-in">
-            <div className="flex flex-col gap-4">
-              <a
-                href="#features"
-                className="text-muted-foreground hover:text-foreground transition-colors py-2"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Features
-              </a>
-              <Link
-                to="/pricing"
-                className="text-muted-foreground hover:text-foreground transition-colors py-2"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Pricing
-              </Link>
-              <a
-                href="#testimonials"
-                className="text-muted-foreground hover:text-foreground transition-colors py-2"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Testimonials
-              </a>
-              <div className="flex flex-col gap-3 pt-4 border-t border-border/50">
-                <Button variant="outline" asChild>
-                  <Link to="/auth/login">Login</Link>
+          <div className="md:hidden fixed inset-0 top-0 left-0 z-50 bg-background/95 backdrop-blur-xl animate-fade-in">
+            <div className="flex flex-col h-full px-6 py-5">
+              {/* Header with logo & close */}
+              <div className="flex items-center justify-between mb-10">
+                <Link to="/" className="flex items-center gap-2" onClick={() => setIsMobileMenuOpen(false)}>
+                  <div className="w-9 h-9 rounded-lg bg-gradient-primary flex items-center justify-center shadow-glow-sm">
+                    <Command className="w-5 h-5 text-primary-foreground" />
+                  </div>
+                  <span className="text-xl font-bold text-foreground">
+                    Veylo<span className="text-gradient">desk</span>
+                  </span>
+                </Link>
+                <button
+                  className="p-2 rounded-lg bg-muted/50 text-foreground"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Nav links */}
+              <nav className="flex flex-col gap-1">
+                <a
+                  href="#features"
+                  className="text-lg font-medium text-muted-foreground hover:text-foreground transition-colors py-3 px-3 rounded-lg hover:bg-muted/40"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Features
+                </a>
+                <Link
+                  to="/pricing"
+                  className="text-lg font-medium text-muted-foreground hover:text-foreground transition-colors py-3 px-3 rounded-lg hover:bg-muted/40"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Pricing
+                </Link>
+                <a
+                  href="#testimonials"
+                  className="text-lg font-medium text-muted-foreground hover:text-foreground transition-colors py-3 px-3 rounded-lg hover:bg-muted/40"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Testimonials
+                </a>
+              </nav>
+
+              {/* Spacer */}
+              <div className="flex-1" />
+
+              {/* CTA buttons pinned to bottom */}
+              <div className="flex flex-col gap-3 pb-6">
+                <Button variant="outline" size="lg" className="w-full text-base" asChild>
+                  <Link to="/auth/login" onClick={() => setIsMobileMenuOpen(false)}>Login</Link>
                 </Button>
-                <Button variant="hero" asChild>
-                  <Link to="/pricing">Get Started</Link>
+                <Button variant="hero" size="lg" className="w-full text-base" asChild>
+                  <Link to="/pricing" onClick={() => setIsMobileMenuOpen(false)}>Get Started</Link>
                 </Button>
               </div>
             </div>
