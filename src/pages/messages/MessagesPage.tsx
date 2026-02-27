@@ -147,7 +147,7 @@ const MessagesPage = () => {
             <ChatWindow
               channel={selectedChannel as any}
               messages={messages as any}
-              loading={messagesLoading}
+              loading={messagesLoading || (!!selectedChannelId && !selectedChannel)}
               onSendMessage={sendMessage}
               onEditMessage={editMessage}
               onDeleteMessage={deleteMessage}

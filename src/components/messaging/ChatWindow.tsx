@@ -231,6 +231,31 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onEditMe
   const messageMap = new Map(allMessages.map(m => [m.id, m]));
 
   if (!channel) {
+    if (loading) {
+      // Show skeleton when channel is loading (prevents "Your Messages" flash on mobile)
+      return (
+        <div className="h-full flex flex-col bg-background">
+          <div className="px-4 py-3 border-b border-border/40 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-muted animate-pulse" />
+            <div className="space-y-1.5">
+              <div className="h-3.5 w-24 bg-muted animate-pulse rounded" />
+              <div className="h-2.5 w-16 bg-muted/60 animate-pulse rounded" />
+            </div>
+          </div>
+          <div className="flex-1 flex flex-col gap-3 p-4">
+            {[...Array(6)].map((_, i) => {
+              const isRight = i % 3 === 1;
+              return (
+                <div key={i} className={cn("flex gap-2", isRight ? "justify-end" : "justify-start")}>
+                  {!isRight && <div className="w-7 h-7 rounded-full bg-muted animate-pulse flex-shrink-0 mt-auto" />}
+                  <div className={cn("rounded-2xl animate-pulse", isRight ? "bg-primary/20" : "bg-muted", i % 2 === 0 ? "w-48 h-10" : "w-32 h-8")} />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="h-full flex items-center justify-center bg-background">
         <div className="text-center">
