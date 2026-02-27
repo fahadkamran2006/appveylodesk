@@ -134,8 +134,16 @@ export function ChatList({
 
   if (loading) {
     return (
-      <div className="h-full flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground text-sm">Loading...</div>
+      <div className="px-3 py-4 space-y-3">
+        {[...Array(6)].map((_, i) => (
+          <div key={i} className="flex items-center gap-2.5 px-2">
+            <div className="w-7 h-7 rounded-full bg-muted animate-pulse flex-shrink-0" />
+            <div className="flex-1 space-y-1.5">
+              <div className="h-3 bg-muted animate-pulse rounded w-24" />
+              <div className="h-2 bg-muted/60 animate-pulse rounded w-16" />
+            </div>
+          </div>
+        ))}
       </div>
     );
   }

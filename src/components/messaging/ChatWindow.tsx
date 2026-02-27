@@ -379,8 +379,20 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onEditMe
           className="flex-1 overflow-y-auto py-2 relative"
         >
           {loading ? (
-            <div className="h-full flex items-center justify-center">
-              <div className="animate-pulse text-muted-foreground text-sm">Loading messages...</div>
+            <div className="flex flex-col gap-3 p-4">
+              {[...Array(8)].map((_, i) => {
+                const isRight = i % 3 === 1;
+                return (
+                  <div key={i} className={cn("flex gap-2", isRight ? "justify-end" : "justify-start")}>
+                    {!isRight && <div className="w-7 h-7 rounded-full bg-muted animate-pulse flex-shrink-0 mt-auto" />}
+                    <div className={cn(
+                      "rounded-2xl animate-pulse",
+                      isRight ? "bg-primary/20" : "bg-muted",
+                      i % 2 === 0 ? "w-48 h-10" : "w-32 h-8"
+                    )} />
+                  </div>
+                );
+              })}
             </div>
           ) : allMessages.length === 0 ? (
             <div className="h-full flex items-center justify-center">
