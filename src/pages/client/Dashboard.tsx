@@ -319,11 +319,10 @@ const ClientDashboard = () => {
                 <p className="text-xs md:text-sm text-muted-foreground mt-0.5">Submit a request and we'll get back to you</p>
               </div>
               <Button 
-                size="sm"
-                className="bg-gradient-to-r from-primary to-primary/80 shadow-lg shadow-primary/20 flex-shrink-0"
+                className="bg-gradient-to-r from-primary to-primary/80 shadow-lg shadow-primary/20 flex-shrink-0 h-10 px-5 text-sm font-semibold"
               >
-                <Video className="w-3.5 h-3.5 mr-1.5" />
-                New
+                <Video className="w-4 h-4 mr-2" />
+                New Project
               </Button>
             </div>
           </motion.div>
