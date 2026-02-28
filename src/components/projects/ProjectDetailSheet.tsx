@@ -521,10 +521,10 @@ export function ProjectDetailSheet({
 
             {/* Content */}
             {selectedVideo ? (
-              // Video review mode
-              <div className="flex-1 flex overflow-hidden">
+              // Video review mode — stacks vertically on mobile, side-by-side on desktop
+              <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
                 {/* Video player */}
-                <div className="flex-1 flex flex-col bg-black">
+                <div className="w-full md:flex-1 flex flex-col bg-black min-h-[200px] md:min-h-0" style={{ maxHeight: 'clamp(200px, 40vh, 50vh)' }}>
                   <VideoPlayer
                     ref={videoPlayerRef}
                     src={selectedVideo.file_url}
@@ -539,7 +539,7 @@ export function ProjectDetailSheet({
                 </div>
 
                 {/* Comment panel */}
-                <div className="w-80 border-l border-border bg-background">
+                <div className="flex-1 md:flex-none md:w-80 border-t md:border-t-0 md:border-l border-border bg-background overflow-hidden">
                   <CommentPanel
                     comments={comments}
                     unresolvedComments={unresolvedComments}
@@ -548,6 +548,7 @@ export function ProjectDetailSheet({
                     onAddComment={handleAddComment}
                     onResolveComment={resolveComment}
                     onUnresolveComment={unresolveComment}
+                    className="h-full"
                   />
                 </div>
               </div>
