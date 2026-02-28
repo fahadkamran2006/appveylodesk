@@ -88,7 +88,7 @@ html.theme-transition *::after {
   }
 
   .light {
-    --background: 0 0% 99%;
+    --background: 220 20% 97%;
     --foreground: 240 10% 10%;
 
     --card: 0 0% 100%;
@@ -100,11 +100,11 @@ html.theme-transition *::after {
     --primary: 240 76% 55%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 10% 96%;
+    --secondary: 220 14% 96%;
     --secondary-foreground: 240 10% 10%;
 
-    --muted: 240 10% 96%;
-    --muted-foreground: 240 5% 45%;
+    --muted: 220 14% 95%;
+    --muted-foreground: 240 5% 42%;
 
     --accent: 240 76% 55%;
     --accent-foreground: 0 0% 100%;
@@ -112,17 +112,29 @@ html.theme-transition *::after {
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 240 10% 92%;
-    --input: 240 10% 90%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
     --ring: 240 76% 55%;
 
-    --surface-dark: 240 10% 98%;
+    --surface-dark: 220 20% 97%;
     --surface-elevated: 0 0% 100%;
-    --surface-glass: 240 10% 96%;
+    --surface-glass: 220 14% 96%;
 
-    /* Light mode - ultra-soft shadows like Stripe/Linear */
-    --shadow-card: 0 1px 3px hsl(0, 0%, 0%, 0.04), 0 1px 2px hsl(0, 0%, 0%, 0.03);
-    --shadow-card-hover: 0 4px 12px hsl(0, 0%, 0%, 0.06), 0 2px 4px hsl(0, 0%, 0%, 0.04);
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 240 10% 10%;
+    --sidebar-primary: 240 76% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 14% 96%;
+    --sidebar-accent-foreground: 240 10% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 240 76% 55%;
+
+    /* Light mode — layered Stripe/Linear shadows for depth */
+    --shadow-card: 0 1px 3px hsl(220, 20%, 0%, 0.05), 0 1px 2px hsl(220, 20%, 0%, 0.04);
+    --shadow-card-hover: 0 4px 16px hsl(220, 20%, 0%, 0.08), 0 2px 6px hsl(220, 20%, 0%, 0.05);
+    --shadow-glow: 0 4px 24px hsl(240, 76%, 55%, 0.12);
+    --shadow-glow-sm: 0 2px 12px hsl(240, 76%, 55%, 0.1);
+    --shadow-glow-lg: 0 8px 40px hsl(240, 76%, 55%, 0.14);
   }
 }
 
@@ -158,7 +170,7 @@ html.theme-transition *::after {
   .light .glass-card {
     background: hsl(var(--card));
     border: 1px solid hsl(var(--border));
-    box-shadow: 0 1px 3px hsl(0, 0%, 0%, 0.04), 0 1px 2px hsl(0, 0%, 0%, 0.03);
+    box-shadow: 0 1px 3px hsl(220, 20%, 0%, 0.06), 0 1px 2px hsl(220, 20%, 0%, 0.04);
     backdrop-filter: none;
   }
 
@@ -171,7 +183,7 @@ html.theme-transition *::after {
   .light .glass-card-premium {
     background: hsl(var(--card));
     border: 1px solid hsl(var(--border));
-    box-shadow: 0 2px 6px hsl(0, 0%, 0%, 0.05), 0 1px 3px hsl(0, 0%, 0%, 0.04);
+    box-shadow: 0 2px 8px hsl(220, 20%, 0%, 0.07), 0 1px 3px hsl(220, 20%, 0%, 0.05);
     backdrop-filter: none;
   }
 
@@ -315,6 +327,12 @@ html.theme-transition *::after {
 
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground));
+}
+
+/* Light mode: glass-card hover lift */
+.light .glass-card:hover,
+.light .glass-card-premium:hover {
+  box-shadow: 0 4px 16px hsl(220, 20%, 0%, 0.08), 0 2px 6px hsl(220, 20%, 0%, 0.05);
 }
 
 /* Mobile-specific touch optimizations */
