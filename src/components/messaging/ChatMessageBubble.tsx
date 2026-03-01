@@ -3,6 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Play, Maximize2, Check, CheckCheck, Reply, Clock, Pencil, Trash2, X, MoreHorizontal, Mic } from 'lucide-react';
+import { VoiceNotePlayer } from './VoiceNotePlayer';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import DOMPurify from 'dompurify';
@@ -123,7 +124,7 @@ export function ChatMessageBubble({
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [voicePlaying, setVoicePlaying] = useState(false);
+  
 
   const getInitials = (name: string | null, email: string) => {
     const d = name || email || 'U';
@@ -300,7 +301,7 @@ export function ChatMessageBubble({
                     )}
                   </div>
                 )}
-                {isAudio && (
+                {isAudio && !isVoice && (
                   <div className="px-3 py-2">
                     <audio src={message.attachment_url!} controls className="max-w-full h-8" />
                   </div>
@@ -308,55 +309,14 @@ export function ChatMessageBubble({
               </div>
             )}
 
-            {/* Voice message waveform */}
+            {/* Voice message — polished player */}
             {isVoice && hasAttachment && (
-              <div className="px-3 py-2 flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    const audio = document.getElementById(`voice-${message.id}`) as HTMLAudioElement;
-                    if (audio) {
-                      if (audio.paused) { audio.play(); setVoicePlaying(true); }
-                      else { audio.pause(); setVoicePlaying(false); }
-                    }
-                  }}
-                  className={cn(
-                    'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0',
-                    isOwn ? 'bg-primary-foreground/20' : 'bg-muted'
-                  )}
-                >
-                  {voicePlaying ? (
-                    <div className="flex gap-[2px] items-center h-3">
-                      <span className="w-[2px] h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <span className="w-[2px] h-3 bg-current rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <span className="w-[2px] h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                    </div>
-                  ) : (
-                    <Play className="w-3.5 h-3.5 ml-0.5" />
-                  )}
-                </button>
-                {/* Waveform bars */}
-                <div className="flex items-center gap-[2px] flex-1 h-6">
-                  {Array.from({ length: 24 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className={cn(
-                        'w-[2px] rounded-full',
-                        isOwn ? 'bg-primary-foreground/40' : 'bg-muted-foreground/40'
-                      )}
-                      style={{ height: `${Math.max(4, Math.random() * 20)}px` }}
-                    />
-                  ))}
-                </div>
-                <span className={cn('text-[11px] flex-shrink-0', isOwn ? 'text-primary-foreground/60' : 'text-muted-foreground')}>
-                  {formatDuration(getVoiceDuration(message.content))}
-                </span>
-                <audio
-                  id={`voice-${message.id}`}
-                  src={message.attachment_url!}
-                  onEnded={() => setVoicePlaying(false)}
-                  className="hidden"
-                />
-              </div>
+              <VoiceNotePlayer
+                messageId={message.id}
+                attachmentUrl={message.attachment_url!}
+                durationSeconds={getVoiceDuration(message.content)}
+                isOwn={isOwn}
+              />
             )}
 
             {/* Text or Edit mode */}
