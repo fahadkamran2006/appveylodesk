@@ -286,10 +286,10 @@ const ClientDashboard = () => {
           variants={containerVariants} 
           initial="hidden" 
           animate="visible"
-          className="space-y-6 md:space-y-8"
+          className="space-y-6 md:space-y-8 [&>*+*]:pt-6 md:[&>*+*]:pt-8"
         >
           {/* Hero Section with Notification Bell & Profile */}
-          <motion.div variants={itemVariants} className="flex items-start sm:items-center justify-between gap-4">
+          <motion.div variants={itemVariants} className="flex items-start sm:items-center justify-between gap-4 pb-5 border-b border-border/40">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight">
                 {getGreeting()}, {userName || 'there'} 👋
@@ -328,7 +328,7 @@ const ClientDashboard = () => {
           </motion.div>
 
           {/* Stats Cards */}
-          <motion.div variants={itemVariants} className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+          <motion.div variants={itemVariants} className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 pb-5 border-b border-border/40">
             {[
               { 
                 label: 'Active Projects', 
