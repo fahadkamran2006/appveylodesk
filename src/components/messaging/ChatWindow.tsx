@@ -88,6 +88,7 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onEditMe
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [optimisticMessages, setOptimisticMessages] = useState<Message[]>([]);
   const [isAtBottom, setIsAtBottom] = useState(true);
+  const [isVoiceRecording, setIsVoiceRecording] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -500,23 +501,27 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onEditMe
             </div>
           ) : (
             <div className="flex items-center gap-1">
-              {/* Emoji */}
-              <EmojiPicker onSelect={(emoji) => setMessageInput(prev => prev + emoji)} />
+              {!isVoiceRecording && (
+                <>
+                  {/* Emoji */}
+                  <EmojiPicker onSelect={(emoji) => setMessageInput(prev => prev + emoji)} />
 
-              {/* Input */}
-              <div className="flex-1 relative">
-                <input
-                  value={messageInput}
-                  onChange={handleInputChange}
-                  onKeyDown={handleKeyDown}
-                  placeholder={replyingTo ? "Reply..." : "Message..."}
-                  disabled={uploadProgress.uploading}
-                  className="w-full bg-transparent text-foreground text-[14px] placeholder:text-muted-foreground/50 outline-none py-2 px-1"
-                />
-              </div>
+                  {/* Input */}
+                  <div className="flex-1 relative">
+                    <input
+                      value={messageInput}
+                      onChange={handleInputChange}
+                      onKeyDown={handleKeyDown}
+                      placeholder={replyingTo ? "Reply..." : "Message..."}
+                      disabled={uploadProgress.uploading}
+                      className="w-full bg-transparent text-foreground text-[14px] placeholder:text-muted-foreground/50 outline-none py-2 px-1"
+                    />
+                  </div>
+                </>
+              )}
 
               {/* Right side actions */}
-              {hasInput ? (
+              {hasInput && !isVoiceRecording ? (
                 <button
                   onClick={handleSend}
                   disabled={sending}
@@ -525,18 +530,21 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onEditMe
                   Send
                 </button>
               ) : (
-                <div className="flex items-center gap-0.5">
+                <div className={cn("flex items-center gap-0.5", isVoiceRecording && "flex-1")}>
                   <VoiceRecordButton
                     onSendVoice={handleVoiceSend}
+                    onRecordingStateChange={setIsVoiceRecording}
                     disabled={uploadProgress.uploading}
                   />
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploadProgress.uploading}
-                    className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors disabled:opacity-40"
-                  >
-                    <ImageIcon className="w-5 h-5" />
-                  </button>
+                  {!isVoiceRecording && (
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadProgress.uploading}
+                      className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors disabled:opacity-40"
+                    >
+                      <ImageIcon className="w-5 h-5" />
+                    </button>
+                  )}
                 </div>
               )}
 
