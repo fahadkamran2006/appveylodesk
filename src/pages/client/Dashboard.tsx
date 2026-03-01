@@ -588,7 +588,7 @@ const ClientDashboard = () => {
               </div>
 
               {/* Quick Links */}
-              <div className="rounded-2xl border border-border/50 bg-card p-4 space-y-2">
+              <div className="rounded-2xl border border-border/50 bg-card p-4 space-y-2 ring-1 ring-border/20">
                 <h3 className="font-semibold text-foreground text-sm mb-3">Quick Actions</h3>
                 {[
                   { label: 'View All Videos', icon: FileVideo, href: '/client/projects?view=all' },
