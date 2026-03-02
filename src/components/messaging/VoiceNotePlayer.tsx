@@ -45,10 +45,9 @@ export function VoiceNotePlayer({ messageId, attachmentUrl, durationSeconds, isO
   const animRef = useRef<number>(0);
   const waveform = useRef(generateWaveform(messageId, BAR_COUNT)).current;
 
-  // Use Audio constructor instead of HTML element for better cross-origin support
+  // Use Audio constructor — do NOT set crossOrigin to avoid CORS failures on public bucket URLs
   useEffect(() => {
     const audio = new Audio();
-    audio.crossOrigin = 'anonymous';
     audio.preload = 'auto';
     audio.src = attachmentUrl;
     audioRef.current = audio;
