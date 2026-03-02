@@ -112,13 +112,13 @@ export function CollapsibleSidebar({ role = 'admin' }: CollapsibleSidebarProps) 
   return (
     <aside 
       className={cn(
-        "bg-surface-dark border-r border-border/50 flex flex-col transition-all duration-300 ease-in-out flex-shrink-0 sticky top-0 h-screen overflow-y-auto",
+        "bg-surface-dark border-r border-border flex flex-col transition-all duration-300 ease-in-out flex-shrink-0 sticky top-0 h-screen overflow-y-auto",
         isCollapsed ? "w-16" : "w-64"
       )}
     >
       {/* Header */}
       <div className={cn(
-        "flex items-center border-b border-border/50",
+        "flex items-center border-b border-border",
         isCollapsed ? "p-3 justify-center" : "p-4 justify-between"
       )}>
         <Link to="/" className="flex items-center gap-2">
@@ -225,7 +225,7 @@ export function CollapsibleSidebar({ role = 'admin' }: CollapsibleSidebarProps) 
 
       {/* Footer */}
       <div className={cn(
-        "border-t border-border/50",
+        "border-t border-border",
         isCollapsed ? "p-2" : "p-3"
       )}>
         {/* Plan Badge - Only show for admins */}

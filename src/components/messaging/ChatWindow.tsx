@@ -340,7 +340,7 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onEditMe
     <>
       <div className="h-full flex flex-col bg-background">
         {/* Header — Instagram style: clean, minimal */}
-        <div className="px-4 py-3 border-b border-border/40 flex items-center justify-between">
+        <div className="px-4 py-3 border-b border-border flex items-center justify-between">
           <div className="flex items-center gap-3">
             {showBackButton && (
               <Button variant="ghost" size="icon" onClick={onBack} className="md:hidden -ml-1">
@@ -479,7 +479,7 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onEditMe
 
         {/* Upload progress overlay */}
         {uploadProgress.uploading && (
-          <div className="px-4 py-2 border-t border-border/30">
+          <div className="px-4 py-2 border-t border-border">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <div className="flex-1">
                 <p className="truncate">{uploadProgress.fileName}</p>
@@ -493,7 +493,7 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onEditMe
         )}
 
         {/* Input — Instagram style: emoji on left, input, then mic/image/send on right */}
-        <div className="px-3 py-2 border-t border-border/30">
+        <div className="px-3 py-2 border-t border-border bg-card">
           {isArchived ? (
             <div className="flex items-center justify-center gap-2 text-muted-foreground py-2">
               <Lock className="w-4 h-4" />

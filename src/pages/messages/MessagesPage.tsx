@@ -118,9 +118,9 @@ const MessagesPage = () => {
           {/* Slack-style sidebar */}
           <div className={`
             ${showChatListOnMobile ? 'flex' : 'hidden'} md:flex
-            w-full md:w-72 lg:w-80 h-full border-r border-border/30 bg-background flex-col
+            w-full md:w-72 lg:w-80 h-full border-r border-border bg-card flex-col
           `}>
-            <div className="shrink-0 px-4 py-3 border-b border-border/30">
+            <div className="shrink-0 px-4 py-3 border-b border-border">
               <h1 className="text-base font-bold text-foreground tracking-tight">Messages</h1>
             </div>
             <div className="flex-1 overflow-y-auto">
