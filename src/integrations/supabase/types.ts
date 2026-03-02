@@ -1111,6 +1111,85 @@ export type Database = {
           },
         ]
       }
+      public_review_comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          review_link_id: string
+          reviewer_name: string
+          timestamp_seconds: number
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          review_link_id: string
+          reviewer_name?: string
+          timestamp_seconds?: number
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          review_link_id?: string
+          reviewer_name?: string
+          timestamp_seconds?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_review_comments_review_link_id_fkey"
+            columns: ["review_link_id"]
+            isOneToOne: false
+            referencedRelation: "public_review_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      public_review_links: {
+        Row: {
+          allow_approval: boolean
+          created_at: string
+          created_by: string
+          deliverable_id: string
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          allow_approval?: boolean
+          created_at?: string
+          created_by: string
+          deliverable_id: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          token?: string
+          updated_at?: string
+        }
+        Update: {
+          allow_approval?: boolean
+          created_at?: string
+          created_by?: string
+          deliverable_id?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_review_links_deliverable_id_fkey"
+            columns: ["deliverable_id"]
+            isOneToOne: false
+            referencedRelation: "deliverables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       push_subscriptions: {
         Row: {
           auth: string

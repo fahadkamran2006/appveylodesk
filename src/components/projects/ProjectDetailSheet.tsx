@@ -39,7 +39,8 @@ import {
   ExternalLink,
   Package,
   FolderKanban,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Link2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
@@ -54,6 +55,7 @@ import { FilePreviewModal } from '@/components/ui/file-preview-modal';
 import { ProjectEditModal } from './ProjectEditModal';
 import { MoveVideoModal } from './MoveVideoModal';
 import { VideoApprovalActions } from './VideoApprovalActions';
+import { GenerateReviewLinkModal } from './GenerateReviewLinkModal';
 
 interface ProjectDetailSheetProps {
   projectId: string | null;
@@ -126,6 +128,9 @@ export function ProjectDetailSheet({
   
   // Move video modal state
   const [showMoveModal, setShowMoveModal] = useState(false);
+  
+  // Review link modal state
+  const [showReviewLinkModal, setShowReviewLinkModal] = useState(false);
   
   // Image preview state
   const [previewImage, setPreviewImage] = useState<Deliverable | null>(null);
@@ -382,6 +387,17 @@ export function ProjectDetailSheet({
                           Version {selectedVideo.version}
                         </p>
                       </div>
+                      {(userRole === 'admin' || userRole === 'editor') && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowReviewLinkModal(true)}
+                          className="ml-auto"
+                        >
+                          <Link2 className="w-4 h-4 mr-2" />
+                          Share Review Link
+                        </Button>
+                      )}
                     </div>
                   ) : (
                     <>
@@ -694,6 +710,16 @@ export function ProjectDetailSheet({
             fetchProject();
             onProjectDeleted?.();
           }}
+        />
+      )}
+
+      {/* Review Link Modal */}
+      {selectedVideo && (
+        <GenerateReviewLinkModal
+          open={showReviewLinkModal}
+          onOpenChange={setShowReviewLinkModal}
+          deliverableId={selectedVideo.id}
+          deliverableName={selectedVideo.file_name}
         />
       )}
     </Sheet>

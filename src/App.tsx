@@ -55,6 +55,7 @@ import MessagesPage from "./pages/messages/MessagesPage";
 import StoragePage from "./pages/storage/StoragePage";
 import CalendarPage from "./pages/Calendar";
 import InvoiceDetailPage from "./pages/invoices/InvoiceDetail";
+import PublicReview from "./pages/review/PublicReview";
 import { SuperAdminGuard } from "./components/super-admin/SuperAdminGuard";
 import SuperAdminDashboard from "./pages/super-admin/SuperAdminDashboard";
 
@@ -98,6 +99,7 @@ const App = () => (
                   <Route path="/privacy" element={<Privacy />} />
                   <Route path="/terms" element={<Terms />} />
                   <Route path="/refund" element={<Refund />} />
+                  <Route path="/review/:token" element={<PublicReview />} />
 
                   {/* Onboarding */}
                   <Route path="/onboarding" element={<Onboarding />} />
