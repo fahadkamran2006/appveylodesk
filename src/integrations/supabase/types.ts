@@ -1149,6 +1149,8 @@ export type Database = {
       public_review_links: {
         Row: {
           allow_approval: boolean
+          allow_comments: boolean
+          allow_download: boolean
           created_at: string
           created_by: string
           deliverable_id: string
@@ -1160,6 +1162,8 @@ export type Database = {
         }
         Insert: {
           allow_approval?: boolean
+          allow_comments?: boolean
+          allow_download?: boolean
           created_at?: string
           created_by: string
           deliverable_id: string
@@ -1171,6 +1175,8 @@ export type Database = {
         }
         Update: {
           allow_approval?: boolean
+          allow_comments?: boolean
+          allow_download?: boolean
           created_at?: string
           created_by?: string
           deliverable_id?: string

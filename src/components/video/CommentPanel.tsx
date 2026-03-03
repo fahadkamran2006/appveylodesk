@@ -10,7 +10,8 @@ import {
   CheckCircle2, 
   MessageSquare, 
   Send,
-  Undo2
+  Undo2,
+  Globe
 } from 'lucide-react';
 import { VideoComment } from '@/hooks/useVideoComments';
 
@@ -71,16 +72,27 @@ export function CommentPanel({
       <div className="flex items-start gap-3">
         <Avatar className="w-8 h-8">
           <AvatarImage src={comment.user_avatar} />
-          <AvatarFallback className="bg-primary/20 text-primary text-xs">
+          <AvatarFallback className={cn(
+            'text-xs',
+            comment.source === 'public' 
+              ? 'bg-violet-500/20 text-violet-600 dark:text-violet-400' 
+              : 'bg-primary/20 text-primary'
+          )}>
             {getInitials(comment.user_name || 'U')}
           </AvatarFallback>
         </Avatar>
 
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
             <span className="font-medium text-sm text-foreground truncate">
               {comment.user_name}
             </span>
+            {comment.source === 'public' && (
+              <Badge variant="outline" className="text-[10px] h-4 gap-0.5">
+                <Globe className="w-2.5 h-2.5" />
+                Public
+              </Badge>
+            )}
             <span className="text-xs text-muted-foreground">
               {new Date(comment.created_at).toLocaleDateString()}
             </span>
@@ -93,7 +105,8 @@ export function CommentPanel({
             {comment.content}
           </p>
 
-          {showResolveButton && (
+          {/* Only show resolve for internal comments (public comments can't be resolved via deliverable_comments table) */}
+          {showResolveButton && comment.source !== 'public' && (
             <div className="mt-2">
               {comment.is_resolved ? (
                 <Button
@@ -123,15 +136,20 @@ export function CommentPanel({
     </div>
   );
 
+  // Separate public comments for display
+  const publicComments = comments.filter(c => c.source === 'public');
+  const unresolvedInternal = unresolvedComments.filter(c => c.source !== 'public');
+  const allUnresolved = [...unresolvedInternal, ...publicComments];
+
   return (
     <div className={cn('flex flex-col h-full', className)}>
       {/* Header */}
       <div className="flex items-center gap-2 p-4 border-b border-border">
         <MessageSquare className="w-5 h-5 text-primary" />
         <h3 className="font-semibold text-foreground">Feedback</h3>
-        {unresolvedComments.length > 0 && (
+        {allUnresolved.length > 0 && (
           <Badge variant="secondary" className="ml-auto">
-            {unresolvedComments.length} open
+            {allUnresolved.length} open
           </Badge>
         )}
       </div>
@@ -166,7 +184,7 @@ export function CommentPanel({
       <Tabs defaultValue="open" className="flex-1 flex flex-col overflow-hidden">
         <TabsList className="mx-4 mt-4">
           <TabsTrigger value="open" className="flex-1">
-            Open ({unresolvedComments.length})
+            Open ({allUnresolved.length})
           </TabsTrigger>
           <TabsTrigger value="resolved" className="flex-1">
             Resolved ({resolvedComments.length})
@@ -176,14 +194,14 @@ export function CommentPanel({
         <TabsContent value="open" className="flex-1 overflow-hidden m-0">
           <ScrollArea className="h-full">
             <div className="p-4 space-y-3">
-              {unresolvedComments.length === 0 ? (
+              {allUnresolved.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">No open feedback</p>
                   <p className="text-xs">Add feedback above</p>
                 </div>
               ) : (
-                unresolvedComments.map(comment => (
+                allUnresolved.map(comment => (
                   <CommentItem 
                     key={comment.id} 
                     comment={comment} 
