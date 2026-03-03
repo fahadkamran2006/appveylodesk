@@ -12,10 +12,11 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { Copy, Check, Link2, ExternalLink, Loader2, Trash2 } from 'lucide-react';
+import { Copy, Check, Link2, ExternalLink, Loader2, Trash2, Eye, MessageSquare, Download, ShieldCheck } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface GenerateReviewLinkModalProps {
@@ -41,7 +42,9 @@ export function GenerateReviewLinkModal({
   const [revoking, setRevoking] = useState(false);
 
   // Form state
+  const [allowComments, setAllowComments] = useState(true);
   const [allowApproval, setAllowApproval] = useState(false);
+  const [allowDownload, setAllowDownload] = useState(false);
   const [expiryOption, setExpiryOption] = useState('7d');
   const [customDays, setCustomDays] = useState('30');
 
@@ -92,6 +95,8 @@ export function GenerateReviewLinkModal({
           deliverable_id: deliverableId,
           created_by: user.id,
           allow_approval: allowApproval,
+          allow_comments: allowComments,
+          allow_download: allowDownload,
           expires_at,
         })
         .select()
@@ -135,16 +140,23 @@ export function GenerateReviewLinkModal({
 
   const isExpired = existingLink?.expires_at && new Date(existingLink.expires_at) < new Date();
 
+  const permissionItems = [
+    { key: 'view', label: 'View Video', description: 'Always enabled', icon: Eye, enabled: true, locked: true },
+    { key: 'comments', label: 'Leave Comments', description: 'Reviewer can add time-stamped feedback', icon: MessageSquare, enabled: existingLink ? existingLink.allow_comments : allowComments },
+    { key: 'download', label: 'Download Video', description: 'Reviewer can download the file', icon: Download, enabled: existingLink ? existingLink.allow_download : allowDownload },
+    { key: 'approval', label: 'Approve / Reject', description: 'Reviewer can approve or request revision', icon: ShieldCheck, enabled: existingLink ? existingLink.allow_approval : allowApproval },
+  ];
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Link2 className="w-5 h-5" />
-            Public Review Link
+            Share Review Link
           </DialogTitle>
           <DialogDescription>
-            Share a link so anyone can view "{deliverableName}" and leave feedback — no account needed.
+            Share "{deliverableName}" for external review — no account needed.
           </DialogDescription>
         </DialogHeader>
 
@@ -156,12 +168,14 @@ export function GenerateReviewLinkModal({
           <div className="space-y-4">
             {/* Active link display */}
             <div className="p-4 rounded-lg border border-primary/20 bg-primary/5">
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-3">
                 <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
                   Active
                 </Badge>
-                {existingLink.allow_approval && (
-                  <Badge variant="outline" className="text-xs">Approval enabled</Badge>
+                {existingLink.expires_at && (
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    Expires {format(new Date(existingLink.expires_at), 'MMM d, yyyy')}
+                  </span>
                 )}
               </div>
 
@@ -182,12 +196,20 @@ export function GenerateReviewLinkModal({
                   <ExternalLink className="w-4 h-4" />
                 </Button>
               </div>
+            </div>
 
-              {existingLink.expires_at && (
-                <p className="text-xs text-muted-foreground mt-2">
-                  Expires {format(new Date(existingLink.expires_at), 'MMM d, yyyy h:mm a')}
-                </p>
-              )}
+            {/* Permissions summary */}
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground uppercase tracking-wide">Permissions</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {permissionItems.map(item => (
+                  <div key={item.key} className={`flex items-center gap-2 p-2 rounded-md border text-xs ${item.enabled ? 'border-primary/20 bg-primary/5 text-foreground' : 'border-border bg-muted/30 text-muted-foreground'}`}>
+                    <item.icon className="w-3.5 h-3.5" />
+                    <span>{item.label}</span>
+                    {item.enabled && <Check className="w-3 h-3 ml-auto text-primary" />}
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* Revoke */}
@@ -209,6 +231,61 @@ export function GenerateReviewLinkModal({
                 Previous review link has expired. Generate a new one below.
               </div>
             )}
+
+            {/* Permissions */}
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground uppercase tracking-wide">Reviewer Permissions</Label>
+              
+              {/* View - always on */}
+              <div className="flex items-center justify-between rounded-lg border border-border p-3 bg-muted/20">
+                <div className="flex items-center gap-2">
+                  <Eye className="w-4 h-4 text-primary" />
+                  <div>
+                    <p className="text-sm font-medium">View Video</p>
+                    <p className="text-xs text-muted-foreground">Always enabled</p>
+                  </div>
+                </div>
+                <Switch checked disabled />
+              </div>
+
+              {/* Comments */}
+              <div className="flex items-center justify-between rounded-lg border border-border p-3">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Leave Comments</p>
+                    <p className="text-xs text-muted-foreground">Time-stamped feedback</p>
+                  </div>
+                </div>
+                <Switch checked={allowComments} onCheckedChange={setAllowComments} />
+              </div>
+
+              {/* Download */}
+              <div className="flex items-center justify-between rounded-lg border border-border p-3">
+                <div className="flex items-center gap-2">
+                  <Download className="w-4 h-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Download Video</p>
+                    <p className="text-xs text-muted-foreground">Allow file download</p>
+                  </div>
+                </div>
+                <Switch checked={allowDownload} onCheckedChange={setAllowDownload} />
+              </div>
+
+              {/* Approval */}
+              <div className="flex items-center justify-between rounded-lg border border-border p-3">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Approve / Reject</p>
+                    <p className="text-xs text-muted-foreground">Approve or request revision</p>
+                  </div>
+                </div>
+                <Switch checked={allowApproval} onCheckedChange={setAllowApproval} />
+              </div>
+            </div>
+
+            <Separator />
 
             {/* Expiry */}
             <div className="space-y-2">
@@ -237,17 +314,6 @@ export function GenerateReviewLinkModal({
                   max={365}
                 />
               )}
-            </div>
-
-            {/* Allow approval */}
-            <div className="flex items-center justify-between rounded-lg border border-border p-3">
-              <div>
-                <Label className="text-sm font-medium">Allow Approve / Request Revision</Label>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Reviewer can approve or send back for changes
-                </p>
-              </div>
-              <Switch checked={allowApproval} onCheckedChange={setAllowApproval} />
             </div>
 
             <Button onClick={handleGenerate} disabled={generating} className="w-full">

@@ -19,7 +19,6 @@ Deno.serve(async (req) => {
     const { action, token, reviewer_name, content, timestamp_seconds, approval_action } = await req.json();
 
     if (action === 'get_review') {
-      // Fetch review link + deliverable + existing comments (no auth needed)
       const { data: link, error: linkError } = await supabaseAdmin
         .from('public_review_links')
         .select('*, deliverables(id, file_name, file_url, file_type, version, project_id)')
@@ -34,7 +33,6 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Check expiry
       if (link.expires_at && new Date(link.expires_at) < new Date()) {
         return new Response(JSON.stringify({ error: 'This review link has expired' }), {
           status: 410,
@@ -83,14 +81,12 @@ Deno.serve(async (req) => {
       let signedUrl: string | null = null;
       const fileUrl = deliverable?.file_url || '';
       
-      // Check if it's a Bunny Stream video (GUID or embed URL)
       const guidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       const isBunnyStream = guidPattern.test(fileUrl) || 
         fileUrl.includes('.b-cdn.net/') || 
         fileUrl.includes('iframe.mediadelivery.net');
       
       if (!isBunnyStream && fileUrl.includes('/deliverables/')) {
-        // Extract path and create signed URL
         const idx = fileUrl.indexOf('/deliverables/');
         const path = decodeURIComponent(fileUrl.slice(idx + '/deliverables/'.length).split('?')[0]);
         const { data: signedData } = await supabaseAdmin.storage
@@ -104,6 +100,8 @@ Deno.serve(async (req) => {
         review_link: {
           id: link.id,
           allow_approval: link.allow_approval,
+          allow_comments: link.allow_comments,
+          allow_download: link.allow_download,
           expires_at: link.expires_at,
         },
         deliverable: {
@@ -137,10 +135,9 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'add_comment') {
-      // Validate token
       const { data: link } = await supabaseAdmin
         .from('public_review_links')
-        .select('id, expires_at, is_active')
+        .select('id, expires_at, is_active, allow_comments')
         .eq('token', token)
         .eq('is_active', true)
         .single();
@@ -148,6 +145,13 @@ Deno.serve(async (req) => {
       if (!link) {
         return new Response(JSON.stringify({ error: 'Invalid review link' }), {
           status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      if (!link.allow_comments) {
+        return new Response(JSON.stringify({ error: 'Comments are not allowed on this review link' }), {
+          status: 403,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
@@ -178,7 +182,6 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'approve_video') {
-      // Validate token and check allow_approval
       const { data: link } = await supabaseAdmin
         .from('public_review_links')
         .select('id, deliverable_id, allow_approval, expires_at, is_active')
@@ -200,7 +203,6 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Get project from deliverable
       const { data: deliverable } = await supabaseAdmin
         .from('deliverables')
         .select('project_id')
@@ -223,7 +225,6 @@ Deno.serve(async (req) => {
 
       if (error) throw error;
 
-      // Deactivate the link after approval
       if (approval_action === 'approve') {
         await supabaseAdmin
           .from('public_review_links')

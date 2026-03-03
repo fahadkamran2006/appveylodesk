@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,6 +28,9 @@ import {
   AlertTriangle,
   ShieldCheck,
   Film,
+  Download,
+  Eye,
+  Undo2,
 } from 'lucide-react';
 import { VideoPlayer, VideoPlayerHandle } from '@/components/video/VideoPlayer';
 
@@ -45,6 +48,12 @@ interface ReviewComment {
   is_resolved?: boolean;
 }
 
+interface ReviewPermissions {
+  allow_comments: boolean;
+  allow_approval: boolean;
+  allow_download: boolean;
+}
+
 export default function PublicReview() {
   const { token } = useParams<{ token: string }>();
   const videoPlayerRef = useRef<VideoPlayerHandle>(null);
@@ -53,6 +62,11 @@ export default function PublicReview() {
   const [error, setError] = useState<string | null>(null);
   const [reviewData, setReviewData] = useState<any>(null);
   const [comments, setComments] = useState<ReviewComment[]>([]);
+  const [permissions, setPermissions] = useState<ReviewPermissions>({
+    allow_comments: true,
+    allow_approval: false,
+    allow_download: false,
+  });
 
   // Reviewer identity
   const [reviewerName, setReviewerName] = useState('');
@@ -68,6 +82,10 @@ export default function PublicReview() {
   const [showRevisionDialog, setShowRevisionDialog] = useState(false);
   const [approving, setApproving] = useState(false);
   const [approved, setApproved] = useState(false);
+  const [revisionRequested, setRevisionRequested] = useState(false);
+
+  // Comment tabs
+  const [commentTab, setCommentTab] = useState('all');
 
   const invoke = useCallback(async (body: any) => {
     const res = await fetch(`${SUPABASE_URL}/functions/v1/public-review`, {
@@ -91,7 +109,11 @@ export default function PublicReview() {
           setError(data.error);
         } else {
           setReviewData(data);
-          // Merge public and internal comments
+          setPermissions({
+            allow_comments: data.review_link?.allow_comments ?? true,
+            allow_approval: data.review_link?.allow_approval ?? false,
+            allow_download: data.review_link?.allow_download ?? false,
+          });
           const allComments = [
             ...(data.comments || []),
             ...(data.internal_comments || []),
@@ -104,7 +126,7 @@ export default function PublicReview() {
   }, [token, invoke]);
 
   const handleSubmitComment = async () => {
-    if (!newComment.trim() || !nameSubmitted) return;
+    if (!newComment.trim() || !nameSubmitted || !permissions.allow_comments) return;
     setSubmitting(true);
     try {
       const data = await invoke({
@@ -138,10 +160,11 @@ export default function PublicReview() {
     try {
       const data = await invoke({ action: 'approve_video', token, approval_action: action });
       if (data.ok) {
-        setApproved(action === 'approve');
         if (action === 'approve') {
+          setApproved(true);
           setShowApproveDialog(false);
         } else {
+          setRevisionRequested(true);
           setShowRevisionDialog(false);
         }
       }
@@ -150,31 +173,58 @@ export default function PublicReview() {
     }
   };
 
+  const handleDownload = () => {
+    const url = reviewData?.deliverable?.file_url;
+    if (!url) return;
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = reviewData?.deliverable?.file_name || 'video';
+    a.target = '_blank';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
   const formatTimestamp = (seconds: number) => {
     const m = Math.floor(seconds / 60);
     const s = Math.floor(seconds % 60);
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
-  // Error / expired states
+  const publicComments = comments.filter(c => c.source === 'public');
+  const internalComments = comments.filter(c => c.source === 'internal');
+  const openComments = comments.filter(c => !c.is_resolved);
+  const resolvedComments = comments.filter(c => c.is_resolved);
+
+  const getFilteredComments = () => {
+    switch (commentTab) {
+      case 'public': return publicComments;
+      case 'team': return internalComments;
+      case 'resolved': return resolvedComments;
+      default: return openComments;
+    }
+  };
+
+  // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary mb-4" />
-          <p className="text-muted-foreground">Loading review...</p>
+          <Loader2 className="w-8 h-8 animate-spin mx-auto text-violet-500 mb-4" />
+          <p className="text-zinc-400">Loading review...</p>
         </div>
       </div>
     );
   }
 
+  // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center p-4">
         <div className="text-center max-w-md">
-          <AlertTriangle className="w-12 h-12 mx-auto text-destructive mb-4" />
-          <h1 className="text-xl font-bold mb-2">Review Unavailable</h1>
-          <p className="text-muted-foreground">{error}</p>
+          <AlertTriangle className="w-12 h-12 mx-auto text-red-500 mb-4" />
+          <h1 className="text-xl font-bold text-white mb-2">Review Unavailable</h1>
+          <p className="text-zinc-400">{error}</p>
         </div>
       </div>
     );
@@ -183,17 +233,19 @@ export default function PublicReview() {
   // Name entry gate
   if (!nameSubmitted) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center p-4">
         <Helmet>
           <title>Video Review - {reviewData?.deliverable?.file_name || 'VeyloDesk'}</title>
         </Helmet>
         <div className="w-full max-w-sm space-y-6 text-center">
           <div>
-            <Film className="w-12 h-12 mx-auto text-primary mb-4" />
-            <h1 className="text-2xl font-bold">Video Review</h1>
-            <p className="text-muted-foreground mt-2">
-              {reviewData?.project_title && <span className="block font-medium text-foreground">{reviewData.project_title}</span>}
-              {reviewData?.deliverable?.file_name}
+            <div className="w-16 h-16 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center mx-auto mb-4">
+              <Film className="w-8 h-8 text-violet-500" />
+            </div>
+            <h1 className="text-2xl font-bold text-white">Video Review</h1>
+            <p className="text-zinc-400 mt-2">
+              {reviewData?.project_title && <span className="block font-medium text-zinc-200">{reviewData.project_title}</span>}
+              <span className="text-sm">{reviewData?.deliverable?.file_name}</span>
             </p>
           </div>
 
@@ -202,7 +254,7 @@ export default function PublicReview() {
               value={reviewerName}
               onChange={(e) => setReviewerName(e.target.value)}
               placeholder="Enter your name to continue"
-              className="text-center"
+              className="text-center bg-zinc-900 border-zinc-700 text-white placeholder:text-zinc-500"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && reviewerName.trim()) {
                   setNameSubmitted(true);
@@ -212,13 +264,13 @@ export default function PublicReview() {
             <Button
               onClick={() => setNameSubmitted(true)}
               disabled={!reviewerName.trim()}
-              className="w-full"
+              className="w-full bg-violet-600 hover:bg-violet-700 text-white"
             >
               Continue to Review
             </Button>
           </div>
 
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-zinc-500">
             <ShieldCheck className="w-3 h-3 inline mr-1" />
             No account required. Your name will appear with your feedback.
           </p>
@@ -228,32 +280,46 @@ export default function PublicReview() {
   }
 
   const deliverable = reviewData?.deliverable;
-  const allowApproval = reviewData?.review_link?.allow_approval;
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-[#0a0a0f] flex flex-col">
       <Helmet>
         <title>Review: {deliverable?.file_name || 'Video'} - VeyloDesk</title>
       </Helmet>
 
       {/* Top bar */}
-      <header className="border-b border-border bg-card px-4 py-3 flex items-center justify-between">
+      <header className="border-b border-zinc-800 bg-[#0f0f18] px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Film className="w-5 h-5 text-primary" />
+          <div className="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center">
+            <Film className="w-4 h-4 text-violet-500" />
+          </div>
           <div>
-            <h1 className="font-semibold text-sm">{deliverable?.file_name}</h1>
+            <h1 className="font-semibold text-sm text-white">{deliverable?.file_name}</h1>
             {reviewData?.project_title && (
-              <p className="text-xs text-muted-foreground">{reviewData.project_title}</p>
+              <p className="text-xs text-zinc-500">{reviewData.project_title}</p>
             )}
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-xs">
+          <Badge variant="outline" className="text-xs border-zinc-700 text-zinc-300">
             Reviewing as {reviewerName}
           </Badge>
           {deliverable?.version && (
-            <Badge variant="secondary" className="text-xs">v{deliverable.version}</Badge>
+            <Badge className="text-xs bg-violet-500/10 text-violet-400 border-violet-500/20">
+              v{deliverable.version}
+            </Badge>
+          )}
+          {permissions.allow_download && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleDownload}
+              className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+            >
+              <Download className="w-4 h-4 mr-1" />
+              Download
+            </Button>
           )}
         </div>
       </header>
@@ -274,15 +340,15 @@ export default function PublicReview() {
         </div>
 
         {/* Side panel */}
-        <div className="w-full lg:w-96 border-t lg:border-t-0 lg:border-l border-border bg-card flex flex-col">
+        <div className="w-full lg:w-[380px] border-t lg:border-t-0 lg:border-l border-zinc-800 bg-[#0f0f18] flex flex-col">
           {/* Approval buttons */}
-          {allowApproval && !approved && (
-            <div className="p-4 border-b border-border space-y-2">
-              <p className="text-sm font-medium">Ready to decide?</p>
+          {permissions.allow_approval && !approved && !revisionRequested && (
+            <div className="p-4 border-b border-zinc-800 space-y-3">
+              <p className="text-sm font-medium text-zinc-200">Ready to decide?</p>
               <div className="flex gap-2">
                 <Button
                   size="sm"
-                  className="flex-1"
+                  className="flex-1 bg-violet-600 hover:bg-violet-700 text-white"
                   onClick={() => setShowApproveDialog(true)}
                 >
                   <CheckCircle2 className="w-4 h-4 mr-1" />
@@ -291,7 +357,7 @@ export default function PublicReview() {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="flex-1"
+                  className="flex-1 border-zinc-700 text-zinc-300 hover:bg-zinc-800"
                   onClick={() => setShowRevisionDialog(true)}
                 >
                   <XCircle className="w-4 h-4 mr-1" />
@@ -302,98 +368,146 @@ export default function PublicReview() {
           )}
 
           {approved && (
-            <div className="p-4 border-b border-border bg-primary/5">
-              <div className="flex items-center gap-2 text-primary">
+            <div className="p-4 border-b border-zinc-800 bg-emerald-500/5">
+              <div className="flex items-center gap-2 text-emerald-400">
                 <CheckCircle2 className="w-5 h-5" />
                 <span className="font-medium text-sm">Video Approved</span>
               </div>
             </div>
           )}
 
-          {/* Comment input */}
-          <div className="p-4 border-b border-border">
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <Textarea
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Leave feedback..."
-                  className="min-h-[60px] resize-none"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSubmitComment();
-                    }
-                  }}
-                />
-                {currentTime > 0 && (
-                  <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    at {formatTimestamp(currentTime)}
-                  </p>
-                )}
+          {revisionRequested && (
+            <div className="p-4 border-b border-zinc-800 bg-amber-500/5">
+              <div className="flex items-center gap-2 text-amber-400">
+                <Undo2 className="w-5 h-5" />
+                <span className="font-medium text-sm">Revision Requested</span>
               </div>
-              <Button
-                size="icon"
-                onClick={handleSubmitComment}
-                disabled={!newComment.trim() || submitting}
-              >
-                <Send className="w-4 h-4" />
-              </Button>
             </div>
+          )}
+
+          {/* Comment input */}
+          {permissions.allow_comments ? (
+            <div className="p-4 border-b border-zinc-800">
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <Textarea
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Leave feedback..."
+                    className="min-h-[60px] resize-none bg-zinc-900 border-zinc-700 text-white placeholder:text-zinc-500"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSubmitComment();
+                      }
+                    }}
+                  />
+                  {currentTime > 0 && (
+                    <p className="text-xs text-zinc-500 mt-1 flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      at {formatTimestamp(currentTime)}
+                    </p>
+                  )}
+                </div>
+                <Button
+                  size="icon"
+                  onClick={handleSubmitComment}
+                  disabled={!newComment.trim() || submitting}
+                  className="bg-violet-600 hover:bg-violet-700 text-white shrink-0"
+                >
+                  <Send className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="p-4 border-b border-zinc-800">
+              <div className="flex items-center gap-2 text-zinc-500 text-sm">
+                <Eye className="w-4 h-4" />
+                <span>View-only mode — comments are disabled</span>
+              </div>
+            </div>
+          )}
+
+          {/* Comments tabs & list */}
+          <div className="flex items-center gap-2 px-4 pt-4 pb-2">
+            <MessageSquare className="w-4 h-4 text-violet-500" />
+            <span className="font-medium text-sm text-white">Feedback ({comments.length})</span>
           </div>
 
-          {/* Comments list */}
-          <div className="flex items-center gap-2 px-4 pt-4 pb-2">
-            <MessageSquare className="w-4 h-4 text-primary" />
-            <span className="font-medium text-sm">Feedback ({comments.length})</span>
+          <div className="px-4 pb-2">
+            <div className="flex gap-1 bg-zinc-900 rounded-lg p-0.5">
+              {[
+                { key: 'all', label: `Open (${openComments.length})` },
+                { key: 'resolved', label: `Resolved (${resolvedComments.length})` },
+              ].map(tab => (
+                <button
+                  key={tab.key}
+                  onClick={() => setCommentTab(tab.key)}
+                  className={`flex-1 text-xs py-1.5 px-2 rounded-md transition-colors ${
+                    commentTab === tab.key
+                      ? 'bg-zinc-800 text-white'
+                      : 'text-zinc-500 hover:text-zinc-300'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <ScrollArea className="flex-1">
             <div className="p-4 space-y-3">
-              {comments.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No feedback yet</p>
-                  <p className="text-xs">Be the first to leave a comment</p>
+              {getFilteredComments().length === 0 ? (
+                <div className="text-center py-8">
+                  <MessageSquare className="w-8 h-8 mx-auto mb-2 text-zinc-700" />
+                  <p className="text-sm text-zinc-500">No feedback yet</p>
+                  {permissions.allow_comments && (
+                    <p className="text-xs text-zinc-600">Be the first to leave a comment</p>
+                  )}
                 </div>
               ) : (
-                comments.map(comment => (
+                getFilteredComments().map(comment => (
                   <div
                     key={comment.id}
-                    className={`p-3 rounded-lg border transition-colors ${
+                    className={`p-3 rounded-xl border transition-colors ${
                       comment.source === 'internal'
-                        ? 'bg-muted/20 border-border/50'
-                        : 'bg-card border-border'
-                    } ${comment.is_resolved ? 'opacity-60' : ''}`}
+                        ? 'bg-zinc-900/50 border-zinc-800/50'
+                        : 'bg-zinc-900 border-zinc-800'
+                    } ${comment.is_resolved ? 'opacity-50' : ''}`}
                   >
                     <div className="flex items-start gap-3">
                       <Avatar className="w-7 h-7">
-                        <AvatarFallback className="bg-primary/20 text-primary text-[10px]">
+                        <AvatarFallback className={`text-[10px] ${
+                          comment.source === 'internal' 
+                            ? 'bg-blue-500/20 text-blue-400' 
+                            : 'bg-violet-500/20 text-violet-400'
+                        }`}>
                           {(comment.reviewer_name || comment.user_name || 'A')[0].toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-medium text-xs text-foreground">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <span className="font-medium text-xs text-zinc-200">
                             {comment.reviewer_name || comment.user_name}
                           </span>
                           {comment.source === 'internal' && (
-                            <Badge variant="outline" className="text-[10px] h-4">Team</Badge>
+                            <Badge className="text-[10px] h-4 bg-blue-500/10 text-blue-400 border-blue-500/20">
+                              Team
+                            </Badge>
                           )}
                           {comment.timestamp_seconds > 0 && (
                             <button
                               onClick={() => videoPlayerRef.current?.seekTo(comment.timestamp_seconds)}
-                              className="text-[10px] text-primary hover:underline"
+                              className="text-[10px] text-violet-400 hover:text-violet-300 font-mono bg-violet-500/10 px-1.5 py-0.5 rounded"
                             >
                               {formatTimestamp(comment.timestamp_seconds)}
                             </button>
                           )}
                         </div>
-                        <p className={`text-sm ${comment.is_resolved ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                        <p className={`text-sm ${comment.is_resolved ? 'line-through text-zinc-600' : 'text-zinc-300'}`}>
                           {comment.content}
                         </p>
-                        <p className="text-[10px] text-muted-foreground mt-1">
+                        <p className="text-[10px] text-zinc-600 mt-1">
                           {new Date(comment.created_at).toLocaleString()}
                         </p>
                       </div>
@@ -408,16 +522,16 @@ export default function PublicReview() {
 
       {/* Approve Dialog */}
       <AlertDialog open={showApproveDialog} onOpenChange={setShowApproveDialog}>
-        <AlertDialogContent>
+        <AlertDialogContent className="bg-[#0f0f18] border-zinc-800 text-white">
           <AlertDialogHeader>
             <AlertDialogTitle>Approve this video?</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription className="text-zinc-400">
               This will mark the video as approved and notify the team.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={approving}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => handleApproval('approve')} disabled={approving}>
+            <AlertDialogCancel disabled={approving} className="border-zinc-700 text-zinc-300 hover:bg-zinc-800">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => handleApproval('approve')} disabled={approving} className="bg-violet-600 hover:bg-violet-700">
               {approving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
               Approve
             </AlertDialogAction>
@@ -427,16 +541,16 @@ export default function PublicReview() {
 
       {/* Revision Dialog */}
       <AlertDialog open={showRevisionDialog} onOpenChange={setShowRevisionDialog}>
-        <AlertDialogContent>
+        <AlertDialogContent className="bg-[#0f0f18] border-zinc-800 text-white">
           <AlertDialogHeader>
             <AlertDialogTitle>Request revision?</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription className="text-zinc-400">
               This will send the video back for revisions. Make sure you've left feedback on what needs to change.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={approving}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => handleApproval('revision')} disabled={approving}>
+            <AlertDialogCancel disabled={approving} className="border-zinc-700 text-zinc-300 hover:bg-zinc-800">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => handleApproval('revision')} disabled={approving} className="bg-amber-600 hover:bg-amber-700">
               {approving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
               Request Revision
             </AlertDialogAction>

@@ -16,6 +16,7 @@ export interface VideoComment {
   updated_at: string;
   user_name?: string;
   user_avatar?: string;
+  source?: 'internal' | 'public';
 }
 
 export function useVideoComments(deliverableId: string | null) {
@@ -24,12 +25,13 @@ export function useVideoComments(deliverableId: string | null) {
   const [comments, setComments] = useState<VideoComment[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Fetch comments for a deliverable
+  // Fetch comments for a deliverable (internal + public)
   const fetchComments = useCallback(async () => {
     if (!deliverableId) return;
 
     setLoading(true);
     try {
+      // Fetch internal comments
       const { data, error } = await supabase
         .from('deliverable_comments')
         .select('*')
@@ -38,7 +40,7 @@ export function useVideoComments(deliverableId: string | null) {
 
       if (error) throw error;
 
-      // Get user profiles
+      // Get user profiles for internal comments
       const userIds = [...new Set(data?.map(c => c.user_id) || [])];
       const { data: profiles } = await supabase
         .from('profiles')
@@ -47,12 +49,51 @@ export function useVideoComments(deliverableId: string | null) {
 
       const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
 
-      setComments((data || []).map(comment => ({
+      const internalComments: VideoComment[] = (data || []).map(comment => ({
         ...comment,
         timestamp_seconds: Number(comment.timestamp_seconds),
         user_name: profileMap.get(comment.user_id)?.full_name || profileMap.get(comment.user_id)?.email || 'Unknown',
         user_avatar: profileMap.get(comment.user_id)?.avatar_url || undefined,
-      })));
+        source: 'internal' as const,
+      }));
+
+      // Fetch public review comments via review links for this deliverable
+      const { data: reviewLinks } = await supabase
+        .from('public_review_links')
+        .select('id')
+        .eq('deliverable_id', deliverableId);
+
+      let publicComments: VideoComment[] = [];
+      if (reviewLinks && reviewLinks.length > 0) {
+        const linkIds = reviewLinks.map(l => l.id);
+        const { data: pubComments } = await supabase
+          .from('public_review_comments')
+          .select('*')
+          .in('review_link_id', linkIds)
+          .order('created_at', { ascending: true });
+
+        publicComments = (pubComments || []).map(c => ({
+          id: c.id,
+          deliverable_id: deliverableId,
+          user_id: '',
+          content: c.content,
+          timestamp_seconds: Number(c.timestamp_seconds),
+          is_resolved: false,
+          resolved_by: null,
+          resolved_at: null,
+          created_at: c.created_at,
+          updated_at: c.created_at,
+          user_name: c.reviewer_name || 'Anonymous',
+          source: 'public' as const,
+        }));
+      }
+
+      // Merge and sort by created_at
+      const allComments = [...internalComments, ...publicComments].sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
+
+      setComments(allComments);
     } catch (error) {
       console.error('Error fetching comments:', error);
     } finally {
@@ -73,7 +114,7 @@ export function useVideoComments(deliverableId: string | null) {
           deliverable_id: deliverableId,
           user_id: user.id,
           content,
-          timestamp_seconds: 0, // Default to 0, not used for display
+          timestamp_seconds: 0,
         })
         .select()
         .single();
@@ -84,6 +125,7 @@ export function useVideoComments(deliverableId: string | null) {
         ...data,
         timestamp_seconds: 0,
         user_name: 'You',
+        source: 'internal',
       };
 
       setComments(prev => [...prev, newComment]);
