@@ -5,6 +5,47 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+async function notifyAdmins(supabaseAdmin: any, agencyId: string, title: string, message: string, link: string, metadata: Record<string, unknown> = {}) {
+  // Get all admins in the agency
+  const { data: admins } = await supabaseAdmin
+    .from('user_roles')
+    .select('user_id')
+    .eq('agency_id', agencyId)
+    .eq('role', 'admin');
+
+  if (!admins?.length) return;
+
+  for (const admin of admins) {
+    // Create in-app notification
+    await supabaseAdmin.rpc('create_notification', {
+      _user_id: admin.user_id,
+      _agency_id: agencyId,
+      _type: 'comment_added',
+      _title: title,
+      _message: message,
+      _link: link,
+      _metadata: metadata,
+    });
+
+    // Send email notification (respects user preferences)
+    try {
+      await supabaseAdmin.functions.invoke('send-notification-email', {
+        body: {
+          user_id: admin.user_id,
+          agency_id: agencyId,
+          type: 'comment_added',
+          title,
+          message,
+          link,
+          metadata,
+        },
+      });
+    } catch (e) {
+      console.error('Email notification failed:', e);
+    }
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -68,13 +109,15 @@ Deno.serve(async (req) => {
       // Get project title
       const deliverable = link.deliverables as any;
       let projectTitle = '';
+      let agencyId = '';
       if (deliverable?.project_id) {
         const { data: project } = await supabaseAdmin
           .from('projects')
-          .select('title')
+          .select('title, agency_id')
           .eq('id', deliverable.project_id)
           .single();
         projectTitle = project?.title || '';
+        agencyId = project?.agency_id || '';
       }
 
       // Generate signed URL for the video if it's in Supabase storage
@@ -137,7 +180,7 @@ Deno.serve(async (req) => {
     if (action === 'add_comment') {
       const { data: link } = await supabaseAdmin
         .from('public_review_links')
-        .select('id, expires_at, is_active, allow_comments')
+        .select('id, deliverable_id, expires_at, is_active, allow_comments')
         .eq('token', token)
         .eq('is_active', true)
         .single();
@@ -175,6 +218,32 @@ Deno.serve(async (req) => {
         .single();
 
       if (error) throw error;
+
+      // Get project info for notification
+      const { data: deliverable } = await supabaseAdmin
+        .from('deliverables')
+        .select('project_id, file_name')
+        .eq('id', link.deliverable_id)
+        .single();
+
+      if (deliverable?.project_id) {
+        const { data: project } = await supabaseAdmin
+          .from('projects')
+          .select('agency_id, title')
+          .eq('id', deliverable.project_id)
+          .single();
+
+        if (project) {
+          await notifyAdmins(
+            supabaseAdmin,
+            project.agency_id,
+            'New Review Comment',
+            `${reviewer_name || 'A reviewer'} commented on "${project.title}": "${content.substring(0, 100)}${content.length > 100 ? '...' : ''}"`,
+            '/admin/projects',
+            { project_id: deliverable.project_id, deliverable_id: link.deliverable_id, comment_id: comment.id }
+          );
+        }
+      }
 
       return new Response(JSON.stringify({ ok: true, comment }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -230,6 +299,27 @@ Deno.serve(async (req) => {
           .from('public_review_links')
           .update({ is_active: false })
           .eq('id', link.id);
+      }
+
+      // Notify admins about approval/rejection
+      const { data: project } = await supabaseAdmin
+        .from('projects')
+        .select('agency_id, title')
+        .eq('id', deliverable.project_id)
+        .single();
+
+      if (project) {
+        const isApproval = approval_action === 'approve';
+        await notifyAdmins(
+          supabaseAdmin,
+          project.agency_id,
+          isApproval ? 'Video Approved via Review Link' : 'Revision Requested via Review Link',
+          isApproval
+            ? `${reviewer_name || 'A reviewer'} approved "${project.title}" via the public review link.`
+            : `${reviewer_name || 'A reviewer'} requested revisions for "${project.title}" via the public review link.`,
+          '/admin/projects',
+          { project_id: deliverable.project_id, action: approval_action }
+        );
       }
 
       return new Response(JSON.stringify({ ok: true, new_status: newStatus }), {

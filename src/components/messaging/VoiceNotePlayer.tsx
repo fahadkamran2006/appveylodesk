@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Play, Pause, Mic } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
 
 interface VoiceNotePlayerProps {
   messageId: string;
@@ -9,7 +10,7 @@ interface VoiceNotePlayerProps {
   isOwn: boolean;
 }
 
-const BAR_COUNT = 32;
+const BAR_COUNT = 28;
 
 function generateWaveform(seed: string, count: number): number[] {
   let hash = 0;
@@ -24,7 +25,7 @@ function generateWaveform(seed: string, count: number): number[] {
     const val = Math.abs(hash % 100);
     const position = i / count;
     const envelope = Math.sin(position * Math.PI) * 0.6 + 0.4;
-    bars.push(Math.max(4, (val / 100) * 24 * envelope + 4));
+    bars.push(Math.max(3, (val / 100) * 20 * envelope + 3));
   }
   return bars;
 }
@@ -45,16 +46,15 @@ export function VoiceNotePlayer({ messageId, attachmentUrl, durationSeconds, isO
   const animRef = useRef<number>(0);
   const waveform = useRef(generateWaveform(messageId, BAR_COUNT)).current;
 
-  // Use Audio constructor — do NOT set crossOrigin to avoid CORS failures on public bucket URLs
   useEffect(() => {
     const audio = new Audio();
-    audio.preload = 'auto';
+    audio.preload = 'metadata';
     audio.src = attachmentUrl;
     audioRef.current = audio;
 
     const onLoaded = () => setLoaded(true);
     const onError = (e: Event) => {
-      console.error('Voice note load error:', e);
+      console.error('Voice note load error:', e, 'URL:', attachmentUrl);
       setError(true);
     };
     const onEnded = () => {
@@ -102,7 +102,16 @@ export function VoiceNotePlayer({ messageId, attachmentUrl, durationSeconds, isO
         animRef.current = requestAnimationFrame(updateProgress);
       } catch (err) {
         console.error('Voice playback failed:', err);
-        setError(true);
+        // Try re-loading the audio
+        audio.load();
+        try {
+          await audio.play();
+          setPlaying(true);
+          animRef.current = requestAnimationFrame(updateProgress);
+        } catch (retryErr) {
+          console.error('Voice playback retry failed:', retryErr);
+          setError(true);
+        }
       }
     } else {
       audio.pause();
@@ -149,43 +158,49 @@ export function VoiceNotePlayer({ messageId, attachmentUrl, durationSeconds, isO
   }
 
   return (
-    <div className="px-3 py-2.5 flex items-center gap-2.5 min-w-[220px]">
-      {/* Play/Pause */}
-      <button
+    <div className="px-3 py-2 flex items-center gap-2 min-w-[200px] max-w-[280px]">
+      {/* Play/Pause button */}
+      <motion.button
+        whileTap={{ scale: 0.9 }}
         onClick={togglePlay}
         className={cn(
-          'w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-200',
+          'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-200',
           isOwn
             ? 'bg-primary-foreground/20 hover:bg-primary-foreground/30 text-primary-foreground'
             : 'bg-primary/10 hover:bg-primary/20 text-primary'
         )}
       >
         {playing ? (
-          <Pause className="w-4 h-4" />
+          <Pause className="w-3.5 h-3.5" />
         ) : (
-          <Play className="w-4 h-4 ml-0.5" />
+          <Play className="w-3.5 h-3.5 ml-0.5" />
         )}
-      </button>
+      </motion.button>
 
-      {/* Waveform */}
-      <div className="flex items-center gap-[2px] flex-1 h-8 cursor-pointer">
+      {/* Waveform bars */}
+      <div className="flex items-center gap-[1.5px] flex-1 h-7 cursor-pointer">
         {waveform.map((height, i) => {
           const filled = i / BAR_COUNT <= progress;
           return (
-            <div
+            <motion.div
               key={i}
               onClick={() => handleBarClick(i)}
+              initial={false}
+              animate={{
+                height: `${height}px`,
+                opacity: filled ? 1 : 0.35,
+              }}
+              transition={{ duration: 0.1 }}
               className={cn(
-                'w-[2.5px] rounded-full transition-all duration-150',
+                'w-[2px] rounded-full',
                 filled
                   ? isOwn
                     ? 'bg-primary-foreground'
                     : 'bg-primary'
                   : isOwn
-                    ? 'bg-primary-foreground/25'
-                    : 'bg-muted-foreground/25'
+                    ? 'bg-primary-foreground'
+                    : 'bg-muted-foreground'
               )}
-              style={{ height: `${height}px` }}
             />
           );
         })}
@@ -193,7 +208,7 @@ export function VoiceNotePlayer({ messageId, attachmentUrl, durationSeconds, isO
 
       {/* Duration */}
       <span className={cn(
-        'text-[11px] font-medium tabular-nums flex-shrink-0',
+        'text-[10px] font-medium tabular-nums flex-shrink-0',
         isOwn ? 'text-primary-foreground/60' : 'text-muted-foreground'
       )}>
         {displayTime}
