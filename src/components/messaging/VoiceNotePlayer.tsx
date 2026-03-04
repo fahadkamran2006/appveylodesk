@@ -25,7 +25,7 @@ function generateWaveform(seed: string, count: number): number[] {
     const val = Math.abs(hash % 100);
     const position = i / count;
     const envelope = Math.sin(position * Math.PI) * 0.6 + 0.4;
-    bars.push(Math.max(3, (val / 100) * 20 * envelope + 3));
+    bars.push(Math.max(3, (val / 100) * 22 * envelope + 3));
   }
   return bars;
 }
@@ -53,10 +53,7 @@ export function VoiceNotePlayer({ messageId, attachmentUrl, durationSeconds, isO
     audioRef.current = audio;
 
     const onLoaded = () => setLoaded(true);
-    const onError = (e: Event) => {
-      console.error('Voice note load error:', e, 'URL:', attachmentUrl);
-      setError(true);
-    };
+    const onError = () => setError(true);
     const onEnded = () => {
       setPlaying(false);
       setProgress(0);
@@ -100,16 +97,14 @@ export function VoiceNotePlayer({ messageId, attachmentUrl, durationSeconds, isO
         await audio.play();
         setPlaying(true);
         animRef.current = requestAnimationFrame(updateProgress);
-      } catch (err) {
-        console.error('Voice playback failed:', err);
-        // Try re-loading the audio
+      } catch {
+        // Try reloading
         audio.load();
         try {
           await audio.play();
           setPlaying(true);
           animRef.current = requestAnimationFrame(updateProgress);
-        } catch (retryErr) {
-          console.error('Voice playback retry failed:', retryErr);
+        } catch {
           setError(true);
         }
       }
@@ -158,13 +153,13 @@ export function VoiceNotePlayer({ messageId, attachmentUrl, durationSeconds, isO
   }
 
   return (
-    <div className="px-3 py-2 flex items-center gap-2 min-w-[200px] max-w-[280px]">
+    <div className="px-3 py-2 flex items-center gap-2.5 min-w-[210px] max-w-[290px]">
       {/* Play/Pause button */}
       <motion.button
-        whileTap={{ scale: 0.9 }}
+        whileTap={{ scale: 0.85 }}
         onClick={togglePlay}
         className={cn(
-          'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-200',
+          'w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-200',
           isOwn
             ? 'bg-primary-foreground/20 hover:bg-primary-foreground/30 text-primary-foreground'
             : 'bg-primary/10 hover:bg-primary/20 text-primary'
@@ -178,7 +173,7 @@ export function VoiceNotePlayer({ messageId, attachmentUrl, durationSeconds, isO
       </motion.button>
 
       {/* Waveform bars */}
-      <div className="flex items-center gap-[1.5px] flex-1 h-7 cursor-pointer">
+      <div className="flex items-center gap-[1.5px] flex-1 h-8 cursor-pointer">
         {waveform.map((height, i) => {
           const filled = i / BAR_COUNT <= progress;
           return (
@@ -187,19 +182,15 @@ export function VoiceNotePlayer({ messageId, attachmentUrl, durationSeconds, isO
               onClick={() => handleBarClick(i)}
               initial={false}
               animate={{
-                height: `${height}px`,
-                opacity: filled ? 1 : 0.35,
+                height: playing && filled ? `${height + Math.random() * 2}px` : `${height}px`,
+                opacity: filled ? 1 : 0.3,
               }}
-              transition={{ duration: 0.1 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
               className={cn(
-                'w-[2px] rounded-full',
+                'w-[2px] rounded-full cursor-pointer',
                 filled
-                  ? isOwn
-                    ? 'bg-primary-foreground'
-                    : 'bg-primary'
-                  : isOwn
-                    ? 'bg-primary-foreground'
-                    : 'bg-muted-foreground'
+                  ? isOwn ? 'bg-primary-foreground' : 'bg-primary'
+                  : isOwn ? 'bg-primary-foreground' : 'bg-muted-foreground'
               )}
             />
           );
@@ -208,7 +199,7 @@ export function VoiceNotePlayer({ messageId, attachmentUrl, durationSeconds, isO
 
       {/* Duration */}
       <span className={cn(
-        'text-[10px] font-medium tabular-nums flex-shrink-0',
+        'text-[10px] font-semibold tabular-nums flex-shrink-0 min-w-[28px]',
         isOwn ? 'text-primary-foreground/60' : 'text-muted-foreground'
       )}>
         {displayTime}

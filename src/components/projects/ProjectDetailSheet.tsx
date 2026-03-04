@@ -56,6 +56,7 @@ import { ProjectEditModal } from './ProjectEditModal';
 import { MoveVideoModal } from './MoveVideoModal';
 import { VideoApprovalActions } from './VideoApprovalActions';
 import { GenerateReviewLinkModal } from './GenerateReviewLinkModal';
+import { ReviewActivityTab } from './ReviewActivityTab';
 
 interface ProjectDetailSheetProps {
   projectId: string | null;
@@ -584,6 +585,10 @@ export function ProjectDetailSheet({
                     <Video className="w-4 h-4" />
                     Review
                   </TabsTrigger>
+                  <TabsTrigger value="activity" className="gap-2">
+                    <MessageSquare className="w-4 h-4" />
+                    Activity
+                  </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="assets" className="flex-1 overflow-hidden m-0">
@@ -652,6 +657,10 @@ export function ProjectDetailSheet({
                       </div>
                     )}
                   </div>
+                </TabsContent>
+
+                <TabsContent value="activity" className="flex-1 overflow-hidden m-0">
+                  <ReviewActivityTab projectId={project.id} />
                 </TabsContent>
               </Tabs>
             )}
