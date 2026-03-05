@@ -72,10 +72,9 @@ export function useUploadContext() {
   return context;
 }
 
-// Direct upload to Bunny Storage using presigned credentials
-async function directUploadToStorage(
-  uploadUrl: string,
-  accessKey: string,
+// Proxy upload through edge function (never exposes CDN key)
+async function proxyUploadToStorage(
+  storagePath: string,
   file: File,
   onProgress: (loaded: number, total: number, speed: number, remainingTime: number) => void,
   abortSignal?: AbortController
@@ -108,7 +107,13 @@ async function directUploadToStorage(
 
     xhr.addEventListener('load', () => {
       if (xhr.status >= 200 && xhr.status < 300) {
-        resolve();
+        try {
+          const resp = JSON.parse(xhr.responseText);
+          if (resp.ok) resolve();
+          else reject(new Error(resp.error || 'Upload failed'));
+        } catch {
+          resolve(); // If response isn't JSON but status is OK
+        }
       } else {
         reject(new Error(`Upload failed with status ${xhr.status}`));
       }
@@ -121,9 +126,20 @@ async function directUploadToStorage(
       abortSignal.signal.addEventListener('abort', () => xhr.abort());
     }
 
-    xhr.open('PUT', uploadUrl);
-    xhr.setRequestHeader('AccessKey', accessKey);
-    xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+    const url = `https://${projectId}.supabase.co/functions/v1/presigned-upload`;
+
+    xhr.open('PUT', url);
+    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+    xhr.setRequestHeader('x-storage-path', storagePath);
+    xhr.setRequestHeader('x-upload-action', 'upload');
+    // Pass auth token
+    const session = JSON.parse(localStorage.getItem('sb-' + projectId + '-auth-token') || '{}');
+    const token = session?.access_token;
+    if (token) {
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    }
+    xhr.setRequestHeader('apikey', import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '');
     xhr.send(file);
   });
 }
@@ -491,9 +507,8 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
 
       // Step 2: Upload directly to Bunny
       if (initData.uploadType === 'storage') {
-        await directUploadToStorage(
-          initData.uploadUrl,
-          initData.accessKey,
+        await proxyUploadToStorage(
+          initData.storagePath,
           item.file,
           (loaded, total, speed, remainingTime) => {
             const percentage = Math.round((loaded / total) * 100);
