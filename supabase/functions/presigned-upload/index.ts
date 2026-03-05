@@ -4,7 +4,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-storage-path, x-upload-action",
+  "Access-Control-Allow-Methods": "POST, PUT, OPTIONS",
 };
 
 // Get Bunny.net configuration from environment
@@ -51,7 +52,7 @@ async function getUserIdFromRequest(req: Request): Promise<string | null> {
 }
 
 const handler = async (req: Request): Promise<Response> => {
-  console.log("presigned-upload: Request received");
+  console.log("presigned-upload: Request received", req.method);
 
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -62,6 +63,49 @@ const handler = async (req: Request): Promise<Response> => {
     if (!userId) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Handle proxied file upload (PUT with binary body)
+    if (req.method === "PUT" || req.headers.get("x-upload-action") === "upload") {
+      const storagePath = req.headers.get("x-storage-path");
+      if (!storagePath) {
+        return new Response(JSON.stringify({ error: "Missing x-storage-path header" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const fileBody = await req.arrayBuffer();
+      if (!fileBody || fileBody.byteLength === 0) {
+        return new Response(JSON.stringify({ error: "Empty file body" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const uploadUrl = `https://${BUNNY_STORAGE_HOSTNAME}/${BUNNY_STORAGE_ZONE}/${storagePath}`;
+      const bunnyResp = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: {
+          "AccessKey": BUNNY_API_KEY,
+          "Content-Type": "application/octet-stream",
+        },
+        body: fileBody,
+      });
+
+      if (!bunnyResp.ok) {
+        const errText = await bunnyResp.text();
+        console.error("Bunny Storage upload failed:", bunnyResp.status, errText);
+        return new Response(JSON.stringify({ error: "CDN upload failed" }), {
+          status: 502,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -191,21 +235,17 @@ const handler = async (req: Request): Promise<Response> => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       } else {
-        // For Bunny Storage: Return direct PUT URL
+        // For Bunny Storage: Return upload metadata (NO secret key!)
         const fileExt = fileName.split('.').pop() || '';
         const uniqueName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
         const storagePath = `${projectId}/${uniqueName}`;
-
-        const uploadUrl = `https://${BUNNY_STORAGE_HOSTNAME}/${BUNNY_STORAGE_ZONE}/${storagePath}`;
         const cdnUrl = `${BUNNY_CDN_URL.replace(/\/$/, '')}/${storagePath}`;
 
         return new Response(JSON.stringify({
           ok: true,
           uploadType: "storage",
-          uploadUrl,
           cdnUrl,
           storagePath,
-          accessKey: BUNNY_API_KEY,
         }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -309,6 +349,7 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(JSON.stringify({ error: "Invalid action" }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
     });
 
   } catch (error: any) {
