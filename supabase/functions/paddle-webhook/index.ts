@@ -81,27 +81,33 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const webhookSecret = Deno.env.get("PADDLE_WEBHOOK_SECRET");
     const paddleSignature = req.headers.get("Paddle-Signature") || "";
-    const webhookSecret = Deno.env.get("PADDLE_WEBHOOK_SECRET") || "";
     const body = await req.text();
 
-    // Verify signature
-    if (webhookSecret && paddleSignature) {
-      const valid = await verifyPaddleSignature(paddleSignature, body, webhookSecret);
-      if (!valid) {
-        console.error("Invalid Paddle webhook signature");
-        // Log webhook failure to system_logs
-        const _sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-        await _sb.rpc("insert_system_log", {
-          _event_type: "webhook_failure",
-          _message: "Invalid Paddle webhook signature",
-          _metadata: { source: "paddle", reason: "invalid_signature" },
-        });
-        return new Response(JSON.stringify({ error: "Invalid signature" }), {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+    // Always require webhook secret to be configured
+    if (!webhookSecret) {
+      console.error("PADDLE_WEBHOOK_SECRET is not configured");
+      return new Response(JSON.stringify({ error: "Webhook not configured" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Always verify signature
+    const valid = await verifyPaddleSignature(paddleSignature, body, webhookSecret);
+    if (!valid) {
+      console.error("Invalid Paddle webhook signature");
+      const _sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      await _sb.rpc("insert_system_log", {
+        _event_type: "webhook_failure",
+        _message: "Invalid Paddle webhook signature",
+        _metadata: { source: "paddle", reason: "invalid_signature" },
+      });
+      return new Response(JSON.stringify({ error: "Invalid signature" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const event = JSON.parse(body);
