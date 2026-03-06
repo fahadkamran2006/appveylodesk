@@ -8,10 +8,12 @@ import { Label } from "@/components/ui/label";
 import { Bug, Lightbulb, Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/hooks/useProfile";
 import { toast } from "sonner";
 
 export function BugReportModal() {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
+  const { profile } = useProfile();
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<"bug" | "suggestion">("bug");
   const [title, setTitle] = useState("");
