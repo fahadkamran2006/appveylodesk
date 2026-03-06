@@ -28,6 +28,7 @@ const Onboarding = () => {
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSendingInvites, setIsSendingInvites] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -35,6 +36,20 @@ const Onboarding = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         navigate('/auth/login');
+        return;
+      }
+
+      // Check if user already has a role (existing user signing in via OAuth)
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+
+      if (roleData?.role) {
+        // Existing user — redirect to their dashboard
+        const dashMap: Record<string, string> = { admin: '/admin/dashboard', client: '/client/dashboard', editor: '/editor/dashboard' };
+        navigate(dashMap[roleData.role] || '/admin/dashboard', { replace: true });
         return;
       }
 
@@ -46,12 +61,34 @@ const Onboarding = () => {
         .single();
 
       if (profile?.onboarding_completed && profile?.agency_id) {
-        navigate('/admin/dashboard');
+        navigate('/admin/dashboard', { replace: true });
+        return;
       }
+
+      setIsCheckingAuth(false);
     };
 
     checkAuth();
   }, [navigate]);
+
+  // Show a branded loading screen while verifying auth status
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background">
+        <Helmet><title>Loading | Veylodesk</title></Helmet>
+        <div className="flex flex-col items-center gap-4 animate-in fade-in duration-300">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-9 h-9 bg-primary rounded-lg flex items-center justify-center">
+              <Command className="w-5 h-5 text-primary-foreground" />
+            </div>
+            <span className="text-xl font-bold tracking-tight text-foreground">Veylodesk</span>
+          </div>
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Loading your dashboard…</p>
+        </div>
+      </div>
+    );
+  }
 
   const addInvite = () => {
     setTeamInvites([...teamInvites, { id: crypto.randomUUID(), email: '', role: 'editor' }]);
