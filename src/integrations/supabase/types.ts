@@ -124,6 +124,53 @@ export type Database = {
           },
         ]
       }
+      bug_reports: {
+        Row: {
+          agency_id: string | null
+          created_at: string
+          description: string
+          id: string
+          priority: string
+          status: string
+          title: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          agency_id?: string | null
+          created_at?: string
+          description: string
+          id?: string
+          priority?: string
+          status?: string
+          title: string
+          type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          agency_id?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          priority?: string
+          status?: string
+          title?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bug_reports_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cancellation_requests: {
         Row: {
           admin_notes: string | null

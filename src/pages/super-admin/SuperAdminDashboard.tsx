@@ -2,6 +2,7 @@ import { useSuperAdminStats, AgencyStat } from "@/hooks/useSuperAdminStats";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import AgencyDrilldownSheet from "@/components/super-admin/AgencyDrilldownSheet";
+import BugReportsTab from "@/components/super-admin/BugReportsTab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -69,6 +70,7 @@ export default function SuperAdminDashboard() {
           <TabsList>
             <TabsTrigger value="agencies">Agency Leaderboard</TabsTrigger>
             <TabsTrigger value="storage">Storage Monitor</TabsTrigger>
+            <TabsTrigger value="bugs">Bug Reports</TabsTrigger>
             <TabsTrigger value="logs">System Events</TabsTrigger>
           </TabsList>
 
@@ -138,6 +140,11 @@ export default function SuperAdminDashboard() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Bug Reports */}
+          <TabsContent value="bugs">
+            <BugReportsTab />
           </TabsContent>
 
           {/* System Logs */}

@@ -1,6 +1,7 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { NotificationBell } from './NotificationBell';
+import { BugReportModal } from '@/components/BugReportModal';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface DashboardHeaderProps {
@@ -60,7 +61,8 @@ export function DashboardHeader({ title, showProfile = true }: DashboardHeaderPr
       </div>
 
       {/* Right side - Notification Bell + Profile */}
-      <div className="flex items-center gap-3 shrink-0">
+      <div className="flex items-center gap-2 shrink-0">
+        <BugReportModal />
         <NotificationBell />
         
         {showProfile && (
