@@ -107,8 +107,7 @@ const StoragePage = () => {
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   
   // Admin tools state
-  const [loadingStorageInfo, setLoadingStorageInfo] = useState(false);
-  const [orphanData, setOrphanData] = useState<{ 
+  const [orphanData, setOrphanData] = useState<{
     storageFiles: any[]; 
     streamVideos: any[]; 
     totalSize: number 
