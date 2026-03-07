@@ -137,6 +137,55 @@ export function useVideoComments(deliverableId: string | null) {
 
       setComments(prev => [...prev, newComment]);
       toast({ title: 'Feedback added', description: 'Your comment has been saved' });
+
+      // Send notification to parent comment author if this is a reply
+      if (parentId) {
+        const parentComment = comments.find(c => c.id === parentId);
+        if (parentComment && parentComment.user_id && parentComment.user_id !== user.id && parentComment.source === 'internal') {
+          // Get agency_id and project info for notification
+          try {
+            const { data: delData } = await supabase
+              .from('deliverables')
+              .select('project_id, file_name, projects(agency_id, title)')
+              .eq('id', deliverableId)
+              .single();
+
+            if (delData) {
+              const agencyId = (delData.projects as any)?.agency_id;
+              const projectTitle = (delData.projects as any)?.title || delData.file_name;
+              const projectId = delData.project_id;
+
+              if (agencyId) {
+                // Create in-app notification via DB function
+                await supabase.rpc('create_notification', {
+                  _user_id: parentComment.user_id,
+                  _agency_id: agencyId,
+                  _type: 'comment_added' as any,
+                  _title: 'Reply to your comment',
+                  _message: `Someone replied to your comment on "${projectTitle}": "${content.slice(0, 80)}${content.length > 80 ? '...' : ''}"`,
+                  _link: `/review/internal/${projectId}/${deliverableId}`,
+                  _metadata: { comment_id: data.id, parent_id: parentId, deliverable_id: deliverableId },
+                });
+
+                // Send email notification
+                supabase.functions.invoke('send-notification-email', {
+                  body: {
+                    user_id: parentComment.user_id,
+                    agency_id: agencyId,
+                    type: 'comment_added',
+                    title: 'Reply to your comment',
+                    message: `Someone replied to your comment on "${projectTitle}": "${content.slice(0, 80)}${content.length > 80 ? '...' : ''}"`,
+                    link: `/review/internal/${projectId}/${deliverableId}`,
+                  },
+                }).catch(err => console.error('Email notification error:', err));
+              }
+            }
+          } catch (notifErr) {
+            console.error('Failed to send reply notification:', notifErr);
+          }
+        }
+      }
+
       return newComment;
     } catch (error: any) {
       console.error('Error adding comment:', error);
