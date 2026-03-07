@@ -101,9 +101,10 @@ export function useVideoComments(deliverableId: string | null) {
     }
   }, [deliverableId]);
 
-  // Add a new comment (no timestamp)
+  // Add a new comment with optional timestamp
   const addComment = useCallback(async (
-    content: string
+    content: string,
+    timestampSeconds: number = 0
   ): Promise<VideoComment | null> => {
     if (!user || !deliverableId) return null;
 
@@ -114,7 +115,7 @@ export function useVideoComments(deliverableId: string | null) {
           deliverable_id: deliverableId,
           user_id: user.id,
           content,
-          timestamp_seconds: 0,
+          timestamp_seconds: timestampSeconds,
         })
         .select()
         .single();
@@ -123,7 +124,7 @@ export function useVideoComments(deliverableId: string | null) {
 
       const newComment: VideoComment = {
         ...data,
-        timestamp_seconds: 0,
+        timestamp_seconds: timestampSeconds,
         user_name: 'You',
         source: 'internal',
       };

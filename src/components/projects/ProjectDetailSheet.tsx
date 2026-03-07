@@ -250,8 +250,8 @@ export function ProjectDetailSheet({
     setCurrentTimestamp(0);
   };
 
-  const handleAddComment = async (content: string) => {
-    await addComment(content);
+  const handleAddComment = async (content: string, timestampSeconds?: number) => {
+    await addComment(content, timestampSeconds);
   };
 
   const handleBackFromVideo = () => {
@@ -565,6 +565,8 @@ export function ProjectDetailSheet({
                     onAddComment={handleAddComment}
                     onResolveComment={resolveComment}
                     onUnresolveComment={unresolveComment}
+                    onSeekToTimestamp={handleSeekToTimestamp}
+                    currentTimestamp={currentTimestamp ?? 0}
                     className="h-full"
                   />
                 </div>

@@ -11,7 +11,8 @@ import {
   MessageSquare, 
   Send,
   Undo2,
-  Globe
+  Globe,
+  Clock
 } from 'lucide-react';
 import { VideoComment } from '@/hooks/useVideoComments';
 
@@ -20,10 +21,18 @@ interface CommentPanelProps {
   unresolvedComments: VideoComment[];
   resolvedComments: VideoComment[];
   canResolve: boolean;
-  onAddComment: (content: string) => void;
+  onAddComment: (content: string, timestampSeconds?: number) => void;
   onResolveComment: (commentId: string) => void;
   onUnresolveComment: (commentId: string) => void;
+  onSeekToTimestamp?: (seconds: number) => void;
+  currentTimestamp?: number;
   className?: string;
+}
+
+function formatTimestamp(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
 export function CommentPanel({
@@ -34,6 +43,8 @@ export function CommentPanel({
   onAddComment,
   onResolveComment,
   onUnresolveComment,
+  onSeekToTimestamp,
+  currentTimestamp = 0,
   className,
 }: CommentPanelProps) {
   const [newComment, setNewComment] = useState('');
@@ -44,7 +55,7 @@ export function CommentPanel({
     
     setIsSubmitting(true);
     try {
-      await onAddComment(newComment.trim());
+      await onAddComment(newComment.trim(), currentTimestamp > 0 ? currentTimestamp : undefined);
       setNewComment('');
     } finally {
       setIsSubmitting(false);
@@ -93,6 +104,16 @@ export function CommentPanel({
                 Public
               </Badge>
             )}
+            {comment.timestamp_seconds > 0 && (
+              <button
+                onClick={() => onSeekToTimestamp?.(comment.timestamp_seconds)}
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[11px] font-mono font-medium hover:bg-primary/20 transition-colors cursor-pointer"
+                title="Jump to timestamp"
+              >
+                <Clock className="w-2.5 h-2.5" />
+                {formatTimestamp(comment.timestamp_seconds)}
+              </button>
+            )}
             <span className="text-xs text-muted-foreground">
               {new Date(comment.created_at).toLocaleDateString()}
             </span>
@@ -105,7 +126,7 @@ export function CommentPanel({
             {comment.content}
           </p>
 
-          {/* Only show resolve for internal comments (public comments can't be resolved via deliverable_comments table) */}
+          {/* Only show resolve for internal comments */}
           {showResolveButton && comment.source !== 'public' && (
             <div className="mt-2">
               {comment.is_resolved ? (
@@ -156,6 +177,13 @@ export function CommentPanel({
 
       {/* Add comment form */}
       <div className="p-4 border-b border-border">
+        {currentTimestamp > 0 && (
+          <div className="flex items-center gap-1.5 mb-2 text-xs text-muted-foreground">
+            <Clock className="w-3 h-3 text-primary" />
+            <span>Commenting at</span>
+            <span className="font-mono font-medium text-primary">{formatTimestamp(currentTimestamp)}</span>
+          </div>
+        )}
         <div className="flex gap-2">
           <Textarea
             value={newComment}
