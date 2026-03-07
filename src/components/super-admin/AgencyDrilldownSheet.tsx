@@ -249,8 +249,6 @@ export default function AgencyDrilldownSheet({ agency, open, onOpenChange }: Age
         )}
       </SheetContent>
     </Sheet>
-      </SheetContent>
-    </Sheet>
   );
 }
 
