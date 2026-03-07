@@ -168,6 +168,8 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
   const hlsRef = useRef<Hls | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const playerJsRef = useRef<any>(null);
   
   const [playbackUrl, setPlaybackUrl] = useState<string | null>(null);
   const [isHls, setIsHls] = useState(false);
