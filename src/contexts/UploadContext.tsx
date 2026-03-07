@@ -200,7 +200,12 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
 
   const isVideoFile = useCallback((fileName: string): boolean => {
     const ext = fileName.split('.').pop()?.toLowerCase() || '';
-    const videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm', 'wmv', 'm4v', 'flv', 'mpeg', 'mpg'];
+    const videoExtensions = [
+      'mp4', 'mov', 'avi', 'mkv', 'webm', 'wmv', 'm4v', 'flv', 'mpeg', 'mpg',
+      'ts', 'mts', 'm2ts', '3gp', '3g2', 'ogv', 'vob', 'mxf', 'rm', 'rmvb',
+      'asf', 'divx', 'f4v', 'swf', 'dv', 'qt', 'yuv', 'amv', 'mp2', 'mpv',
+      'm2v', 'svi', 'mpe', 'nsv', 'flv', 'f4v', 'f4p', 'f4a', 'f4b',
+    ];
     return videoExtensions.includes(ext);
   }, []);
 
