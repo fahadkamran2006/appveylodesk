@@ -246,44 +246,42 @@ const StoragePage = () => {
       const { data: deliverables, error } = await deliverableQuery;
       if (error) throw error;
 
-      // Enrich with client and uploader names
-      const enrichedFiles: StorageFile[] = await Promise.all(
-        (deliverables || []).map(async (d: any) => {
-          let clientName = 'Unknown Client';
-          let uploaderName = 'Unknown';
+      // Batch-fetch all unique profile IDs (clients + uploaders) in one query
+      const allDeliverables = deliverables || [];
+      const profileIds = new Set<string>();
+      for (const d of allDeliverables) {
+        if ((d as any).project?.client_id) profileIds.add((d as any).project.client_id);
+        if (d.uploaded_by) profileIds.add(d.uploaded_by);
+      }
 
-          if (d.project?.client_id) {
-            const { data: clientProfile } = await supabase
-              .from('profiles')
-              .select('full_name, email')
-              .eq('id', d.project.client_id)
-              .maybeSingle();
-            clientName = clientProfile?.full_name || clientProfile?.email || 'Unknown Client';
-          }
+      const profileMap = new Map<string, { full_name: string | null; email: string }>();
+      if (profileIds.size > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, full_name, email')
+          .in('id', Array.from(profileIds));
+        for (const p of profiles || []) {
+          profileMap.set(p.id, { full_name: p.full_name, email: p.email });
+        }
+      }
 
-          const { data: uploaderProfile } = await supabase
-            .from('profiles')
-            .select('full_name, email')
-            .eq('id', d.uploaded_by)
-            .maybeSingle();
-          uploaderName = uploaderProfile?.full_name || uploaderProfile?.email || 'Unknown';
-
-          const fileSize = d.file_size || 0;
-          return {
-            id: d.id,
-            file_name: d.file_name,
-            file_url: d.file_url,
-            file_size: fileSize,
-            project_id: d.project_id,
-            project_title: d.project?.title || 'Unknown Project',
-            client_name: clientName,
-            client_id: d.project?.client_id || '',
-            uploaded_by: d.uploaded_by,
-            uploader_name: uploaderName,
-            created_at: d.created_at,
-          };
-        })
-      );
+      const enrichedFiles: StorageFile[] = allDeliverables.map((d: any) => {
+        const clientProfile = d.project?.client_id ? profileMap.get(d.project.client_id) : null;
+        const uploaderProfile = profileMap.get(d.uploaded_by);
+        return {
+          id: d.id,
+          file_name: d.file_name,
+          file_url: d.file_url,
+          file_size: d.file_size || 0,
+          project_id: d.project_id,
+          project_title: d.project?.title || 'Unknown Project',
+          client_name: clientProfile?.full_name || clientProfile?.email || 'Unknown Client',
+          client_id: d.project?.client_id || '',
+          uploaded_by: d.uploaded_by,
+          uploader_name: uploaderProfile?.full_name || uploaderProfile?.email || 'Unknown',
+          created_at: d.created_at,
+        };
+      });
 
       setFiles(enrichedFiles);
       
