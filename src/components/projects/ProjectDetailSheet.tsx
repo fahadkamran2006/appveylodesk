@@ -149,6 +149,8 @@ export function ProjectDetailSheet({
     addComment,
     resolveComment,
     unresolveComment,
+    editComment,
+    deleteComment,
   } = useVideoComments(selectedVideo?.id || null);
 
   // Fetch project details
@@ -565,8 +567,11 @@ export function ProjectDetailSheet({
                     onAddComment={handleAddComment}
                     onResolveComment={resolveComment}
                     onUnresolveComment={unresolveComment}
+                    onEditComment={editComment}
+                    onDeleteComment={deleteComment}
                     onSeekToTimestamp={handleSeekToTimestamp}
                     currentTimestamp={currentTimestamp ?? 0}
+                    currentUserId={user?.id}
                     className="h-full"
                   />
                 </div>
