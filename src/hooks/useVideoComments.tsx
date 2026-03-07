@@ -17,6 +17,7 @@ export interface VideoComment {
   user_name?: string;
   user_avatar?: string;
   source?: 'internal' | 'public';
+  review_link_id?: string;
 }
 
 export function useVideoComments(deliverableId: string | null) {
@@ -25,7 +26,6 @@ export function useVideoComments(deliverableId: string | null) {
   const [comments, setComments] = useState<VideoComment[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Fetch comments for a deliverable (internal + public)
   const fetchComments = useCallback(async () => {
     if (!deliverableId) return;
 
@@ -40,7 +40,6 @@ export function useVideoComments(deliverableId: string | null) {
 
       if (error) throw error;
 
-      // Get user profiles for internal comments
       const userIds = [...new Set(data?.map(c => c.user_id) || [])];
       const { data: profiles } = await supabase
         .from('profiles')
@@ -57,7 +56,7 @@ export function useVideoComments(deliverableId: string | null) {
         source: 'internal' as const,
       }));
 
-      // Fetch public review comments via review links for this deliverable
+      // Fetch public review comments
       const { data: reviewLinks } = await supabase
         .from('public_review_links')
         .select('id')
@@ -78,17 +77,17 @@ export function useVideoComments(deliverableId: string | null) {
           user_id: '',
           content: c.content,
           timestamp_seconds: Number(c.timestamp_seconds),
-          is_resolved: false,
-          resolved_by: null,
-          resolved_at: null,
+          is_resolved: (c as any).is_resolved ?? false,
+          resolved_by: (c as any).resolved_by ?? null,
+          resolved_at: (c as any).resolved_at ?? null,
           created_at: c.created_at,
           updated_at: c.created_at,
           user_name: c.reviewer_name || 'Anonymous',
           source: 'public' as const,
+          review_link_id: c.review_link_id,
         }));
       }
 
-      // Merge and sort by created_at
       const allComments = [...internalComments, ...publicComments].sort(
         (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       );
@@ -101,7 +100,6 @@ export function useVideoComments(deliverableId: string | null) {
     }
   }, [deliverableId]);
 
-  // Add a new comment with optional timestamp
   const addComment = useCallback(async (
     content: string,
     timestampSeconds: number = 0
@@ -130,39 +128,44 @@ export function useVideoComments(deliverableId: string | null) {
       };
 
       setComments(prev => [...prev, newComment]);
-
-      toast({
-        title: 'Feedback added',
-        description: 'Your comment has been saved',
-      });
-
+      toast({ title: 'Feedback added', description: 'Your comment has been saved' });
       return newComment;
     } catch (error: any) {
       console.error('Error adding comment:', error);
-      toast({
-        title: 'Failed to add feedback',
-        description: error.message || 'Please try again',
-        variant: 'destructive',
-      });
+      toast({ title: 'Failed to add feedback', description: error.message || 'Please try again', variant: 'destructive' });
       return null;
     }
   }, [user, deliverableId, toast]);
 
-  // Mark comment as resolved
   const resolveComment = useCallback(async (commentId: string): Promise<boolean> => {
     if (!user) return false;
 
-    try {
-      const { error } = await supabase
-        .from('deliverable_comments')
-        .update({
-          is_resolved: true,
-          resolved_by: user.id,
-          resolved_at: new Date().toISOString(),
-        })
-        .eq('id', commentId);
+    // Find the comment to determine if it's public or internal
+    const comment = comments.find(c => c.id === commentId);
+    if (!comment) return false;
 
-      if (error) throw error;
+    try {
+      if (comment.source === 'public') {
+        const { error } = await supabase
+          .from('public_review_comments')
+          .update({
+            is_resolved: true,
+            resolved_by: user.id,
+            resolved_at: new Date().toISOString(),
+          } as any)
+          .eq('id', commentId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('deliverable_comments')
+          .update({
+            is_resolved: true,
+            resolved_by: user.id,
+            resolved_at: new Date().toISOString(),
+          })
+          .eq('id', commentId);
+        if (error) throw error;
+      }
 
       setComments(prev => prev.map(c => 
         c.id === commentId 
@@ -170,55 +173,100 @@ export function useVideoComments(deliverableId: string | null) {
           : c
       ));
 
-      toast({
-        title: 'Feedback resolved',
-        description: 'The feedback has been marked as addressed',
-      });
-
+      toast({ title: 'Feedback resolved', description: 'The feedback has been marked as addressed' });
       return true;
     } catch (error: any) {
       console.error('Error resolving comment:', error);
-      toast({
-        title: 'Failed to resolve',
-        description: error.message || 'Please try again',
-        variant: 'destructive',
-      });
+      toast({ title: 'Failed to resolve', description: error.message || 'Please try again', variant: 'destructive' });
       return false;
     }
-  }, [user, toast]);
+  }, [user, comments, toast]);
 
-  // Unresolve comment
   const unresolveComment = useCallback(async (commentId: string): Promise<boolean> => {
-    try {
-      const { error } = await supabase
-        .from('deliverable_comments')
-        .update({
-          is_resolved: false,
-          resolved_by: null,
-          resolved_at: null,
-        })
-        .eq('id', commentId);
+    const comment = comments.find(c => c.id === commentId);
+    if (!comment) return false;
 
-      if (error) throw error;
+    try {
+      if (comment.source === 'public') {
+        const { error } = await supabase
+          .from('public_review_comments')
+          .update({
+            is_resolved: false,
+            resolved_by: null,
+            resolved_at: null,
+          } as any)
+          .eq('id', commentId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('deliverable_comments')
+          .update({
+            is_resolved: false,
+            resolved_by: null,
+            resolved_at: null,
+          })
+          .eq('id', commentId);
+        if (error) throw error;
+      }
 
       setComments(prev => prev.map(c => 
         c.id === commentId 
           ? { ...c, is_resolved: false, resolved_by: null, resolved_at: null }
           : c
       ));
-
       return true;
     } catch (error) {
       console.error('Error unresolving comment:', error);
       return false;
     }
-  }, []);
+  }, [comments]);
 
-  // Get unresolved comments only
+  const editComment = useCallback(async (commentId: string, newContent: string): Promise<boolean> => {
+    if (!user) return false;
+
+    try {
+      const { error } = await supabase
+        .from('deliverable_comments')
+        .update({ content: newContent })
+        .eq('id', commentId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setComments(prev => prev.map(c => 
+        c.id === commentId ? { ...c, content: newContent } : c
+      ));
+      toast({ title: 'Comment updated' });
+      return true;
+    } catch (error: any) {
+      console.error('Error editing comment:', error);
+      toast({ title: 'Failed to edit', description: error.message, variant: 'destructive' });
+      return false;
+    }
+  }, [user, toast]);
+
+  const deleteComment = useCallback(async (commentId: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('deliverable_comments')
+        .delete()
+        .eq('id', commentId);
+
+      if (error) throw error;
+
+      setComments(prev => prev.filter(c => c.id !== commentId));
+      toast({ title: 'Comment deleted' });
+      return true;
+    } catch (error: any) {
+      console.error('Error deleting comment:', error);
+      toast({ title: 'Failed to delete', description: error.message, variant: 'destructive' });
+      return false;
+    }
+  }, [toast]);
+
   const unresolvedComments = comments.filter(c => !c.is_resolved);
   const resolvedComments = comments.filter(c => c.is_resolved);
 
-  // Subscribe to realtime changes
   useEffect(() => {
     if (!deliverableId) return;
 
@@ -234,15 +282,11 @@ export function useVideoComments(deliverableId: string | null) {
           table: 'deliverable_comments',
           filter: `deliverable_id=eq.${deliverableId}`,
         },
-        () => {
-          fetchComments();
-        }
+        () => { fetchComments(); }
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [deliverableId, fetchComments]);
 
   return {
@@ -253,6 +297,8 @@ export function useVideoComments(deliverableId: string | null) {
     addComment,
     resolveComment,
     unresolveComment,
+    editComment,
+    deleteComment,
     refetch: fetchComments,
   };
 }

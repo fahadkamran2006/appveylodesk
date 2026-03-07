@@ -1163,6 +1163,9 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          is_resolved: boolean
+          resolved_at: string | null
+          resolved_by: string | null
           review_link_id: string
           reviewer_name: string
           timestamp_seconds: number
@@ -1171,6 +1174,9 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          is_resolved?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
           review_link_id: string
           reviewer_name?: string
           timestamp_seconds?: number
@@ -1179,6 +1185,9 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          is_resolved?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
           review_link_id?: string
           reviewer_name?: string
           timestamp_seconds?: number

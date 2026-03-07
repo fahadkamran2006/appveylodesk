@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -56,6 +57,7 @@ interface ReviewPermissions {
 
 export default function PublicReview() {
   const { token } = useParams<{ token: string }>();
+  const navigate = useNavigate();
   const videoPlayerRef = useRef<VideoPlayerHandle>(null);
 
   const [loading, setLoading] = useState(true);
@@ -124,6 +126,18 @@ export default function PublicReview() {
       .catch(() => setError('Failed to load review'))
       .finally(() => setLoading(false));
   }, [token, invoke]);
+
+  // Redirect signed-in users to internal review page
+  useEffect(() => {
+    if (!reviewData) return;
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user && reviewData?.deliverable?.id && reviewData?.deliverable?.project_id) {
+        navigate(`/review/internal/${reviewData.deliverable.project_id}/${reviewData.deliverable.id}`, { replace: true });
+      }
+    };
+    checkAuth();
+  }, [reviewData, navigate]);
 
   const handleSubmitComment = async () => {
     if (!newComment.trim() || !nameSubmitted || !permissions.allow_comments) return;

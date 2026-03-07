@@ -149,6 +149,8 @@ export function ProjectDetailSheet({
     addComment,
     resolveComment,
     unresolveComment,
+    editComment,
+    deleteComment,
   } = useVideoComments(selectedVideo?.id || null);
 
   // Fetch project details
@@ -245,9 +247,9 @@ export function ProjectDetailSheet({
   const deliverableFiles = deliverables.filter(d => d.file_type === 'deliverable');
 
   const handleViewVideo = (deliverable: Deliverable) => {
-    setSelectedVideo(deliverable);
-    setActiveTab('review');
-    setCurrentTimestamp(0);
+    // Navigate to the dedicated review page instead of sidebar
+    onOpenChange(false);
+    navigate(`/review/internal/${project?.id}/${deliverable.id}`);
   };
 
   const handleAddComment = async (content: string, timestampSeconds?: number) => {
@@ -565,8 +567,11 @@ export function ProjectDetailSheet({
                     onAddComment={handleAddComment}
                     onResolveComment={resolveComment}
                     onUnresolveComment={unresolveComment}
+                    onEditComment={editComment}
+                    onDeleteComment={deleteComment}
                     onSeekToTimestamp={handleSeekToTimestamp}
                     currentTimestamp={currentTimestamp ?? 0}
+                    currentUserId={user?.id}
                     className="h-full"
                   />
                 </div>
