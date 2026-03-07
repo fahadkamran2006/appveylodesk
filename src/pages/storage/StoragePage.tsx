@@ -794,7 +794,7 @@ const StoragePage = () => {
                   <HardDrive className="w-6 h-6 text-primary shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-muted-foreground">
-                      Storage Used {loadingStorageInfo && <Loader2 className="w-3 h-3 inline animate-spin ml-1" />}
+                      Storage Used
                     </p>
                     <p className="text-base md:text-lg font-semibold text-foreground">
                       {formatBytes(storageInfo.used)} / {formatBytes(storageInfo.limit)}
