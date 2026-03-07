@@ -57,6 +57,7 @@ interface ReviewPermissions {
 
 export default function PublicReview() {
   const { token } = useParams<{ token: string }>();
+  const navigate = useNavigate();
   const videoPlayerRef = useRef<VideoPlayerHandle>(null);
 
   const [loading, setLoading] = useState(true);
