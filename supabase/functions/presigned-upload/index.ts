@@ -350,7 +350,6 @@ const handler = async (req: Request): Promise<Response> => {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-    });
 
   } catch (error: any) {
     console.error("presigned-upload error:", error);
