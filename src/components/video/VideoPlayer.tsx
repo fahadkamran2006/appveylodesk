@@ -193,22 +193,13 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
       setCurrentTime(seconds);
       currentTimeRef.current = seconds;
       onSeekToComment?.(seconds);
-    } else if (iframeRef.current && streamVideoId) {
-      // Send seek command to Bunny iframe using Player.js standard
-      // Try both formats for compatibility
-      iframeRef.current.contentWindow?.postMessage({
-        method: 'setCurrentTime',
-        value: seconds
-      }, '*');
-      iframeRef.current.contentWindow?.postMessage({
-        event: 'seek',
-        time: seconds
-      }, '*');
+    } else if (playerJsRef.current) {
+      playerJsRef.current.setCurrentTime(seconds);
       setCurrentTime(seconds);
       currentTimeRef.current = seconds;
       onSeekToComment?.(seconds);
     }
-  }, [streamVideoId, onSeekToComment]);
+  }, [onSeekToComment]);
 
   // Expose methods for parent components
   useImperativeHandle(ref, () => ({
@@ -216,26 +207,19 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
       if (videoRef.current) {
         videoRef.current.pause();
         setIsPaused(true);
-        // Update currentTimeRef with latest value from video element
         const time = videoRef.current.currentTime;
         currentTimeRef.current = time;
         setCurrentTime(time);
         onTimeUpdate?.(time);
-      } else if (iframeRef.current && streamVideoId) {
-        // Use Player.js standard with 'method' key
-        iframeRef.current.contentWindow?.postMessage({ method: 'pause' }, '*');
+      } else if (playerJsRef.current) {
+        playerJsRef.current.pause();
         setIsPaused(true);
-        // Request current time immediately after pause using Player.js standard
-        iframeRef.current.contentWindow?.postMessage({ method: 'getCurrentTime' }, '*');
-        // The current time from currentTimeRef should be fairly accurate due to polling
-        // Notify parent of the current time
         onTimeUpdate?.(currentTimeRef.current);
         onPause?.();
       }
     },
     getCurrentTime: () => {
       if (videoRef.current) {
-        // Always get fresh value from video element
         return videoRef.current.currentTime;
       }
       return currentTimeRef.current;
