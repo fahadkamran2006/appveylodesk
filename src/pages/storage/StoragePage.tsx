@@ -701,7 +701,9 @@ const StoragePage = () => {
     fetchFiles();
   };
 
-  if (loading || loadingFiles) {
+  const currentRole = userRole === 'admin' ? 'admin' : userRole === 'client' ? 'client' : 'editor';
+
+  if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -732,14 +734,13 @@ const StoragePage = () => {
   );
 
   return (
-    <>
+    <DashboardLayout role={currentRole} hideHeader>
       <Helmet>
         <title>Storage | Veylodesk</title>
         <meta name="description" content="Manage your project files and storage." />
       </Helmet>
 
       <div 
-        className="min-h-screen bg-background flex relative"
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
         onDragOver={handleDragOver}
@@ -756,12 +757,13 @@ const StoragePage = () => {
           </div>
         )}
 
-        {/* Desktop Sidebar */}
-        <div className="hidden md:block">
-          <CollapsibleSidebar role={userRole === 'admin' ? 'admin' : userRole === 'client' ? 'client' : 'editor'} />
-        </div>
-
-        <main className="flex-1 p-4 md:p-8 pb-24 md:pb-8">
+        {loadingFiles ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : (
+        <>
+        <div>
           {/* Header */}
           <div className="flex flex-col gap-4 mb-6 md:mb-8">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
