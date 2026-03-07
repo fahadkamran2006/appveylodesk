@@ -1138,7 +1138,10 @@ const StoragePage = () => {
               ))}
             </div>
           )}
-        </main>
+        </div>
+          )}
+        </>
+        )}
       </div>
 
       {/* File Preview Modal */}
@@ -1249,7 +1252,7 @@ const StoragePage = () => {
                     </span>
                   </div>
                 ))}
-            </div>
+              </div>
             </div>
           </div>
           
@@ -1264,10 +1267,7 @@ const StoragePage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Upload queue handled by GlobalUploadTray in App.tsx */}
-      <MobileBottomNav role={userRole === 'admin' ? 'admin' : userRole === 'client' ? 'client' : 'editor'} />
-    </>
+    </DashboardLayout>
   );
 };
 
