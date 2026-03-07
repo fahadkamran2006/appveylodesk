@@ -1,7 +1,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { Navigate } from "react-router-dom";
 
-const SUPER_ADMIN_EMAIL = "hello@fahadkamran.com";
+const SUPER_ADMIN_EMAILS = ["hello@fahadkamran.com", "m.fahadkamran0001@gmail.com"];
 
 export function SuperAdminGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -14,7 +14,7 @@ export function SuperAdminGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!user || user.email !== SUPER_ADMIN_EMAIL) {
+  if (!user || !SUPER_ADMIN_EMAILS.includes(user.email || "")) {
     return <Navigate to="/" replace />;
   }
 
