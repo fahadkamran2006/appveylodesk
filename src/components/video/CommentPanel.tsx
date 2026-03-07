@@ -55,7 +55,7 @@ export function CommentPanel({
     
     setIsSubmitting(true);
     try {
-      await onAddComment(newComment.trim(), currentTimestamp > 0 ? currentTimestamp : undefined);
+      await onAddComment(newComment.trim(), currentTimestamp);
       setNewComment('');
     } finally {
       setIsSubmitting(false);
