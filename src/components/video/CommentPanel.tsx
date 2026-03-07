@@ -104,7 +104,7 @@ export function CommentPanel({
                 Public
               </Badge>
             )}
-            {comment.timestamp_seconds > 0 && (
+            {comment.timestamp_seconds >= 0 && (
               <button
                 onClick={() => onSeekToTimestamp?.(comment.timestamp_seconds)}
                 className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[11px] font-mono font-medium hover:bg-primary/20 transition-colors cursor-pointer"
