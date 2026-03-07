@@ -4,8 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
-import { MobileBottomNav } from '@/components/MobileBottomNav';
+import { DashboardLayout } from '@/components/DashboardLayout';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -102,17 +102,12 @@ const StoragePage = () => {
   const { addToQueue, queue } = useUploadContext();
   const { startDownload } = useDownloadContext();
 
-  const [files, setFiles] = useState<StorageFile[]>([]);
-  const [groupedFiles, setGroupedFiles] = useState<GroupedFiles>({});
-  const [loadingFiles, setLoadingFiles] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
-  const [storageInfo, setStorageInfo] = useState<{ used: number; limit: number; plan: string } | null>(null);
   
   // Admin tools state
-  const [loadingStorageInfo, setLoadingStorageInfo] = useState(false);
-  const [orphanData, setOrphanData] = useState<{ 
+  const [orphanData, setOrphanData] = useState<{
     storageFiles: any[]; 
     streamVideos: any[]; 
     totalSize: number 
@@ -149,195 +144,140 @@ const StoragePage = () => {
     }
   }, [user, loading, navigate]);
 
-  const fetchFiles = useCallback(async () => {
-    if (!user || !userRole) return;
+  // Fetch storage files with React Query for caching
+  const fetchStorageData = useCallback(async () => {
+    if (!user || !userRole) return null;
 
-    setLoadingFiles(true);
-    try {
-      // Get user's agency
-      const { data: userRoleData } = await supabase
-        .from('user_roles')
-        .select('agency_id')
-        .eq('user_id', user.id)
-        .maybeSingle();
+    // Get user's agency
+    const { data: userRoleData } = await supabase
+      .from('user_roles')
+      .select('agency_id')
+      .eq('user_id', user.id)
+      .maybeSingle();
 
-      if (!userRoleData?.agency_id) {
-        setLoadingFiles(false);
-        return;
-      }
+    if (!userRoleData?.agency_id) return null;
 
-      // Fetch provider-based storage info for admin
-      if (userRole === 'admin') {
-        setLoadingStorageInfo(true);
-        try {
-          const { data: usageData, error: usageError } = await supabase.functions.invoke('storage-ops', {
-            body: { action: 'get_usage' },
-          });
+    const agencyId = userRoleData.agency_id;
 
-          if (!usageError && usageData?.ok) {
-            setStorageInfo({
-              used: usageData.totalBytes,
-              limit: usageData.limitBytes,
-              plan: usageData.plan,
-            });
-          } else {
-            // Fallback to database values if edge function fails
-            console.warn('storage-ops failed, falling back to DB:', usageError || usageData?.error);
-            const { data: agencyData } = await supabase
-              .from('agencies')
-              .select('storage_used_bytes, storage_limit_bytes, subscription_plan')
-              .eq('id', userRoleData.agency_id)
-              .single();
-
-            if (agencyData) {
-              setStorageInfo({
-                used: agencyData.storage_used_bytes,
-                limit: agencyData.storage_limit_bytes,
-                plan: agencyData.subscription_plan,
-              });
-            }
-          }
-        } catch (err) {
-          console.error('Error fetching storage info:', err);
-        } finally {
-          setLoadingStorageInfo(false);
-        }
-      }
-
-      // Build query based on role
-      let deliverableQuery = supabase
-        .from('deliverables')
-        .select(`
+    // Build query based on role
+    let deliverableQuery = supabase
+      .from('deliverables')
+      .select(`
+        id,
+        file_name,
+        file_url,
+        file_size,
+        project_id,
+        uploaded_by,
+        created_at,
+        project:projects!inner(
           id,
-          file_name,
-          file_url,
-          file_size,
-          project_id,
-          uploaded_by,
-          created_at,
-          project:projects!inner(
-            id,
-            title,
-            client_id,
-            agency_id
-          )
-        `)
-        .order('created_at', { ascending: false });
+          title,
+          client_id,
+          agency_id
+        )
+      `)
+      .order('created_at', { ascending: false });
 
-      if (userRole === 'admin') {
-        deliverableQuery = deliverableQuery.eq('project.agency_id', userRoleData.agency_id);
-      } else if (userRole === 'client') {
-        deliverableQuery = deliverableQuery.eq('project.client_id', user.id);
-      } else if (userRole === 'editor') {
-        const { data: assignments } = await supabase
-          .from('project_editors')
-          .select('project_id')
-          .eq('editor_id', user.id);
+    if (userRole === 'admin') {
+      deliverableQuery = deliverableQuery.eq('project.agency_id', agencyId);
+    } else if (userRole === 'client') {
+      deliverableQuery = deliverableQuery.eq('project.client_id', user.id);
+    } else if (userRole === 'editor') {
+      const { data: assignments } = await supabase
+        .from('project_editors')
+        .select('project_id')
+        .eq('editor_id', user.id);
 
-        const projectIds = assignments?.map(a => a.project_id) || [];
-        if (projectIds.length === 0) {
-          setFiles([]);
-          setLoadingFiles(false);
-          return;
-        }
-        deliverableQuery = deliverableQuery.in('project_id', projectIds);
-      }
-
-      const { data: deliverables, error } = await deliverableQuery;
-      if (error) throw error;
-
-      // Batch-fetch all unique profile IDs (clients + uploaders) in one query
-      const allDeliverables = deliverables || [];
-      const profileIds = new Set<string>();
-      for (const d of allDeliverables) {
-        if ((d as any).project?.client_id) profileIds.add((d as any).project.client_id);
-        if (d.uploaded_by) profileIds.add(d.uploaded_by);
-      }
-
-      const profileMap = new Map<string, { full_name: string | null; email: string }>();
-      if (profileIds.size > 0) {
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, full_name, email')
-          .in('id', Array.from(profileIds));
-        for (const p of profiles || []) {
-          profileMap.set(p.id, { full_name: p.full_name, email: p.email });
-        }
-      }
-
-      const enrichedFiles: StorageFile[] = allDeliverables.map((d: any) => {
-        const clientProfile = d.project?.client_id ? profileMap.get(d.project.client_id) : null;
-        const uploaderProfile = profileMap.get(d.uploaded_by);
-        return {
-          id: d.id,
-          file_name: d.file_name,
-          file_url: d.file_url,
-          file_size: d.file_size || 0,
-          project_id: d.project_id,
-          project_title: d.project?.title || 'Unknown Project',
-          client_name: clientProfile?.full_name || clientProfile?.email || 'Unknown Client',
-          client_id: d.project?.client_id || '',
-          uploaded_by: d.uploaded_by,
-          uploader_name: uploaderProfile?.full_name || uploaderProfile?.email || 'Unknown',
-          created_at: d.created_at,
-        };
-      });
-
-      setFiles(enrichedFiles);
-      
-      // Calculate storage from files for non-admin users or as fallback
-      if (!storageInfo || userRole !== 'admin') {
-        const totalUsedBytes = enrichedFiles.reduce((sum, f) => sum + (f.file_size || 0), 0);
-        // Get agency storage limit
-        const { data: agencyData } = await supabase
-          .from('agencies')
-          .select('storage_limit_bytes, subscription_plan')
-          .eq('id', userRoleData.agency_id)
-          .single();
-        
-        if (agencyData) {
-          setStorageInfo({
-            used: totalUsedBytes,
-            limit: agencyData.storage_limit_bytes,
-            plan: agencyData.subscription_plan,
-          });
-        }
-      }
-
-      // Group files by client > project
-      const grouped: GroupedFiles = {};
-      enrichedFiles.forEach(file => {
-        if (!grouped[file.client_name]) {
-          grouped[file.client_name] = {
-            clientId: file.client_id,
-            projects: {},
-          };
-        }
-        if (!grouped[file.client_name].projects[file.project_title]) {
-          grouped[file.client_name].projects[file.project_title] = {
-            projectId: file.project_id,
-            files: [],
-          };
-        }
-        grouped[file.client_name].projects[file.project_title].files.push(file);
-      });
-      setGroupedFiles(grouped);
-    } catch (error) {
-      console.error('Error fetching files:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load files',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoadingFiles(false);
+      const projectIds = assignments?.map(a => a.project_id) || [];
+      if (projectIds.length === 0) return { files: [], groupedFiles: {}, storageInfo: null };
+      deliverableQuery = deliverableQuery.in('project_id', projectIds);
     }
-  }, [user, userRole, toast]);
+
+    const { data: deliverables, error } = await deliverableQuery;
+    if (error) throw error;
+
+    // Batch-fetch all unique profile IDs in one query
+    const allDeliverables = deliverables || [];
+    const profileIds = new Set<string>();
+    for (const d of allDeliverables) {
+      if ((d as any).project?.client_id) profileIds.add((d as any).project.client_id);
+      if (d.uploaded_by) profileIds.add(d.uploaded_by);
+    }
+
+    const profileMap = new Map<string, { full_name: string | null; email: string }>();
+    if (profileIds.size > 0) {
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .in('id', Array.from(profileIds));
+      for (const p of profiles || []) {
+        profileMap.set(p.id, { full_name: p.full_name, email: p.email });
+      }
+    }
+
+    const enrichedFiles: StorageFile[] = allDeliverables.map((d: any) => {
+      const clientProfile = d.project?.client_id ? profileMap.get(d.project.client_id) : null;
+      const uploaderProfile = profileMap.get(d.uploaded_by);
+      return {
+        id: d.id,
+        file_name: d.file_name,
+        file_url: d.file_url,
+        file_size: d.file_size || 0,
+        project_id: d.project_id,
+        project_title: d.project?.title || 'Unknown Project',
+        client_name: clientProfile?.full_name || clientProfile?.email || 'Unknown Client',
+        client_id: d.project?.client_id || '',
+        uploaded_by: d.uploaded_by,
+        uploader_name: uploaderProfile?.full_name || uploaderProfile?.email || 'Unknown',
+        created_at: d.created_at,
+      };
+    });
+
+    // Always use DB values for storage info (accurate, fast)
+    const { data: agencyData } = await supabase
+      .from('agencies')
+      .select('storage_used_bytes, storage_limit_bytes, subscription_plan')
+      .eq('id', agencyId)
+      .single();
+
+    const storageInfo = agencyData ? {
+      used: agencyData.storage_used_bytes,
+      limit: agencyData.storage_limit_bytes,
+      plan: agencyData.subscription_plan,
+    } : null;
+
+    // Group files by client > project
+    const grouped: GroupedFiles = {};
+    enrichedFiles.forEach(file => {
+      if (!grouped[file.client_name]) {
+        grouped[file.client_name] = { clientId: file.client_id, projects: {} };
+      }
+      if (!grouped[file.client_name].projects[file.project_title]) {
+        grouped[file.client_name].projects[file.project_title] = { projectId: file.project_id, files: [] };
+      }
+      grouped[file.client_name].projects[file.project_title].files.push(file);
+    });
+
+    return { files: enrichedFiles, groupedFiles: grouped, storageInfo };
+  }, [user, userRole]);
+
+  const { data: storageData, isLoading: loadingFiles, refetch: refetchFiles } = useQuery({
+    queryKey: ['storage-files', user?.id, userRole],
+    queryFn: fetchStorageData,
+    enabled: !!user && !!userRole,
+    staleTime: 5 * 60 * 1000, // 5 minutes - don't refetch on every navigation
+  });
+
+  const files = storageData?.files || [];
+  const groupedFiles = storageData?.groupedFiles || {};
+  const storageInfo = storageData?.storageInfo || null;
+
+  // Backwards-compat wrapper for existing code that calls fetchFiles
+  const fetchFiles = useCallback(() => { refetchFiles(); }, [refetchFiles]);
 
   useEffect(() => {
-    if (user && userRole) {
-      fetchFiles();
-    }
+    // No-op: React Query handles initial fetch
   }, [user, userRole, fetchFiles]);
 
   // Fetch available projects for upload
@@ -760,7 +700,9 @@ const StoragePage = () => {
     fetchFiles();
   };
 
-  if (loading || loadingFiles) {
+  const currentRole = userRole === 'admin' ? 'admin' : userRole === 'client' ? 'client' : 'editor';
+
+  if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -791,14 +733,13 @@ const StoragePage = () => {
   );
 
   return (
-    <>
+    <DashboardLayout role={currentRole} hideHeader>
       <Helmet>
         <title>Storage | Veylodesk</title>
         <meta name="description" content="Manage your project files and storage." />
       </Helmet>
 
       <div 
-        className="min-h-screen bg-background flex relative"
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
         onDragOver={handleDragOver}
@@ -815,12 +756,13 @@ const StoragePage = () => {
           </div>
         )}
 
-        {/* Desktop Sidebar */}
-        <div className="hidden md:block">
-          <CollapsibleSidebar role={userRole === 'admin' ? 'admin' : userRole === 'client' ? 'client' : 'editor'} />
-        </div>
-
-        <main className="flex-1 p-4 md:p-8 pb-24 md:pb-8">
+        {loadingFiles ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : (
+        <>
+        <div>
           {/* Header */}
           <div className="flex flex-col gap-4 mb-6 md:mb-8">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -852,7 +794,7 @@ const StoragePage = () => {
                   <HardDrive className="w-6 h-6 text-primary shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-muted-foreground">
-                      Storage Used {loadingStorageInfo && <Loader2 className="w-3 h-3 inline animate-spin ml-1" />}
+                      Storage Used
                     </p>
                     <p className="text-base md:text-lg font-semibold text-foreground">
                       {formatBytes(storageInfo.used)} / {formatBytes(storageInfo.limit)}
@@ -1195,7 +1137,10 @@ const StoragePage = () => {
               ))}
             </div>
           )}
-        </main>
+        </div>
+        </>
+        )}
+
       </div>
 
       {/* File Preview Modal */}
@@ -1306,7 +1251,7 @@ const StoragePage = () => {
                     </span>
                   </div>
                 ))}
-            </div>
+              </div>
             </div>
           </div>
           
@@ -1321,10 +1266,7 @@ const StoragePage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Upload queue handled by GlobalUploadTray in App.tsx */}
-      <MobileBottomNav role={userRole === 'admin' ? 'admin' : userRole === 'client' ? 'client' : 'editor'} />
-    </>
+    </DashboardLayout>
   );
 };
 
