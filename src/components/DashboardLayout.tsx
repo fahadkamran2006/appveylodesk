@@ -4,6 +4,7 @@ import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { SubscriptionGuard } from '@/components/SubscriptionGuard';
 import { DashboardHeader } from '@/components/notifications/DashboardHeader';
+import { RestrictionBanner } from '@/components/RestrictionBanner';
 import { usePushNotificationListener } from '@/hooks/usePushNotifications';
 import { cn } from '@/lib/utils';
 
@@ -50,6 +51,8 @@ export function DashboardLayout({ role, children, className, hideHeader = false 
       )}>
         {/* Dashboard Header with Greeting, Notification Bell, and Profile */}
         {!hideHeader && <DashboardHeader />}
+        
+        <RestrictionBanner />
 
         <SubscriptionGuard bypass={shouldBypassGuard}>
           {children}

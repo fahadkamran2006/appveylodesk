@@ -38,7 +38,8 @@ Deno.serve(async (req) => {
     }
 
     const email = claimsData.claims.email;
-    if (email !== "hello@fahadkamran.com") {
+    const SUPER_ADMIN_EMAILS = ["hello@fahadkamran.com", "m.fahadkamran0001@gmail.com"];
+    if (!SUPER_ADMIN_EMAILS.includes(email as string)) {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

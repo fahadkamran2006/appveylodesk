@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.super-admin-stats]
 verify_jwt = false
+
+[functions.super-admin-actions]
+verify_jwt = false
