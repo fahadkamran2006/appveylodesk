@@ -19,7 +19,12 @@ const BUNNY_STREAM_API_KEY = Deno.env.get("BUNNY_STREAM_API_KEY") || "";
 const BUNNY_STREAM_LIBRARY_ID = Deno.env.get("BUNNY_STREAM_LIBRARY_ID") || "";
 
 // Video file extensions
-const VIDEO_EXTENSIONS = ['mp4', 'mov', 'avi', 'mkv', 'webm', 'wmv', 'm4v', 'flv', 'mpeg', 'mpg'];
+const VIDEO_EXTENSIONS = [
+  'mp4', 'mov', 'avi', 'mkv', 'webm', 'wmv', 'm4v', 'flv', 'mpeg', 'mpg',
+  'ts', 'mts', 'm2ts', '3gp', '3g2', 'ogv', 'vob', 'mxf', 'rm', 'rmvb',
+  'asf', 'divx', 'f4v', 'swf', 'dv', 'qt', 'yuv', 'amv', 'mp2', 'mpv',
+  'm2v', 'svi', 'mpe', 'nsv', 'f4p', 'f4a', 'f4b',
+];
 
 function isVideoFile(fileName: string): boolean {
   const ext = fileName.split('.').pop()?.toLowerCase() || '';
