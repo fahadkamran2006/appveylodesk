@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import AgencyDrilldownSheet from "@/components/super-admin/AgencyDrilldownSheet";
 import BugReportsTab from "@/components/super-admin/BugReportsTab";
+import MarketingTab from "@/components/super-admin/MarketingTab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -71,6 +72,7 @@ export default function SuperAdminDashboard() {
             <TabsTrigger value="agencies">Agency Leaderboard</TabsTrigger>
             <TabsTrigger value="storage">Storage Monitor</TabsTrigger>
             <TabsTrigger value="bugs">Bug Reports</TabsTrigger>
+            <TabsTrigger value="marketing">Marketing</TabsTrigger>
             <TabsTrigger value="logs">System Events</TabsTrigger>
           </TabsList>
 
@@ -145,6 +147,11 @@ export default function SuperAdminDashboard() {
           {/* Bug Reports */}
           <TabsContent value="bugs">
             <BugReportsTab />
+          </TabsContent>
+
+          {/* Marketing */}
+          <TabsContent value="marketing">
+            <MarketingTab />
           </TabsContent>
 
           {/* System Logs */}

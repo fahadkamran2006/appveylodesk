@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import { Users, FolderKanban, DollarSign, HardDrive } from "lucide-react";
 import type { AgencyStat } from "@/hooks/useSuperAdminStats";
+import AgencyManagement from "./AgencyManagement";
 
 function formatBytes(bytes: number) {
   if (bytes >= 1e12) return `${(bytes / 1e12).toFixed(2)} TB`;
@@ -239,8 +240,15 @@ export default function AgencyDrilldownSheet({ agency, open, onOpenChange }: Age
                 )}
               </TabsContent>
             </Tabs>
+
+            {/* Super Admin Management Controls */}
+            {agency && (
+              <AgencyManagement agency={agency} onClose={() => onOpenChange(false)} />
+            )}
           </div>
         )}
+      </SheetContent>
+    </Sheet>
       </SheetContent>
     </Sheet>
   );
