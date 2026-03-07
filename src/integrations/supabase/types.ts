@@ -124,6 +124,50 @@ export type Database = {
           },
         ]
       }
+      agency_restrictions: {
+        Row: {
+          agency_id: string
+          created_at: string
+          created_by: string
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          message: string
+          restriction_type: string
+          updated_at: string
+        }
+        Insert: {
+          agency_id: string
+          created_at?: string
+          created_by: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          message?: string
+          restriction_type: string
+          updated_at?: string
+        }
+        Update: {
+          agency_id?: string
+          created_at?: string
+          created_by?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          message?: string
+          restriction_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agency_restrictions_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bug_reports: {
         Row: {
           agency_id: string | null
@@ -671,6 +715,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      marketing_emails_log: {
+        Row: {
+          email_type: string
+          id: string
+          metadata: Json | null
+          sent_at: string
+          user_id: string
+        }
+        Insert: {
+          email_type: string
+          id?: string
+          metadata?: Json | null
+          sent_at?: string
+          user_id: string
+        }
+        Update: {
+          email_type?: string
+          id?: string
+          metadata?: Json | null
+          sent_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       message_reactions: {
         Row: {
