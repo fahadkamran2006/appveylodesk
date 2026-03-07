@@ -1139,9 +1139,9 @@ const StoragePage = () => {
             </div>
           )}
         </div>
-          )}
         </>
         )}
+
       </div>
 
       {/* File Preview Modal */}
