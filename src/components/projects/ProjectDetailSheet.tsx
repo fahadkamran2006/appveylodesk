@@ -245,9 +245,9 @@ export function ProjectDetailSheet({
   const deliverableFiles = deliverables.filter(d => d.file_type === 'deliverable');
 
   const handleViewVideo = (deliverable: Deliverable) => {
-    setSelectedVideo(deliverable);
-    setActiveTab('review');
-    setCurrentTimestamp(0);
+    // Navigate to the dedicated review page instead of sidebar
+    onOpenChange(false);
+    navigate(`/review/internal/${project?.id}/${deliverable.id}`);
   };
 
   const handleAddComment = async (content: string, timestampSeconds?: number) => {
