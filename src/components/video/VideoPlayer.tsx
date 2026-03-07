@@ -168,6 +168,8 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
   const hlsRef = useRef<Hls | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const playerJsRef = useRef<any>(null);
   
   const [playbackUrl, setPlaybackUrl] = useState<string | null>(null);
   const [isHls, setIsHls] = useState(false);
@@ -191,22 +193,13 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
       setCurrentTime(seconds);
       currentTimeRef.current = seconds;
       onSeekToComment?.(seconds);
-    } else if (iframeRef.current && streamVideoId) {
-      // Send seek command to Bunny iframe using Player.js standard
-      // Try both formats for compatibility
-      iframeRef.current.contentWindow?.postMessage({
-        method: 'setCurrentTime',
-        value: seconds
-      }, '*');
-      iframeRef.current.contentWindow?.postMessage({
-        event: 'seek',
-        time: seconds
-      }, '*');
+    } else if (playerJsRef.current) {
+      playerJsRef.current.setCurrentTime(seconds);
       setCurrentTime(seconds);
       currentTimeRef.current = seconds;
       onSeekToComment?.(seconds);
     }
-  }, [streamVideoId, onSeekToComment]);
+  }, [onSeekToComment]);
 
   // Expose methods for parent components
   useImperativeHandle(ref, () => ({
@@ -214,26 +207,19 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
       if (videoRef.current) {
         videoRef.current.pause();
         setIsPaused(true);
-        // Update currentTimeRef with latest value from video element
         const time = videoRef.current.currentTime;
         currentTimeRef.current = time;
         setCurrentTime(time);
         onTimeUpdate?.(time);
-      } else if (iframeRef.current && streamVideoId) {
-        // Use Player.js standard with 'method' key
-        iframeRef.current.contentWindow?.postMessage({ method: 'pause' }, '*');
+      } else if (playerJsRef.current) {
+        playerJsRef.current.pause();
         setIsPaused(true);
-        // Request current time immediately after pause using Player.js standard
-        iframeRef.current.contentWindow?.postMessage({ method: 'getCurrentTime' }, '*');
-        // The current time from currentTimeRef should be fairly accurate due to polling
-        // Notify parent of the current time
         onTimeUpdate?.(currentTimeRef.current);
         onPause?.();
       }
     },
     getCurrentTime: () => {
       if (videoRef.current) {
-        // Always get fresh value from video element
         return videoRef.current.currentTime;
       }
       return currentTimeRef.current;
@@ -241,135 +227,91 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
     seekTo
   }));
 
-  // Listen for Bunny Stream iframe messages
+  // Load Player.js library dynamically and initialize when iframe is ready
   useEffect(() => {
-    if (!useIframeEmbed) return;
+    if (!useIframeEmbed || !streamVideoId) return;
 
-    const handleMessage = (event: MessageEvent) => {
-      // Bunny Stream uses Player.js standard - sends various message formats
-      const data = event.data;
-      
-      if (typeof data !== 'object' || !data) return;
-      
-      // Log all messages for debugging (helps troubleshoot iframe communication)
-      if (data.event || data.method || data.name || data.seconds !== undefined || data.value !== undefined) {
-        console.log('[BunnyStream Message]', data);
-      }
-      
-      // Handle Player.js method responses: { method: 'getCurrentTime', value: X }
-      if (data.method === 'getCurrentTime' && typeof data.value === 'number') {
-        setCurrentTime(data.value);
-        currentTimeRef.current = data.value;
-        onTimeUpdate?.(data.value);
-        return;
-      }
-      
-      if (data.method === 'getDuration' && typeof data.value === 'number') {
-        setDuration(data.value);
-        return;
-      }
-      
-      // Handle Player.js event responses: { event: 'timeupdate', data: { seconds: X, duration: Y } }
-      if (data.event === 'timeupdate' && data.data) {
-        const time = data.data.seconds ?? data.data.currentTime ?? 0;
-        const dur = data.data.duration;
-        if (typeof time === 'number' && time >= 0) {
-          setCurrentTime(time);
-          currentTimeRef.current = time;
-          onTimeUpdate?.(time);
+    // Load Player.js from Bunny CDN if not already loaded
+    const loadPlayerJs = (): Promise<void> => {
+      return new Promise((resolve, reject) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if ((window as any).playerjs) {
+          resolve();
+          return;
         }
-        if (typeof dur === 'number' && dur > 0) {
-          setDuration(dur);
-        }
-        return;
-      }
-      
-      // Handle time updates from Bunny player - check all possible legacy formats
-      const hasTimeData = 
-        data.event === 'timeupdate' || 
-        data.type === 'timeupdate' || 
-        data.name === 'timeupdate' ||
-        typeof data.currentTime === 'number' ||
-        typeof data.time === 'number' ||
-        typeof data.seconds === 'number';
+        const script = document.createElement('script');
+        script.src = '//assets.mediadelivery.net/playerjs/player-0.1.0.min.js';
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error('Failed to load Player.js'));
+        document.head.appendChild(script);
+      });
+    };
+
+    let cancelled = false;
+
+    const initPlayer = async () => {
+      try {
+        await loadPlayerJs();
+        if (cancelled || !iframeRef.current) return;
         
-      if (hasTimeData) {
-        const time = data.currentTime ?? data.time ?? data.seconds ?? data.position ?? 0;
-        if (typeof time === 'number' && time >= 0) {
-          setCurrentTime(time);
-          currentTimeRef.current = time;
-          onTimeUpdate?.(time);
-        }
-      }
-      
-      // Handle duration info
-      if (data.event === 'durationchange' || data.type === 'durationchange' || 
-          data.name === 'durationchange' || typeof data.duration === 'number') {
-        const dur = data.duration ?? 0;
-        if (typeof dur === 'number' && dur > 0) {
-          setDuration(dur);
-        }
-      }
-      
-      // Handle play/pause events from Bunny
-      if (data.event === 'pause' || data.type === 'pause' || data.name === 'pause') {
-        setIsPaused(true);
-        // When paused, capture the current time and notify parent
-        const time = data.currentTime ?? currentTimeRef.current;
-        if (typeof time === 'number') {
-          currentTimeRef.current = time;
-          setCurrentTime(time);
-          onTimeUpdate?.(time);
-        }
-        onPause?.();
-      }
-      if (data.event === 'play' || data.type === 'play' || 
-          data.event === 'playing' || data.name === 'play' || data.name === 'playing') {
-        setIsPaused(false);
-        onPlay?.();
-      }
-      
-      // Handle loaded metadata
-      if ((data.event === 'loadedmetadata' || data.name === 'loadedmetadata') && data.duration) {
-        setDuration(data.duration);
-      }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const PlayerJS = (window as any).playerjs;
+        if (!PlayerJS) return;
 
-      // Handle ready event - request initial time using Player.js standard
-      if (data.event === 'ready' || data.name === 'ready') {
-        if (iframeRef.current?.contentWindow) {
-          iframeRef.current.contentWindow.postMessage({ method: 'getCurrentTime' }, '*');
-          iframeRef.current.contentWindow.postMessage({ method: 'getDuration' }, '*');
-          // Also listen for events by subscribing
-          iframeRef.current.contentWindow.postMessage({ method: 'addEventListener', value: 'timeupdate' }, '*');
-          iframeRef.current.contentWindow.postMessage({ method: 'addEventListener', value: 'pause' }, '*');
-          iframeRef.current.contentWindow.postMessage({ method: 'addEventListener', value: 'play' }, '*');
-        }
+        const player = new PlayerJS.Player(iframeRef.current);
+        playerJsRef.current = player;
+
+        player.on('ready', () => {
+          console.log('[VideoPlayer] Player.js ready');
+          
+          player.getDuration((dur: number) => {
+            if (!cancelled) setDuration(dur);
+          });
+
+          player.on('timeupdate', (data: { seconds: number; duration: number }) => {
+            if (cancelled) return;
+            const time = data.seconds;
+            setCurrentTime(time);
+            currentTimeRef.current = time;
+            onTimeUpdate?.(time);
+            if (data.duration > 0) setDuration(data.duration);
+          });
+
+          player.on('pause', () => {
+            if (cancelled) return;
+            setIsPaused(true);
+            player.getCurrentTime((time: number) => {
+              if (cancelled) return;
+              currentTimeRef.current = time;
+              setCurrentTime(time);
+              onTimeUpdate?.(time);
+            });
+            onPause?.();
+          });
+
+          player.on('play', () => {
+            if (cancelled) return;
+            setIsPaused(false);
+            onPlay?.();
+          });
+
+          player.on('ended', () => {
+            if (cancelled) return;
+            setIsPaused(true);
+          });
+        });
+      } catch (e) {
+        console.warn('[VideoPlayer] Failed to init Player.js:', e);
       }
     };
 
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, [useIframeEmbed, onTimeUpdate, onPause, onPlay]);
+    initPlayer();
 
-  // Poll for time updates when using iframe (fallback for iframes that don't send events)
-  useEffect(() => {
-    if (!useIframeEmbed || !streamVideoId || !iframeRef.current) return;
-    
-    // Request current time from iframe periodically using Player.js standard
-    const pollInterval = setInterval(() => {
-      if (iframeRef.current?.contentWindow) {
-        try {
-          // Use Player.js standard 'method' key
-          iframeRef.current.contentWindow.postMessage({ method: 'getCurrentTime' }, '*');
-          iframeRef.current.contentWindow.postMessage({ method: 'getDuration' }, '*');
-        } catch (e) {
-          // Ignore cross-origin errors
-        }
-      }
-    }, 200); // Poll frequently for better timestamp accuracy
-    
-    return () => clearInterval(pollInterval);
-  }, [useIframeEmbed, streamVideoId]);
+    return () => {
+      cancelled = true;
+      playerJsRef.current = null;
+    };
+  }, [useIframeEmbed, streamVideoId, onTimeUpdate, onPause, onPlay]);
 
   // Cleanup HLS instance
   const cleanupHls = useCallback(() => {
@@ -610,32 +552,9 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Handle iframe load - request initial data and subscribe to events
-  // MUST be defined before any early returns to satisfy React hooks rules
+  // Handle iframe load - Player.js initialization happens in the useEffect above
   const handleIframeLoad = useCallback(() => {
-    if (iframeRef.current?.contentWindow) {
-      // Give the player a moment to initialize, then request time/duration and subscribe to events
-      setTimeout(() => {
-        try {
-          const win = iframeRef.current?.contentWindow;
-          if (!win) return;
-          
-          // Player.js standard - request current state
-          win.postMessage({ method: 'getCurrentTime' }, '*');
-          win.postMessage({ method: 'getDuration' }, '*');
-          
-          // Subscribe to events using Player.js standard
-          win.postMessage({ method: 'addEventListener', value: 'timeupdate' }, '*');
-          win.postMessage({ method: 'addEventListener', value: 'pause' }, '*');
-          win.postMessage({ method: 'addEventListener', value: 'play' }, '*');
-          win.postMessage({ method: 'addEventListener', value: 'ended' }, '*');
-          
-          console.log('[VideoPlayer] Subscribed to Bunny iframe events');
-        } catch (e) {
-          console.log('Could not send initial postMessage to iframe:', e);
-        }
-      }, 500);
-    }
+    console.log('[VideoPlayer] Bunny iframe loaded');
   }, []);
 
   if (error) {
