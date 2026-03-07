@@ -55,7 +55,7 @@ export function CommentPanel({
     
     setIsSubmitting(true);
     try {
-      await onAddComment(newComment.trim(), currentTimestamp > 0 ? currentTimestamp : undefined);
+      await onAddComment(newComment.trim(), currentTimestamp);
       setNewComment('');
     } finally {
       setIsSubmitting(false);
@@ -104,7 +104,7 @@ export function CommentPanel({
                 Public
               </Badge>
             )}
-            {comment.timestamp_seconds > 0 && (
+            {comment.timestamp_seconds >= 0 && (
               <button
                 onClick={() => onSeekToTimestamp?.(comment.timestamp_seconds)}
                 className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[11px] font-mono font-medium hover:bg-primary/20 transition-colors cursor-pointer"
@@ -177,7 +177,7 @@ export function CommentPanel({
 
       {/* Add comment form */}
       <div className="p-4 border-b border-border">
-        {currentTimestamp > 0 && (
+        {currentTimestamp >= 0 && (
           <div className="flex items-center gap-1.5 mb-2 text-xs text-muted-foreground">
             <Clock className="w-3 h-3 text-primary" />
             <span>Commenting at</span>
