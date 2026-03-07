@@ -34,6 +34,31 @@ export function BugReportModal() {
         priority,
       } as any);
       if (error) throw error;
+
+      // Send email notification to super admin
+      try {
+        await supabase.functions.invoke("super-admin-actions", {
+          body: {
+            action: "send_custom_email",
+            to_email: "m.fahadkamran0001@gmail.com",
+            subject: `[Veylodesk ${type === "bug" ? "Bug" : "Suggestion"}] ${title.trim()}`,
+            html_body: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; padding: 30px;">
+                <h2 style="color: #1a1a2e;">${type === "bug" ? "🐛 Bug Report" : "💡 Suggestion"}</h2>
+                <p><strong>Title:</strong> ${title.trim()}</p>
+                <p><strong>Description:</strong> ${description.trim()}</p>
+                ${type === "bug" ? `<p><strong>Priority:</strong> ${priority}</p>` : ""}
+                <p><strong>Reported by:</strong> ${user.email}</p>
+                <p><strong>Agency:</strong> ${profile?.agency_id || "N/A"}</p>
+                <hr style="border: none; border-top: 1px solid #eee;" />
+                <p style="color: #888; font-size: 12px;">View in Super Admin → Bug Reports tab</p>
+              </div>
+            `,
+          },
+        });
+      } catch (emailErr) {
+        console.warn("Failed to send bug report email:", emailErr);
+      }
       toast.success("Thank you! Your report has been submitted.");
       setOpen(false);
       setTitle("");
