@@ -252,8 +252,8 @@ export function ProjectDetailSheet({
     navigate(`/review/internal/${project?.id}/${deliverable.id}`);
   };
 
-  const handleAddComment = async (content: string, timestampSeconds?: number) => {
-    await addComment(content, timestampSeconds);
+  const handleAddComment = async (content: string, timestampSeconds?: number, parentId?: string | null) => {
+    await addComment(content, timestampSeconds, parentId || undefined);
   };
 
   const handleBackFromVideo = () => {
