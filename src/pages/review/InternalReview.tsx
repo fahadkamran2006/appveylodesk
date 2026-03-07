@@ -85,8 +85,8 @@ export default function InternalReview() {
     setCurrentTimestamp(seconds);
   }, []);
 
-  const handleAddComment = async (content: string, timestampSeconds?: number) => {
-    await addComment(content, timestampSeconds);
+  const handleAddComment = async (content: string, timestampSeconds?: number, parentId?: string | null) => {
+    await addComment(content, timestampSeconds, parentId || undefined);
   };
 
   const canResolve = userRole === 'admin' || userRole === 'editor';

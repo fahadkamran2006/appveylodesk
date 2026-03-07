@@ -18,10 +18,13 @@ import {
   Send,
   Undo2,
   Globe,
-  Clock,
   MoreVertical,
   Pencil,
   Trash2,
+  Reply,
+  Play,
+  CornerDownRight,
+  X,
 } from 'lucide-react';
 import { VideoComment } from '@/hooks/useVideoComments';
 
@@ -30,7 +33,7 @@ interface CommentPanelProps {
   unresolvedComments: VideoComment[];
   resolvedComments: VideoComment[];
   canResolve: boolean;
-  onAddComment: (content: string, timestampSeconds?: number) => void;
+  onAddComment: (content: string, timestampSeconds?: number, parentId?: string | null) => void;
   onResolveComment: (commentId: string) => void;
   onUnresolveComment: (commentId: string) => void;
   onEditComment?: (commentId: string, newContent: string) => void;
@@ -66,14 +69,16 @@ export function CommentPanel({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
+  const [replyingTo, setReplyingTo] = useState<VideoComment | null>(null);
 
   const handleSubmit = async () => {
     if (!newComment.trim()) return;
     
     setIsSubmitting(true);
     try {
-      await onAddComment(newComment.trim(), currentTimestamp);
+      await onAddComment(newComment.trim(), currentTimestamp, replyingTo?.id || null);
       setNewComment('');
+      setReplyingTo(null);
     } finally {
       setIsSubmitting(false);
     }
@@ -95,57 +100,63 @@ export function CommentPanel({
       .slice(0, 2);
   };
 
-  const CommentItem = ({ comment, showResolveButton }: { comment: VideoComment; showResolveButton: boolean }) => {
+  const TimestampBadge = ({ seconds, onClick }: { seconds: number; onClick?: () => void }) => (
+    <button
+      onClick={onClick}
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-primary/15 to-primary/5 text-primary text-[11px] font-mono font-semibold hover:from-primary/25 hover:to-primary/15 transition-all cursor-pointer ring-1 ring-primary/20 hover:ring-primary/40 shadow-sm"
+      title="Jump to timestamp"
+    >
+      <Play className="w-2.5 h-2.5 fill-current" />
+      {formatTimestamp(seconds)}
+    </button>
+  );
+
+  const SingleComment = ({ comment, showResolveButton, isReply = false }: { comment: VideoComment; showResolveButton: boolean; isReply?: boolean }) => {
     const isOwn = currentUserId && comment.user_id === currentUserId;
     const canEdit = isOwn && comment.source !== 'public' && onEditComment;
     const canDelete = (isOwn || showResolveButton) && comment.source !== 'public' && onDeleteComment;
-    const showMenu = canEdit || canDelete;
+    const canReply = !isReply && comment.source !== 'public'; // only top-level internal comments can be replied to
+    const showMenu = canEdit || canDelete || canReply;
 
     return (
       <div
         className={cn(
-          'p-3 rounded-lg border transition-colors group',
+          'rounded-lg border transition-all group',
+          isReply ? 'p-2.5' : 'p-3',
           comment.is_resolved 
             ? 'bg-muted/30 border-border/30' 
-            : 'bg-card border-border hover:border-primary/30'
+            : 'bg-card border-border hover:border-primary/20 hover:shadow-sm'
         )}
       >
-        <div className="flex items-start gap-3">
-          <Avatar className="w-8 h-8">
+        <div className="flex items-start gap-2.5">
+          <Avatar className={cn(isReply ? 'w-6 h-6' : 'w-8 h-8')}>
             <AvatarImage src={comment.user_avatar} />
             <AvatarFallback className={cn(
-              'text-xs',
+              'text-xs font-medium',
               comment.source === 'public' 
-                ? 'bg-violet-500/20 text-violet-600 dark:text-violet-400' 
-                : 'bg-primary/20 text-primary'
+                ? 'bg-violet-500/15 text-violet-600 dark:text-violet-400' 
+                : 'bg-primary/15 text-primary'
             )}>
               {getInitials(comment.user_name || 'U')}
             </AvatarFallback>
           </Avatar>
 
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <span className="font-medium text-sm text-foreground truncate">
+            <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+              <span className={cn(
+                'font-semibold text-foreground truncate',
+                isReply ? 'text-xs' : 'text-sm'
+              )}>
                 {comment.user_name}
               </span>
               {comment.source === 'public' && (
-                <Badge variant="outline" className="text-[10px] h-4 gap-0.5">
-                  <Globe className="w-2.5 h-2.5" />
+                <Badge variant="outline" className="text-[9px] h-[18px] gap-0.5 px-1.5 rounded-full border-violet-300/50 text-violet-600 dark:text-violet-400 bg-violet-500/5">
+                  <Globe className="w-2 h-2" />
                   Public
                 </Badge>
               )}
-              {comment.timestamp_seconds >= 0 && (
-                <button
-                  onClick={() => onSeekToTimestamp?.(comment.timestamp_seconds)}
-                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[11px] font-mono font-medium hover:bg-primary/20 transition-colors cursor-pointer"
-                  title="Jump to timestamp"
-                >
-                  <Clock className="w-2.5 h-2.5" />
-                  {formatTimestamp(comment.timestamp_seconds)}
-                </button>
-              )}
-              <span className="text-xs text-muted-foreground">
-                {new Date(comment.created_at).toLocaleDateString()}
+              <span className="text-[10px] text-muted-foreground/70">
+                {new Date(comment.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
               </span>
 
               {/* Actions menu */}
@@ -157,6 +168,12 @@ export function CommentPanel({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    {canReply && (
+                      <DropdownMenuItem onClick={() => setReplyingTo(comment)}>
+                        <Reply className="w-3 h-3 mr-2" />
+                        Reply
+                      </DropdownMenuItem>
+                    )}
                     {canEdit && (
                       <DropdownMenuItem onClick={() => { setEditingId(comment.id); setEditContent(comment.content); }}>
                         <Pencil className="w-3 h-3 mr-2" />
@@ -174,6 +191,16 @@ export function CommentPanel({
               )}
             </div>
 
+            {/* Timestamp badge */}
+            {comment.timestamp_seconds >= 0 && (
+              <div className="mb-1.5">
+                <TimestampBadge
+                  seconds={comment.timestamp_seconds}
+                  onClick={() => onSeekToTimestamp?.(comment.timestamp_seconds)}
+                />
+              </div>
+            )}
+
             {editingId === comment.id ? (
               <div className="space-y-2">
                 <Textarea
@@ -189,36 +216,49 @@ export function CommentPanel({
               </div>
             ) : (
               <p className={cn(
-                'text-sm',
-                comment.is_resolved ? 'text-muted-foreground line-through' : 'text-foreground'
+                'text-sm leading-relaxed',
+                comment.is_resolved ? 'text-muted-foreground line-through' : 'text-foreground/90'
               )}>
                 {comment.content}
               </p>
             )}
 
-            {/* Resolve button - works for BOTH internal and public comments */}
-            {showResolveButton && editingId !== comment.id && (
-              <div className="mt-2">
-                {comment.is_resolved ? (
+            {/* Reply button inline */}
+            {!isReply && editingId !== comment.id && (
+              <div className="flex items-center gap-2 mt-2">
+                {!comment.is_resolved && (
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => onUnresolveComment(comment.id)}
-                    className="h-7 text-xs text-muted-foreground hover:text-foreground"
+                    onClick={() => setReplyingTo(comment)}
+                    className="h-6 text-[11px] text-muted-foreground hover:text-foreground px-2 gap-1"
                   >
-                    <Undo2 className="w-3 h-3 mr-1" />
-                    Reopen
+                    <Reply className="w-3 h-3" />
+                    Reply
                   </Button>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onResolveComment(comment.id)}
-                    className="h-7 text-xs"
-                  >
-                    <CheckCircle2 className="w-3 h-3 mr-1" />
-                    Mark Resolved
-                  </Button>
+                )}
+                {showResolveButton && (
+                  comment.is_resolved ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onUnresolveComment(comment.id)}
+                      className="h-6 text-[11px] text-muted-foreground hover:text-foreground px-2 gap-1"
+                    >
+                      <Undo2 className="w-3 h-3" />
+                      Reopen
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onResolveComment(comment.id)}
+                      className="h-6 text-[11px] text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10 px-2 gap-1"
+                    >
+                      <CheckCircle2 className="w-3 h-3" />
+                      Resolve
+                    </Button>
+                  )
                 )}
               </div>
             )}
@@ -228,9 +268,24 @@ export function CommentPanel({
     );
   };
 
-  // Include public unresolved in "open" tab
-  const allUnresolved = comments.filter(c => !c.is_resolved);
-  const allResolved = comments.filter(c => c.is_resolved);
+  const CommentThread = ({ comment, showResolveButton }: { comment: VideoComment; showResolveButton: boolean }) => {
+    const replies = comment.replies || [];
+    return (
+      <div className="space-y-1">
+        <SingleComment comment={comment} showResolveButton={showResolveButton} />
+        {replies.length > 0 && (
+          <div className="ml-5 pl-3 border-l-2 border-primary/10 space-y-1">
+            {replies.map(reply => (
+              <SingleComment key={reply.id} comment={reply} showResolveButton={showResolveButton} isReply />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const allUnresolved = unresolvedComments;
+  const allResolved = resolvedComments;
 
   return (
     <div className={cn('flex flex-col h-full', className)}>
@@ -239,26 +294,36 @@ export function CommentPanel({
         <MessageSquare className="w-5 h-5 text-primary" />
         <h3 className="font-semibold text-foreground">Feedback</h3>
         {allUnresolved.length > 0 && (
-          <Badge variant="secondary" className="ml-auto">
+          <Badge variant="secondary" className="ml-auto text-xs">
             {allUnresolved.length} open
           </Badge>
         )}
       </div>
 
       {/* Add comment form */}
-      <div className="p-4 border-b border-border">
-        {currentTimestamp >= 0 && (
-          <div className="flex items-center gap-1.5 mb-2 text-xs text-muted-foreground">
-            <Clock className="w-3 h-3 text-primary" />
-            <span>Commenting at</span>
-            <span className="font-mono font-medium text-primary">{formatTimestamp(currentTimestamp)}</span>
+      <div className="p-4 border-b border-border space-y-2">
+        {replyingTo && (
+          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-primary/5 border border-primary/10 text-xs">
+            <CornerDownRight className="w-3 h-3 text-primary shrink-0" />
+            <span className="text-muted-foreground truncate">
+              Replying to <span className="font-medium text-foreground">{replyingTo.user_name}</span>
+            </span>
+            <Button variant="ghost" size="icon" className="h-4 w-4 ml-auto shrink-0" onClick={() => setReplyingTo(null)}>
+              <X className="w-3 h-3" />
+            </Button>
+          </div>
+        )}
+        {!replyingTo && currentTimestamp >= 0 && (
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] text-muted-foreground">Commenting at</span>
+            <TimestampBadge seconds={currentTimestamp} />
           </div>
         )}
         <div className="flex gap-2">
           <Textarea
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
-            placeholder="Add feedback..."
+            placeholder={replyingTo ? `Reply to ${replyingTo.user_name}...` : 'Add feedback...'}
             className="min-h-[60px] resize-none bg-surface-elevated"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
@@ -300,7 +365,7 @@ export function CommentPanel({
                 </div>
               ) : (
                 allUnresolved.map(comment => (
-                  <CommentItem 
+                  <CommentThread 
                     key={comment.id} 
                     comment={comment} 
                     showResolveButton={canResolve}
@@ -321,7 +386,7 @@ export function CommentPanel({
                 </div>
               ) : (
                 allResolved.map(comment => (
-                  <CommentItem 
+                  <CommentThread 
                     key={comment.id} 
                     comment={comment} 
                     showResolveButton={canResolve}

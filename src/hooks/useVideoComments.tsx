@@ -18,6 +18,8 @@ export interface VideoComment {
   user_avatar?: string;
   source?: 'internal' | 'public';
   review_link_id?: string;
+  parent_id?: string | null;
+  replies?: VideoComment[];
 }
 
 export function useVideoComments(deliverableId: string | null) {
@@ -31,7 +33,6 @@ export function useVideoComments(deliverableId: string | null) {
 
     setLoading(true);
     try {
-      // Fetch internal comments
       const { data, error } = await supabase
         .from('deliverable_comments')
         .select('*')
@@ -54,6 +55,7 @@ export function useVideoComments(deliverableId: string | null) {
         user_name: profileMap.get(comment.user_id)?.full_name || profileMap.get(comment.user_id)?.email || 'Unknown',
         user_avatar: profileMap.get(comment.user_id)?.avatar_url || undefined,
         source: 'internal' as const,
+        parent_id: (comment as any).parent_id || null,
       }));
 
       // Fetch public review comments
@@ -85,6 +87,7 @@ export function useVideoComments(deliverableId: string | null) {
           user_name: c.reviewer_name || 'Anonymous',
           source: 'public' as const,
           review_link_id: c.review_link_id,
+          parent_id: null,
         }));
       }
 
@@ -102,19 +105,23 @@ export function useVideoComments(deliverableId: string | null) {
 
   const addComment = useCallback(async (
     content: string,
-    timestampSeconds: number = 0
+    timestampSeconds: number = 0,
+    parentId?: string | null
   ): Promise<VideoComment | null> => {
     if (!user || !deliverableId) return null;
 
     try {
+      const insertData: any = {
+        deliverable_id: deliverableId,
+        user_id: user.id,
+        content,
+        timestamp_seconds: timestampSeconds,
+      };
+      if (parentId) insertData.parent_id = parentId;
+
       const { data, error } = await supabase
         .from('deliverable_comments')
-        .insert({
-          deliverable_id: deliverableId,
-          user_id: user.id,
-          content,
-          timestamp_seconds: timestampSeconds,
-        })
+        .insert(insertData)
         .select()
         .single();
 
@@ -125,6 +132,7 @@ export function useVideoComments(deliverableId: string | null) {
         timestamp_seconds: timestampSeconds,
         user_name: 'You',
         source: 'internal',
+        parent_id: (data as any).parent_id || null,
       };
 
       setComments(prev => [...prev, newComment]);
@@ -139,8 +147,6 @@ export function useVideoComments(deliverableId: string | null) {
 
   const resolveComment = useCallback(async (commentId: string): Promise<boolean> => {
     if (!user) return false;
-
-    // Find the comment to determine if it's public or internal
     const comment = comments.find(c => c.id === commentId);
     if (!comment) return false;
 
@@ -148,36 +154,27 @@ export function useVideoComments(deliverableId: string | null) {
       if (comment.source === 'public') {
         const { error } = await supabase
           .from('public_review_comments')
-          .update({
-            is_resolved: true,
-            resolved_by: user.id,
-            resolved_at: new Date().toISOString(),
-          } as any)
+          .update({ is_resolved: true, resolved_by: user.id, resolved_at: new Date().toISOString() } as any)
           .eq('id', commentId);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from('deliverable_comments')
-          .update({
-            is_resolved: true,
-            resolved_by: user.id,
-            resolved_at: new Date().toISOString(),
-          })
+          .update({ is_resolved: true, resolved_by: user.id, resolved_at: new Date().toISOString() })
           .eq('id', commentId);
         if (error) throw error;
       }
 
-      setComments(prev => prev.map(c => 
-        c.id === commentId 
+      setComments(prev => prev.map(c =>
+        c.id === commentId
           ? { ...c, is_resolved: true, resolved_by: user.id, resolved_at: new Date().toISOString() }
           : c
       ));
-
-      toast({ title: 'Feedback resolved', description: 'The feedback has been marked as addressed' });
+      toast({ title: 'Feedback resolved' });
       return true;
     } catch (error: any) {
       console.error('Error resolving comment:', error);
-      toast({ title: 'Failed to resolve', description: error.message || 'Please try again', variant: 'destructive' });
+      toast({ title: 'Failed to resolve', description: error.message, variant: 'destructive' });
       return false;
     }
   }, [user, comments, toast]);
@@ -190,27 +187,19 @@ export function useVideoComments(deliverableId: string | null) {
       if (comment.source === 'public') {
         const { error } = await supabase
           .from('public_review_comments')
-          .update({
-            is_resolved: false,
-            resolved_by: null,
-            resolved_at: null,
-          } as any)
+          .update({ is_resolved: false, resolved_by: null, resolved_at: null } as any)
           .eq('id', commentId);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from('deliverable_comments')
-          .update({
-            is_resolved: false,
-            resolved_by: null,
-            resolved_at: null,
-          })
+          .update({ is_resolved: false, resolved_by: null, resolved_at: null })
           .eq('id', commentId);
         if (error) throw error;
       }
 
-      setComments(prev => prev.map(c => 
-        c.id === commentId 
+      setComments(prev => prev.map(c =>
+        c.id === commentId
           ? { ...c, is_resolved: false, resolved_by: null, resolved_at: null }
           : c
       ));
@@ -233,7 +222,7 @@ export function useVideoComments(deliverableId: string | null) {
 
       if (error) throw error;
 
-      setComments(prev => prev.map(c => 
+      setComments(prev => prev.map(c =>
         c.id === commentId ? { ...c, content: newContent } : c
       ));
       toast({ title: 'Comment updated' });
@@ -254,7 +243,8 @@ export function useVideoComments(deliverableId: string | null) {
 
       if (error) throw error;
 
-      setComments(prev => prev.filter(c => c.id !== commentId));
+      // Remove comment and its replies
+      setComments(prev => prev.filter(c => c.id !== commentId && c.parent_id !== commentId));
       toast({ title: 'Comment deleted' });
       return true;
     } catch (error: any) {
@@ -264,33 +254,37 @@ export function useVideoComments(deliverableId: string | null) {
     }
   }, [toast]);
 
-  const unresolvedComments = comments.filter(c => !c.is_resolved);
-  const resolvedComments = comments.filter(c => c.is_resolved);
+  // Build threaded structure: top-level comments with nested replies
+  const topLevelComments = comments.filter(c => !c.parent_id);
+  const threadedComments = topLevelComments.map(c => ({
+    ...c,
+    replies: comments.filter(r => r.parent_id === c.id).sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    ),
+  }));
+
+  const unresolvedComments = threadedComments.filter(c => !c.is_resolved);
+  const resolvedComments = threadedComments.filter(c => c.is_resolved);
 
   useEffect(() => {
     if (!deliverableId) return;
-
     fetchComments();
 
     const channel = supabase
       .channel(`comments-${deliverableId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'deliverable_comments',
-          filter: `deliverable_id=eq.${deliverableId}`,
-        },
-        () => { fetchComments(); }
-      )
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'deliverable_comments',
+        filter: `deliverable_id=eq.${deliverableId}`,
+      }, () => { fetchComments(); })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
   }, [deliverableId, fetchComments]);
 
   return {
-    comments,
+    comments: threadedComments,
     unresolvedComments,
     resolvedComments,
     loading,

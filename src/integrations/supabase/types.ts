@@ -405,6 +405,7 @@ export type Database = {
           deliverable_id: string
           id: string
           is_resolved: boolean
+          parent_id: string | null
           resolved_at: string | null
           resolved_by: string | null
           timestamp_seconds: number
@@ -417,6 +418,7 @@ export type Database = {
           deliverable_id: string
           id?: string
           is_resolved?: boolean
+          parent_id?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
           timestamp_seconds: number
@@ -429,6 +431,7 @@ export type Database = {
           deliverable_id?: string
           id?: string
           is_resolved?: boolean
+          parent_id?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
           timestamp_seconds?: number
@@ -441,6 +444,13 @@ export type Database = {
             columns: ["deliverable_id"]
             isOneToOne: false
             referencedRelation: "deliverables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deliverable_comments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "deliverable_comments"
             referencedColumns: ["id"]
           },
         ]
