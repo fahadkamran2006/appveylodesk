@@ -177,7 +177,7 @@ export function CommentPanel({
 
       {/* Add comment form */}
       <div className="p-4 border-b border-border">
-        {currentTimestamp > 0 && (
+        {currentTimestamp >= 0 && (
           <div className="flex items-center gap-1.5 mb-2 text-xs text-muted-foreground">
             <Clock className="w-3 h-3 text-primary" />
             <span>Commenting at</span>
