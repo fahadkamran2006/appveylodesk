@@ -127,6 +127,18 @@ export default function PublicReview() {
       .finally(() => setLoading(false));
   }, [token, invoke]);
 
+  // Redirect signed-in users to internal review page
+  useEffect(() => {
+    if (!reviewData) return;
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user && reviewData?.deliverable?.id && reviewData?.deliverable?.project_id) {
+        navigate(`/review/internal/${reviewData.deliverable.project_id}/${reviewData.deliverable.id}`, { replace: true });
+      }
+    };
+    checkAuth();
+  }, [reviewData, navigate]);
+
   const handleSubmitComment = async () => {
     if (!newComment.trim() || !nameSubmitted || !permissions.allow_comments) return;
     setSubmitting(true);
