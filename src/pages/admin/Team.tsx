@@ -317,32 +317,6 @@ const AdminTeam = () => {
         onSuccess={fetchTeamData}
       />
 
-      {/* Detail Sheet */}
-      <PersonDetailSheet
-        open={detailOpen}
-        onOpenChange={setDetailOpen}
-        person={
-          selectedMember
-            ? {
-                id: selectedMember.id,
-                name: selectedMember.full_name || '',
-                email: selectedMember.email,
-                avatarUrl: selectedMember.avatar_url,
-                role: 'editor',
-                createdAt: selectedMember.created_at,
-                employmentType: selectedMember.employment_type as 'salaried' | 'freelance',
-                agencyId: agencyId || undefined,
-              }
-            : null
-        }
-        variant="team"
-        stats={selectedMember ? {
-          completedTasks: editorStats[selectedMember.id]?.completedProjects ?? 0,
-          totalProjects: editorStats[selectedMember.id]?.projects.length ?? 0,
-          avgDeliveryDays: editorStats[selectedMember.id]?.avgDeliveryDays,
-        } : undefined}
-        projects={selectedMember ? editorStats[selectedMember.id]?.projects : undefined}
-      />
 
       {/* Edit Editor Modal */}
       <EditEditorModal
