@@ -44,6 +44,7 @@ const AdminTeam = () => {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([]);
   const [agencyName, setAgencyName] = useState('');
+  const [agencyId, setAgencyId] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
