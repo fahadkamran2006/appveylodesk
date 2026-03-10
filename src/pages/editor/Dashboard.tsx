@@ -180,13 +180,8 @@ const EditorDashboard = () => {
           </div>
         </div>
 
-        {/* Attendance & Leave Cards */}
-        {agencyId && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-6 md:mb-8">
-            <AttendanceCard employmentType={employmentType} agencyId={agencyId} />
-            <LeaveRequestCard agencyId={agencyId} />
-          </div>
-        )}
+
+
 
         {/* Stats Cards - Responsive */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
