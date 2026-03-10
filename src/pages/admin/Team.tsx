@@ -322,7 +322,7 @@ const AdminTeam = () => {
                 role: 'editor',
                 createdAt: selectedMember.created_at,
                 employmentType: selectedMember.employment_type as 'salaried' | 'freelance',
-                agencyId: agencyName ? (teamMembers.length > 0 ? undefined : undefined) : undefined,
+                agencyId: agencyId || undefined,
               }
             : null
         }
