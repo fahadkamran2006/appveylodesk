@@ -379,6 +379,9 @@ const AdminPayroll = () => {
                         <tr>
                           <th className="text-left p-4 text-sm font-medium text-muted-foreground">Editor</th>
                           <th className="text-left p-4 text-sm font-medium text-muted-foreground">Type</th>
+                          <th className="text-center p-4 text-sm font-medium text-muted-foreground">Days</th>
+                          <th className="text-center p-4 text-sm font-medium text-muted-foreground">Hours</th>
+                          <th className="text-center p-4 text-sm font-medium text-muted-foreground">Leaves</th>
                           <th className="text-right p-4 text-sm font-medium text-muted-foreground">Base</th>
                           <th className="text-right p-4 text-sm font-medium text-muted-foreground">Bonus</th>
                           <th className="text-right p-4 text-sm font-medium text-muted-foreground">Total</th>
