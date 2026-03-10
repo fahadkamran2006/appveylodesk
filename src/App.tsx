@@ -32,6 +32,7 @@ import AdminDashboard from "./pages/admin/Dashboard";
 import AdminProjects from "./pages/admin/Projects";
 import AdminClients from "./pages/admin/Clients";
 import AdminTeam from "./pages/admin/Team";
+import AdminEditorPerformance from "./pages/admin/EditorPerformance";
 import AdminInvoices from "./pages/admin/Invoices";
 import AdminPayroll from "./pages/admin/Payroll";
 
