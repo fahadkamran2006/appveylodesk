@@ -47,7 +47,6 @@ const AdminTeam = () => {
   const [agencyId, setAgencyId] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [removeModalOpen, setRemoveModalOpen] = useState(false);
   const [leaderboardPeriod, setLeaderboardPeriod] = useState<TimePeriod>('all');
   const [removeModalOpen, setRemoveModalOpen] = useState(false);
   const [memberToRemove, setMemberToRemove] = useState<TeamMember | null>(null);
