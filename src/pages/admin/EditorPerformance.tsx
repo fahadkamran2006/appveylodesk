@@ -120,8 +120,8 @@ export default function EditorPerformancePage() {
       const aid = roleData.agency_id;
       setAgencyId(aid);
 
-      // Fetch editor profile, logs, leaves, and project assignments in parallel
-      const [profileRes, logsRes, leavesRes, assignmentsRes] = await Promise.all([
+      // Fetch editor profile, logs, leaves, project assignments, and work schedule in parallel
+      const [profileRes, logsRes, leavesRes, assignmentsRes, scheduleRes] = await Promise.all([
         supabase
           .from('profiles')
           .select('id, full_name, email, avatar_url, employment_type, monthly_salary, created_at')
@@ -145,6 +145,11 @@ export default function EditorPerformancePage() {
           .from('project_editors')
           .select('project_id')
           .eq('editor_id', editorId),
+        supabase
+          .from('agency_work_schedule' as any)
+          .select('*')
+          .eq('agency_id', aid)
+          .maybeSingle(),
       ]);
 
       setEditor(profileRes.data as EditorProfile | null);
