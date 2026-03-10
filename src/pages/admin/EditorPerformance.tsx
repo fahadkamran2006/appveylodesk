@@ -156,6 +156,14 @@ export default function EditorPerformancePage() {
       setLogs((logsRes.data || []) as DailyLog[]);
       setLeaves((leavesRes.data || []) as LeaveRequest[]);
 
+      // Apply work schedule config
+      if (scheduleRes.data) {
+        const sched = scheduleRes.data as any;
+        setWorkingDays(sched.working_days || [1, 2, 3, 4, 5]);
+        setLateThresholdHour(sched.late_threshold_hour ?? 10);
+        setLateThresholdMinute(sched.late_threshold_minute ?? 0);
+      }
+
       // Fetch project details
       if (assignmentsRes.data && assignmentsRes.data.length > 0) {
         const projectIds = assignmentsRes.data.map(a => a.project_id);
