@@ -8,6 +8,9 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AttendanceReport } from '@/components/admin/AttendanceReport';
+import { LeaveManagement } from '@/components/admin/LeaveManagement';
 import { Mail, Calendar, FolderKanban, DollarSign, CheckCircle } from 'lucide-react';
 
 interface PersonDetailSheetProps {
