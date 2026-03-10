@@ -248,6 +248,11 @@ const SettingsPage = () => {
               {userRole === 'admin' && (
                 <LegalSettings />
               )}
+
+              {/* Work Schedule Settings - Admin Only */}
+              {userRole === 'admin' && (
+                <WorkScheduleSettings />
+              )}
             </TabsContent>
 
             {/* Notifications Tab */}

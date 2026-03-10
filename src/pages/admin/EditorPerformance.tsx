@@ -297,7 +297,7 @@ export default function EditorPerformancePage() {
       }
     }
     return days;
-  }, [startDate, endDate, attendanceLogs, leaves, formatHours]);
+  }, [startDate, endDate, attendanceLogs, leaves, formatHours, workingDays, lateThresholdHour, lateThresholdMinute]);
 
   const statusColor = (status: string) => {
     switch (status) {
