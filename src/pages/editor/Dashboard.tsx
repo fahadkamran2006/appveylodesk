@@ -55,6 +55,19 @@ const EditorDashboard = () => {
     if (!user) return;
     
     try {
+      // Fetch profile for employment type and agency
+      const [profileRes, roleRes] = await Promise.all([
+        supabase.from('profiles').select('employment_type').eq('id', user.id).maybeSingle(),
+        supabase.from('user_roles').select('agency_id').eq('user_id', user.id).maybeSingle(),
+      ]);
+
+      if (profileRes.data?.employment_type) {
+        setEmploymentType(profileRes.data.employment_type as 'salaried' | 'freelance');
+      }
+      if (roleRes.data?.agency_id) {
+        setAgencyId(roleRes.data.agency_id);
+      }
+
       // Fetch projects assigned to this editor via project_editors table
       const { data, error } = await supabase
         .from('project_editors')
