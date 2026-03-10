@@ -1,0 +1,1 @@
+ALTER TABLE public.agency_work_schedule ADD COLUMN IF NOT EXISTS auto_monthly_report boolean NOT NULL DEFAULT false;
