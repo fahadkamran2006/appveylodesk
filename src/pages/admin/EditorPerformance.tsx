@@ -186,8 +186,16 @@ export default function EditorPerformancePage() {
   const completedProjects = projects.filter(p => p.status === 'done').length;
   const activeProjects = projects.filter(p => ['in_progress', 'review', 'backlog'].includes(p.status)).length;
 
+  const formatHours = (checkIn: string | null, checkOut: string | null) => {
+    if (!checkIn || !checkOut) return '-';
+    const diff = new Date(checkOut).getTime() - new Date(checkIn).getTime();
+    const hours = Math.floor(diff / 3600000);
+    const minutes = Math.floor((diff % 3600000) / 60000);
+    return `${hours}h ${minutes}m`;
+  };
+
   // Late arrival tracking (check-in after 10:00 AM local)
-  const LATE_THRESHOLD_HOUR = 10; // 10:00 AM
+  const LATE_THRESHOLD_HOUR = 10;
   const lateArrivals = useMemo(() => {
     return attendanceLogs.filter(l => {
       if (!l.check_in_at) return false;
@@ -197,7 +205,6 @@ export default function EditorPerformancePage() {
     });
   }, [attendanceLogs]);
 
-  // Avg delivery time
   const avgDeliveryDays = useMemo(() => {
     const completed = projects.filter(p => p.status === 'done' && p.completed_at);
     if (completed.length === 0) return null;
@@ -208,7 +215,7 @@ export default function EditorPerformancePage() {
     return Math.round((totalDays / completed.length) * 10) / 10;
   }, [projects]);
 
-  // Build heatmap data for the selected month range
+  // Build heatmap data
   const heatmapData = useMemo(() => {
     const start = new Date(startDate);
     const end = new Date(endDate);
@@ -220,7 +227,6 @@ export default function EditorPerformancePage() {
       hours?: string;
     }> = [];
 
-    // Build sets for quick lookup
     const attendanceMap = new Map<string, DailyLog>();
     attendanceLogs.forEach(l => attendanceMap.set(l.date, l));
 
@@ -238,14 +244,13 @@ export default function EditorPerformancePage() {
 
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       const dateStr = d.toISOString().split('T')[0];
-      const dayOfWeek = d.getDay(); // 0=Sun, 5=Fri, 6=Sat
+      const dayOfWeek = d.getDay();
 
       if (d > today) {
         days.push({ date: dateStr, dayOfWeek, status: 'future' });
         continue;
       }
 
-      // Weekends (Sat=6, Sun=0) — configurable
       if (dayOfWeek === 0 || dayOfWeek === 6) {
         days.push({ date: dateStr, dayOfWeek, status: 'weekend' });
         continue;
@@ -274,14 +279,6 @@ export default function EditorPerformancePage() {
     }
     return days;
   }, [startDate, endDate, attendanceLogs, leaves, formatHours]);
-
-  const formatHours = (checkIn: string | null, checkOut: string | null) => {
-    if (!checkIn || !checkOut) return '-';
-    const diff = new Date(checkOut).getTime() - new Date(checkIn).getTime();
-    const hours = Math.floor(diff / 3600000);
-    const minutes = Math.floor((diff % 3600000) / 60000);
-    return `${hours}h ${minutes}m`;
-  };
 
   const statusColor = (status: string) => {
     switch (status) {
