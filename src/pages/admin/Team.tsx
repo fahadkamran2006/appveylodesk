@@ -9,11 +9,12 @@ import { PersonCard } from '@/components/PersonCard';
 import { InviteUserModal } from '@/components/InviteUserModal';
 import { PendingInvitationCard } from '@/components/PendingInvitationCard';
 import { EditorLeaderboard } from '@/components/admin/EditorLeaderboard';
+import { TodayAttendance } from '@/components/admin/TodayAttendance';
 import { RemoveMemberModal } from '@/components/RemoveMemberModal';
 import { EditEditorModal } from '@/components/admin/EditEditorModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useEditorStats, type TimePeriod } from '@/hooks/usePersonStats';
-import { UsersRound, UserPlus, Loader2, Clock, CalendarDays } from 'lucide-react';
+import { UsersRound, UserPlus, Loader2, Clock, CalendarDays, Activity } from 'lucide-react';
 import { LeaveManagement } from '@/components/admin/LeaveManagement';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -211,6 +212,19 @@ const AdminTeam = () => {
             </div>
           ) : (
             <div className="space-y-8">
+              {/* Today's Attendance */}
+              {agencyId && teamMembers.length > 0 && (
+                <section>
+                  <div className="flex items-center gap-2 mb-4">
+                    <Activity className="w-5 h-5 text-muted-foreground" />
+                    <h2 className="text-lg font-semibold text-foreground">Today's Attendance</h2>
+                  </div>
+                  <div className="glass-card rounded-xl p-5">
+                    <TodayAttendance agencyId={agencyId} teamMembers={teamMembers} />
+                  </div>
+                </section>
+              )}
+
               {/* Editor Leaderboard */}
               {teamMembers.length > 0 && Object.keys(editorStats).length > 0 && (
                 <section>
