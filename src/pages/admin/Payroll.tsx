@@ -555,7 +555,7 @@ const AdminPayroll = () => {
                       </tbody>
                       <tfoot className="bg-muted/50">
                         <tr>
-                          <td colSpan={4} className="p-4 font-semibold text-foreground">
+                          <td colSpan={7} className="p-4 font-semibold text-foreground">
                             Total Payroll This Month
                           </td>
                           <td className="p-4 text-right font-bold text-primary text-xl">
