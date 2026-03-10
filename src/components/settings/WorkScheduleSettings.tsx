@@ -164,6 +164,20 @@ export function WorkScheduleSettings() {
           </p>
         </div>
 
+        {/* Auto Monthly Report */}
+        <div className="flex items-center justify-between rounded-lg border border-border/50 p-4">
+          <div className="space-y-0.5">
+            <Label className="text-sm font-medium">Auto Monthly Report</Label>
+            <p className="text-xs text-muted-foreground">
+              Automatically email attendance report on the 1st of every month
+            </p>
+          </div>
+          <Switch
+            checked={autoMonthlyReport}
+            onCheckedChange={setAutoMonthlyReport}
+          />
+        </div>
+
         <Button onClick={handleSave} disabled={saving} className="w-full sm:w-auto">
           {saving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</> : 'Save Schedule'}
         </Button>
