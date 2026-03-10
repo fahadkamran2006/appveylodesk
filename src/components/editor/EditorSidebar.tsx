@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Command, LayoutDashboard, FolderKanban, MessageSquare, DollarSign, LogOut, HardDrive, Settings, Calendar } from 'lucide-react';
+import { Command, LayoutDashboard, FolderKanban, MessageSquare, DollarSign, LogOut, HardDrive, Settings, Calendar, ClipboardList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
@@ -12,6 +12,7 @@ const navItems = [
   { label: 'Dashboard', icon: LayoutDashboard, href: '/editor/dashboard' },
   { label: 'My Projects', icon: FolderKanban, href: '/editor/projects' },
   { label: 'Earnings', icon: DollarSign, href: '/editor/earnings' },
+  { label: 'Work Logs', icon: ClipboardList, href: '/editor/work-logs' },
   { label: 'Storage', icon: HardDrive, href: '/editor/storage' },
   { label: 'Messages', icon: MessageSquare, href: '/editor/messages' },
   { label: 'Calendar', icon: Calendar, href: '/editor/calendar' },
