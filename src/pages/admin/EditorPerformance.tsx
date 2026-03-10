@@ -384,13 +384,14 @@ export default function EditorPerformancePage() {
           </div>
 
           {/* Summary Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-6">
             <StatCard icon={<FolderKanban className="w-5 h-5 text-primary" />} value={activeProjects} label="Active Projects" bg="bg-primary/10" />
             <StatCard icon={<CheckCircle2 className="w-5 h-5 text-success" />} value={completedProjects} label="Completed" bg="bg-success/10" />
             <StatCard icon={<LogIn className="w-5 h-5 text-primary" />} value={totalDaysPresent} label="Days Present" bg="bg-primary/10" />
             <StatCard icon={<Clock className="w-5 h-5 text-success" />} value={`${totalHours}h`} label="Total Hours" bg="bg-success/10" />
             <StatCard icon={<FileText className="w-5 h-5 text-warning" />} value={taskLogs.length} label="Task Logs" bg="bg-warning/10" />
             <StatCard icon={<CalendarDays className="w-5 h-5 text-destructive" />} value={approvedLeaves} label="Leaves Taken" bg="bg-destructive/10" />
+            <StatCard icon={<AlertTriangle className="w-5 h-5 text-orange-500" />} value={lateArrivals.length} label="Late Arrivals" bg="bg-orange-500/10" />
           </div>
 
           {avgDeliveryDays !== null && (
@@ -416,6 +417,97 @@ export default function EditorPerformancePage() {
             <span className="text-muted-foreground text-sm">to</span>
             <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-40 h-9 text-sm" />
           </div>
+
+          {/* Attendance Heatmap */}
+          {editor.employment_type === 'salaried' && heatmapData.length > 0 && (
+            <div className="glass-card rounded-xl p-5 mb-6">
+              <h3 className="text-sm font-semibold text-foreground mb-4">Attendance Heatmap</h3>
+              
+              {/* Legend */}
+              <div className="flex flex-wrap items-center gap-4 mb-4 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-success" /> Present</div>
+                <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-orange-500" /> Late</div>
+                <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-destructive" /> Absent</div>
+                <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-blue-500" /> Leave</div>
+                <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-muted" /> Weekend</div>
+                <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm border border-border bg-background" /> Future</div>
+              </div>
+
+              {/* Day labels */}
+              <div className="grid grid-cols-7 gap-1 mb-1">
+                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
+                  <div key={d} className="text-center text-[10px] text-muted-foreground font-medium">{d}</div>
+                ))}
+              </div>
+
+              {/* Heatmap grid */}
+              <div className="grid grid-cols-7 gap-1">
+                {/* Pad first row */}
+                {heatmapData.length > 0 && (() => {
+                  const firstDay = heatmapData[0].dayOfWeek;
+                  const offset = firstDay === 0 ? 6 : firstDay - 1; // Mon=0
+                  return Array.from({ length: offset }).map((_, i) => (
+                    <div key={`pad-${i}`} className="aspect-square" />
+                  ));
+                })()}
+                {heatmapData.map((day) => {
+                  const bgColor = {
+                    present: 'bg-success hover:bg-success/80',
+                    late: 'bg-orange-500 hover:bg-orange-500/80',
+                    absent: 'bg-destructive/80 hover:bg-destructive/60',
+                    leave: 'bg-blue-500 hover:bg-blue-500/80',
+                    weekend: 'bg-muted hover:bg-muted/80',
+                    future: 'bg-background border border-border/50',
+                  }[day.status];
+
+                  const tooltip = day.status === 'present' ? `✅ ${day.date} — In: ${day.checkIn} — ${day.hours}`
+                    : day.status === 'late' ? `⚠️ Late: ${day.date} — In: ${day.checkIn} — ${day.hours}`
+                    : day.status === 'absent' ? `❌ Absent: ${day.date}`
+                    : day.status === 'leave' ? `🏖️ On Leave: ${day.date}`
+                    : day.status === 'weekend' ? `Weekend: ${day.date}`
+                    : day.date;
+
+                  return (
+                    <div
+                      key={day.date}
+                      title={tooltip}
+                      className={cn(
+                        'aspect-square rounded-sm flex items-center justify-center cursor-default transition-colors text-[9px] font-medium',
+                        bgColor,
+                        day.status === 'present' || day.status === 'late' ? 'text-white' : '',
+                        day.status === 'absent' ? 'text-white' : '',
+                        day.status === 'leave' ? 'text-white' : '',
+                      )}
+                    >
+                      {new Date(day.date).getDate()}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Late arrivals summary */}
+              {lateArrivals.length > 0 && (
+                <div className="mt-4 p-3 rounded-lg bg-orange-500/5 border border-orange-500/20">
+                  <p className="text-xs font-medium text-orange-600 dark:text-orange-400 mb-2 flex items-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    Late Arrivals ({lateArrivals.length})
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {lateArrivals.slice(0, 10).map(l => (
+                      <Badge key={l.id} variant="secondary" className="text-[10px] bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20">
+                        {new Date(l.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        {' — '}
+                        {new Date(l.check_in_at!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </Badge>
+                    ))}
+                    {lateArrivals.length > 10 && (
+                      <span className="text-[10px] text-muted-foreground">+{lateArrivals.length - 10} more</span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Tabs */}
           <Tabs defaultValue="attendance" className="w-full">
