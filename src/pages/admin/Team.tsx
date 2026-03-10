@@ -89,9 +89,9 @@ const AdminTeam = () => {
       setAgencyId(agencyIdVal);
       // Fetch agency name, editor profiles, and pending invitations in parallel
       const [agencyResult, editorRolesResult, invitationsResult] = await Promise.all([
-        supabase.from('agencies').select('name').eq('id', agencyId).maybeSingle(),
-        supabase.from('user_roles').select('user_id').eq('agency_id', agencyId).eq('role', 'editor'),
-        supabase.from('agency_invitations').select('*').eq('agency_id', agencyId).eq('role', 'editor').is('accepted_at', null),
+        supabase.from('agencies').select('name').eq('id', agencyIdVal).maybeSingle(),
+        supabase.from('user_roles').select('user_id').eq('agency_id', agencyIdVal).eq('role', 'editor'),
+        supabase.from('agency_invitations').select('*').eq('agency_id', agencyIdVal).eq('role', 'editor').is('accepted_at', null),
       ]);
 
       setAgencyName(agencyResult.data?.name || '');
