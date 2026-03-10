@@ -1,5 +1,3 @@
-
-
 # Super Admin Dashboard ("God Mode")
 
 ## Overview
@@ -102,3 +100,20 @@ Add the route before the catch-all:
 - The `system_logs` table uses strict RLS (super admin read only)
 - The client-side guard is just UX -- the real protection is the edge function rejecting non-super-admin callers
 
+# Employee Attendance, Work Logs & Leave Management System ✅ IMPLEMENTED
+
+## Database
+- `daily_logs` table (unified attendance + task logs) with RLS
+- `leave_requests` table with RLS (editors insert/view own, admins view/update agency)
+
+## UI Components
+- `AttendanceCard` — salaried check-in/out with timer, freelance daily task log
+- `CheckoutModal` — mandatory work summary before checkout
+- `LeaveRequestCard` — editor leave request submission with type/date/reason
+- `AttendanceReport` — admin date-filtered attendance table with stats
+- `LeaveManagement` — admin approve/reject leave requests
+
+## Integrations
+- Editor Dashboard: attendance + leave cards at top
+- Admin Team page: leave management section + attendance/leave tabs in editor detail sheet
+- Admin Payroll: days present, hours worked, unpaid leaves columns
