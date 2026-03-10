@@ -186,6 +186,17 @@ export default function EditorPerformancePage() {
   const completedProjects = projects.filter(p => p.status === 'done').length;
   const activeProjects = projects.filter(p => ['in_progress', 'review', 'backlog'].includes(p.status)).length;
 
+  // Late arrival tracking (check-in after 10:00 AM local)
+  const LATE_THRESHOLD_HOUR = 10; // 10:00 AM
+  const lateArrivals = useMemo(() => {
+    return attendanceLogs.filter(l => {
+      if (!l.check_in_at) return false;
+      const checkInHour = new Date(l.check_in_at).getHours();
+      const checkInMin = new Date(l.check_in_at).getMinutes();
+      return checkInHour > LATE_THRESHOLD_HOUR || (checkInHour === LATE_THRESHOLD_HOUR && checkInMin > 0);
+    });
+  }, [attendanceLogs]);
+
   // Avg delivery time
   const avgDeliveryDays = useMemo(() => {
     const completed = projects.filter(p => p.status === 'done' && p.completed_at);
@@ -196,6 +207,73 @@ export default function EditorPerformancePage() {
     }, 0);
     return Math.round((totalDays / completed.length) * 10) / 10;
   }, [projects]);
+
+  // Build heatmap data for the selected month range
+  const heatmapData = useMemo(() => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const days: Array<{
+      date: string;
+      dayOfWeek: number;
+      status: 'present' | 'late' | 'absent' | 'leave' | 'weekend' | 'future';
+      checkIn?: string;
+      hours?: string;
+    }> = [];
+
+    // Build sets for quick lookup
+    const attendanceMap = new Map<string, DailyLog>();
+    attendanceLogs.forEach(l => attendanceMap.set(l.date, l));
+
+    const leaveDates = new Set<string>();
+    leaves.filter(l => l.status === 'approved').forEach(l => {
+      const ls = new Date(l.start_date);
+      const le = new Date(l.end_date);
+      for (let d = new Date(ls); d <= le; d.setDate(d.getDate() + 1)) {
+        leaveDates.add(d.toISOString().split('T')[0]);
+      }
+    });
+
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const dateStr = d.toISOString().split('T')[0];
+      const dayOfWeek = d.getDay(); // 0=Sun, 5=Fri, 6=Sat
+
+      if (d > today) {
+        days.push({ date: dateStr, dayOfWeek, status: 'future' });
+        continue;
+      }
+
+      // Weekends (Sat=6, Sun=0) — configurable
+      if (dayOfWeek === 0 || dayOfWeek === 6) {
+        days.push({ date: dateStr, dayOfWeek, status: 'weekend' });
+        continue;
+      }
+
+      if (leaveDates.has(dateStr)) {
+        days.push({ date: dateStr, dayOfWeek, status: 'leave' });
+        continue;
+      }
+
+      const log = attendanceMap.get(dateStr);
+      if (log?.check_in_at) {
+        const checkInTime = new Date(log.check_in_at);
+        const isLate = checkInTime.getHours() > LATE_THRESHOLD_HOUR || 
+          (checkInTime.getHours() === LATE_THRESHOLD_HOUR && checkInTime.getMinutes() > 0);
+        days.push({
+          date: dateStr,
+          dayOfWeek,
+          status: isLate ? 'late' : 'present',
+          checkIn: checkInTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          hours: formatHours(log.check_in_at, log.check_out_at),
+        });
+      } else {
+        days.push({ date: dateStr, dayOfWeek, status: 'absent' });
+      }
+    }
+    return days;
+  }, [startDate, endDate, attendanceLogs, leaves, formatHours]);
 
   const formatHours = (checkIn: string | null, checkOut: string | null) => {
     if (!checkIn || !checkOut) return '-';
