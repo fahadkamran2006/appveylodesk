@@ -177,8 +177,29 @@ export function LeaveManagement({ agencyId, editorId }: LeaveManagementProps) {
   const pendingRequests = requests.filter(r => r.status === 'pending');
   const pastRequests = requests.filter(r => r.status !== 'pending');
 
+  const handleExportLeaves = () => {
+    const rows = requests.map(r => ({
+      Editor: r.editor_name || r.editor_email || r.editor_id,
+      'Start Date': r.start_date,
+      'End Date': r.end_date,
+      Type: r.leave_type,
+      Status: r.status,
+      Reason: r.reason,
+      'Admin Note': r.admin_note || '',
+      Days: getDayCount(r.start_date, r.end_date),
+      Submitted: new Date(r.created_at).toLocaleDateString(),
+    }));
+    exportToCSV(rows, 'leave-requests-export');
+  };
+
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+        <Button variant="outline" size="sm" onClick={handleExportLeaves}>
+          <Download className="w-3 h-3 mr-1" />
+          Export CSV
+        </Button>
+      </div>
       {/* Pending requests */}
       {pendingRequests.length > 0 && (
         <div>
