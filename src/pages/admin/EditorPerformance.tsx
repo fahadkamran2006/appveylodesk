@@ -210,16 +210,17 @@ export default function EditorPerformancePage() {
     return `${hours}h ${minutes}m`;
   };
 
-  // Late arrival tracking (check-in after 10:00 AM local)
-  const LATE_THRESHOLD_HOUR = 10;
+  // Late arrival tracking using configurable threshold
   const lateArrivals = useMemo(() => {
     return attendanceLogs.filter(l => {
       if (!l.check_in_at) return false;
       const checkInHour = new Date(l.check_in_at).getHours();
       const checkInMin = new Date(l.check_in_at).getMinutes();
-      return checkInHour > LATE_THRESHOLD_HOUR || (checkInHour === LATE_THRESHOLD_HOUR && checkInMin > 0);
+      const checkInTotal = checkInHour * 60 + checkInMin;
+      const thresholdTotal = lateThresholdHour * 60 + lateThresholdMinute;
+      return checkInTotal > thresholdTotal;
     });
-  }, [attendanceLogs]);
+  }, [attendanceLogs, lateThresholdHour, lateThresholdMinute]);
 
   const avgDeliveryDays = useMemo(() => {
     const completed = projects.filter(p => p.status === 'done' && p.completed_at);
