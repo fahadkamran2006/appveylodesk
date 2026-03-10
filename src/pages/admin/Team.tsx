@@ -296,6 +296,19 @@ const AdminTeam = () => {
                   </div>
                 </section>
               )}
+
+              {/* Leave Requests */}
+              {agencyId && (
+                <section>
+                  <div className="flex items-center gap-2 mb-4">
+                    <CalendarDays className="w-5 h-5 text-muted-foreground" />
+                    <h2 className="text-lg font-semibold text-foreground">Leave Requests</h2>
+                  </div>
+                  <div className="glass-card rounded-xl p-6">
+                    <LeaveManagement agencyId={agencyId} />
+                  </div>
+                </section>
+              )}
             </div>
           )}
         </main>
