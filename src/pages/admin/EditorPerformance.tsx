@@ -88,6 +88,9 @@ export default function EditorPerformancePage() {
   const [projects, setProjects] = useState<ProjectInfo[]>([]);
   const [agencyId, setAgencyId] = useState('');
   const [loading, setLoading] = useState(true);
+  const [workingDays, setWorkingDays] = useState<number[]>([1, 2, 3, 4, 5]);
+  const [lateThresholdHour, setLateThresholdHour] = useState(10);
+  const [lateThresholdMinute, setLateThresholdMinute] = useState(0);
 
   const [startDate, setStartDate] = useState(() => {
     const d = new Date();
@@ -117,8 +120,8 @@ export default function EditorPerformancePage() {
       const aid = roleData.agency_id;
       setAgencyId(aid);
 
-      // Fetch editor profile, logs, leaves, and project assignments in parallel
-      const [profileRes, logsRes, leavesRes, assignmentsRes] = await Promise.all([
+      // Fetch editor profile, logs, leaves, project assignments, and work schedule in parallel
+      const [profileRes, logsRes, leavesRes, assignmentsRes, scheduleRes] = await Promise.all([
         supabase
           .from('profiles')
           .select('id, full_name, email, avatar_url, employment_type, monthly_salary, created_at')
@@ -142,11 +145,24 @@ export default function EditorPerformancePage() {
           .from('project_editors')
           .select('project_id')
           .eq('editor_id', editorId),
+        supabase
+          .from('agency_work_schedule' as any)
+          .select('*')
+          .eq('agency_id', aid)
+          .maybeSingle(),
       ]);
 
       setEditor(profileRes.data as EditorProfile | null);
       setLogs((logsRes.data || []) as DailyLog[]);
       setLeaves((leavesRes.data || []) as LeaveRequest[]);
+
+      // Apply work schedule config
+      if (scheduleRes.data) {
+        const sched = scheduleRes.data as any;
+        setWorkingDays(sched.working_days || [1, 2, 3, 4, 5]);
+        setLateThresholdHour(sched.late_threshold_hour ?? 10);
+        setLateThresholdMinute(sched.late_threshold_minute ?? 0);
+      }
 
       // Fetch project details
       if (assignmentsRes.data && assignmentsRes.data.length > 0) {
@@ -194,16 +210,17 @@ export default function EditorPerformancePage() {
     return `${hours}h ${minutes}m`;
   };
 
-  // Late arrival tracking (check-in after 10:00 AM local)
-  const LATE_THRESHOLD_HOUR = 10;
+  // Late arrival tracking using configurable threshold
   const lateArrivals = useMemo(() => {
     return attendanceLogs.filter(l => {
       if (!l.check_in_at) return false;
       const checkInHour = new Date(l.check_in_at).getHours();
       const checkInMin = new Date(l.check_in_at).getMinutes();
-      return checkInHour > LATE_THRESHOLD_HOUR || (checkInHour === LATE_THRESHOLD_HOUR && checkInMin > 0);
+      const checkInTotal = checkInHour * 60 + checkInMin;
+      const thresholdTotal = lateThresholdHour * 60 + lateThresholdMinute;
+      return checkInTotal > thresholdTotal;
     });
-  }, [attendanceLogs]);
+  }, [attendanceLogs, lateThresholdHour, lateThresholdMinute]);
 
   const avgDeliveryDays = useMemo(() => {
     const completed = projects.filter(p => p.status === 'done' && p.completed_at);
@@ -251,7 +268,8 @@ export default function EditorPerformancePage() {
         continue;
       }
 
-      if (dayOfWeek === 0 || dayOfWeek === 6) {
+      // Use configurable working days
+      if (!workingDays.includes(dayOfWeek)) {
         days.push({ date: dateStr, dayOfWeek, status: 'weekend' });
         continue;
       }
@@ -264,8 +282,9 @@ export default function EditorPerformancePage() {
       const log = attendanceMap.get(dateStr);
       if (log?.check_in_at) {
         const checkInTime = new Date(log.check_in_at);
-        const isLate = checkInTime.getHours() > LATE_THRESHOLD_HOUR || 
-          (checkInTime.getHours() === LATE_THRESHOLD_HOUR && checkInTime.getMinutes() > 0);
+        const checkInTotal = checkInTime.getHours() * 60 + checkInTime.getMinutes();
+        const thresholdTotal = lateThresholdHour * 60 + lateThresholdMinute;
+        const isLate = checkInTotal > thresholdTotal;
         days.push({
           date: dateStr,
           dayOfWeek,
@@ -278,7 +297,7 @@ export default function EditorPerformancePage() {
       }
     }
     return days;
-  }, [startDate, endDate, attendanceLogs, leaves, formatHours]);
+  }, [startDate, endDate, attendanceLogs, leaves, formatHours, workingDays, lateThresholdHour, lateThresholdMinute]);
 
   const statusColor = (status: string) => {
     switch (status) {

@@ -14,6 +14,7 @@ import { BrandingSettings } from '@/components/settings/BrandingSettings';
 import { LegalSettings } from '@/components/settings/LegalSettings';
 import { NotificationSettings } from '@/components/settings/NotificationSettings';
 import { PaymentMethodsSettings } from '@/components/settings/PaymentMethodsSettings';
+import { WorkScheduleSettings } from '@/components/settings/WorkScheduleSettings';
 import { InstallPWAButton } from '@/components/InstallPWAButton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -246,6 +247,11 @@ const SettingsPage = () => {
               {/* Legal & Compliance Settings - Admin Only */}
               {userRole === 'admin' && (
                 <LegalSettings />
+              )}
+
+              {/* Work Schedule Settings - Admin Only */}
+              {userRole === 'admin' && (
+                <WorkScheduleSettings />
               )}
             </TabsContent>
 

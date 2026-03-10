@@ -168,6 +168,44 @@ export type Database = {
           },
         ]
       }
+      agency_work_schedule: {
+        Row: {
+          agency_id: string
+          created_at: string
+          id: string
+          late_threshold_hour: number
+          late_threshold_minute: number
+          updated_at: string
+          working_days: number[]
+        }
+        Insert: {
+          agency_id: string
+          created_at?: string
+          id?: string
+          late_threshold_hour?: number
+          late_threshold_minute?: number
+          updated_at?: string
+          working_days?: number[]
+        }
+        Update: {
+          agency_id?: string
+          created_at?: string
+          id?: string
+          late_threshold_hour?: number
+          late_threshold_minute?: number
+          updated_at?: string
+          working_days?: number[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agency_work_schedule_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: true
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bug_reports: {
         Row: {
           agency_id: string | null
