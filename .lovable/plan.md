@@ -1,104 +1,89 @@
 
 
-# Super Admin Dashboard ("God Mode")
+# Employee Attendance, Work Logs & Leave Management System
 
-## Overview
-Build a hidden `/super-admin` route accessible only to `hello@fahadkamran.com`. This dashboard provides platform-wide visibility into all agencies, revenue, storage, and system activity -- completely separate from the normal admin/client/editor dashboards.
+## Database Design
 
-## Phase 1: Route Protection and Empty Shell
+### Table: `daily_logs` (unified)
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid | PK, default gen_random_uuid() |
+| editor_id | uuid | FK profiles, NOT NULL |
+| agency_id | uuid | FK agencies, NOT NULL |
+| date | date | default CURRENT_DATE |
+| check_in_at | timestamptz | nullable (salaried only) |
+| check_out_at | timestamptz | nullable (filled on checkout) |
+| work_summary | text | nullable until checkout/submission |
+| log_type | text | 'attendance' or 'task_update' |
+| created_at | timestamptz | default now() |
 
-### 1. Database: Security Definer Function
-Create a Postgres function `is_super_admin(uuid)` that checks if a user's email matches the hardcoded super admin email. This function will be used by a new RLS policy (or called from edge functions) to allow cross-tenant reads.
+### Table: `leave_requests`
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid | PK |
+| editor_id | uuid | FK profiles, NOT NULL |
+| agency_id | uuid | FK agencies, NOT NULL |
+| start_date | date | NOT NULL |
+| end_date | date | NOT NULL |
+| leave_type | text | 'sick', 'casual', 'unpaid' |
+| reason | text | NOT NULL |
+| status | text | 'pending', 'approved', 'rejected', default 'pending' |
+| reviewed_by | uuid | nullable |
+| reviewed_at | timestamptz | nullable |
+| admin_note | text | nullable |
+| created_at | timestamptz | default now() |
 
-```sql
-CREATE OR REPLACE FUNCTION public.is_super_admin(_user_id uuid)
-RETURNS boolean
-LANGUAGE sql
-STABLE SECURITY DEFINER
-SET search_path = 'public'
-AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM auth.users
-    WHERE id = _user_id AND email = 'hello@fahadkamran.com'
-  );
-$$;
-```
+**RLS**: Editors can INSERT and SELECT their own records. Admins can SELECT all records in their agency. Admins can UPDATE leave_requests (approve/reject).
 
-### 2. Database: Aggregation View
-Create a `admin_agency_stats` view (accessed via a security definer function to bypass per-agency RLS) that joins agencies with user_roles to produce:
-- Agency name, plan_tier, subscription_plan, subscription_ends_at
-- storage_used_bytes, storage_limit_bytes
-- client_count (COUNT of client roles per agency)
-- editor_count (COUNT of editor roles per agency)
+### Payroll Connection
+- When admin marks payroll as paid, query `daily_logs` for that month to calculate total hours worked and days present
+- Approved leaves with `leave_type = 'unpaid'` can auto-deduct from salaried pay (pro-rated: `monthly_salary / working_days * unpaid_leave_days`)
+- Admin sees attendance summary (days present, hours logged, leaves taken) alongside payroll data
 
-### 3. Database: System Logs Table
-Create a `system_logs` table for tracking platform-wide events:
+---
 
-| Column | Type |
-|--------|------|
-| id | uuid (PK) |
-| event_type | text (signup, subscription_change, webhook_failure, cancellation) |
-| message | text |
-| metadata | jsonb |
-| created_at | timestamptz |
+## UI Components
 
-RLS: SELECT only for super admin (using `is_super_admin`). INSERT via security definer triggers/functions only.
+### 1. `src/components/attendance/AttendanceCard.tsx`
+- Placed at top of Editor Dashboard
+- **Salaried flow**: "Check In" button → creates `daily_logs` row with `log_type='attendance'`, `check_in_at=now()`. Shows elapsed timer. "Check Out" opens `CheckoutModal`
+- **Freelance flow**: Simple textarea + submit for `log_type='task_update'` with `work_summary` and today's date
+- Shows today's log history below the action area
 
-### 4. Edge Function: `super-admin-stats`
-A single edge function that:
-- Verifies the caller is `hello@fahadkamran.com` using the JWT
-- Uses the service role key to query across all agencies
-- Returns: total agencies, total MRR (calculated from plan tiers), total storage, agency leaderboard, top storage users, recent system logs
+### 2. `src/components/attendance/CheckoutModal.tsx`
+- Dialog with required `work_summary` textarea
+- On confirm: updates today's attendance row with `check_out_at` and `work_summary`
 
-### 5. Frontend: Route Guard Component
-Create `SuperAdminGuard.tsx`:
-- Checks `user.email === 'hello@fahadkamran.com'`
-- If not, redirects to `/` or shows 404
-- Wraps the super admin page
+### 3. `src/components/attendance/LeaveRequestCard.tsx`
+- Card on Editor Dashboard for submitting leave requests
+- Date range picker, leave type dropdown, reason textarea
+- Shows list of own past/pending requests with status badges
 
-### 6. Frontend: Super Admin Page
-Create `src/pages/super-admin/SuperAdminDashboard.tsx` with:
+### 4. `src/components/admin/AttendanceReport.tsx`
+- Integrated into Admin Team page (new "Attendance" tab or section in editor detail sheet)
+- Date range filter, table showing: date, check-in, check-out, hours worked, work summary
+- For freelancers: shows daily task logs
+- Summary stats: total days present, total hours, avg hours/day
 
-**Layout**: Full-width with its own minimal sidebar (Overview, Agencies, Revenue, Storage, System Health tabs -- implemented as in-page tabs initially, expandable to separate routes later).
+### 5. `src/components/admin/LeaveManagement.tsx`
+- Section in Admin Team page or Payroll page
+- Shows pending leave requests with approve/reject actions
+- History of all leaves per editor
 
-**Top Cards ("Big Numbers")**:
-- Total MRR (calculated: Starter count x $29 + Growth count x $79 + Scale count x $149)
-- Total Agencies
-- Total Storage Used (formatted in TB)
-- Active vs Churned agencies
+### 6. Payroll Integration (update `src/pages/admin/Payroll.tsx`)
+- Add columns: "Days Present", "Hours Worked", "Leaves (Unpaid)" to each editor's payroll row
+- Auto-calculate deductions for unpaid leaves for salaried staff
+- Show attendance summary in the payment modal before confirming
 
-**Agency Leaderboard Table** (sortable):
-- Agency Name | Plan | Status | Revenue | Client Count | Editor Count | Storage Used
+---
 
-**Storage Monitor**:
-- Bar chart or progress bars showing top agencies by storage usage %
-- Red highlight for agencies above 90%
+## Implementation Steps
 
-**Recent System Events** feed:
-- Pulls from the `system_logs` table
-- Shows: new signups, subscription changes, webhook failures
-
-### 7. App.tsx Route
-Add the route before the catch-all:
-```
-<Route path="/super-admin" element={<SuperAdminGuard><SuperAdminDashboard /></SuperAdminGuard>} />
-```
-
-## File Changes Summary
-
-| Action | File |
-|--------|------|
-| Create | `src/pages/super-admin/SuperAdminDashboard.tsx` |
-| Create | `src/components/super-admin/SuperAdminGuard.tsx` |
-| Create | `src/components/super-admin/SuperAdminSidebar.tsx` |
-| Create | `src/hooks/useSuperAdminStats.tsx` |
-| Create | `supabase/functions/super-admin-stats/index.ts` |
-| Migration | `is_super_admin` function, `system_logs` table, RLS policies |
-| Edit | `src/App.tsx` (add route) |
-
-## Security Notes
-- The super admin email is checked server-side in the edge function using the JWT -- not just client-side
-- All cross-tenant data access goes through the edge function using the service role key, so normal RLS still protects data for regular users
-- The `system_logs` table uses strict RLS (super admin read only)
-- The client-side guard is just UX -- the real protection is the edge function rejecting non-super-admin callers
+1. **Database migration** — Create `daily_logs` and `leave_requests` tables with RLS policies
+2. **Build AttendanceCard + CheckoutModal** — Editor-facing check-in/out and task log
+3. **Build LeaveRequestCard** — Editor-facing leave submission
+4. **Integrate into Editor Dashboard** — Add attendance and leave cards above the kanban board
+5. **Build AttendanceReport** — Admin view with date filters and stats
+6. **Build LeaveManagement** — Admin approve/reject leave requests
+7. **Update Payroll page** — Connect attendance data and leave deductions to payment flow
 
