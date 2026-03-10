@@ -23,6 +23,8 @@ interface PersonDetailSheetProps {
     avatarUrl?: string | null;
     role?: 'client' | 'editor';
     createdAt?: string;
+    employmentType?: 'salaried' | 'freelance';
+    agencyId?: string;
   } | null;
   variant?: 'client' | 'team';
   stats?: {
