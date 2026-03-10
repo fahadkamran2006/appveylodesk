@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, CheckCircle2, XCircle, CalendarDays } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, CalendarDays, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { exportToCSV } from '@/lib/exportData';
 
 interface LeaveManagementProps {
   agencyId: string;
@@ -88,6 +89,7 @@ export function LeaveManagement({ agencyId, editorId }: LeaveManagementProps) {
     if (!user) return;
     setProcessingId(requestId);
     try {
+      const request = requests.find(r => r.id === requestId);
       const { error } = await supabase
         .from('leave_requests')
         .update({
@@ -99,6 +101,23 @@ export function LeaveManagement({ agencyId, editorId }: LeaveManagementProps) {
         .eq('id', requestId);
 
       if (error) throw error;
+
+      // Notify the editor about the decision
+      if (request) {
+        try {
+          await supabase.rpc('create_notification', {
+            _user_id: request.editor_id,
+            _agency_id: agencyId,
+            _type: 'task_assignment' as any,
+            _title: `Leave ${status === 'approved' ? 'Approved' : 'Rejected'}`,
+            _message: `Your ${request.leave_type} leave request (${new Date(request.start_date).toLocaleDateString()} – ${new Date(request.end_date).toLocaleDateString()}) has been ${status}.${adminNotes[requestId] ? ' Note: ' + adminNotes[requestId] : ''}`,
+            _link: '/editor/dashboard',
+          });
+        } catch (notifErr) {
+          console.error('Leave notification error:', notifErr);
+        }
+      }
+
       toast({
         title: `Leave ${status}`,
         description: `The leave request has been ${status}.`,
@@ -158,8 +177,29 @@ export function LeaveManagement({ agencyId, editorId }: LeaveManagementProps) {
   const pendingRequests = requests.filter(r => r.status === 'pending');
   const pastRequests = requests.filter(r => r.status !== 'pending');
 
+  const handleExportLeaves = () => {
+    const rows = requests.map(r => ({
+      Editor: r.editor_name || r.editor_email || r.editor_id,
+      'Start Date': r.start_date,
+      'End Date': r.end_date,
+      Type: r.leave_type,
+      Status: r.status,
+      Reason: r.reason,
+      'Admin Note': r.admin_note || '',
+      Days: getDayCount(r.start_date, r.end_date),
+      Submitted: new Date(r.created_at).toLocaleDateString(),
+    }));
+    exportToCSV(rows, 'leave-requests-export');
+  };
+
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+        <Button variant="outline" size="sm" onClick={handleExportLeaves}>
+          <Download className="w-3 h-3 mr-1" />
+          Export CSV
+        </Button>
+      </div>
       {/* Pending requests */}
       {pendingRequests.length > 0 && (
         <div>

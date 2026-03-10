@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Clock, Calendar } from 'lucide-react';
+import { Loader2, Clock, Calendar, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Linkify } from '@/lib/linkify';
+import { exportToCSV } from '@/lib/exportData';
 
 interface AttendanceReportProps {
   editorId: string;
@@ -74,16 +77,32 @@ export function AttendanceReport({ editorId, agencyId, employmentType }: Attenda
   const totalHours = Math.round(totalHoursMs / 3600000 * 10) / 10;
   const avgHours = totalDaysPresent > 0 ? Math.round((totalHours / totalDaysPresent) * 10) / 10 : 0;
 
+  const handleExport = () => {
+    const rows = logs.map(l => ({
+      Date: l.date,
+      Type: l.log_type,
+      'Check In': l.check_in_at ? new Date(l.check_in_at).toLocaleTimeString() : '',
+      'Check Out': l.check_out_at ? new Date(l.check_out_at).toLocaleTimeString() : '',
+      Hours: formatHours(l.check_in_at, l.check_out_at),
+      'Work Summary': l.work_summary || '',
+    }));
+    exportToCSV(rows, `attendance-${startDate}-to-${endDate}`);
+  };
+
   return (
     <div className="space-y-4">
-      {/* Date filters */}
-      <div className="flex items-center gap-3">
+      {/* Date filters + export */}
+      <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2">
           <Calendar className="w-4 h-4 text-muted-foreground" />
           <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-36 h-8 text-xs" />
         </div>
         <span className="text-muted-foreground text-sm">to</span>
         <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-36 h-8 text-xs" />
+        <Button variant="outline" size="sm" onClick={handleExport} disabled={logs.length === 0} className="ml-auto">
+          <Download className="w-3 h-3 mr-1" />
+          Export
+        </Button>
       </div>
 
       {/* Summary stats (salaried only) */}
@@ -146,7 +165,9 @@ export function AttendanceReport({ editorId, agencyId, employmentType }: Attenda
                       <td className="p-3 text-foreground">{formatHours(log.check_in_at, log.check_out_at)}</td>
                     </>
                   )}
-                  <td className="p-3 text-muted-foreground max-w-[300px] truncate">{log.work_summary || '-'}</td>
+                  <td className="p-3 text-muted-foreground max-w-[300px]">
+                    {log.work_summary ? <Linkify text={log.work_summary} /> : '-'}
+                  </td>
                 </tr>
               ))}
             </tbody>
