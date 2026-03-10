@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Command, LayoutDashboard, FolderKanban, MessageSquare, DollarSign, LogOut, HardDrive, Settings, Calendar } from 'lucide-react';
+import { Command, LayoutDashboard, FolderKanban, MessageSquare, DollarSign, LogOut, HardDrive, Settings, Calendar, ClipboardList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
