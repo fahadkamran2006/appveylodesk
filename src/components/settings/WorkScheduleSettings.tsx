@@ -26,6 +26,7 @@ export function WorkScheduleSettings() {
   const [workingDays, setWorkingDays] = useState<number[]>([1, 2, 3, 4, 5]);
   const [lateHour, setLateHour] = useState(10);
   const [lateMinute, setLateMinute] = useState(0);
+  const [autoMonthlyReport, setAutoMonthlyReport] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
