@@ -123,11 +123,7 @@ const AdminTeam = () => {
   }, [user, userRole]);
 
   const handleExpandMember = (id: string) => {
-    const member = teamMembers.find((m) => m.id === id);
-    if (member) {
-      setSelectedMember(member);
-      setDetailOpen(true);
-    }
+    navigate(`/admin/team/${id}`);
   };
 
   const handleRemoveMember = (id: string) => {
