@@ -12,6 +12,7 @@ const navItems = [
   { label: 'Dashboard', icon: LayoutDashboard, href: '/editor/dashboard' },
   { label: 'My Projects', icon: FolderKanban, href: '/editor/projects' },
   { label: 'Earnings', icon: DollarSign, href: '/editor/earnings' },
+  { label: 'Work Logs', icon: ClipboardList, href: '/editor/work-logs' },
   { label: 'Storage', icon: HardDrive, href: '/editor/storage' },
   { label: 'Messages', icon: MessageSquare, href: '/editor/messages' },
   { label: 'Calendar', icon: Calendar, href: '/editor/calendar' },

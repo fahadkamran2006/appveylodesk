@@ -137,6 +137,7 @@ const App = () => (
                   <Route path="/editor/dashboard" element={<EditorDashboard />} />
                   <Route path="/editor/projects" element={<EditorProjects />} />
                   <Route path="/editor/earnings" element={<EditorEarnings />} />
+                  <Route path="/editor/work-logs" element={<EditorWorkLogs />} />
                   <Route path="/editor/storage" element={<StoragePage />} />
                   <Route path="/editor/messages" element={<MessagesPage />} />
                   <Route path="/editor/calendar" element={<CalendarPage />} />
