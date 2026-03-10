@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { DashboardLayout } from '@/components/DashboardLayout';
@@ -19,6 +20,7 @@ import {
   Clock,
   FileText,
   CalendarDays,
+  ExternalLink,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -30,10 +32,12 @@ interface ActivityEvent {
   detail?: string;
   color: string;
   icon: React.ElementType;
+  link?: string;
 }
 
 export default function CalendarPage() {
   const { user, userRole } = useAuth();
+  const navigate = useNavigate();
   const [events, setEvents] = useState<ActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -56,8 +60,9 @@ export default function CalendarPage() {
       const agencyId = roleRes.data?.agency_id;
       if (!agencyId) { setLoading(false); return; }
 
+      const rolePrefix = userRole === 'admin' ? '/admin' : userRole === 'client' ? '/client' : '/editor';
+
       if (userRole === 'admin') {
-        // Admin: all projects, invoices, deliverables in agency
         const [projectsRes, invoicesRes, deliverablesRes] = await Promise.all([
           supabase.from('projects').select('id,title,status,created_at,completed_at,due_date').eq('agency_id', agencyId),
           supabase.from('invoices').select('id,amount,status,created_at,paid_at').eq('agency_id', agencyId),
@@ -67,12 +72,12 @@ export default function CalendarPage() {
         (projectsRes.data || []).forEach(p => {
           const createdDate = p.created_at.split('T')[0];
           if (createdDate >= startDateStr && createdDate <= endDateStr) {
-            allEvents.push({ id: `p-${p.id}`, date: createdDate, type: 'project_created', title: `Project created: ${p.title}`, color: 'text-primary', icon: FolderKanban });
+            allEvents.push({ id: `p-${p.id}`, date: createdDate, type: 'project_created', title: `Project created: ${p.title}`, color: 'text-primary', icon: FolderKanban, link: `${rolePrefix}/projects` });
           }
           if (p.completed_at) {
             const doneDate = p.completed_at.split('T')[0];
             if (doneDate >= startDateStr && doneDate <= endDateStr) {
-              allEvents.push({ id: `pd-${p.id}`, date: doneDate, type: 'status_change', title: `Delivered: ${p.title}`, color: 'text-success', icon: CheckCircle2 });
+              allEvents.push({ id: `pd-${p.id}`, date: doneDate, type: 'status_change', title: `Delivered: ${p.title}`, color: 'text-success', icon: CheckCircle2, link: `${rolePrefix}/projects` });
             }
           }
         });
@@ -80,12 +85,12 @@ export default function CalendarPage() {
         (invoicesRes.data || []).forEach(i => {
           const sentDate = i.created_at.split('T')[0];
           if (sentDate >= startDateStr && sentDate <= endDateStr) {
-            allEvents.push({ id: `is-${i.id}`, date: sentDate, type: 'invoice_sent', title: `Invoice sent: $${i.amount}`, color: 'text-warning', icon: Receipt });
+            allEvents.push({ id: `is-${i.id}`, date: sentDate, type: 'invoice_sent', title: `Invoice sent: $${i.amount}`, color: 'text-warning', icon: Receipt, link: `/invoices/${i.id}` });
           }
           if (i.paid_at) {
             const paidDate = i.paid_at.split('T')[0];
             if (paidDate >= startDateStr && paidDate <= endDateStr) {
-              allEvents.push({ id: `ip-${i.id}`, date: paidDate, type: 'invoice_paid', title: `Invoice paid: $${i.amount}`, color: 'text-success', icon: Receipt });
+              allEvents.push({ id: `ip-${i.id}`, date: paidDate, type: 'invoice_paid', title: `Invoice paid: $${i.amount}`, color: 'text-success', icon: Receipt, link: `/invoices/${i.id}` });
             }
           }
         });
@@ -93,12 +98,11 @@ export default function CalendarPage() {
         (deliverablesRes.data || []).forEach(d => {
           const date = d.created_at.split('T')[0];
           if (date >= startDateStr && date <= endDateStr) {
-            allEvents.push({ id: `d-${d.id}`, date, type: 'deliverable', title: `Uploaded: ${d.file_name}`, color: 'text-primary', icon: Upload });
+            allEvents.push({ id: `d-${d.id}`, date, type: 'deliverable', title: `Uploaded: ${d.file_name}`, color: 'text-primary', icon: Upload, link: `${rolePrefix}/projects` });
           }
         });
 
       } else if (userRole === 'client') {
-        // Client: their projects, invoices, deliverables
         const [projectsRes, invoicesRes, deliverablesRes] = await Promise.all([
           supabase.from('projects').select('id,title,status,created_at,completed_at,due_date').eq('client_id', user.id),
           supabase.from('invoices').select('id,amount,status,created_at,paid_at').eq('client_id', user.id),
@@ -108,12 +112,12 @@ export default function CalendarPage() {
         (projectsRes.data || []).forEach(p => {
           const createdDate = p.created_at.split('T')[0];
           if (createdDate >= startDateStr && createdDate <= endDateStr) {
-            allEvents.push({ id: `p-${p.id}`, date: createdDate, type: 'project_created', title: `Requested: ${p.title}`, color: 'text-primary', icon: FolderKanban });
+            allEvents.push({ id: `p-${p.id}`, date: createdDate, type: 'project_created', title: `Requested: ${p.title}`, color: 'text-primary', icon: FolderKanban, link: `${rolePrefix}/projects` });
           }
           if (p.completed_at) {
             const doneDate = p.completed_at.split('T')[0];
             if (doneDate >= startDateStr && doneDate <= endDateStr) {
-              allEvents.push({ id: `pd-${p.id}`, date: doneDate, type: 'status_change', title: `Delivered: ${p.title}`, color: 'text-success', icon: CheckCircle2 });
+              allEvents.push({ id: `pd-${p.id}`, date: doneDate, type: 'status_change', title: `Delivered: ${p.title}`, color: 'text-success', icon: CheckCircle2, link: `${rolePrefix}/projects` });
             }
           }
         });
@@ -121,12 +125,12 @@ export default function CalendarPage() {
         (invoicesRes.data || []).forEach(i => {
           const sentDate = i.created_at.split('T')[0];
           if (sentDate >= startDateStr && sentDate <= endDateStr) {
-            allEvents.push({ id: `is-${i.id}`, date: sentDate, type: 'invoice_sent', title: `Invoice received: $${i.amount}`, color: 'text-warning', icon: Receipt });
+            allEvents.push({ id: `is-${i.id}`, date: sentDate, type: 'invoice_sent', title: `Invoice received: $${i.amount}`, color: 'text-warning', icon: Receipt, link: `/invoices/${i.id}` });
           }
           if (i.paid_at) {
             const paidDate = i.paid_at.split('T')[0];
             if (paidDate >= startDateStr && paidDate <= endDateStr) {
-              allEvents.push({ id: `ip-${i.id}`, date: paidDate, type: 'invoice_paid', title: `Paid: $${i.amount}`, color: 'text-success', icon: Receipt });
+              allEvents.push({ id: `ip-${i.id}`, date: paidDate, type: 'invoice_paid', title: `Paid: $${i.amount}`, color: 'text-success', icon: Receipt, link: `/invoices/${i.id}` });
             }
           }
         });
@@ -135,12 +139,11 @@ export default function CalendarPage() {
         (deliverablesRes.data || []).filter(d => clientProjectIds.includes(d.project_id)).forEach(d => {
           const date = d.created_at.split('T')[0];
           if (date >= startDateStr && date <= endDateStr) {
-            allEvents.push({ id: `d-${d.id}`, date, type: 'deliverable', title: `Video delivered: ${d.file_name}`, color: 'text-primary', icon: Upload });
+            allEvents.push({ id: `d-${d.id}`, date, type: 'deliverable', title: `Video delivered: ${d.file_name}`, color: 'text-primary', icon: Upload, link: `${rolePrefix}/projects` });
           }
         });
 
       } else if (userRole === 'editor') {
-        // Editor: assigned projects, their task logs, leaves
         const [assignmentsRes, logsRes, leavesRes] = await Promise.all([
           supabase.from('project_editors').select('project:projects(id,title,status,created_at,completed_at)').eq('editor_id', user.id),
           supabase.from('daily_logs').select('id,date,log_type,work_summary,check_in_at,check_out_at').eq('editor_id', user.id).gte('date', startDateStr).lte('date', endDateStr),
@@ -152,21 +155,20 @@ export default function CalendarPage() {
           if (p.completed_at) {
             const doneDate = p.completed_at.split('T')[0];
             if (doneDate >= startDateStr && doneDate <= endDateStr) {
-              allEvents.push({ id: `pd-${p.id}`, date: doneDate, type: 'status_change', title: `Completed: ${p.title}`, color: 'text-success', icon: CheckCircle2 });
+              allEvents.push({ id: `pd-${p.id}`, date: doneDate, type: 'status_change', title: `Completed: ${p.title}`, color: 'text-success', icon: CheckCircle2, link: '/editor/projects' });
             }
           }
         });
 
         (logsRes.data || []).forEach(l => {
           if (l.log_type === 'task_update') {
-            allEvents.push({ id: `tl-${l.id}`, date: l.date, type: 'task_log', title: 'Task update', detail: l.work_summary || undefined, color: 'text-primary', icon: FileText });
+            allEvents.push({ id: `tl-${l.id}`, date: l.date, type: 'task_log', title: 'Task update', detail: l.work_summary || undefined, color: 'text-primary', icon: FileText, link: '/editor/work-logs' });
           } else {
-            allEvents.push({ id: `at-${l.id}`, date: l.date, type: 'attendance', title: l.check_in_at ? 'Checked in' : 'Attendance', detail: l.work_summary || undefined, color: 'text-muted-foreground', icon: Clock });
+            allEvents.push({ id: `at-${l.id}`, date: l.date, type: 'attendance', title: l.check_in_at ? 'Checked in' : 'Attendance', detail: l.work_summary || undefined, color: 'text-muted-foreground', icon: Clock, link: '/editor/work-logs' });
           }
         });
 
         (leavesRes.data || []).forEach(l => {
-          // Add event for each day of the leave within this month
           const start = new Date(l.start_date);
           const end = new Date(l.end_date);
           for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
@@ -180,6 +182,7 @@ export default function CalendarPage() {
                 detail: l.status,
                 color: l.status === 'approved' ? 'text-success' : l.status === 'rejected' ? 'text-destructive' : 'text-warning',
                 icon: l.status === 'approved' ? CheckCircle2 : l.status === 'rejected' ? XCircle : Clock,
+                link: '/editor/work-logs',
               });
             }
           }
@@ -201,8 +204,7 @@ export default function CalendarPage() {
   const prevMonth = () => setCurrentMonth(new Date(year, month - 1, 1));
   const nextMonth = () => setCurrentMonth(new Date(year, month + 1, 1));
 
-  // Build calendar grid
-  const startDow = firstDay.getDay(); // 0=Sun
+  const startDow = firstDay.getDay();
   const totalDays = lastDay.getDate();
   const calendarDays: (number | null)[] = [];
   for (let i = 0; i < startDow; i++) calendarDays.push(null);
@@ -218,7 +220,6 @@ export default function CalendarPage() {
   }, [events]);
 
   const today = new Date().toISOString().split('T')[0];
-
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const selectedEvents = selectedDate ? (eventsByDate[selectedDate] || []) : [];
 
@@ -230,6 +231,12 @@ export default function CalendarPage() {
       Detail: e.detail || '',
     }));
     exportToCSV(rows, `calendar-${startDateStr}-to-${endDateStr}`);
+  };
+
+  const handleEventClick = (event: ActivityEvent) => {
+    if (event.link) {
+      navigate(event.link);
+    }
   };
 
   const monthLabel = currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
@@ -263,7 +270,6 @@ export default function CalendarPage() {
               {/* Calendar Grid */}
               <div className="lg:col-span-2">
                 <div className="glass-card rounded-xl p-4 md:p-6">
-                  {/* Month Navigation */}
                   <div className="flex items-center justify-between mb-4">
                     <Button variant="ghost" size="icon" onClick={prevMonth}>
                       <ChevronLeft className="w-5 h-5" />
@@ -274,14 +280,12 @@ export default function CalendarPage() {
                     </Button>
                   </div>
 
-                  {/* Day Headers */}
                   <div className="grid grid-cols-7 gap-1 mb-1">
                     {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
                       <div key={d} className="text-center text-xs font-medium text-muted-foreground py-2">{d}</div>
                     ))}
                   </div>
 
-                  {/* Days */}
                   <div className="grid grid-cols-7 gap-1">
                     {calendarDays.map((day, idx) => {
                       if (day === null) return <div key={`e-${idx}`} className="aspect-square" />;
@@ -315,7 +319,6 @@ export default function CalendarPage() {
                   </div>
                 </div>
 
-                {/* Legend */}
                 <div className="flex flex-wrap gap-3 mt-4 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-primary" />Project</span>
                   <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-success" />Completed/Paid</span>
@@ -340,13 +343,23 @@ export default function CalendarPage() {
                   )}
                   <div className="space-y-2 max-h-[60vh] overflow-y-auto">
                     {selectedEvents.map(e => (
-                      <div key={e.id} className="flex items-start gap-2 p-2 rounded-lg bg-muted/30">
+                      <button
+                        key={e.id}
+                        onClick={() => handleEventClick(e)}
+                        className={cn(
+                          "flex items-start gap-2 p-2 rounded-lg bg-muted/30 w-full text-left transition-colors group",
+                          e.link && "hover:bg-muted/60 cursor-pointer"
+                        )}
+                      >
                         <e.icon className={cn("w-4 h-4 mt-0.5 flex-shrink-0", e.color)} />
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium text-foreground">{e.title}</p>
                           {e.detail && <p className="text-xs text-muted-foreground truncate">{e.detail}</p>}
                         </div>
-                      </div>
+                        {e.link && (
+                          <ExternalLink className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-1 flex-shrink-0" />
+                        )}
+                      </button>
                     ))}
                   </div>
                   {!selectedDate && (
@@ -354,7 +367,6 @@ export default function CalendarPage() {
                   )}
                 </div>
 
-                {/* Monthly Summary */}
                 <div className="glass-card rounded-xl p-4 mt-4">
                   <h3 className="font-semibold text-foreground mb-3">Monthly Summary</h3>
                   <div className="space-y-2 text-sm">
