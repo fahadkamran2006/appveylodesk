@@ -165,7 +165,9 @@ export function AttendanceReport({ editorId, agencyId, employmentType }: Attenda
                       <td className="p-3 text-foreground">{formatHours(log.check_in_at, log.check_out_at)}</td>
                     </>
                   )}
-                  <td className="p-3 text-muted-foreground max-w-[300px] truncate">{log.work_summary || '-'}</td>
+                  <td className="p-3 text-muted-foreground max-w-[300px]">
+                    {log.work_summary ? <Linkify text={log.work_summary} /> : '-'}
+                  </td>
                 </tr>
               ))}
             </tbody>
