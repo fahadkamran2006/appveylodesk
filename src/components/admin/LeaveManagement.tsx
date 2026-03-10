@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, CheckCircle2, XCircle, CalendarDays } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, CalendarDays, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { exportToCSV } from '@/lib/exportData';
 
 interface LeaveManagementProps {
   agencyId: string;
