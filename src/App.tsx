@@ -42,6 +42,7 @@ import ClientProjects from "./pages/client/Projects";
 import EditorDashboard from "./pages/editor/Dashboard";
 import EditorProjects from "./pages/editor/Projects";
 import EditorEarnings from "./pages/editor/Earnings";
+import EditorWorkLogs from "./pages/editor/WorkLogs";
 
 import Pricing from "./pages/Pricing";
 import Subscribe from "./pages/Subscribe";
