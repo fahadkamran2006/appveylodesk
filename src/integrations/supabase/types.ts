@@ -442,6 +442,57 @@ export type Database = {
           },
         ]
       }
+      daily_logs: {
+        Row: {
+          agency_id: string
+          check_in_at: string | null
+          check_out_at: string | null
+          created_at: string
+          date: string
+          editor_id: string
+          id: string
+          log_type: string
+          work_summary: string | null
+        }
+        Insert: {
+          agency_id: string
+          check_in_at?: string | null
+          check_out_at?: string | null
+          created_at?: string
+          date?: string
+          editor_id: string
+          id?: string
+          log_type?: string
+          work_summary?: string | null
+        }
+        Update: {
+          agency_id?: string
+          check_in_at?: string | null
+          check_out_at?: string | null
+          created_at?: string
+          date?: string
+          editor_id?: string
+          id?: string
+          log_type?: string
+          work_summary?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_logs_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_logs_editor_id_fkey"
+            columns: ["editor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deliverable_comments: {
         Row: {
           content: string
@@ -712,6 +763,66 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leave_requests: {
+        Row: {
+          admin_note: string | null
+          agency_id: string
+          created_at: string
+          editor_id: string
+          end_date: string
+          id: string
+          leave_type: string
+          reason: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          start_date: string
+          status: string
+        }
+        Insert: {
+          admin_note?: string | null
+          agency_id: string
+          created_at?: string
+          editor_id: string
+          end_date: string
+          id?: string
+          leave_type?: string
+          reason: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          start_date: string
+          status?: string
+        }
+        Update: {
+          admin_note?: string | null
+          agency_id?: string
+          created_at?: string
+          editor_id?: string
+          end_date?: string
+          id?: string
+          leave_type?: string
+          reason?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          start_date?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leave_requests_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_editor_id_fkey"
+            columns: ["editor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]

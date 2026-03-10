@@ -9,6 +9,8 @@ import { Clock, CheckCircle2, FolderKanban, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { cn } from '@/lib/utils';
+import { AttendanceCard } from '@/components/attendance/AttendanceCard';
+import { LeaveRequestCard } from '@/components/attendance/LeaveRequestCard';
 import type { Database } from '@/integrations/supabase/types';
 
 type ProjectStatus = Database['public']['Enums']['project_status'];
@@ -35,6 +37,8 @@ const EditorDashboard = () => {
   
   const [projects, setProjects] = useState<Project[]>([]);
   const [loadingData, setLoadingData] = useState(true);
+  const [employmentType, setEmploymentType] = useState<'salaried' | 'freelance'>('freelance');
+  const [agencyId, setAgencyId] = useState<string>('');
 
   // Allow admin god mode - only redirect non-admins away
   useEffect(() => {
@@ -51,6 +55,19 @@ const EditorDashboard = () => {
     if (!user) return;
     
     try {
+      // Fetch profile for employment type and agency
+      const [profileRes, roleRes] = await Promise.all([
+        supabase.from('profiles').select('employment_type').eq('id', user.id).maybeSingle(),
+        supabase.from('user_roles').select('agency_id').eq('user_id', user.id).maybeSingle(),
+      ]);
+
+      if (profileRes.data?.employment_type) {
+        setEmploymentType(profileRes.data.employment_type as 'salaried' | 'freelance');
+      }
+      if (roleRes.data?.agency_id) {
+        setAgencyId(roleRes.data.agency_id);
+      }
+
       // Fetch projects assigned to this editor via project_editors table
       const { data, error } = await supabase
         .from('project_editors')
@@ -164,6 +181,14 @@ const EditorDashboard = () => {
             <p className="text-xl md:text-2xl font-bold text-primary">{projects.length} projects</p>
           </div>
         </div>
+
+        {/* Attendance & Leave Cards */}
+        {agencyId && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-6 md:mb-8">
+            <AttendanceCard employmentType={employmentType} agencyId={agencyId} />
+            <LeaveRequestCard agencyId={agencyId} />
+          </div>
+        )}
 
         {/* Stats Cards - Responsive */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">

@@ -41,6 +41,9 @@ interface EditorPayroll {
   completed_videos: number;
   isPaidThisMonth: boolean;
   balanceOwed: number;
+  daysPresent: number;
+  hoursWorked: number;
+  unpaidLeaveDays: number;
 }
 
 interface PaymentHistoryRecord {
@@ -155,40 +158,57 @@ const AdminPayroll = () => {
       const currentMonth = now.getMonth() + 1;
       const currentYear = now.getFullYear();
 
-      const { data: paymentsThisMonth } = await supabase
-        .from('payroll_payments')
-        .select('editor_id, status')
-        .eq('agency_id', aid)
-        .eq('period_month', currentMonth)
-        .eq('period_year', currentYear)
-        .eq('status', 'paid');
+      // Fetch in parallel: payments, balances, payment history, attendance logs, leave requests
+      const monthStart = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
+      const monthEnd = new Date(currentYear, currentMonth, 0).toISOString().split('T')[0];
 
-      const paidSet = new Set((paymentsThisMonth || []).map(p => p.editor_id));
+      const [paymentsRes, balancesRes, allPaymentsRes, logsRes, leavesRes] = await Promise.all([
+        supabase.from('payroll_payments').select('editor_id, status')
+          .eq('agency_id', aid).eq('period_month', currentMonth).eq('period_year', currentYear).eq('status', 'paid'),
+        supabase.from('editor_balances').select('editor_id, amount, type').eq('agency_id', aid),
+        supabase.from('payroll_payments').select('*').eq('agency_id', aid)
+          .order('period_year', { ascending: false }).order('period_month', { ascending: false }),
+        supabase.from('daily_logs').select('editor_id, check_in_at, check_out_at, log_type')
+          .eq('agency_id', aid).gte('date', monthStart).lte('date', monthEnd).eq('log_type', 'attendance'),
+        supabase.from('leave_requests').select('editor_id, start_date, end_date, leave_type, status')
+          .eq('agency_id', aid).eq('status', 'approved').eq('leave_type', 'unpaid')
+          .gte('end_date', monthStart).lte('start_date', monthEnd),
+      ]);
 
-      // Fetch balances
-      const { data: balancesData } = await supabase
-        .from('editor_balances')
-        .select('editor_id, amount, type')
-        .eq('agency_id', aid);
+      const paidSet = new Set((paymentsRes.data || []).map(p => p.editor_id));
 
       const balanceMap = new Map<string, number>();
-      (balancesData || []).forEach((b: any) => {
+      (balancesRes.data || []).forEach((b: any) => {
         const current = balanceMap.get(b.editor_id) || 0;
         balanceMap.set(b.editor_id, current + (b.type === 'owed' ? b.amount : -b.amount));
       });
 
-      // Fetch all payment history
-      const { data: allPayments } = await supabase
-        .from('payroll_payments')
-        .select('*')
-        .eq('agency_id', aid)
-        .order('period_year', { ascending: false })
-        .order('period_month', { ascending: false });
+      setPaymentHistory((allPaymentsRes.data || []) as PaymentHistoryRecord[]);
 
-      setPaymentHistory((allPayments || []) as PaymentHistoryRecord[]);
+      // Calculate attendance stats per editor
+      const attendanceMap = new Map<string, { days: number; hoursMs: number }>();
+      (logsRes.data || []).forEach((log: any) => {
+        const current = attendanceMap.get(log.editor_id) || { days: 0, hoursMs: 0 };
+        if (log.check_in_at) current.days += 1;
+        if (log.check_in_at && log.check_out_at) {
+          current.hoursMs += new Date(log.check_out_at).getTime() - new Date(log.check_in_at).getTime();
+        }
+        attendanceMap.set(log.editor_id, current);
+      });
+
+      // Calculate unpaid leave days per editor for this month
+      const unpaidLeaveMap = new Map<string, number>();
+      (leavesRes.data || []).forEach((leave: any) => {
+        const start = new Date(Math.max(new Date(leave.start_date).getTime(), new Date(monthStart).getTime()));
+        const end = new Date(Math.min(new Date(leave.end_date).getTime(), new Date(monthEnd).getTime()));
+        const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        const current = unpaidLeaveMap.get(leave.editor_id) || 0;
+        unpaidLeaveMap.set(leave.editor_id, current + Math.max(0, days));
+      });
 
       const payrollData: EditorPayroll[] = (profiles || []).map(profile => {
         const earnings = earningsMap.get(profile.id) || { freelanceEarnings: 0, completedVideos: 0 };
+        const attendance = attendanceMap.get(profile.id) || { days: 0, hoursMs: 0 };
         return {
           id: profile.id,
           full_name: profile.full_name,
@@ -201,6 +221,9 @@ const AdminPayroll = () => {
           completed_videos: earnings.completedVideos,
           isPaidThisMonth: paidSet.has(profile.id),
           balanceOwed: balanceMap.get(profile.id) || 0,
+          daysPresent: attendance.days,
+          hoursWorked: Math.round(attendance.hoursMs / 3600000 * 10) / 10,
+          unpaidLeaveDays: unpaidLeaveMap.get(profile.id) || 0,
         };
       });
 
@@ -356,6 +379,9 @@ const AdminPayroll = () => {
                         <tr>
                           <th className="text-left p-4 text-sm font-medium text-muted-foreground">Editor</th>
                           <th className="text-left p-4 text-sm font-medium text-muted-foreground">Type</th>
+                          <th className="text-center p-4 text-sm font-medium text-muted-foreground">Days</th>
+                          <th className="text-center p-4 text-sm font-medium text-muted-foreground">Hours</th>
+                          <th className="text-center p-4 text-sm font-medium text-muted-foreground">Leaves</th>
                           <th className="text-right p-4 text-sm font-medium text-muted-foreground">Base</th>
                           <th className="text-right p-4 text-sm font-medium text-muted-foreground">Bonus</th>
                           <th className="text-right p-4 text-sm font-medium text-muted-foreground">Total</th>
@@ -399,6 +425,15 @@ const AdminPayroll = () => {
                                   )}>
                                     {isSalaried ? 'Salaried' : 'Freelance'}
                                   </Badge>
+                                </td>
+                                <td className="p-4 text-center text-sm text-foreground">{editor.daysPresent}</td>
+                                <td className="p-4 text-center text-sm text-foreground">{editor.hoursWorked > 0 ? `${editor.hoursWorked}h` : '-'}</td>
+                                <td className="p-4 text-center text-sm">
+                                  {editor.unpaidLeaveDays > 0 ? (
+                                    <Badge variant="secondary" className="text-xs bg-destructive/10 text-destructive border border-destructive/20">
+                                      {editor.unpaidLeaveDays}d
+                                    </Badge>
+                                  ) : <span className="text-muted-foreground">-</span>}
                                 </td>
                                 <td className="p-4 text-right font-medium text-foreground text-sm">${basePay.toLocaleString()}</td>
                                 <td className="p-4 text-right text-sm">
@@ -457,7 +492,7 @@ const AdminPayroll = () => {
                               {/* Expandable history row */}
                               {isExpanded && (
                                 <tr key={`${editor.id}-history`}>
-                                  <td colSpan={8} className="p-0">
+                                  <td colSpan={11} className="p-0">
                                     <div className="bg-muted/20 p-4 border-t border-border/30">
                                       <div className="flex items-center gap-2 mb-3">
                                         <History className="w-4 h-4 text-muted-foreground" />
@@ -520,7 +555,7 @@ const AdminPayroll = () => {
                       </tbody>
                       <tfoot className="bg-muted/50">
                         <tr>
-                          <td colSpan={4} className="p-4 font-semibold text-foreground">
+                          <td colSpan={7} className="p-4 font-semibold text-foreground">
                             Total Payroll This Month
                           </td>
                           <td className="p-4 text-right font-bold text-primary text-xl">

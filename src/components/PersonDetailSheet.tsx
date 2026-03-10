@@ -8,6 +8,9 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AttendanceReport } from '@/components/admin/AttendanceReport';
+import { LeaveManagement } from '@/components/admin/LeaveManagement';
 import { Mail, Calendar, FolderKanban, DollarSign, CheckCircle } from 'lucide-react';
 
 interface PersonDetailSheetProps {
@@ -20,6 +23,8 @@ interface PersonDetailSheetProps {
     avatarUrl?: string | null;
     role?: 'client' | 'editor';
     createdAt?: string;
+    employmentType?: 'salaried' | 'freelance';
+    agencyId?: string;
   } | null;
   variant?: 'client' | 'team';
   stats?: {
@@ -163,34 +168,62 @@ export function PersonDetailSheet({
 
           <Separator className="bg-border/50" />
 
-          {/* Project History */}
-          <div>
-            <h4 className="text-sm font-medium text-muted-foreground mb-3">
-              {variant === 'client' ? 'Project History' : 'Assigned Projects'}
-            </h4>
-            {projects.length === 0 ? (
-              <div className="text-center py-6 text-muted-foreground text-sm">
-                No projects yet
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {projects.map((project) => (
-                  <div
-                    key={project.id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-surface-elevated/50"
-                  >
-                    <span className="text-sm text-foreground">{project.name}</span>
-                    <Badge
-                      variant="secondary"
-                      className={STATUS_COLORS[project.status] || 'bg-muted text-muted-foreground'}
-                    >
-                      {project.status.replace('_', ' ')}
-                    </Badge>
+          {/* Tabbed Sections */}
+          {variant === 'team' && person.agencyId ? (
+            <Tabs defaultValue="projects" className="w-full">
+              <TabsList className="w-full">
+                <TabsTrigger value="projects" className="flex-1 text-xs">Projects</TabsTrigger>
+                <TabsTrigger value="attendance" className="flex-1 text-xs">Attendance</TabsTrigger>
+                <TabsTrigger value="leaves" className="flex-1 text-xs">Leaves</TabsTrigger>
+              </TabsList>
+              <TabsContent value="projects">
+                {projects.length === 0 ? (
+                  <div className="text-center py-6 text-muted-foreground text-sm">No projects yet</div>
+                ) : (
+                  <div className="space-y-2">
+                    {projects.map((project) => (
+                      <div key={project.id} className="flex items-center justify-between p-3 rounded-lg bg-surface-elevated/50">
+                        <span className="text-sm text-foreground">{project.name}</span>
+                        <Badge variant="secondary" className={STATUS_COLORS[project.status] || 'bg-muted text-muted-foreground'}>
+                          {project.status.replace('_', ' ')}
+                        </Badge>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
+                )}
+              </TabsContent>
+              <TabsContent value="attendance">
+                <AttendanceReport
+                  editorId={person.id}
+                  agencyId={person.agencyId}
+                  employmentType={person.employmentType || 'freelance'}
+                />
+              </TabsContent>
+              <TabsContent value="leaves">
+                <LeaveManagement agencyId={person.agencyId} editorId={person.id} />
+              </TabsContent>
+            </Tabs>
+          ) : (
+            <div>
+              <h4 className="text-sm font-medium text-muted-foreground mb-3">
+                {variant === 'client' ? 'Project History' : 'Assigned Projects'}
+              </h4>
+              {projects.length === 0 ? (
+                <div className="text-center py-6 text-muted-foreground text-sm">No projects yet</div>
+              ) : (
+                <div className="space-y-2">
+                  {projects.map((project) => (
+                    <div key={project.id} className="flex items-center justify-between p-3 rounded-lg bg-surface-elevated/50">
+                      <span className="text-sm text-foreground">{project.name}</span>
+                      <Badge variant="secondary" className={STATUS_COLORS[project.status] || 'bg-muted text-muted-foreground'}>
+                        {project.status.replace('_', ' ')}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </SheetContent>
     </Sheet>

@@ -14,7 +14,8 @@ import { RemoveMemberModal } from '@/components/RemoveMemberModal';
 import { EditEditorModal } from '@/components/admin/EditEditorModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useEditorStats, type TimePeriod } from '@/hooks/usePersonStats';
-import { UsersRound, UserPlus, Loader2, Clock } from 'lucide-react';
+import { UsersRound, UserPlus, Loader2, Clock, CalendarDays } from 'lucide-react';
+import { LeaveManagement } from '@/components/admin/LeaveManagement';
 import type { Database } from '@/integrations/supabase/types';
 
 type EmploymentType = Database['public']['Enums']['employment_type'];
@@ -44,6 +45,7 @@ const AdminTeam = () => {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([]);
   const [agencyName, setAgencyName] = useState('');
+  const [agencyId, setAgencyId] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
@@ -84,13 +86,13 @@ const AdminTeam = () => {
         return;
       }
 
-      const agencyId = userRoleData.agency_id;
-
+      const agencyIdVal = userRoleData.agency_id;
+      setAgencyId(agencyIdVal);
       // Fetch agency name, editor profiles, and pending invitations in parallel
       const [agencyResult, editorRolesResult, invitationsResult] = await Promise.all([
-        supabase.from('agencies').select('name').eq('id', agencyId).maybeSingle(),
-        supabase.from('user_roles').select('user_id').eq('agency_id', agencyId).eq('role', 'editor'),
-        supabase.from('agency_invitations').select('*').eq('agency_id', agencyId).eq('role', 'editor').is('accepted_at', null),
+        supabase.from('agencies').select('name').eq('id', agencyIdVal).maybeSingle(),
+        supabase.from('user_roles').select('user_id').eq('agency_id', agencyIdVal).eq('role', 'editor'),
+        supabase.from('agency_invitations').select('*').eq('agency_id', agencyIdVal).eq('role', 'editor').is('accepted_at', null),
       ]);
 
       setAgencyName(agencyResult.data?.name || '');
@@ -294,6 +296,19 @@ const AdminTeam = () => {
                   </div>
                 </section>
               )}
+
+              {/* Leave Requests */}
+              {agencyId && (
+                <section>
+                  <div className="flex items-center gap-2 mb-4">
+                    <CalendarDays className="w-5 h-5 text-muted-foreground" />
+                    <h2 className="text-lg font-semibold text-foreground">Leave Requests</h2>
+                  </div>
+                  <div className="glass-card rounded-xl p-6">
+                    <LeaveManagement agencyId={agencyId} />
+                  </div>
+                </section>
+              )}
             </div>
           )}
         </main>
@@ -320,6 +335,8 @@ const AdminTeam = () => {
                 avatarUrl: selectedMember.avatar_url,
                 role: 'editor',
                 createdAt: selectedMember.created_at,
+                employmentType: selectedMember.employment_type as 'salaried' | 'freelance',
+                agencyId: agencyId || undefined,
               }
             : null
         }
