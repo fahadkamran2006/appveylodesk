@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Clock, Calendar } from 'lucide-react';
+import { Loader2, Clock, Calendar, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Linkify } from '@/lib/linkify';
+import { exportToCSV } from '@/lib/exportData';
 
 interface AttendanceReportProps {
   editorId: string;
