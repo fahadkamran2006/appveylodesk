@@ -9,6 +9,7 @@ import { PersonCard } from '@/components/PersonCard';
 import { InviteUserModal } from '@/components/InviteUserModal';
 import { PendingInvitationCard } from '@/components/PendingInvitationCard';
 import { EditorLeaderboard } from '@/components/admin/EditorLeaderboard';
+import { TodayAttendance } from '@/components/admin/TodayAttendance';
 import { RemoveMemberModal } from '@/components/RemoveMemberModal';
 import { EditEditorModal } from '@/components/admin/EditEditorModal';
 import { supabase } from '@/integrations/supabase/client';
