@@ -1,338 +1,375 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { DashboardLayout } from '@/components/DashboardLayout';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Linkify } from '@/lib/linkify';
+import { Button } from '@/components/ui/button';
 import { exportToCSV } from '@/lib/exportData';
 import {
-  Calendar as CalendarIcon,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  Download,
+  FolderKanban,
+  Receipt,
+  Upload,
+  CheckCircle2,
+  XCircle,
   Clock,
   FileText,
   CalendarDays,
-  Download,
-  Loader2,
-  LogIn,
-  LogOut,
-  CheckCircle2,
-  XCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-interface DailyLog {
+interface ActivityEvent {
   id: string;
   date: string;
-  check_in_at: string | null;
-  check_out_at: string | null;
-  work_summary: string | null;
-  log_type: string;
-}
-
-interface LeaveRequest {
-  id: string;
-  start_date: string;
-  end_date: string;
-  leave_type: string;
-  reason: string;
-  status: string;
-  admin_note: string | null;
-  created_at: string;
+  type: 'project_created' | 'status_change' | 'deliverable' | 'invoice_sent' | 'invoice_paid' | 'leave' | 'task_log' | 'attendance';
+  title: string;
+  detail?: string;
+  color: string;
+  icon: React.ElementType;
 }
 
 export default function CalendarPage() {
   const { user, userRole } = useAuth();
-  const [logs, setLogs] = useState<DailyLog[]>([]);
-  const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
+  const [events, setEvents] = useState<ActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [agencyId, setAgencyId] = useState('');
-  const [employmentType, setEmploymentType] = useState<'salaried' | 'freelance'>('freelance');
+  const [currentMonth, setCurrentMonth] = useState(new Date());
 
-  const [startDate, setStartDate] = useState(() => {
-    const d = new Date();
-    d.setDate(1);
-    return d.toISOString().split('T')[0];
-  });
-  const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const year = currentMonth.getFullYear();
+  const month = currentMonth.getMonth();
 
-  const fetchData = useCallback(async () => {
-    if (!user) return;
+  const firstDay = useMemo(() => new Date(year, month, 1), [year, month]);
+  const lastDay = useMemo(() => new Date(year, month + 1, 0), [year, month]);
+  const startDateStr = firstDay.toISOString().split('T')[0];
+  const endDateStr = lastDay.toISOString().split('T')[0];
+
+  const fetchEvents = useCallback(async () => {
+    if (!user || !userRole) return;
     setLoading(true);
+    const allEvents: ActivityEvent[] = [];
+
     try {
-      const [profileRes, roleRes] = await Promise.all([
-        supabase.from('profiles').select('employment_type').eq('id', user.id).maybeSingle(),
-        supabase.from('user_roles').select('agency_id').eq('user_id', user.id).maybeSingle(),
-      ]);
+      const roleRes = await supabase.from('user_roles').select('agency_id').eq('user_id', user.id).maybeSingle();
+      const agencyId = roleRes.data?.agency_id;
+      if (!agencyId) { setLoading(false); return; }
 
-      const empType = (profileRes.data?.employment_type as 'salaried' | 'freelance') || 'freelance';
-      setEmploymentType(empType);
-      const aid = roleRes.data?.agency_id || '';
-      setAgencyId(aid);
+      if (userRole === 'admin') {
+        // Admin: all projects, invoices, deliverables in agency
+        const [projectsRes, invoicesRes, deliverablesRes] = await Promise.all([
+          supabase.from('projects').select('id,title,status,created_at,completed_at,due_date').eq('agency_id', agencyId),
+          supabase.from('invoices').select('id,amount,status,created_at,paid_at').eq('agency_id', agencyId),
+          supabase.from('deliverables').select('id,file_name,created_at,project_id').order('created_at', { ascending: false }),
+        ]);
 
-      const [logsRes, leavesRes] = await Promise.all([
-        supabase
-          .from('daily_logs')
-          .select('*')
-          .eq('editor_id', user.id)
-          .gte('date', startDate)
-          .lte('date', endDate)
-          .order('date', { ascending: false }),
-        supabase
-          .from('leave_requests')
-          .select('*')
-          .eq('editor_id', user.id)
-          .order('created_at', { ascending: false }),
-      ]);
+        (projectsRes.data || []).forEach(p => {
+          const createdDate = p.created_at.split('T')[0];
+          if (createdDate >= startDateStr && createdDate <= endDateStr) {
+            allEvents.push({ id: `p-${p.id}`, date: createdDate, type: 'project_created', title: `Project created: ${p.title}`, color: 'text-primary', icon: FolderKanban });
+          }
+          if (p.completed_at) {
+            const doneDate = p.completed_at.split('T')[0];
+            if (doneDate >= startDateStr && doneDate <= endDateStr) {
+              allEvents.push({ id: `pd-${p.id}`, date: doneDate, type: 'status_change', title: `Delivered: ${p.title}`, color: 'text-success', icon: CheckCircle2 });
+            }
+          }
+        });
 
-      setLogs((logsRes.data || []) as DailyLog[]);
-      setLeaves((leavesRes.data || []) as LeaveRequest[]);
+        (invoicesRes.data || []).forEach(i => {
+          const sentDate = i.created_at.split('T')[0];
+          if (sentDate >= startDateStr && sentDate <= endDateStr) {
+            allEvents.push({ id: `is-${i.id}`, date: sentDate, type: 'invoice_sent', title: `Invoice sent: $${i.amount}`, color: 'text-warning', icon: Receipt });
+          }
+          if (i.paid_at) {
+            const paidDate = i.paid_at.split('T')[0];
+            if (paidDate >= startDateStr && paidDate <= endDateStr) {
+              allEvents.push({ id: `ip-${i.id}`, date: paidDate, type: 'invoice_paid', title: `Invoice paid: $${i.amount}`, color: 'text-success', icon: Receipt });
+            }
+          }
+        });
+
+        (deliverablesRes.data || []).forEach(d => {
+          const date = d.created_at.split('T')[0];
+          if (date >= startDateStr && date <= endDateStr) {
+            allEvents.push({ id: `d-${d.id}`, date, type: 'deliverable', title: `Uploaded: ${d.file_name}`, color: 'text-primary', icon: Upload });
+          }
+        });
+
+      } else if (userRole === 'client') {
+        // Client: their projects, invoices, deliverables
+        const [projectsRes, invoicesRes, deliverablesRes] = await Promise.all([
+          supabase.from('projects').select('id,title,status,created_at,completed_at,due_date').eq('client_id', user.id),
+          supabase.from('invoices').select('id,amount,status,created_at,paid_at').eq('client_id', user.id),
+          supabase.from('deliverables').select('id,file_name,created_at,project_id').order('created_at', { ascending: false }),
+        ]);
+
+        (projectsRes.data || []).forEach(p => {
+          const createdDate = p.created_at.split('T')[0];
+          if (createdDate >= startDateStr && createdDate <= endDateStr) {
+            allEvents.push({ id: `p-${p.id}`, date: createdDate, type: 'project_created', title: `Requested: ${p.title}`, color: 'text-primary', icon: FolderKanban });
+          }
+          if (p.completed_at) {
+            const doneDate = p.completed_at.split('T')[0];
+            if (doneDate >= startDateStr && doneDate <= endDateStr) {
+              allEvents.push({ id: `pd-${p.id}`, date: doneDate, type: 'status_change', title: `Delivered: ${p.title}`, color: 'text-success', icon: CheckCircle2 });
+            }
+          }
+        });
+
+        (invoicesRes.data || []).forEach(i => {
+          const sentDate = i.created_at.split('T')[0];
+          if (sentDate >= startDateStr && sentDate <= endDateStr) {
+            allEvents.push({ id: `is-${i.id}`, date: sentDate, type: 'invoice_sent', title: `Invoice received: $${i.amount}`, color: 'text-warning', icon: Receipt });
+          }
+          if (i.paid_at) {
+            const paidDate = i.paid_at.split('T')[0];
+            if (paidDate >= startDateStr && paidDate <= endDateStr) {
+              allEvents.push({ id: `ip-${i.id}`, date: paidDate, type: 'invoice_paid', title: `Paid: $${i.amount}`, color: 'text-success', icon: Receipt });
+            }
+          }
+        });
+
+        const clientProjectIds = (projectsRes.data || []).map(p => p.id);
+        (deliverablesRes.data || []).filter(d => clientProjectIds.includes(d.project_id)).forEach(d => {
+          const date = d.created_at.split('T')[0];
+          if (date >= startDateStr && date <= endDateStr) {
+            allEvents.push({ id: `d-${d.id}`, date, type: 'deliverable', title: `Video delivered: ${d.file_name}`, color: 'text-primary', icon: Upload });
+          }
+        });
+
+      } else if (userRole === 'editor') {
+        // Editor: assigned projects, their task logs, leaves
+        const [assignmentsRes, logsRes, leavesRes] = await Promise.all([
+          supabase.from('project_editors').select('project:projects(id,title,status,created_at,completed_at)').eq('editor_id', user.id),
+          supabase.from('daily_logs').select('id,date,log_type,work_summary,check_in_at,check_out_at').eq('editor_id', user.id).gte('date', startDateStr).lte('date', endDateStr),
+          supabase.from('leave_requests').select('id,start_date,end_date,leave_type,status').eq('editor_id', user.id),
+        ]);
+
+        const projects = (assignmentsRes.data || []).map((a: any) => a.project).filter(Boolean);
+        projects.forEach((p: any) => {
+          if (p.completed_at) {
+            const doneDate = p.completed_at.split('T')[0];
+            if (doneDate >= startDateStr && doneDate <= endDateStr) {
+              allEvents.push({ id: `pd-${p.id}`, date: doneDate, type: 'status_change', title: `Completed: ${p.title}`, color: 'text-success', icon: CheckCircle2 });
+            }
+          }
+        });
+
+        (logsRes.data || []).forEach(l => {
+          if (l.log_type === 'task_update') {
+            allEvents.push({ id: `tl-${l.id}`, date: l.date, type: 'task_log', title: 'Task update', detail: l.work_summary || undefined, color: 'text-primary', icon: FileText });
+          } else {
+            allEvents.push({ id: `at-${l.id}`, date: l.date, type: 'attendance', title: l.check_in_at ? 'Checked in' : 'Attendance', detail: l.work_summary || undefined, color: 'text-muted-foreground', icon: Clock });
+          }
+        });
+
+        (leavesRes.data || []).forEach(l => {
+          // Add event for each day of the leave within this month
+          const start = new Date(l.start_date);
+          const end = new Date(l.end_date);
+          for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+            const dateStr = d.toISOString().split('T')[0];
+            if (dateStr >= startDateStr && dateStr <= endDateStr) {
+              allEvents.push({
+                id: `lv-${l.id}-${dateStr}`,
+                date: dateStr,
+                type: 'leave',
+                title: `${l.leave_type} leave`,
+                detail: l.status,
+                color: l.status === 'approved' ? 'text-success' : l.status === 'rejected' ? 'text-destructive' : 'text-warning',
+                icon: l.status === 'approved' ? CheckCircle2 : l.status === 'rejected' ? XCircle : Clock,
+              });
+            }
+          }
+        });
+      }
+
+      setEvents(allEvents);
     } catch (err) {
-      console.error('Error fetching calendar data:', err);
+      console.error('Error fetching calendar events:', err);
     } finally {
       setLoading(false);
     }
-  }, [user, startDate, endDate]);
+  }, [user, userRole, startDateStr, endDateStr]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    fetchEvents();
+  }, [fetchEvents]);
 
-  // Stats
-  const attendanceLogs = logs.filter(l => l.log_type === 'attendance');
-  const taskLogs = logs.filter(l => l.log_type === 'task_update');
-  const totalDaysPresent = attendanceLogs.filter(l => l.check_in_at).length;
-  const totalHoursMs = attendanceLogs.reduce((sum, l) => {
-    if (l.check_in_at && l.check_out_at) {
-      return sum + (new Date(l.check_out_at).getTime() - new Date(l.check_in_at).getTime());
-    }
-    return sum;
-  }, 0);
-  const totalHours = Math.round(totalHoursMs / 3600000 * 10) / 10;
-  const avgHours = totalDaysPresent > 0 ? Math.round((totalHours / totalDaysPresent) * 10) / 10 : 0;
-  const approvedLeaves = leaves.filter(l => l.status === 'approved').length;
-  const pendingLeaves = leaves.filter(l => l.status === 'pending').length;
+  const prevMonth = () => setCurrentMonth(new Date(year, month - 1, 1));
+  const nextMonth = () => setCurrentMonth(new Date(year, month + 1, 1));
 
-  const formatHours = (checkIn: string | null, checkOut: string | null) => {
-    if (!checkIn || !checkOut) return '-';
-    const diff = new Date(checkOut).getTime() - new Date(checkIn).getTime();
-    const hours = Math.floor(diff / 3600000);
-    const minutes = Math.floor((diff % 3600000) / 60000);
-    return `${hours}h ${minutes}m`;
-  };
+  // Build calendar grid
+  const startDow = firstDay.getDay(); // 0=Sun
+  const totalDays = lastDay.getDate();
+  const calendarDays: (number | null)[] = [];
+  for (let i = 0; i < startDow; i++) calendarDays.push(null);
+  for (let i = 1; i <= totalDays; i++) calendarDays.push(i);
 
-  const statusColor = (status: string) => {
-    switch (status) {
-      case 'approved': return 'bg-success/10 text-success border-success/20';
-      case 'rejected': return 'bg-destructive/10 text-destructive border-destructive/20';
-      default: return 'bg-warning/10 text-warning border-warning/20';
-    }
-  };
+  const eventsByDate = useMemo(() => {
+    const map: Record<string, ActivityEvent[]> = {};
+    events.forEach(e => {
+      if (!map[e.date]) map[e.date] = [];
+      map[e.date].push(e);
+    });
+    return map;
+  }, [events]);
 
-  const handleExportAttendance = () => {
-    const rows = logs.map(l => ({
-      Date: l.date,
-      Type: l.log_type,
-      'Check In': l.check_in_at ? new Date(l.check_in_at).toLocaleTimeString() : '',
-      'Check Out': l.check_out_at ? new Date(l.check_out_at).toLocaleTimeString() : '',
-      Hours: formatHours(l.check_in_at, l.check_out_at),
-      'Work Summary': l.work_summary || '',
+  const today = new Date().toISOString().split('T')[0];
+
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const selectedEvents = selectedDate ? (eventsByDate[selectedDate] || []) : [];
+
+  const handleExport = () => {
+    const rows = events.map(e => ({
+      Date: e.date,
+      Type: e.type,
+      Title: e.title,
+      Detail: e.detail || '',
     }));
-    exportToCSV(rows, `attendance-${startDate}-to-${endDate}`);
+    exportToCSV(rows, `calendar-${startDateStr}-to-${endDateStr}`);
   };
 
-  const handleExportLeaves = () => {
-    const rows = leaves.map(l => ({
-      'Start Date': l.start_date,
-      'End Date': l.end_date,
-      Type: l.leave_type,
-      Status: l.status,
-      Reason: l.reason,
-      'Admin Note': l.admin_note || '',
-      'Submitted': new Date(l.created_at).toLocaleDateString(),
-    }));
-    exportToCSV(rows, `leaves-export`);
-  };
+  const monthLabel = currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
   return (
     <>
       <Helmet>
         <title>Calendar | Veylodesk</title>
-        <meta name="description" content="View your attendance, task logs, and leave history" />
+        <meta name="description" content="View your activity calendar" />
       </Helmet>
 
       <DashboardLayout role={(userRole as 'admin' | 'client' | 'editor') || 'editor'}>
         <div className="max-w-5xl mx-auto">
-          <div className="mb-6">
-            <h1 className="text-2xl md:text-3xl font-bold text-foreground">Calendar & Activity</h1>
-            <p className="text-muted-foreground mt-1">Track your attendance, work logs, and leaves</p>
-          </div>
-
-          {/* Summary Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <div className="glass-card rounded-xl p-4 text-center">
-              <div className="w-10 h-10 mx-auto mb-2 rounded-lg bg-primary/10 flex items-center justify-center">
-                <LogIn className="w-5 h-5 text-primary" />
-              </div>
-              <p className="text-xl font-bold text-foreground">{totalDaysPresent}</p>
-              <p className="text-xs text-muted-foreground">Days Present</p>
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground">Calendar</h1>
+              <p className="text-muted-foreground mt-1">All your activity at a glance</p>
             </div>
-            <div className="glass-card rounded-xl p-4 text-center">
-              <div className="w-10 h-10 mx-auto mb-2 rounded-lg bg-success/10 flex items-center justify-center">
-                <Clock className="w-5 h-5 text-success" />
-              </div>
-              <p className="text-xl font-bold text-foreground">{totalHours}h</p>
-              <p className="text-xs text-muted-foreground">Total Hours</p>
-            </div>
-            <div className="glass-card rounded-xl p-4 text-center">
-              <div className="w-10 h-10 mx-auto mb-2 rounded-lg bg-warning/10 flex items-center justify-center">
-                <FileText className="w-5 h-5 text-warning" />
-              </div>
-              <p className="text-xl font-bold text-foreground">{taskLogs.length}</p>
-              <p className="text-xs text-muted-foreground">Task Logs</p>
-            </div>
-            <div className="glass-card rounded-xl p-4 text-center">
-              <div className="w-10 h-10 mx-auto mb-2 rounded-lg bg-destructive/10 flex items-center justify-center">
-                <CalendarDays className="w-5 h-5 text-destructive" />
-              </div>
-              <p className="text-xl font-bold text-foreground">{approvedLeaves}</p>
-              <p className="text-xs text-muted-foreground">Leaves Taken</p>
-            </div>
-          </div>
-
-          {/* Date filter */}
-          <div className="flex flex-wrap items-center gap-3 mb-6">
-            <div className="flex items-center gap-2">
-              <CalendarIcon className="w-4 h-4 text-muted-foreground" />
-              <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-40 h-9 text-sm" />
-            </div>
-            <span className="text-muted-foreground text-sm">to</span>
-            <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-40 h-9 text-sm" />
+            <Button variant="outline" size="sm" onClick={handleExport} disabled={events.length === 0}>
+              <Download className="w-4 h-4 mr-1" />
+              Export
+            </Button>
           </div>
 
           {loading ? (
-            <div className="flex justify-center py-12">
+            <div className="flex justify-center py-20">
               <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <Tabs defaultValue="attendance" className="w-full">
-              <TabsList className="w-full mb-4">
-                <TabsTrigger value="attendance" className="flex-1 text-sm">Attendance & Tasks</TabsTrigger>
-                <TabsTrigger value="leaves" className="flex-1 text-sm">Leaves ({leaves.length})</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="attendance">
-                <div className="flex justify-end mb-3">
-                  <Button variant="outline" size="sm" onClick={handleExportAttendance} disabled={logs.length === 0}>
-                    <Download className="w-4 h-4 mr-1" />
-                    Export CSV
-                  </Button>
-                </div>
-                {logs.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground text-sm">No records found for this period.</div>
-                ) : (
-                  <div className="overflow-x-auto rounded-xl border border-border/50">
-                    <table className="w-full text-sm">
-                      <thead className="bg-muted/30">
-                        <tr>
-                          <th className="text-left p-3 font-medium text-muted-foreground">Date</th>
-                          <th className="text-left p-3 font-medium text-muted-foreground">Type</th>
-                          {employmentType === 'salaried' && (
-                            <>
-                              <th className="text-left p-3 font-medium text-muted-foreground">Check In</th>
-                              <th className="text-left p-3 font-medium text-muted-foreground">Check Out</th>
-                              <th className="text-left p-3 font-medium text-muted-foreground">Hours</th>
-                            </>
-                          )}
-                          <th className="text-left p-3 font-medium text-muted-foreground">Work Summary</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border/30">
-                        {logs.map((log) => (
-                          <tr key={log.id} className="hover:bg-muted/10">
-                            <td className="p-3 text-foreground whitespace-nowrap">
-                              {new Date(log.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                            </td>
-                            <td className="p-3">
-                              <Badge variant="secondary" className="text-xs">
-                                {log.log_type === 'attendance' ? 'Attendance' : 'Task'}
-                              </Badge>
-                            </td>
-                            {employmentType === 'salaried' && (
-                              <>
-                                <td className="p-3 text-foreground">
-                                  {log.check_in_at ? new Date(log.check_in_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
-                                </td>
-                                <td className="p-3 text-foreground">
-                                  {log.check_out_at ? new Date(log.check_out_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : (
-                                    log.check_in_at ? <Badge variant="secondary" className="bg-warning/10 text-warning text-xs border border-warning/20">Active</Badge> : '-'
-                                  )}
-                                </td>
-                                <td className="p-3 text-foreground">{formatHours(log.check_in_at, log.check_out_at)}</td>
-                              </>
-                            )}
-                            <td className="p-3 text-muted-foreground max-w-[400px]">
-                              {log.work_summary ? <Linkify text={log.work_summary} /> : '-'}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Calendar Grid */}
+              <div className="lg:col-span-2">
+                <div className="glass-card rounded-xl p-4 md:p-6">
+                  {/* Month Navigation */}
+                  <div className="flex items-center justify-between mb-4">
+                    <Button variant="ghost" size="icon" onClick={prevMonth}>
+                      <ChevronLeft className="w-5 h-5" />
+                    </Button>
+                    <h2 className="text-lg font-semibold text-foreground">{monthLabel}</h2>
+                    <Button variant="ghost" size="icon" onClick={nextMonth}>
+                      <ChevronRight className="w-5 h-5" />
+                    </Button>
                   </div>
-                )}
-              </TabsContent>
 
-              <TabsContent value="leaves">
-                <div className="flex justify-end mb-3">
-                  <Button variant="outline" size="sm" onClick={handleExportLeaves} disabled={leaves.length === 0}>
-                    <Download className="w-4 h-4 mr-1" />
-                    Export CSV
-                  </Button>
-                </div>
-                {leaves.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground text-sm">No leave requests found.</div>
-                ) : (
-                  <div className="space-y-3">
-                    {leaves.map((leave) => (
-                      <div key={leave.id} className="glass-card rounded-xl p-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-sm font-medium text-foreground capitalize">{leave.leave_type} Leave</span>
-                              <Badge variant="secondary" className={cn("text-xs border", statusColor(leave.status))}>
-                                {leave.status}
-                              </Badge>
+                  {/* Day Headers */}
+                  <div className="grid grid-cols-7 gap-1 mb-1">
+                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+                      <div key={d} className="text-center text-xs font-medium text-muted-foreground py-2">{d}</div>
+                    ))}
+                  </div>
+
+                  {/* Days */}
+                  <div className="grid grid-cols-7 gap-1">
+                    {calendarDays.map((day, idx) => {
+                      if (day === null) return <div key={`e-${idx}`} className="aspect-square" />;
+                      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                      const dayEvents = eventsByDate[dateStr] || [];
+                      const isToday = dateStr === today;
+                      const isSelected = dateStr === selectedDate;
+
+                      return (
+                        <button
+                          key={dateStr}
+                          onClick={() => setSelectedDate(isSelected ? null : dateStr)}
+                          className={cn(
+                            "aspect-square rounded-lg p-1 flex flex-col items-center justify-start transition-colors relative",
+                            isToday && "ring-2 ring-primary",
+                            isSelected ? "bg-primary/15" : "hover:bg-muted/50",
+                          )}
+                        >
+                          <span className={cn("text-xs font-medium", isToday ? "text-primary" : "text-foreground")}>{day}</span>
+                          {dayEvents.length > 0 && (
+                            <div className="flex gap-0.5 mt-0.5 flex-wrap justify-center">
+                              {dayEvents.slice(0, 3).map((e, i) => (
+                                <div key={i} className={cn("w-1.5 h-1.5 rounded-full", e.color.replace('text-', 'bg-'))} />
+                              ))}
+                              {dayEvents.length > 3 && <span className="text-[8px] text-muted-foreground">+{dayEvents.length - 3}</span>}
                             </div>
-                            <p className="text-xs text-muted-foreground mb-2">
-                              {new Date(leave.start_date).toLocaleDateString()} — {new Date(leave.end_date).toLocaleDateString()}
-                              {' • '}
-                              {Math.ceil((new Date(leave.end_date).getTime() - new Date(leave.start_date).getTime()) / (1000 * 60 * 60 * 24)) + 1} day(s)
-                            </p>
-                            <p className="text-sm text-foreground">{leave.reason}</p>
-                            {leave.admin_note && (
-                              <p className="text-xs text-muted-foreground mt-2 italic border-l-2 border-primary/30 pl-2">
-                                Admin: {leave.admin_note}
-                              </p>
-                            )}
-                          </div>
-                          <div className="flex-shrink-0">
-                            {leave.status === 'approved' ? (
-                              <CheckCircle2 className="w-5 h-5 text-success" />
-                            ) : leave.status === 'rejected' ? (
-                              <XCircle className="w-5 h-5 text-destructive" />
-                            ) : (
-                              <Clock className="w-5 h-5 text-warning" />
-                            )}
-                          </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Legend */}
+                <div className="flex flex-wrap gap-3 mt-4 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-primary" />Project</span>
+                  <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-success" />Completed/Paid</span>
+                  <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-warning" />Invoice</span>
+                  {userRole === 'editor' && (
+                    <>
+                      <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-destructive" />Leave</span>
+                      <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-muted-foreground" />Attendance</span>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Event Detail Panel */}
+              <div className="lg:col-span-1">
+                <div className="glass-card rounded-xl p-4 sticky top-20">
+                  <h3 className="font-semibold text-foreground mb-3">
+                    {selectedDate ? new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : 'Select a date'}
+                  </h3>
+                  {selectedDate && selectedEvents.length === 0 && (
+                    <p className="text-sm text-muted-foreground">No activity on this day.</p>
+                  )}
+                  <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+                    {selectedEvents.map(e => (
+                      <div key={e.id} className="flex items-start gap-2 p-2 rounded-lg bg-muted/30">
+                        <e.icon className={cn("w-4 h-4 mt-0.5 flex-shrink-0", e.color)} />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-foreground">{e.title}</p>
+                          {e.detail && <p className="text-xs text-muted-foreground truncate">{e.detail}</p>}
                         </div>
                       </div>
                     ))}
                   </div>
-                )}
-              </TabsContent>
-            </Tabs>
+                  {!selectedDate && (
+                    <p className="text-sm text-muted-foreground">Click on a day to see activity details.</p>
+                  )}
+                </div>
+
+                {/* Monthly Summary */}
+                <div className="glass-card rounded-xl p-4 mt-4">
+                  <h3 className="font-semibold text-foreground mb-3">Monthly Summary</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Total events</span>
+                      <span className="font-medium text-foreground">{events.length}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Active days</span>
+                      <span className="font-medium text-foreground">{Object.keys(eventsByDate).length}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </DashboardLayout>
