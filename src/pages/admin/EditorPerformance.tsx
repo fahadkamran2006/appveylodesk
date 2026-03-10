@@ -282,8 +282,9 @@ export default function EditorPerformancePage() {
       const log = attendanceMap.get(dateStr);
       if (log?.check_in_at) {
         const checkInTime = new Date(log.check_in_at);
-        const isLate = checkInTime.getHours() > LATE_THRESHOLD_HOUR || 
-          (checkInTime.getHours() === LATE_THRESHOLD_HOUR && checkInTime.getMinutes() > 0);
+        const checkInTotal = checkInTime.getHours() * 60 + checkInTime.getMinutes();
+        const thresholdTotal = lateThresholdHour * 60 + lateThresholdMinute;
+        const isLate = checkInTotal > thresholdTotal;
         days.push({
           date: dateStr,
           dayOfWeek,
