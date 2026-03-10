@@ -369,7 +369,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
   // Resolve playback URL
   useEffect(() => {
     let cancelled = false;
-    let pollInterval: NodeJS.Timeout | null = null;
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
 
     const resolve = async () => {
       setError(null);
