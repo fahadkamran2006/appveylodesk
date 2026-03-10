@@ -492,7 +492,7 @@ const AdminPayroll = () => {
                               {/* Expandable history row */}
                               {isExpanded && (
                                 <tr key={`${editor.id}-history`}>
-                                  <td colSpan={8} className="p-0">
+                                  <td colSpan={11} className="p-0">
                                     <div className="bg-muted/20 p-4 border-t border-border/30">
                                       <div className="flex items-center gap-2 mb-3">
                                         <History className="w-4 h-4 text-muted-foreground" />
