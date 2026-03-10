@@ -77,6 +77,7 @@ export function WorkScheduleSettings() {
           working_days: workingDays,
           late_threshold_hour: lateHour,
           late_threshold_minute: lateMinute,
+          auto_monthly_report: autoMonthlyReport,
         } as any, { onConflict: 'agency_id' });
 
       if (error) throw error;
