@@ -9,6 +9,8 @@ import { Clock, CheckCircle2, FolderKanban, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { cn } from '@/lib/utils';
+import { AttendanceCard } from '@/components/attendance/AttendanceCard';
+import { LeaveRequestCard } from '@/components/attendance/LeaveRequestCard';
 import type { Database } from '@/integrations/supabase/types';
 
 type ProjectStatus = Database['public']['Enums']['project_status'];
