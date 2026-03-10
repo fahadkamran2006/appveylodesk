@@ -6,7 +6,6 @@ import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { Button } from '@/components/ui/button';
 import { PersonCard } from '@/components/PersonCard';
-import { PersonDetailSheet } from '@/components/PersonDetailSheet';
 import { InviteUserModal } from '@/components/InviteUserModal';
 import { PendingInvitationCard } from '@/components/PendingInvitationCard';
 import { EditorLeaderboard } from '@/components/admin/EditorLeaderboard';
@@ -48,8 +47,6 @@ const AdminTeam = () => {
   const [agencyId, setAgencyId] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
-  const [detailOpen, setDetailOpen] = useState(false);
   const [leaderboardPeriod, setLeaderboardPeriod] = useState<TimePeriod>('all');
   const [removeModalOpen, setRemoveModalOpen] = useState(false);
   const [memberToRemove, setMemberToRemove] = useState<TeamMember | null>(null);
@@ -123,11 +120,7 @@ const AdminTeam = () => {
   }, [user, userRole]);
 
   const handleExpandMember = (id: string) => {
-    const member = teamMembers.find((m) => m.id === id);
-    if (member) {
-      setSelectedMember(member);
-      setDetailOpen(true);
-    }
+    navigate(`/admin/team/${id}`);
   };
 
   const handleRemoveMember = (id: string) => {
@@ -322,32 +315,6 @@ const AdminTeam = () => {
         onSuccess={fetchTeamData}
       />
 
-      {/* Detail Sheet */}
-      <PersonDetailSheet
-        open={detailOpen}
-        onOpenChange={setDetailOpen}
-        person={
-          selectedMember
-            ? {
-                id: selectedMember.id,
-                name: selectedMember.full_name || '',
-                email: selectedMember.email,
-                avatarUrl: selectedMember.avatar_url,
-                role: 'editor',
-                createdAt: selectedMember.created_at,
-                employmentType: selectedMember.employment_type as 'salaried' | 'freelance',
-                agencyId: agencyId || undefined,
-              }
-            : null
-        }
-        variant="team"
-        stats={selectedMember ? {
-          completedTasks: editorStats[selectedMember.id]?.completedProjects ?? 0,
-          totalProjects: editorStats[selectedMember.id]?.projects.length ?? 0,
-          avgDeliveryDays: editorStats[selectedMember.id]?.avgDeliveryDays,
-        } : undefined}
-        projects={selectedMember ? editorStats[selectedMember.id]?.projects : undefined}
-      />
 
       {/* Edit Editor Modal */}
       <EditEditorModal

@@ -32,6 +32,7 @@ import AdminDashboard from "./pages/admin/Dashboard";
 import AdminProjects from "./pages/admin/Projects";
 import AdminClients from "./pages/admin/Clients";
 import AdminTeam from "./pages/admin/Team";
+import AdminEditorPerformance from "./pages/admin/EditorPerformance";
 import AdminInvoices from "./pages/admin/Invoices";
 import AdminPayroll from "./pages/admin/Payroll";
 
@@ -114,6 +115,7 @@ const App = () => (
                   <Route path="/admin/projects" element={<AdminProjects />} />
                   <Route path="/admin/clients" element={<AdminClients />} />
                   <Route path="/admin/team" element={<AdminTeam />} />
+                  <Route path="/admin/team/:editorId" element={<AdminEditorPerformance />} />
                   <Route path="/admin/invoices" element={<AdminInvoices />} />
                   <Route path="/admin/payroll" element={<AdminPayroll />} />
                   <Route path="/admin/storage" element={<StoragePage />} />
