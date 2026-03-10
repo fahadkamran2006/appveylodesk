@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.super-admin-actions]
 verify_jwt = false
+
+[functions.monthly-attendance-summary]
+verify_jwt = false
