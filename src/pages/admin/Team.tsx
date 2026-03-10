@@ -6,7 +6,7 @@ import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { Button } from '@/components/ui/button';
 import { PersonCard } from '@/components/PersonCard';
-import { PersonDetailSheet } from '@/components/PersonDetailSheet';
+import { PersonCard } from '@/components/PersonCard';
 import { InviteUserModal } from '@/components/InviteUserModal';
 import { PendingInvitationCard } from '@/components/PendingInvitationCard';
 import { EditorLeaderboard } from '@/components/admin/EditorLeaderboard';
