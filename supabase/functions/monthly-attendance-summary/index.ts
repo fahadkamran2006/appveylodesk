@@ -176,7 +176,7 @@ async function buildAndSendReport(
       Authorization: `Bearer ${resendKey}`,
     },
     body: JSON.stringify({
-      from: "Veylodesk <onboarding@resend.dev>",
+      from: "Veylodesk <noreply@veylodesk.com>",
       to: [adminEmail],
       subject: `📊 Attendance Report — ${monthName}`,
       html,
