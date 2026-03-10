@@ -212,6 +212,19 @@ const AdminTeam = () => {
             </div>
           ) : (
             <div className="space-y-8">
+              {/* Today's Attendance */}
+              {agencyId && teamMembers.length > 0 && (
+                <section>
+                  <div className="flex items-center gap-2 mb-4">
+                    <Activity className="w-5 h-5 text-muted-foreground" />
+                    <h2 className="text-lg font-semibold text-foreground">Today's Attendance</h2>
+                  </div>
+                  <div className="glass-card rounded-xl p-5">
+                    <TodayAttendance agencyId={agencyId} teamMembers={teamMembers} />
+                  </div>
+                </section>
+              )}
+
               {/* Editor Leaderboard */}
               {teamMembers.length > 0 && Object.keys(editorStats).length > 0 && (
                 <section>
