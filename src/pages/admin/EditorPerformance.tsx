@@ -88,6 +88,9 @@ export default function EditorPerformancePage() {
   const [projects, setProjects] = useState<ProjectInfo[]>([]);
   const [agencyId, setAgencyId] = useState('');
   const [loading, setLoading] = useState(true);
+  const [workingDays, setWorkingDays] = useState<number[]>([1, 2, 3, 4, 5]);
+  const [lateThresholdHour, setLateThresholdHour] = useState(10);
+  const [lateThresholdMinute, setLateThresholdMinute] = useState(0);
 
   const [startDate, setStartDate] = useState(() => {
     const d = new Date();
