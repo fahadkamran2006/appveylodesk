@@ -37,6 +37,8 @@ const EditorDashboard = () => {
   
   const [projects, setProjects] = useState<Project[]>([]);
   const [loadingData, setLoadingData] = useState(true);
+  const [employmentType, setEmploymentType] = useState<'salaried' | 'freelance'>('freelance');
+  const [agencyId, setAgencyId] = useState<string>('');
 
   // Allow admin god mode - only redirect non-admins away
   useEffect(() => {
