@@ -41,6 +41,9 @@ interface EditorPayroll {
   completed_videos: number;
   isPaidThisMonth: boolean;
   balanceOwed: number;
+  daysPresent: number;
+  hoursWorked: number;
+  unpaidLeaveDays: number;
 }
 
 interface PaymentHistoryRecord {
