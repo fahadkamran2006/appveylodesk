@@ -14,7 +14,8 @@ import { RemoveMemberModal } from '@/components/RemoveMemberModal';
 import { EditEditorModal } from '@/components/admin/EditEditorModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useEditorStats, type TimePeriod } from '@/hooks/usePersonStats';
-import { UsersRound, UserPlus, Loader2, Clock, CalendarDays, Activity } from 'lucide-react';
+import { UsersRound, UserPlus, Loader2, Clock, CalendarDays, Activity, FileBarChart } from 'lucide-react';
+import { SendAttendanceReport } from '@/components/admin/SendAttendanceReport';
 import { LeaveManagement } from '@/components/admin/LeaveManagement';
 import type { Database } from '@/integrations/supabase/types';
 
