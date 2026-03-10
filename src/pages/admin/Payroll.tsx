@@ -426,6 +426,15 @@ const AdminPayroll = () => {
                                     {isSalaried ? 'Salaried' : 'Freelance'}
                                   </Badge>
                                 </td>
+                                <td className="p-4 text-center text-sm text-foreground">{editor.daysPresent}</td>
+                                <td className="p-4 text-center text-sm text-foreground">{editor.hoursWorked > 0 ? `${editor.hoursWorked}h` : '-'}</td>
+                                <td className="p-4 text-center text-sm">
+                                  {editor.unpaidLeaveDays > 0 ? (
+                                    <Badge variant="secondary" className="text-xs bg-destructive/10 text-destructive border border-destructive/20">
+                                      {editor.unpaidLeaveDays}d
+                                    </Badge>
+                                  ) : <span className="text-muted-foreground">-</span>}
+                                </td>
                                 <td className="p-4 text-right font-medium text-foreground text-sm">${basePay.toLocaleString()}</td>
                                 <td className="p-4 text-right text-sm">
                                   <span className={cn("font-medium", bonus > 0 ? "text-success" : "text-muted-foreground")}>
