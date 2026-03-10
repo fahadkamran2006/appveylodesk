@@ -268,7 +268,8 @@ export default function EditorPerformancePage() {
         continue;
       }
 
-      if (dayOfWeek === 0 || dayOfWeek === 6) {
+      // Use configurable working days
+      if (!workingDays.includes(dayOfWeek)) {
         days.push({ date: dateStr, dayOfWeek, status: 'weekend' });
         continue;
       }
