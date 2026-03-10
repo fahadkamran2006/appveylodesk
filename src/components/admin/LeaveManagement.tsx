@@ -88,6 +88,7 @@ export function LeaveManagement({ agencyId, editorId }: LeaveManagementProps) {
     if (!user) return;
     setProcessingId(requestId);
     try {
+      const request = requests.find(r => r.id === requestId);
       const { error } = await supabase
         .from('leave_requests')
         .update({
@@ -99,6 +100,23 @@ export function LeaveManagement({ agencyId, editorId }: LeaveManagementProps) {
         .eq('id', requestId);
 
       if (error) throw error;
+
+      // Notify the editor about the decision
+      if (request) {
+        try {
+          await supabase.rpc('create_notification', {
+            _user_id: request.editor_id,
+            _agency_id: agencyId,
+            _type: 'task_assignment' as any,
+            _title: `Leave ${status === 'approved' ? 'Approved' : 'Rejected'}`,
+            _message: `Your ${request.leave_type} leave request (${new Date(request.start_date).toLocaleDateString()} – ${new Date(request.end_date).toLocaleDateString()}) has been ${status}.${adminNotes[requestId] ? ' Note: ' + adminNotes[requestId] : ''}`,
+            _link: '/editor/dashboard',
+          });
+        } catch (notifErr) {
+          console.error('Leave notification error:', notifErr);
+        }
+      }
+
       toast({
         title: `Leave ${status}`,
         description: `The leave request has been ${status}.`,

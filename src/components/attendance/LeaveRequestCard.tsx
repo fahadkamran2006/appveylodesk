@@ -85,6 +85,37 @@ export function LeaveRequestCard({ agencyId }: LeaveRequestCardProps) {
         reason: reason.trim(),
       });
       if (error) throw error;
+
+      // Notify all admins in this agency
+      try {
+        const { data: admins } = await supabase
+          .from('user_roles')
+          .select('user_id')
+          .eq('agency_id', agencyId)
+          .eq('role', 'admin');
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('full_name, email')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        const editorName = profile?.full_name || profile?.email || 'An editor';
+
+        for (const admin of admins || []) {
+          await supabase.rpc('create_notification', {
+            _user_id: admin.user_id,
+            _agency_id: agencyId,
+            _type: 'task_assignment' as any,
+            _title: 'New Leave Request',
+            _message: `${editorName} requested ${leaveType} leave from ${startDate} to ${endDate}`,
+            _link: '/admin/team',
+          });
+        }
+      } catch (notifErr) {
+        console.error('Leave notification error:', notifErr);
+      }
+
       toast({ title: 'Leave Request Submitted', description: 'Your leave request is pending approval.' });
       setStartDate('');
       setEndDate('');
