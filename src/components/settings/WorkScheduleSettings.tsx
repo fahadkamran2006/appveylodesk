@@ -52,6 +52,7 @@ export function WorkScheduleSettings() {
         setWorkingDays((data as any).working_days || [1, 2, 3, 4, 5]);
         setLateHour((data as any).late_threshold_hour ?? 10);
         setLateMinute((data as any).late_threshold_minute ?? 0);
+        setAutoMonthlyReport((data as any).auto_monthly_report ?? false);
       }
       setLoading(false);
     };
