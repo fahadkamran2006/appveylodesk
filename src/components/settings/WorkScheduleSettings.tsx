@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import { CalendarDays, Loader2, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -25,6 +26,7 @@ export function WorkScheduleSettings() {
   const [workingDays, setWorkingDays] = useState<number[]>([1, 2, 3, 4, 5]);
   const [lateHour, setLateHour] = useState(10);
   const [lateMinute, setLateMinute] = useState(0);
+  const [autoMonthlyReport, setAutoMonthlyReport] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -50,6 +52,7 @@ export function WorkScheduleSettings() {
         setWorkingDays((data as any).working_days || [1, 2, 3, 4, 5]);
         setLateHour((data as any).late_threshold_hour ?? 10);
         setLateMinute((data as any).late_threshold_minute ?? 0);
+        setAutoMonthlyReport((data as any).auto_monthly_report ?? false);
       }
       setLoading(false);
     };
@@ -74,6 +77,7 @@ export function WorkScheduleSettings() {
           working_days: workingDays,
           late_threshold_hour: lateHour,
           late_threshold_minute: lateMinute,
+          auto_monthly_report: autoMonthlyReport,
         } as any, { onConflict: 'agency_id' });
 
       if (error) throw error;
@@ -158,6 +162,20 @@ export function WorkScheduleSettings() {
           <p className="text-xs text-muted-foreground">
             Check-ins after {String(lateHour).padStart(2, '0')}:{String(lateMinute).padStart(2, '0')} will be marked as late
           </p>
+        </div>
+
+        {/* Auto Monthly Report */}
+        <div className="flex items-center justify-between rounded-lg border border-border/50 p-4">
+          <div className="space-y-0.5">
+            <Label className="text-sm font-medium">Auto Monthly Report</Label>
+            <p className="text-xs text-muted-foreground">
+              Automatically email attendance report on the 1st of every month
+            </p>
+          </div>
+          <Switch
+            checked={autoMonthlyReport}
+            onCheckedChange={setAutoMonthlyReport}
+          />
         </div>
 
         <Button onClick={handleSave} disabled={saving} className="w-full sm:w-auto">

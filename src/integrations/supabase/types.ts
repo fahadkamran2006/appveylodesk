@@ -171,6 +171,7 @@ export type Database = {
       agency_work_schedule: {
         Row: {
           agency_id: string
+          auto_monthly_report: boolean
           created_at: string
           id: string
           late_threshold_hour: number
@@ -180,6 +181,7 @@ export type Database = {
         }
         Insert: {
           agency_id: string
+          auto_monthly_report?: boolean
           created_at?: string
           id?: string
           late_threshold_hour?: number
@@ -189,6 +191,7 @@ export type Database = {
         }
         Update: {
           agency_id?: string
+          auto_monthly_report?: boolean
           created_at?: string
           id?: string
           late_threshold_hour?: number
