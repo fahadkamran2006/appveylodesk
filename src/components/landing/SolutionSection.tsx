@@ -1,328 +1,340 @@
 import { useRef } from "react";
-import { Shield, Users, LayoutDashboard, FileCheck, DollarSign, Upload, Eye, CheckCircle } from "lucide-react";
-import { motion, useScroll, useTransform, useMotionValueEvent } from "framer-motion";
-import { useState } from "react";
-import { TextReveal, ScrollFade, TiltCard, LineReveal } from "./ScrollAnimations";
+import { Shield, Users, LayoutDashboard, FileCheck, DollarSign, Upload, Eye, CheckCircle, BarChart3, MessageSquare, Calendar, Clock } from "lucide-react";
+import { motion, useScroll, useTransform, useSpring } from "framer-motion";
+import { TextReveal, ScrollFade, LineReveal } from "./ScrollAnimations";
 
-type ViewType = "admin" | "client" | "editor";
+const dashboardViews = [
+  {
+    id: "admin",
+    label: "Admin View",
+    title: "Total Control at a Glance",
+    subtitle: "See everything. Manage everyone. Scale your agency confidently with real-time insights.",
+    features: [
+      { icon: LayoutDashboard, text: "Kanban board for all projects", desc: "Drag & drop tasks across stages" },
+      { icon: DollarSign, text: "Revenue & invoice tracking", desc: "Generate invoices, track payments" },
+      { icon: Users, text: "Client & editor management", desc: "One place for all relationships" },
+      { icon: BarChart3, text: "Performance analytics", desc: "Revenue trends and team metrics" },
+    ],
+    color: "primary",
+    urlBar: "app.veylodesk.com/admin/dashboard",
+    side: "left" as const,
+    mockup: "admin",
+  },
+  {
+    id: "client",
+    label: "Client View",
+    title: "Simple, Clean Approvals",
+    subtitle: "Clients see their project progress without the noise. No learning curve, just clarity.",
+    features: [
+      { icon: Eye, text: "Real-time project status", desc: "Always know where things stand" },
+      { icon: FileCheck, text: "Easy file downloads", desc: "One-click access to deliverables" },
+      { icon: CheckCircle, text: "One-click approvals", desc: "Approve videos instantly" },
+      { icon: MessageSquare, text: "Built-in messaging", desc: "Feedback without email chaos" },
+    ],
+    color: "success",
+    urlBar: "app.veylodesk.com/client/projects",
+    side: "right" as const,
+    mockup: "client",
+  },
+  {
+    id: "editor",
+    label: "Editor View",
+    title: "Clear Tasks, Fair Pay",
+    subtitle: "Editors know exactly what to do next. Track earnings, upload files, and stay on schedule.",
+    features: [
+      { icon: Upload, text: "Direct file uploads", desc: "Upload deliverables to projects" },
+      { icon: DollarSign, text: "Earnings dashboard", desc: "Track payments and bonuses" },
+      { icon: Clock, text: "Attendance tracking", desc: "Check in/out with work logs" },
+      { icon: Calendar, text: "Task calendar view", desc: "See deadlines at a glance" },
+    ],
+    color: "warning",
+    urlBar: "app.veylodesk.com/editor/tasks",
+    side: "left" as const,
+    mockup: "editor",
+  },
+];
 
-const SolutionSection = () => {
-  const sectionRef = useRef<HTMLElement>(null);
-  const [activeView, setActiveView] = useState<ViewType>("admin");
+// Individual dashboard mockup content
+function AdminMockup() {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <h4 className="font-semibold text-base text-foreground">Command Center</h4>
+          <p className="text-xs text-muted-foreground mt-0.5">Welcome back, Agency Owner</p>
+        </div>
+        <div className="px-3 py-1.5 rounded-lg bg-success/10 border border-success/20 text-success text-xs font-medium">
+          5 Active
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-3 mb-4">
+        {[
+          { label: "Revenue", value: "$47,280", change: "+12%", changeColor: "text-success" },
+          { label: "Clients", value: "18", change: "3 pending", changeColor: "text-muted-foreground" },
+          { label: "Invoices", value: "$8,450", change: "4 unpaid", changeColor: "text-warning" },
+        ].map((s) => (
+          <div key={s.label} className="glass-card-premium rounded-xl p-3">
+            <p className="text-[10px] text-muted-foreground mb-1">{s.label}</p>
+            <p className="text-lg font-bold text-foreground">{s.value}</p>
+            <p className={`text-[10px] mt-0.5 ${s.changeColor}`}>{s.change}</p>
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-4 gap-2">
+        {["Backlog", "In Progress", "Review", "Done"].map((status, i) => (
+          <div key={status} className="glass rounded-lg p-2.5">
+            <div className="flex items-center gap-1.5 mb-2">
+              <div className={`w-1.5 h-1.5 rounded-full ${
+                i === 0 ? "bg-muted-foreground" : i === 1 ? "bg-primary" : i === 2 ? "bg-warning" : "bg-success"
+              }`} />
+              <span className="text-[10px] font-medium text-foreground">{status}</span>
+            </div>
+            {[...Array(i === 1 ? 2 : 1)].map((_, j) => (
+              <div key={j} className="p-2 rounded bg-midnight-deep/60 border border-white/[0.04] mb-1.5">
+                <div className="h-1.5 w-3/4 bg-muted/40 rounded mb-1" />
+                <div className="h-1.5 w-1/2 bg-muted/20 rounded" />
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
+function ClientMockup() {
+  return (
+    <div className="space-y-4">
+      <h4 className="font-semibold text-base text-foreground mb-5">Your Projects</h4>
+      {[
+        { name: "Brand Video Q4", status: "In Review", progress: 90, statusColor: "text-success" },
+        { name: "Social Ads Pack", status: "In Progress", progress: 45, statusColor: "text-primary" },
+        { name: "Product Launch", status: "Completed", progress: 100, statusColor: "text-success" },
+      ].map((project) => (
+        <div key={project.name} className="p-4 rounded-xl bg-muted/20 border border-white/[0.04]">
+          <div className="flex justify-between mb-2">
+            <span className="font-medium text-sm text-foreground">{project.name}</span>
+            <span className={`text-xs ${project.statusColor}`}>{project.status}</span>
+          </div>
+          <div className="h-1.5 rounded-full bg-muted/40 overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-primary to-indigo-soft rounded-full transition-all duration-1000"
+              style={{ width: `${project.progress}%` }}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EditorMockup() {
+  return (
+    <div className="space-y-4">
+      <h4 className="font-semibold text-base text-foreground mb-5">Your Tasks</h4>
+      {[
+        { name: "Edit Intro Sequence", client: "TechCorp", due: "Today", urgent: true },
+        { name: "Color Grading - Ep3", client: "Startup X", due: "Tomorrow", urgent: false },
+        { name: "Sound Design Pass", client: "Brand Co", due: "Wed", urgent: false },
+      ].map((task) => (
+        <div key={task.name} className="p-4 rounded-xl bg-muted/20 border border-white/[0.04] flex items-center justify-between">
+          <div>
+            <p className="font-medium text-sm text-foreground">{task.name}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{task.client}</p>
+          </div>
+          <span className={`px-3 py-1 rounded-full text-[10px] font-medium ${
+            task.urgent
+              ? "bg-warning/10 text-warning border border-warning/20"
+              : "bg-muted/30 text-muted-foreground border border-white/[0.04]"
+          }`}>
+            {task.due}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const mockupComponents: Record<string, React.FC> = {
+  admin: AdminMockup,
+  client: ClientMockup,
+  editor: EditorMockup,
+};
+
+// Single dashboard view block with 3D tilt
+function DashboardViewBlock({ view, index }: { view: typeof dashboardViews[0]; index: number }) {
+  const ref = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
-    target: sectionRef,
-    offset: ["start start", "end end"],
+    target: ref,
+    offset: ["start end", "center center"],
   });
 
-  // Map scroll progress to view transitions
-  useMotionValueEvent(scrollYProgress, "change", (progress) => {
-    if (progress < 0.33) {
-      setActiveView("admin");
-    } else if (progress < 0.66) {
-      setActiveView("client");
-    } else {
-      setActiveView("editor");
-    }
-  });
+  const isLeft = view.side === "left";
+  
+  // 3D entrance animation driven by scroll
+  const rotateY = useTransform(scrollYProgress, [0, 0.6, 1], [isLeft ? -25 : 25, isLeft ? -8 : 8, 0]);
+  const x = useTransform(scrollYProgress, [0, 0.6, 1], [isLeft ? -120 : 120, isLeft ? -20 : 20, 0]);
+  const opacity = useTransform(scrollYProgress, [0, 0.3, 0.6], [0, 0.5, 1]);
+  const scale = useTransform(scrollYProgress, [0, 0.6, 1], [0.85, 0.95, 1]);
 
-  // Progress bar for current section
-  const adminProgress = useTransform(scrollYProgress, [0, 0.33], [0, 100]);
-  const clientProgress = useTransform(scrollYProgress, [0.33, 0.66], [0, 100]);
-  const editorProgress = useTransform(scrollYProgress, [0.66, 1], [0, 100]);
+  const springRotateY = useSpring(rotateY, { stiffness: 80, damping: 25 });
+  const springX = useSpring(x, { stiffness: 80, damping: 25 });
+  const springScale = useSpring(scale, { stiffness: 80, damping: 25 });
 
-  const views = {
-    admin: {
-      title: "Total Control",
-      subtitle: "See everything. Manage everyone. Scale confidently.",
-      features: [
-        { icon: LayoutDashboard, text: "Kanban board for all projects" },
-        { icon: DollarSign, text: "Revenue & invoice tracking" },
-        { icon: Users, text: "Client & editor management" },
-      ],
-      color: "primary",
-      urlBar: "app.veylodesk.com/admin/dashboard",
-    },
-    client: {
-      title: "Simple Approvals",
-      subtitle: "Clients see progress without the noise.",
-      features: [
-        { icon: Eye, text: "Real-time project status" },
-        { icon: FileCheck, text: "Easy file downloads" },
-        { icon: CheckCircle, text: "One-click approvals" },
-      ],
-      color: "success",
-      urlBar: "app.veylodesk.com/client/projects",
-    },
-    editor: {
-      title: "Clear Tasks",
-      subtitle: "Editors know exactly what to do next.",
-      features: [
-        { icon: Upload, text: "Direct file uploads" },
-        { icon: DollarSign, text: "Earnings dashboard" },
-        { icon: CheckCircle, text: "Task completion tracking" },
-      ],
-      color: "warning",
-      urlBar: "app.veylodesk.com/editor/tasks",
-    },
+  // Text side animation
+  const textX = useTransform(scrollYProgress, [0, 0.5, 1], [isLeft ? 80 : -80, isLeft ? 15 : -15, 0]);
+  const textOpacity = useTransform(scrollYProgress, [0, 0.4, 0.7], [0, 0.3, 1]);
+  const springTextX = useSpring(textX, { stiffness: 80, damping: 25 });
+
+  const MockupComponent = mockupComponents[view.mockup];
+
+  const colorMap: Record<string, string> = {
+    primary: "bg-primary/20 text-primary",
+    success: "bg-success/20 text-success",
+    warning: "bg-warning/20 text-warning",
   };
 
-  const currentView = views[activeView];
+  const glowColorMap: Record<string, string> = {
+    primary: "from-primary/20 via-transparent to-indigo-soft/20",
+    success: "from-success/15 via-transparent to-emerald-500/10",
+    warning: "from-warning/15 via-transparent to-amber-500/10",
+  };
+
+  const dashboardCard = (
+    <motion.div
+      style={{
+        rotateY: springRotateY,
+        x: springX,
+        opacity,
+        scale: springScale,
+        perspective: 1200,
+        transformStyle: "preserve-3d",
+      }}
+      className="w-full lg:w-[55%]"
+    >
+      <div className="relative">
+        {/* Glow */}
+        <div className={`absolute -inset-6 bg-gradient-to-r ${glowColorMap[view.color]} rounded-3xl blur-2xl opacity-60`} />
+        
+        <div className="relative glass-card-premium rounded-2xl overflow-hidden border border-white/[0.08]">
+          {/* Browser chrome */}
+          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/[0.06] bg-surface-dark/50">
+            <div className="flex gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-destructive/60" />
+              <div className="w-2 h-2 rounded-full bg-warning/60" />
+              <div className="w-2 h-2 rounded-full bg-success/60" />
+            </div>
+            <div className="flex-1 flex justify-center">
+              <div className="px-3 py-1 rounded-md bg-muted/20 text-[10px] text-muted-foreground font-mono">
+                {view.urlBar}
+              </div>
+            </div>
+          </div>
+          
+          <div className="p-5 min-h-[300px] bg-gradient-cinematic">
+            <MockupComponent />
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+
+  const textContent = (
+    <motion.div
+      style={{ x: springTextX, opacity: textOpacity }}
+      className="w-full lg:w-[45%] flex flex-col justify-center"
+    >
+      {/* View label */}
+      <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full w-fit mb-6 ${
+        view.color === "primary" ? "bg-primary/10 border border-primary/20" :
+        view.color === "success" ? "bg-success/10 border border-success/20" :
+        "bg-warning/10 border border-warning/20"
+      }`}>
+        <span className={`text-sm font-medium tracking-wide ${
+          view.color === "primary" ? "text-primary" :
+          view.color === "success" ? "text-success" : "text-warning"
+        }`}>
+          {view.label}
+        </span>
+      </div>
+
+      <h3 className="text-3xl md:text-4xl font-bold mb-4 text-foreground tracking-tight leading-tight">
+        {view.title}
+      </h3>
+      <p className="text-base text-muted-foreground mb-8 leading-relaxed">
+        {view.subtitle}
+      </p>
+
+      <div className="space-y-3">
+        {view.features.map((feature, i) => (
+          <motion.div
+            key={feature.text}
+            initial={{ opacity: 0, x: isLeft ? 30 : -30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, margin: "-50px" }}
+            transition={{ duration: 0.4, delay: i * 0.1, ease: [0.22, 1, 0.36, 1] }}
+            className="flex items-start gap-4 p-3.5 rounded-xl bg-surface-glass/30 border border-white/[0.06] backdrop-blur-sm"
+          >
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${colorMap[view.color]}`}>
+              <feature.icon className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="font-medium text-sm text-foreground">{feature.text}</span>
+              <p className="text-xs text-muted-foreground mt-0.5">{feature.desc}</p>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    </motion.div>
+  );
 
   return (
-    <section 
-      ref={sectionRef} 
-      id="features" 
-      className="relative overflow-hidden"
-      style={{ height: "300vh" }} // 3x viewport for scroll-controlled sections
-    >
-      {/* Cinematic Background */}
-      <div className="absolute inset-0 bg-gradient-cinematic" />
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-glow opacity-40" />
+    <div ref={ref} className="py-20 lg:py-32">
+      <div className={`flex flex-col lg:flex-row items-center gap-10 lg:gap-16 ${
+        isLeft ? "" : "lg:flex-row-reverse"
+      }`}>
+        {dashboardCard}
+        {textContent}
+      </div>
+    </div>
+  );
+}
 
-      {/* Sticky container */}
-      <div className="sticky top-0 h-screen flex items-center overflow-hidden">
-        <div className="container relative z-10 mx-auto px-6">
-          {/* Header */}
-          <div className="max-w-4xl mx-auto text-center mb-12">
+const SolutionSection = () => {
+  return (
+    <section id="features" className="relative overflow-hidden">
+      {/* Background */}
+      <div className="absolute inset-0 bg-gradient-cinematic" />
+      <LineReveal className="absolute top-0 left-0 right-0" />
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-glow opacity-30" />
+
+      <div className="container relative z-10 mx-auto px-6">
+        {/* Header */}
+        <div className="max-w-4xl mx-auto text-center pt-24 pb-8">
+          <ScrollFade>
             <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-success/10 border border-success/20 mb-6">
               <Shield className="w-4 h-4 text-success" />
               <span className="text-sm font-medium text-success tracking-wide">The Solution</span>
             </div>
-            
-            <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
-              Three Dashboards.{" "}
-              <span className="text-gradient">Zero Confusion.</span>
-            </h2>
+          </ScrollFade>
+
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
+            <TextReveal staggerDelay={0.05}>Three Dashboards.</TextReveal>{" "}
+            <span className="text-gradient">
+              <TextReveal staggerDelay={0.05}>Zero Confusion.</TextReveal>
+            </span>
+          </h2>
+          <ScrollFade delay={0.2}>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-              Everyone gets exactly what they need—scroll to explore each view.
+              Everyone gets exactly what they need — a dedicated view built for their role.
             </p>
-          </div>
-
-          {/* Scroll Progress Indicators */}
-          <div className="flex justify-center gap-3 mb-10">
-            {(["admin", "client", "editor"] as ViewType[]).map((view) => (
-              <div
-                key={view}
-                className={`flex items-center gap-3 px-6 py-3 rounded-xl transition-all duration-500 ${
-                  activeView === view
-                    ? "bg-primary/15 border border-primary/30 shadow-lg shadow-primary/10"
-                    : "bg-muted/20 border border-white/[0.04]"
-                }`}
-              >
-                <span className={`text-sm font-medium transition-colors duration-300 ${
-                  activeView === view ? "text-primary" : "text-muted-foreground"
-                }`}>
-                  {view === "admin" && "Admin View"}
-                  {view === "client" && "Client View"}
-                  {view === "editor" && "Editor View"}
-                </span>
-                {/* Mini progress bar */}
-                <div className="w-12 h-1 rounded-full bg-muted/30 overflow-hidden">
-                  <motion.div
-                    className="h-full rounded-full bg-primary"
-                    style={{
-                      width: view === "admin" ? adminProgress.get() + "%" :
-                             view === "client" ? clientProgress.get() + "%" :
-                             editorProgress.get() + "%",
-                    }}
-                    animate={{
-                      width: activeView === view ? "100%" : 
-                             (view === "admin" && (activeView === "client" || activeView === "editor")) ? "100%" :
-                             (view === "client" && activeView === "editor") ? "100%" : "0%",
-                    }}
-                    transition={{ duration: 0.5 }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* View Content with 3D transitions */}
-          <div className="max-w-6xl mx-auto">
-            <TiltCard intensity={4}>
-              <div className="glass-card-premium rounded-3xl p-8 md:p-12 overflow-hidden">
-                <div className="grid md:grid-cols-2 gap-12 items-center">
-                  {/* Left - Features */}
-                  <div>
-                    <motion.div
-                      key={activeView}
-                      initial={{ opacity: 0, x: -40, rotateY: -10 }}
-                      animate={{ opacity: 1, x: 0, rotateY: 0 }}
-                      exit={{ opacity: 0, x: 40, rotateY: 10 }}
-                      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                      style={{ perspective: 1000 }}
-                    >
-                      <h3 className="text-3xl md:text-4xl font-bold mb-4 text-foreground tracking-tight">
-                        {currentView.title}
-                      </h3>
-                      <p className="text-lg text-muted-foreground mb-8 leading-relaxed">
-                        {currentView.subtitle}
-                      </p>
-
-                      <div className="space-y-4">
-                        {currentView.features.map((feature, index) => (
-                          <motion.div
-                            key={feature.text}
-                            initial={{ opacity: 0, x: -30, scale: 0.9 }}
-                            animate={{ opacity: 1, x: 0, scale: 1 }}
-                            transition={{ 
-                              duration: 0.4, 
-                              delay: index * 0.12,
-                              ease: [0.22, 1, 0.36, 1],
-                            }}
-                            className="flex items-center gap-5 p-4 rounded-2xl bg-surface-glass/30 border border-white/[0.06] backdrop-blur-xl"
-                          >
-                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                              activeView === "admin" ? "bg-primary/20 text-primary" :
-                              activeView === "client" ? "bg-success/20 text-success" :
-                              "bg-warning/20 text-warning"
-                            }`}>
-                              <feature.icon className="w-6 h-6" />
-                            </div>
-                            <span className="font-medium text-lg text-foreground">{feature.text}</span>
-                          </motion.div>
-                        ))}
-                      </div>
-                    </motion.div>
-                  </div>
-
-                  {/* Right - Preview with 3D flip */}
-                  <div className="relative" style={{ perspective: 1200 }}>
-                    <div className="absolute -inset-6 bg-gradient-to-r from-primary/15 via-transparent to-indigo-soft/15 rounded-3xl blur-2xl opacity-60" />
-                    <div className="relative glass rounded-2xl overflow-hidden border border-white/[0.08]">
-                      {/* Browser chrome */}
-                      <div className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.06] bg-surface-dark/50">
-                        <div className="flex gap-1.5">
-                          <div className="w-2.5 h-2.5 rounded-full bg-destructive/60" />
-                          <div className="w-2.5 h-2.5 rounded-full bg-warning/60" />
-                          <div className="w-2.5 h-2.5 rounded-full bg-success/60" />
-                        </div>
-                        <motion.div 
-                          key={currentView.urlBar}
-                          initial={{ opacity: 0, y: -10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="flex-1 flex justify-center"
-                        >
-                          <div className="px-4 py-1 rounded-md bg-muted/20 text-xs text-muted-foreground font-mono">
-                            {currentView.urlBar}
-                          </div>
-                        </motion.div>
-                      </div>
-                      
-                      <motion.div
-                        key={activeView}
-                        initial={{ opacity: 0, rotateY: 15, scale: 0.95 }}
-                        animate={{ opacity: 1, rotateY: 0, scale: 1 }}
-                        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                        className="p-6 min-h-[350px]"
-                      >
-                        {activeView === "admin" && (
-                          <div className="space-y-5">
-                            <div className="flex items-center justify-between mb-6">
-                              <h4 className="font-semibold text-lg text-foreground">Project Pipeline</h4>
-                              <span className="text-sm text-muted-foreground">This week</span>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                              {[
-                                { label: "Backlog", value: "3", style: "bg-muted/20 border border-white/[0.04]" },
-                                { label: "In Progress", value: "5", style: "bg-primary/10 border border-primary/20" },
-                                { label: "Review", value: "2", style: "bg-warning/10 border border-warning/20" },
-                                { label: "Done", value: "8", style: "bg-success/10 border border-success/20" },
-                              ].map((item, i) => (
-                                <motion.div 
-                                  key={item.label}
-                                  initial={{ opacity: 0, scale: 0.8 }}
-                                  animate={{ opacity: 1, scale: 1 }}
-                                  transition={{ delay: i * 0.1, duration: 0.4 }}
-                                  className={`p-4 rounded-xl ${item.style}`}
-                                >
-                                  <p className="text-xs text-muted-foreground mb-1">{item.label}</p>
-                                  <p className={`text-2xl font-bold ${
-                                    i === 1 ? "text-primary" : i === 2 ? "text-warning" : i === 3 ? "text-success" : "text-foreground"
-                                  }`}>{item.value}</p>
-                                </motion.div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        {activeView === "client" && (
-                          <div className="space-y-5">
-                            <h4 className="font-semibold text-lg text-foreground mb-6">Your Projects</h4>
-                            {[
-                              { name: "Brand Video Q4", status: "In Review", progress: 90 },
-                              { name: "Social Ads Pack", status: "In Progress", progress: 45 },
-                            ].map((project, i) => (
-                              <motion.div 
-                                key={project.name} 
-                                initial={{ opacity: 0, x: 20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: i * 0.15, duration: 0.4 }}
-                                className="p-5 rounded-xl bg-muted/20 border border-white/[0.04]"
-                              >
-                                <div className="flex justify-between mb-3">
-                                  <span className="font-medium text-foreground">{project.name}</span>
-                                  <span className="text-sm text-success">{project.status}</span>
-                                </div>
-                                <div className="h-2 rounded-full bg-muted/40 overflow-hidden">
-                                  <motion.div 
-                                    className="h-full bg-gradient-to-r from-primary to-indigo-soft rounded-full"
-                                    initial={{ width: 0 }}
-                                    animate={{ width: `${project.progress}%` }}
-                                    transition={{ duration: 1, delay: 0.3 + i * 0.2, ease: "easeOut" }}
-                                  />
-                                </div>
-                              </motion.div>
-                            ))}
-                          </div>
-                        )}
-                        {activeView === "editor" && (
-                          <div className="space-y-5">
-                            <h4 className="font-semibold text-lg text-foreground mb-6">Your Tasks</h4>
-                            {[
-                              { name: "Edit Intro Sequence", client: "TechCorp", due: "Today" },
-                              { name: "Color Grading - Ep3", client: "Startup X", due: "Tomorrow" },
-                            ].map((task, i) => (
-                              <motion.div 
-                                key={task.name} 
-                                initial={{ opacity: 0, x: 20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: i * 0.15, duration: 0.4 }}
-                                className="p-5 rounded-xl bg-muted/20 border border-white/[0.04] flex items-center justify-between"
-                              >
-                                <div>
-                                  <p className="font-medium text-foreground">{task.name}</p>
-                                  <p className="text-sm text-muted-foreground mt-1">{task.client}</p>
-                                </div>
-                                <span className={`px-4 py-1.5 rounded-full text-xs font-medium ${
-                                  task.due === "Today" 
-                                    ? "bg-warning/10 text-warning border border-warning/20" 
-                                    : "bg-muted/30 text-muted-foreground border border-white/[0.04]"
-                                }`}>
-                                  {task.due}
-                                </span>
-                              </motion.div>
-                            ))}
-                          </div>
-                        )}
-                      </motion.div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </TiltCard>
-          </div>
-
-          {/* Scroll hint */}
-          <motion.div 
-            className="flex justify-center mt-8"
-            animate={{ opacity: [0.3, 0.7, 0.3], y: [0, 8, 0] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          >
-            <p className="text-sm text-muted-foreground">↓ Scroll to explore views</p>
-          </motion.div>
+          </ScrollFade>
         </div>
+
+        {/* Dashboard views - alternating left/right with 3D */}
+        {dashboardViews.map((view, index) => (
+          <DashboardViewBlock key={view.id} view={view} index={index} />
+        ))}
       </div>
     </section>
   );

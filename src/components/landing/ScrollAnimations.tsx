@@ -93,7 +93,7 @@ export function CharReveal({
   const isInView = useInView(ref, { once: true, margin: "-80px" });
 
   return (
-    <span ref={ref} className={`inline-block ${className}`}>
+    <span ref={ref} className={`inline-block pb-[0.1em] ${className}`}>
       {children.split("").map((char, i) => (
         <motion.span
           key={i}
