@@ -4,6 +4,7 @@ import HeroSection from "@/components/landing/HeroSection";
 import DemoVideoSection from "@/components/landing/DemoVideoSection";
 import ProblemSection from "@/components/landing/ProblemSection";
 import SolutionSection from "@/components/landing/SolutionSection";
+import FeaturesSection from "@/components/landing/FeaturesSection";
 import TestimonialsSection from "@/components/landing/TestimonialsSection";
 import CTASection from "@/components/landing/CTASection";
 import Footer from "@/components/landing/Footer";
@@ -31,6 +32,7 @@ const Index = () => {
           <DemoVideoSection />
           <ProblemSection />
           <SolutionSection />
+          <FeaturesSection />
           <TestimonialsSection />
           <CTASection />
         </main>
