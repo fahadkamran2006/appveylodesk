@@ -9,9 +9,7 @@ import {
   useTransform,
   useSpring,
   useInView,
-  useMotionValueEvent,
 } from "framer-motion";
-import { useState } from "react";
 
 /* ──────────────────────────────────────────
    Feature data
@@ -118,110 +116,125 @@ const features = [
 ];
 
 /* ──────────────────────────────────────────
-   Mini mockup for each feature
+   Animated progress bar (hooks-safe)
    ────────────────────────────────────────── */
-function FeatureMockup({ id }: { id: string }) {
-  const shared =
-    "w-full h-full rounded-xl p-5 text-left space-y-3 select-none";
+function AnimatedBar({ scrollProgress, range, target }: { scrollProgress: import("framer-motion").MotionValue<number>; range: [number, number]; target: number }) {
+  const width = useTransform(scrollProgress, range, ["0%", `${target}%`]);
+  return (
+    <div className="h-2 rounded-full bg-muted/20 overflow-hidden">
+      <motion.div className="h-full rounded-full bg-gradient-to-r from-primary to-indigo-soft" style={{ width }} />
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────
+   Scroll-animated mockup for each feature
+   ────────────────────────────────────────── */
+function FeatureMockup({ id, scrollProgress }: { id: string; scrollProgress: import("framer-motion").MotionValue<number> }) {
+  const shared = "w-full h-full rounded-xl p-5 text-left select-none overflow-hidden";
+
+  // Derive inner-element animation values from parent scroll
+  const itemOpacity1 = useTransform(scrollProgress, [0.15, 0.35], [0, 1]);
+  const itemOpacity2 = useTransform(scrollProgress, [0.25, 0.45], [0, 1]);
+  const itemOpacity3 = useTransform(scrollProgress, [0.35, 0.55], [0, 1]);
+  const itemY1 = useTransform(scrollProgress, [0.15, 0.35], [30, 0]);
+  const itemY2 = useTransform(scrollProgress, [0.25, 0.45], [30, 0]);
+  const itemY3 = useTransform(scrollProgress, [0.35, 0.55], [30, 0]);
 
   switch (id) {
     case "dashboards":
       return (
         <div className={shared}>
-          <div className="flex gap-3 mb-4">
+          <motion.div style={{ opacity: itemOpacity1, y: itemY1 }} className="flex gap-3 mb-4">
             {["Admin", "Client", "Editor"].map((r, i) => (
-              <div
-                key={r}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium ${
-                  i === 0
-                    ? "bg-primary/20 text-primary border border-primary/30"
-                    : "bg-muted/30 text-muted-foreground border border-white/[0.06]"
-                }`}
-              >
-                {r}
-              </div>
+              <div key={r} className={`px-3 py-1.5 rounded-lg text-xs font-medium ${
+                i === 0 ? "bg-primary/20 text-primary border border-primary/30" : "bg-muted/30 text-muted-foreground border border-white/[0.06]"
+              }`}>{r}</div>
             ))}
-          </div>
+          </motion.div>
           <div className="grid grid-cols-3 gap-3">
             {[
-              { l: "Revenue", v: "$47.2K", c: "text-success" },
-              { l: "Clients", v: "18", c: "text-primary" },
-              { l: "Projects", v: "24", c: "text-warning" },
+              { l: "Revenue", v: "$47.2K", c: "text-success", op: itemOpacity1, y: itemY1 },
+              { l: "Clients", v: "18", c: "text-primary", op: itemOpacity2, y: itemY2 },
+              { l: "Projects", v: "24", c: "text-warning", op: itemOpacity3, y: itemY3 },
             ].map((s) => (
-              <div key={s.l} className="rounded-xl bg-surface-glass/40 border border-white/[0.06] p-3">
+              <motion.div key={s.l} style={{ opacity: s.op, y: s.y }} className="rounded-xl bg-surface-glass/40 border border-white/[0.06] p-3">
                 <p className="text-[10px] text-muted-foreground">{s.l}</p>
                 <p className={`text-lg font-bold ${s.c}`}>{s.v}</p>
-              </div>
+              </motion.div>
             ))}
           </div>
-          <div className="space-y-2 mt-2">
-            {[85, 60, 40].map((w, i) => (
-              <div key={i} className="h-2 rounded-full bg-muted/20 overflow-hidden">
-                <div className="h-full rounded-full bg-gradient-to-r from-primary to-indigo-soft" style={{ width: `${w}%` }} />
-              </div>
-            ))}
+          <div className="space-y-2 mt-4">
+            <AnimatedBar scrollProgress={scrollProgress} range={[0.2, 0.6]} target={85} />
+            <AnimatedBar scrollProgress={scrollProgress} range={[0.3, 0.65]} target={60} />
+            <AnimatedBar scrollProgress={scrollProgress} range={[0.35, 0.7]} target={40} />
           </div>
         </div>
       );
 
-    case "approval":
+    case "approval": {
+      const playheadWidth = useTransform(scrollProgress, [0.15, 0.7], ["0%", "100%"]);
       return (
         <div className={shared}>
-          <div className="rounded-xl bg-muted/10 border border-white/[0.06] aspect-video flex items-center justify-center mb-3 relative overflow-hidden">
+          <motion.div style={{ opacity: itemOpacity1, y: itemY1 }} className="rounded-xl bg-muted/10 border border-white/[0.06] aspect-video flex items-center justify-center mb-3 relative overflow-hidden">
             <div className="w-0 h-0 border-l-[18px] border-l-primary border-y-[12px] border-y-transparent ml-1" />
             <div className="absolute bottom-2 left-2 right-2 h-1 rounded-full bg-muted/30">
-              <div className="h-full w-[65%] rounded-full bg-primary/80" />
+              <motion.div className="h-full rounded-full bg-primary/80" style={{ width: playheadWidth }} />
             </div>
-          </div>
+          </motion.div>
           {[
-            { time: "0:14", text: "Color feels too warm here" },
-            { time: "0:32", text: "Love this transition!" },
+            { time: "0:14", text: "Color feels too warm here", op: itemOpacity2, y: itemY2 },
+            { time: "0:32", text: "Love this transition!", op: itemOpacity3, y: itemY3 },
           ].map((c) => (
-            <div key={c.time} className="flex gap-2 items-start">
+            <motion.div key={c.time} style={{ opacity: c.op, y: c.y }} className="flex gap-2 items-start mb-2">
               <span className="text-[10px] font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded">{c.time}</span>
               <span className="text-xs text-muted-foreground">{c.text}</span>
-            </div>
+            </motion.div>
           ))}
         </div>
       );
+    }
 
-    case "invoicing":
+    case "invoicing": {
+      const totalScale = useTransform(scrollProgress, [0.5, 0.7], [0.8, 1]);
+      const totalOpacity = useTransform(scrollProgress, [0.5, 0.7], [0, 1]);
       return (
         <div className={shared}>
-          <div className="flex justify-between items-center mb-3">
+          <motion.div style={{ opacity: itemOpacity1, y: itemY1 }} className="flex justify-between items-center mb-3">
             <span className="text-sm font-semibold text-foreground">Invoice #VD-0042</span>
             <span className="text-[10px] px-2 py-1 rounded-full bg-warning/10 text-warning border border-warning/20">Pending</span>
-          </div>
+          </motion.div>
           <div className="space-y-2">
             {[
-              { item: "Brand Video Edit", amount: "$1,200" },
-              { item: "Social Cuts (x5)", amount: "$750" },
-              { item: "Color Grading", amount: "$350" },
+              { item: "Brand Video Edit", amount: "$1,200", op: itemOpacity1, y: itemY1 },
+              { item: "Social Cuts (x5)", amount: "$750", op: itemOpacity2, y: itemY2 },
+              { item: "Color Grading", amount: "$350", op: itemOpacity3, y: itemY3 },
             ].map((r) => (
-              <div key={r.item} className="flex justify-between text-xs py-2 border-b border-white/[0.04]">
+              <motion.div key={r.item} style={{ opacity: r.op, y: r.y }} className="flex justify-between text-xs py-2 border-b border-white/[0.04]">
                 <span className="text-muted-foreground">{r.item}</span>
                 <span className="text-foreground font-medium">{r.amount}</span>
-              </div>
+              </motion.div>
             ))}
           </div>
-          <div className="flex justify-between mt-3 pt-2 border-t border-white/[0.08]">
+          <motion.div style={{ opacity: totalOpacity, scale: totalScale }} className="flex justify-between mt-3 pt-2 border-t border-white/[0.08]">
             <span className="text-sm font-semibold text-foreground">Total</span>
             <span className="text-sm font-bold text-primary">$2,300</span>
-          </div>
+          </motion.div>
         </div>
       );
+    }
 
     case "projects":
       return (
         <div className={shared}>
           <div className="grid grid-cols-4 gap-2">
             {[
-              { label: "Backlog", color: "bg-muted-foreground", count: 3 },
-              { label: "Active", color: "bg-primary", count: 4 },
-              { label: "Review", color: "bg-warning", count: 2 },
-              { label: "Done", color: "bg-success", count: 7 },
+              { label: "Backlog", color: "bg-muted-foreground", count: 3, op: itemOpacity1, y: itemY1 },
+              { label: "Active", color: "bg-primary", count: 4, op: itemOpacity1, y: itemY1 },
+              { label: "Review", color: "bg-warning", count: 2, op: itemOpacity2, y: itemY2 },
+              { label: "Done", color: "bg-success", count: 7, op: itemOpacity3, y: itemY3 },
             ].map((col) => (
-              <div key={col.label} className="space-y-2">
+              <motion.div key={col.label} style={{ opacity: col.op, y: col.y }} className="space-y-2">
                 <div className="flex items-center gap-1.5">
                   <div className={`w-1.5 h-1.5 rounded-full ${col.color}`} />
                   <span className="text-[10px] font-medium text-foreground">{col.label}</span>
@@ -233,7 +246,7 @@ function FeatureMockup({ id }: { id: string }) {
                     <div className="h-1.5 w-1/2 bg-muted/15 rounded" />
                   </div>
                 ))}
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -244,21 +257,19 @@ function FeatureMockup({ id }: { id: string }) {
         <div className={shared}>
           <div className="space-y-3">
             {[
-              { name: "Sarah", msg: "Uploaded the final cut! 🎬", time: "2m", self: false },
-              { name: "You", msg: "Looks great, sending to client", time: "1m", self: true },
-              { name: "Client", msg: "Approved! ✅", time: "now", self: false },
+              { name: "Sarah", msg: "Uploaded the final cut! 🎬", time: "2m", self: false, op: itemOpacity1, y: itemY1 },
+              { name: "You", msg: "Looks great, sending to client", time: "1m", self: true, op: itemOpacity2, y: itemY2 },
+              { name: "Client", msg: "Approved! ✅", time: "now", self: false, op: itemOpacity3, y: itemY3 },
             ].map((m, i) => (
-              <div key={i} className={`flex ${m.self ? "justify-end" : "justify-start"}`}>
+              <motion.div key={i} style={{ opacity: m.op, y: m.y }} className={`flex ${m.self ? "justify-end" : "justify-start"}`}>
                 <div className={`max-w-[75%] px-3 py-2 rounded-xl text-xs ${
-                  m.self
-                    ? "bg-primary/20 text-primary-foreground border border-primary/30"
-                    : "bg-surface-glass/40 text-foreground border border-white/[0.06]"
+                  m.self ? "bg-primary/20 text-primary-foreground border border-primary/30" : "bg-surface-glass/40 text-foreground border border-white/[0.06]"
                 }`}>
                   {!m.self && <p className="text-[10px] text-muted-foreground mb-0.5 font-medium">{m.name}</p>}
                   <p>{m.msg}</p>
                   <p className="text-[9px] text-muted-foreground mt-1 text-right">{m.time}</p>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -269,11 +280,11 @@ function FeatureMockup({ id }: { id: string }) {
         <div className={shared}>
           <div className="space-y-2">
             {[
-              { name: "Alex R.", tasks: 12, rating: "98%", status: "Online" },
-              { name: "Priya K.", tasks: 9, rating: "95%", status: "Editing" },
-              { name: "Marcus J.", tasks: 7, rating: "92%", status: "Idle" },
+              { name: "Alex R.", tasks: 12, rating: "98%", status: "Online", op: itemOpacity1, y: itemY1 },
+              { name: "Priya K.", tasks: 9, rating: "95%", status: "Editing", op: itemOpacity2, y: itemY2 },
+              { name: "Marcus J.", tasks: 7, rating: "92%", status: "Idle", op: itemOpacity3, y: itemY3 },
             ].map((e) => (
-              <div key={e.name} className="flex items-center gap-3 p-2.5 rounded-xl bg-surface-glass/30 border border-white/[0.06]">
+              <motion.div key={e.name} style={{ opacity: e.op, y: e.y }} className="flex items-center gap-3 p-2.5 rounded-xl bg-surface-glass/30 border border-white/[0.06]">
                 <div className="w-8 h-8 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-xs font-bold text-primary">
                   {e.name.charAt(0)}
                 </div>
@@ -286,7 +297,7 @@ function FeatureMockup({ id }: { id: string }) {
                   e.status === "Editing" ? "bg-primary/10 text-primary" :
                   "bg-muted/20 text-muted-foreground"
                 }`}>{e.status}</span>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -295,21 +306,21 @@ function FeatureMockup({ id }: { id: string }) {
     case "hr":
       return (
         <div className={shared}>
-          <div className="flex justify-between items-center mb-2">
+          <motion.div style={{ opacity: itemOpacity1, y: itemY1 }} className="flex justify-between items-center mb-2">
             <span className="text-xs font-medium text-foreground">Today's Attendance</span>
             <span className="text-[10px] text-success">6/7 checked in</span>
-          </div>
-          <div className="grid grid-cols-7 gap-1 mb-3">
+          </motion.div>
+          <motion.div style={{ opacity: itemOpacity2, y: itemY2 }} className="grid grid-cols-7 gap-1 mb-3">
             {[1,1,1,1,1,1,0].map((v, i) => (
               <div key={i} className={`h-6 rounded ${v ? "bg-success/30 border border-success/20" : "bg-destructive/20 border border-destructive/20"}`} />
             ))}
-          </div>
+          </motion.div>
           <div className="space-y-2">
             {[
-              { name: "Leave Request", desc: "Priya K. · Dec 24-26", status: "Pending" },
-              { name: "Check-in", desc: "Alex R. · 9:02 AM", status: "On Time" },
+              { name: "Leave Request", desc: "Priya K. · Dec 24-26", status: "Pending", op: itemOpacity2, y: itemY2 },
+              { name: "Check-in", desc: "Alex R. · 9:02 AM", status: "On Time", op: itemOpacity3, y: itemY3 },
             ].map((item) => (
-              <div key={item.name} className="flex justify-between items-center p-2 rounded-lg bg-surface-glass/30 border border-white/[0.06]">
+              <motion.div key={item.name} style={{ opacity: item.op, y: item.y }} className="flex justify-between items-center p-2 rounded-lg bg-surface-glass/30 border border-white/[0.06]">
                 <div>
                   <p className="text-[11px] font-medium text-foreground">{item.name}</p>
                   <p className="text-[9px] text-muted-foreground">{item.desc}</p>
@@ -317,7 +328,7 @@ function FeatureMockup({ id }: { id: string }) {
                 <span className={`text-[9px] px-2 py-0.5 rounded-full ${
                   item.status === "Pending" ? "bg-warning/10 text-warning" : "bg-success/10 text-success"
                 }`}>{item.status}</span>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -511,9 +522,8 @@ function FeatureCard({
                   </div>
                 </div>
 
-                {/* Content */}
                 <div className="min-h-[280px] bg-gradient-cinematic">
-                  <FeatureMockup id={feature.mockup} />
+                  <FeatureMockup id={feature.mockup} scrollProgress={scrollYProgress} />
                 </div>
               </div>
             </div>
@@ -612,8 +622,9 @@ const FeaturesSection = () => {
           </BlurReveal>
 
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6 text-foreground">
-            <MaskReveal>Everything Your Agency</MaskReveal>{" "}
-            <span className="text-gradient">
+            <MaskReveal>Everything Your Agency</MaskReveal>
+            <br />
+            <span className="inline-block text-gradient">
               <MaskReveal>Needs to Scale</MaskReveal>
             </span>
           </h2>
