@@ -167,11 +167,9 @@ function FeatureMockup({ id, scrollProgress }: { id: string; scrollProgress: imp
             ))}
           </div>
           <div className="space-y-2 mt-4">
-            {[springBarPct1, springBarPct2, springBarPct3].map((bar, i) => (
-              <div key={i} className="h-2 rounded-full bg-muted/20 overflow-hidden">
-                <motion.div className="h-full rounded-full bg-gradient-to-r from-primary to-indigo-soft" style={{ width: useTransform(bar, v => `${v}%`) }} />
-              </div>
-            ))}
+            <AnimatedBar scrollProgress={scrollProgress} range={[0.2, 0.6]} target={85} />
+            <AnimatedBar scrollProgress={scrollProgress} range={[0.3, 0.65]} target={60} />
+            <AnimatedBar scrollProgress={scrollProgress} range={[0.35, 0.7]} target={40} />
           </div>
         </div>
       );
