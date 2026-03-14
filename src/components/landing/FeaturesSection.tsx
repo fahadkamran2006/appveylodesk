@@ -521,9 +521,8 @@ function FeatureCard({
                   </div>
                 </div>
 
-                {/* Content */}
                 <div className="min-h-[280px] bg-gradient-cinematic">
-                  <FeatureMockup id={feature.mockup} />
+                  <FeatureMockup id={feature.mockup} scrollProgress={scrollYProgress} />
                 </div>
               </div>
             </div>
