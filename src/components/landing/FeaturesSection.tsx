@@ -175,14 +175,13 @@ function FeatureMockup({ id, scrollProgress }: { id: string; scrollProgress: imp
       );
 
     case "approval": {
-      const playheadWidth = useTransform(scrollProgress, [0.15, 0.7], [0, 100]);
-      const springPlayhead = useSpring(playheadWidth, { stiffness: 40, damping: 20 });
+      const playheadWidth = useTransform(scrollProgress, [0.15, 0.7], ["0%", "100%"]);
       return (
         <div className={shared}>
           <motion.div style={{ opacity: itemOpacity1, y: itemY1 }} className="rounded-xl bg-muted/10 border border-white/[0.06] aspect-video flex items-center justify-center mb-3 relative overflow-hidden">
             <div className="w-0 h-0 border-l-[18px] border-l-primary border-y-[12px] border-y-transparent ml-1" />
             <div className="absolute bottom-2 left-2 right-2 h-1 rounded-full bg-muted/30">
-              <motion.div className="h-full rounded-full bg-primary/80" style={{ width: springPlayhead as any }} />
+              <motion.div className="h-full rounded-full bg-primary/80" style={{ width: playheadWidth }} />
             </div>
           </motion.div>
           {[
