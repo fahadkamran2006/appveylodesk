@@ -9,9 +9,7 @@ import {
   useTransform,
   useSpring,
   useInView,
-  useMotionValueEvent,
 } from "framer-motion";
-import { useState } from "react";
 
 /* ──────────────────────────────────────────
    Feature data
