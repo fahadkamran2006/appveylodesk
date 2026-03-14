@@ -371,7 +371,15 @@ function BlurReveal({
 /* ──────────────────────────────────────────
    Staggered text mask reveal
    ────────────────────────────────────────── */
-function MaskReveal({ children, className = "" }: { children: string; className?: string }) {
+function MaskReveal({
+  children,
+  className = "",
+  wordClassName = "",
+}: {
+  children: string;
+  className?: string;
+  wordClassName?: string;
+}) {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-60px" });
   const words = children.split(" ");
@@ -381,7 +389,7 @@ function MaskReveal({ children, className = "" }: { children: string; className?
       {words.map((word, i) => (
         <span key={i} className="inline-block overflow-hidden mr-[0.25em] pb-[0.15em]">
           <motion.span
-            className="inline-block"
+            className={`inline-block ${wordClassName}`}
             initial={{ y: "120%", opacity: 0, filter: "blur(4px)" }}
             animate={isInView ? { y: 0, opacity: 1, filter: "blur(0px)" } : {}}
             transition={{
@@ -624,9 +632,7 @@ const FeaturesSection = () => {
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6 text-foreground">
             <MaskReveal>Everything Your Agency</MaskReveal>
             <br />
-            <span className="inline-block text-gradient">
-              <MaskReveal>Needs to Scale</MaskReveal>
-            </span>
+            <MaskReveal wordClassName="text-gradient">Needs to Scale</MaskReveal>
           </h2>
 
           <BlurReveal delay={0.2}>
