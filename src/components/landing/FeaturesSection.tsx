@@ -118,6 +118,18 @@ const features = [
 ];
 
 /* ──────────────────────────────────────────
+   Animated progress bar (hooks-safe)
+   ────────────────────────────────────────── */
+function AnimatedBar({ scrollProgress, range, target }: { scrollProgress: import("framer-motion").MotionValue<number>; range: [number, number]; target: number }) {
+  const width = useTransform(scrollProgress, range, ["0%", `${target}%`]);
+  return (
+    <div className="h-2 rounded-full bg-muted/20 overflow-hidden">
+      <motion.div className="h-full rounded-full bg-gradient-to-r from-primary to-indigo-soft" style={{ width }} />
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────
    Scroll-animated mockup for each feature
    ────────────────────────────────────────── */
 function FeatureMockup({ id, scrollProgress }: { id: string; scrollProgress: import("framer-motion").MotionValue<number> }) {
@@ -130,12 +142,6 @@ function FeatureMockup({ id, scrollProgress }: { id: string; scrollProgress: imp
   const itemY1 = useTransform(scrollProgress, [0.15, 0.35], [30, 0]);
   const itemY2 = useTransform(scrollProgress, [0.25, 0.45], [30, 0]);
   const itemY3 = useTransform(scrollProgress, [0.35, 0.55], [30, 0]);
-  const barPct1 = useTransform(scrollProgress, [0.2, 0.6], ["0%", "85%"]);
-  const barPct2 = useTransform(scrollProgress, [0.3, 0.65], ["0%", "60%"]);
-  const barPct3 = useTransform(scrollProgress, [0.35, 0.7], ["0%", "40%"]);
-  const springBarPct1 = useSpring(useTransform(scrollProgress, [0.2, 0.6], [0, 85]), { stiffness: 60, damping: 20 });
-  const springBarPct2 = useSpring(useTransform(scrollProgress, [0.3, 0.65], [0, 60]), { stiffness: 60, damping: 20 });
-  const springBarPct3 = useSpring(useTransform(scrollProgress, [0.35, 0.7], [0, 40]), { stiffness: 60, damping: 20 });
 
   switch (id) {
     case "dashboards":
