@@ -632,9 +632,7 @@ const FeaturesSection = () => {
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6 text-foreground">
             <MaskReveal>Everything Your Agency</MaskReveal>
             <br />
-            <span className="inline-block text-gradient">
-              <MaskReveal>Needs to Scale</MaskReveal>
-            </span>
+            <MaskReveal wordClassName="text-gradient">Needs to Scale</MaskReveal>
           </h2>
 
           <BlurReveal delay={0.2}>
