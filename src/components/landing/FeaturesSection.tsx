@@ -130,12 +130,12 @@ function FeatureMockup({ id, scrollProgress }: { id: string; scrollProgress: imp
   const itemY1 = useTransform(scrollProgress, [0.15, 0.35], [30, 0]);
   const itemY2 = useTransform(scrollProgress, [0.25, 0.45], [30, 0]);
   const itemY3 = useTransform(scrollProgress, [0.35, 0.55], [30, 0]);
-  const barWidth1 = useTransform(scrollProgress, [0.2, 0.6], [0, 85]);
-  const barWidth2 = useTransform(scrollProgress, [0.3, 0.65], [0, 60]);
-  const barWidth3 = useTransform(scrollProgress, [0.35, 0.7], [0, 40]);
-  const springBar1 = useSpring(barWidth1, { stiffness: 60, damping: 20 });
-  const springBar2 = useSpring(barWidth2, { stiffness: 60, damping: 20 });
-  const springBar3 = useSpring(barWidth3, { stiffness: 60, damping: 20 });
+  const barPct1 = useTransform(scrollProgress, [0.2, 0.6], ["0%", "85%"]);
+  const barPct2 = useTransform(scrollProgress, [0.3, 0.65], ["0%", "60%"]);
+  const barPct3 = useTransform(scrollProgress, [0.35, 0.7], ["0%", "40%"]);
+  const springBarPct1 = useSpring(useTransform(scrollProgress, [0.2, 0.6], [0, 85]), { stiffness: 60, damping: 20 });
+  const springBarPct2 = useSpring(useTransform(scrollProgress, [0.3, 0.65], [0, 60]), { stiffness: 60, damping: 20 });
+  const springBarPct3 = useSpring(useTransform(scrollProgress, [0.35, 0.7], [0, 40]), { stiffness: 60, damping: 20 });
 
   switch (id) {
     case "dashboards":
