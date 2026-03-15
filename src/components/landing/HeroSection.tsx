@@ -20,9 +20,9 @@ const HeroSection = () => {
   const dashboardRotateX = useTransform(scrollYProgress, [0, 0.3], [0, 5]);
   const perspective = useTransform(scrollYProgress, [0, 0.5], [1200, 800]);
   
-  // Light mode transition on scroll
-  const lightOpacity = useTransform(scrollYProgress, [0.2, 0.5], [0, 1]);
-  const darkOpacity = useTransform(scrollYProgress, [0.2, 0.5], [1, 0]);
+  // Light mode transition on scroll — starts later, transitions over a comfortable range
+  const lightOpacity = useTransform(scrollYProgress, [0.15, 0.45], [0, 1]);
+  const darkOpacity = useTransform(scrollYProgress, [0.15, 0.45], [1, 0]);
   
   // Parallax for glow orbs
   const orbY1 = useTransform(scrollYProgress, [0, 1], [0, -200]);
