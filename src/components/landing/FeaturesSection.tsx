@@ -383,6 +383,7 @@ function MaskReveal({
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-60px" });
   const words = children.split(" ");
+  const hasGradient = wordClassName.includes("text-gradient");
 
   return (
     <span ref={ref} className={`inline ${className}`}>
@@ -390,8 +391,16 @@ function MaskReveal({
         <span key={i} className="inline-block overflow-hidden mr-[0.25em] pb-[0.15em]">
           <motion.span
             className={`inline-block ${wordClassName}`}
-            initial={{ y: "120%", opacity: 0, filter: "blur(4px)" }}
-            animate={isInView ? { y: 0, opacity: 1, filter: "blur(0px)" } : {}}
+            initial={hasGradient
+              ? { y: "120%", opacity: 0 }
+              : { y: "120%", opacity: 0, filter: "blur(4px)" }
+            }
+            animate={isInView
+              ? hasGradient
+                ? { y: 0, opacity: 1 }
+                : { y: 0, opacity: 1, filter: "blur(0px)" }
+              : {}
+            }
             transition={{
               duration: 0.6,
               delay: i * 0.04,
