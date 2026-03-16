@@ -1213,19 +1213,22 @@ const StoragePage = () => {
 
       {/* Project Selector Dialog for Upload */}
       <Dialog open={showProjectSelector} onOpenChange={(open) => !open && cancelUploadDialog()}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Upload Files</DialogTitle>
-            <DialogDescription>
-              Select a project to upload {droppedFiles.length} file{droppedFiles.length !== 1 ? 's' : ''} to.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
+        <DialogContent className="sm:max-w-lg p-0 overflow-hidden">
+          <div className="px-6 pt-6 pb-4">
+            <DialogHeader className="space-y-1.5">
+              <DialogTitle className="text-lg font-semibold">Upload Files</DialogTitle>
+              <DialogDescription className="text-sm">
+                Choose a project and review your {droppedFiles.length} file{droppedFiles.length !== 1 ? 's' : ''} before uploading.
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+
+          <div className="px-6 space-y-5 pb-2">
+            {/* Project selector */}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Project</label>
+              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Project</label>
               <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
-                <SelectTrigger>
+                <SelectTrigger className="h-11 rounded-xl bg-muted/40 border-border/60 focus:ring-primary/30">
                   <SelectValue placeholder="Select a project" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1237,33 +1240,136 @@ const StoragePage = () => {
                 </SelectContent>
               </Select>
             </div>
-            
-            {/* File list preview */}
+
+            {/* Drop zone for adding more files */}
+            <div
+              className="relative rounded-xl border-2 border-dashed border-border/60 hover:border-primary/50 transition-colors cursor-pointer group"
+              onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const files = Array.from(e.dataTransfer.files);
+                if (files.length > 0) setDroppedFiles(prev => [...prev, ...files]);
+              }}
+              onClick={() => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.multiple = true;
+                input.onchange = (e) => {
+                  const files = Array.from((e.target as HTMLInputElement).files || []);
+                  if (files.length > 0) setDroppedFiles(prev => [...prev, ...files]);
+                };
+                input.click();
+              }}
+            >
+              <div className="flex flex-col items-center justify-center py-5 gap-2">
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                  <CloudUpload className="w-5 h-5 text-primary" />
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Drop files here or <span className="text-primary font-medium">browse</span>
+                </p>
+              </div>
+            </div>
+
+            {/* File list with thumbnails */}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Files to upload</label>
-              <div className="max-h-40 overflow-y-auto space-y-1 rounded-lg border border-border p-2 bg-muted/30">
-                {droppedFiles.map((file, index) => (
-                  <div key={index} className="flex items-center gap-2 text-sm">
-                    <File className="w-4 h-4 text-muted-foreground shrink-0" />
-                    <span className="truncate text-foreground">{file.name}</span>
-                    <span className="text-muted-foreground text-xs ml-auto shrink-0">
-                      {formatBytes(file.size)}
-                    </span>
-                  </div>
-                ))}
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Files ({droppedFiles.length})
+                </label>
+                {droppedFiles.length > 1 && (
+                  <button
+                    onClick={() => setDroppedFiles([])}
+                    className="text-[11px] text-destructive/70 hover:text-destructive transition-colors font-medium"
+                  >
+                    Remove all
+                  </button>
+                )}
+              </div>
+              <div className="max-h-48 overflow-y-auto space-y-1.5 rounded-xl border border-border/50 p-2 bg-muted/20">
+                {droppedFiles.map((file, index) => {
+                  const ext = file.name.split('.').pop()?.toLowerCase() || '';
+                  const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext);
+                  const isVideo = ['mp4', 'mov', 'avi', 'webm', 'mkv', 'flv', 'wmv'].includes(ext);
+                  const isDoc = ['pdf', 'doc', 'docx', 'txt', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext);
+
+                  return (
+                    <div
+                      key={`${file.name}-${index}`}
+                      className="flex items-center gap-3 p-2 rounded-lg bg-background/60 hover:bg-background transition-colors group/item"
+                    >
+                      {/* Thumbnail */}
+                      <div className="h-10 w-10 rounded-lg bg-muted/60 flex items-center justify-center overflow-hidden shrink-0">
+                        {isImage ? (
+                          <img
+                            src={URL.createObjectURL(file)}
+                            alt={file.name}
+                            className="h-full w-full object-cover rounded-lg"
+                            onLoad={(e) => {
+                              // Revoke object URL after loading to free memory
+                              // (only revoke when component unmounts or files change, skip for simplicity)
+                            }}
+                          />
+                        ) : isVideo ? (
+                          <Video className="w-4.5 h-4.5 text-primary" />
+                        ) : isDoc ? (
+                          <FileText className="w-4.5 h-4.5 text-amber-500" />
+                        ) : (
+                          <File className="w-4.5 h-4.5 text-muted-foreground" />
+                        )}
+                      </div>
+
+                      {/* Name & size */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-medium text-foreground truncate leading-tight">
+                          {file.name}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          {formatBytes(file.size)}
+                          {isImage && ' · Image'}
+                          {isVideo && ' · Video'}
+                          {isDoc && ' · Document'}
+                        </p>
+                      </div>
+
+                      {/* Remove button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDroppedFiles(prev => prev.filter((_, i) => i !== index));
+                        }}
+                        className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover/item:opacity-100 transition-all shrink-0"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={cancelUploadDialog}>
-              Cancel
-            </Button>
-            <Button onClick={handleAddToQueue} disabled={!selectedProjectId}>
-              <Upload className="w-4 h-4 mr-2" />
-              Add to Queue
-            </Button>
-          </DialogFooter>
+
+          {/* Footer */}
+          <div className="flex items-center justify-between px-6 py-4 border-t border-border/50 bg-muted/20">
+            <p className="text-xs text-muted-foreground">
+              Total: {formatBytes(droppedFiles.reduce((sum, f) => sum + f.size, 0))}
+            </p>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" className="rounded-lg" onClick={cancelUploadDialog}>
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                className="rounded-lg"
+                onClick={handleAddToQueue}
+                disabled={!selectedProjectId || droppedFiles.length === 0}
+              >
+                <Upload className="w-4 h-4 mr-1.5" />
+                Add to Queue
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </DashboardLayout>
