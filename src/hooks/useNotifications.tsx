@@ -186,6 +186,7 @@ export function useNotifications() {
           
           setNotifications(prev => [newNotification, ...prev]);
           setUnreadCount(prev => prev + 1);
+          playNotificationSound();
         }
       )
       .subscribe();
