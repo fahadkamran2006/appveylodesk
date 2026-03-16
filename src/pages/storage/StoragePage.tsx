@@ -1213,8 +1213,8 @@ const StoragePage = () => {
 
       {/* Project Selector Dialog for Upload */}
       <Dialog open={showProjectSelector} onOpenChange={(open) => !open && cancelUploadDialog()}>
-        <DialogContent className="sm:max-w-lg p-0 overflow-hidden">
-          <div className="px-6 pt-6 pb-4">
+        <DialogContent className="sm:max-w-lg max-h-[85vh] p-0 overflow-hidden flex flex-col">
+          <div className="px-6 pt-6 pb-4 shrink-0">
             <DialogHeader className="space-y-1.5">
               <DialogTitle className="text-lg font-semibold">Upload Files</DialogTitle>
               <DialogDescription className="text-sm">
@@ -1223,7 +1223,7 @@ const StoragePage = () => {
             </DialogHeader>
           </div>
 
-          <div className="px-6 space-y-5 pb-2">
+          <div className="px-6 space-y-5 pb-2 overflow-y-auto">
             {/* Project selector */}
             <div className="space-y-2">
               <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Project</label>
@@ -1243,7 +1243,7 @@ const StoragePage = () => {
 
             {/* Drop zone for adding more files */}
             <div
-              className="relative rounded-xl border-2 border-dashed border-border/60 hover:border-primary/50 transition-colors cursor-pointer group"
+              className="relative rounded-xl border-2 border-dashed border-border/60 hover:border-primary/50 transition-colors cursor-pointer group shrink-0"
               onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
               onDrop={(e) => {
                 e.preventDefault();
@@ -1287,7 +1287,7 @@ const StoragePage = () => {
                   </button>
                 )}
               </div>
-              <div className="max-h-48 overflow-y-auto space-y-1.5 rounded-xl border border-border/50 p-2 bg-muted/20">
+              <div className="max-h-36 overflow-y-auto space-y-1.5 rounded-xl border border-border/50 p-2 bg-muted/20">
                 {droppedFiles.map((file, index) => {
                   const ext = file.name.split('.').pop()?.toLowerCase() || '';
                   const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext);
@@ -1306,17 +1306,13 @@ const StoragePage = () => {
                             src={URL.createObjectURL(file)}
                             alt={file.name}
                             className="h-full w-full object-cover rounded-lg"
-                            onLoad={(e) => {
-                              // Revoke object URL after loading to free memory
-                              // (only revoke when component unmounts or files change, skip for simplicity)
-                            }}
                           />
                         ) : isVideo ? (
-                          <Video className="w-4.5 h-4.5 text-primary" />
+                          <Video className="w-[18px] h-[18px] text-primary" />
                         ) : isDoc ? (
-                          <FileText className="w-4.5 h-4.5 text-amber-500" />
+                          <FileText className="w-[18px] h-[18px] text-warning" />
                         ) : (
-                          <File className="w-4.5 h-4.5 text-muted-foreground" />
+                          <File className="w-[18px] h-[18px] text-muted-foreground" />
                         )}
                       </div>
 
@@ -1351,7 +1347,7 @@ const StoragePage = () => {
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between px-6 py-4 border-t border-border/50 bg-muted/20">
+          <div className="flex items-center justify-between px-6 py-4 border-t border-border/50 bg-muted/20 shrink-0">
             <p className="text-xs text-muted-foreground">
               Total: {formatBytes(droppedFiles.reduce((sum, f) => sum + f.size, 0))}
             </p>
