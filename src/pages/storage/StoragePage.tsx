@@ -740,18 +740,23 @@ const StoragePage = () => {
       </Helmet>
 
       <div 
+        className="h-full min-h-0"
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
       >
-        {/* Drag and Drop Overlay */}
+        {/* Full-page Drag and Drop Overlay */}
         {isDragging && (
-          <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center pointer-events-none">
-            <div className="border-4 border-dashed border-primary rounded-3xl p-8 md:p-16 bg-primary/5 flex flex-col items-center gap-4 animate-pulse mx-4">
-              <CloudUpload className="w-12 h-12 md:w-20 md:h-20 text-primary" />
-              <p className="text-lg md:text-2xl font-semibold text-primary text-center">Drop files here to upload</p>
-              <p className="text-muted-foreground text-center text-sm">Files will be uploaded after selecting a project</p>
+          <div className="fixed inset-0 z-[100] bg-background/90 backdrop-blur-md flex items-center justify-center">
+            <div className="border-4 border-dashed border-primary rounded-3xl p-12 md:p-20 bg-primary/10 flex flex-col items-center gap-5 mx-6 shadow-2xl shadow-primary/20 animate-in fade-in zoom-in-95 duration-200">
+              <div className="h-20 w-20 rounded-full bg-primary/20 flex items-center justify-center">
+                <CloudUpload className="w-10 h-10 text-primary" />
+              </div>
+              <div className="text-center">
+                <p className="text-xl md:text-2xl font-semibold text-foreground">Drop files to upload</p>
+                <p className="text-muted-foreground text-sm mt-1">Release to select a project and start uploading</p>
+              </div>
             </div>
           </div>
         )}
@@ -770,8 +775,8 @@ const StoragePage = () => {
                 <h1 className="text-2xl md:text-3xl font-bold text-foreground">Storage</h1>
                 <p className="text-sm md:text-base text-muted-foreground">
                   {userRole === 'admin'
-                    ? 'View and manage all files across the platform'
-                    : 'View files from your projects'}
+                    ? 'View and manage all files. Drag & drop files anywhere to upload.'
+                    : 'View files from your projects. Drag & drop files anywhere to upload.'}
                 </p>
               </div>
               
