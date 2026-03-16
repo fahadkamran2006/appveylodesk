@@ -775,8 +775,8 @@ const StoragePage = () => {
                 <h1 className="text-2xl md:text-3xl font-bold text-foreground">Storage</h1>
                 <p className="text-sm md:text-base text-muted-foreground">
                   {userRole === 'admin'
-                    ? 'View and manage all files across the platform'
-                    : 'View files from your projects'}
+                    ? 'View and manage all files. Drag & drop files anywhere to upload.'
+                    : 'View files from your projects. Drag & drop files anywhere to upload.'}
                 </p>
               </div>
               
