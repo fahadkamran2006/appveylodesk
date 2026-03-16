@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { playNotificationSound } from '@/lib/sounds';
 
 export type NotificationType = 
   | 'task_assignment'

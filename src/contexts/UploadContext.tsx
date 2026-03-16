@@ -636,6 +636,7 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (success) {
+        playUploadCompleteSound();
         toast({
           title: 'Upload complete',
           description: `${pendingItem.file.name} uploaded successfully`,
