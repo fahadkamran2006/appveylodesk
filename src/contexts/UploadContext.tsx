@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { createTusUpload, TusUploadController } from '@/lib/tusUploader';
+import { playUploadCompleteSound } from '@/lib/sounds';
 
 export interface QueuedUpload {
   id: string;
@@ -635,6 +636,7 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (success) {
+        playUploadCompleteSound();
         toast({
           title: 'Upload complete',
           description: `${pendingItem.file.name} uploaded successfully`,
