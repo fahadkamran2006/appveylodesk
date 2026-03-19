@@ -519,13 +519,16 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onEditMe
 
                   {/* Input */}
                   <div className="flex-1 relative">
-                    <input
+                    <textarea
+                      ref={textareaRef}
                       value={messageInput}
                       onChange={handleInputChange}
                       onKeyDown={handleKeyDown}
                       placeholder={replyingTo ? "Reply..." : "Message..."}
                       disabled={uploadProgress.uploading}
-                      className="w-full bg-transparent text-foreground text-[14px] placeholder:text-muted-foreground/50 outline-none py-2 px-1"
+                      rows={1}
+                      className="w-full bg-transparent text-foreground text-[14px] placeholder:text-muted-foreground/50 outline-none py-2 px-1 resize-none overflow-y-auto leading-[20px]"
+                      style={{ maxHeight: '150px' }}
                     />
                   </div>
                 </>
