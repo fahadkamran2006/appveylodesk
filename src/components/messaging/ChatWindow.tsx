@@ -91,6 +91,7 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onEditMe
   const [optimisticMessages, setOptimisticMessages] = useState<Message[]>([]);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [isVoiceRecording, setIsVoiceRecording] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
