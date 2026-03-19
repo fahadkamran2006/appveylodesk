@@ -248,17 +248,17 @@ export function ChatMessageBubble({
           )}
 
           <div className={cn(
-            'rounded-2xl overflow-hidden',
+            'rounded-2xl overflow-hidden shadow-sm',
             isOwn
-              ? 'bg-primary text-primary-foreground'
-              : 'bg-secondary text-foreground',
-            // Instagram-style rounded corners
-            isOwn && isGrouped && !isLastInGroup && 'rounded-br-md rounded-tr-md',
-            isOwn && isLastInGroup && isGrouped && 'rounded-br-md',
-            isOwn && !isGrouped && isLastInGroup && 'rounded-br-md',
-            !isOwn && isGrouped && !isLastInGroup && 'rounded-bl-md rounded-tl-md',
-            !isOwn && isLastInGroup && isGrouped && 'rounded-bl-md',
-            !isOwn && !isGrouped && isLastInGroup && 'rounded-bl-md',
+              ? 'bg-gradient-to-br from-primary to-primary/85 text-primary-foreground'
+              : 'bg-secondary/80 text-foreground border border-border/30',
+            // Adaptive rounded corners for grouped messages
+            isOwn && isGrouped && !isLastInGroup && 'rounded-br-[6px] rounded-tr-[6px]',
+            isOwn && isLastInGroup && isGrouped && 'rounded-br-[6px]',
+            isOwn && !isGrouped && isLastInGroup && 'rounded-br-[6px]',
+            !isOwn && isGrouped && !isLastInGroup && 'rounded-bl-[6px] rounded-tl-[6px]',
+            !isOwn && isLastInGroup && isGrouped && 'rounded-bl-[6px]',
+            !isOwn && !isGrouped && isLastInGroup && 'rounded-bl-[6px]',
           )}>
             {/* Reply Preview — Instagram style */}
             {parentMessage && (
