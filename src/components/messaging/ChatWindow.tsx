@@ -227,7 +227,33 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onEditMe
     requestAnimationFrame(autoResizeTextarea);
   };
 
+  const wrapSelection = useCallback((prefix: string, suffix: string) => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const selected = messageInput.slice(start, end);
+    const wrapped = `${prefix}${selected}${suffix}`;
+    const newVal = messageInput.slice(0, start) + wrapped + messageInput.slice(end);
+    setMessageInput(newVal);
+    requestAnimationFrame(() => {
+      ta.focus();
+      if (selected) {
+        ta.setSelectionRange(start + prefix.length, start + prefix.length + selected.length);
+      } else {
+        const cur = start + prefix.length;
+        ta.setSelectionRange(cur, cur);
+      }
+      autoResizeTextarea();
+    });
+  }, [messageInput, autoResizeTextarea]);
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    const mod = e.ctrlKey || e.metaKey;
+    if (mod && e.key === 'b') { e.preventDefault(); wrapSelection('**', '**'); return; }
+    if (mod && e.key === 'i') { e.preventDefault(); wrapSelection('*', '*'); return; }
+    if (mod && e.key === 'e') { e.preventDefault(); wrapSelection('`', '`'); return; }
+    if (mod && e.shiftKey && e.key === 'x') { e.preventDefault(); wrapSelection('~~', '~~'); return; }
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
 
