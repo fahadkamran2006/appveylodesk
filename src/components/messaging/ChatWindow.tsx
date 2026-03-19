@@ -127,8 +127,16 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onEditMe
   const allMessages = [...visibleMessages, ...pendingOptimistic];
 
   useEffect(() => {
-    setOptimisticMessages(prev => prev.filter(m => !realIds.has(m.id)));
-  }, [messages]);
+    if (optimisticMessages.length === 0) return;
+    setOptimisticMessages(prev => prev.filter(opt => {
+      // Match optimistic to real messages by content + sender + close timestamp
+      return !visibleMessages.some(real =>
+        real.sender_id === opt.sender_id &&
+        real.content === opt.content &&
+        Math.abs(new Date(real.created_at).getTime() - new Date(opt.created_at).getTime()) < 15000
+      );
+    }));
+  }, [visibleMessages]);
 
   useEffect(() => {
     setOptimisticMessages([]);
