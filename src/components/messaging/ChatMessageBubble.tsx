@@ -347,22 +347,25 @@ export function ChatMessageBubble({
                 </div>
               </div>
             ) : message.content && !isVoice ? (
-              <div className="px-3 py-[6px]">
+              <div className="px-3 py-[7px]">
                 {renderMessageContent(message.content, isOwn)}
               </div>
             ) : null}
 
-            {/* Timestamp & Read Status — inside bubble */}
+            {/* Timestamp & Read Status — inside bubble, compact */}
             <div className={cn(
-              'px-3 pb-1 flex items-center gap-1',
-              isOwn ? 'justify-end' : 'justify-end',
+              'px-3 pb-1.5 flex items-center gap-1',
+              'justify-end',
               !message.content && hasAttachment && 'pt-0.5'
             )}>
-              <p className={cn('text-[10px]', isOwn ? 'text-primary-foreground/50' : 'text-muted-foreground/60')}>
+              <p className={cn(
+                'text-[10px] leading-none',
+                isOwn ? 'text-primary-foreground/45' : 'text-muted-foreground/50'
+              )}>
                 {format(new Date(message.created_at), 'h:mm a')}
               </p>
               {isOwn && isDM && (
-                <span className={cn('flex items-center', isRead ? 'text-blue-400' : isOwn ? 'text-primary-foreground/50' : 'text-muted-foreground')}>
+                <span className={cn('flex items-center', isRead ? 'text-blue-400' : isOwn ? 'text-primary-foreground/45' : 'text-muted-foreground')}>
                   {isOptimistic ? (
                     <Clock className="w-3 h-3" />
                   ) : isRead ? (
