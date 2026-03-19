@@ -248,30 +248,30 @@ export function ChatMessageBubble({
           )}
 
           <div className={cn(
-            'rounded-2xl overflow-hidden',
+            'rounded-2xl overflow-hidden shadow-sm',
             isOwn
-              ? 'bg-primary text-primary-foreground'
-              : 'bg-secondary text-foreground',
-            // Instagram-style rounded corners
-            isOwn && isGrouped && !isLastInGroup && 'rounded-br-md rounded-tr-md',
-            isOwn && isLastInGroup && isGrouped && 'rounded-br-md',
-            isOwn && !isGrouped && isLastInGroup && 'rounded-br-md',
-            !isOwn && isGrouped && !isLastInGroup && 'rounded-bl-md rounded-tl-md',
-            !isOwn && isLastInGroup && isGrouped && 'rounded-bl-md',
-            !isOwn && !isGrouped && isLastInGroup && 'rounded-bl-md',
+              ? 'bg-gradient-to-br from-primary to-primary/85 text-primary-foreground'
+              : 'bg-secondary/80 text-foreground border border-border/30',
+            // Adaptive rounded corners for grouped messages
+            isOwn && isGrouped && !isLastInGroup && 'rounded-br-[6px] rounded-tr-[6px]',
+            isOwn && isLastInGroup && isGrouped && 'rounded-br-[6px]',
+            isOwn && !isGrouped && isLastInGroup && 'rounded-br-[6px]',
+            !isOwn && isGrouped && !isLastInGroup && 'rounded-bl-[6px] rounded-tl-[6px]',
+            !isOwn && isLastInGroup && isGrouped && 'rounded-bl-[6px]',
+            !isOwn && !isGrouped && isLastInGroup && 'rounded-bl-[6px]',
           )}>
             {/* Reply Preview — Instagram style */}
             {parentMessage && (
               <div className={cn(
-                'mx-2 mt-2 px-3 py-1.5 rounded-lg text-[12px]',
+                'mx-2 mt-2 px-3 py-2 rounded-lg text-[12px] leading-snug',
                 isOwn
-                  ? 'bg-primary-foreground/10'
-                  : 'bg-muted/60'
+                  ? 'bg-primary-foreground/10 border-l-2 border-primary-foreground/30'
+                  : 'bg-muted/50 border-l-2 border-primary/40'
               )}>
-                <p className={cn('font-medium', isOwn ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
+                <p className={cn('font-semibold text-[11px]', isOwn ? 'text-primary-foreground/70' : 'text-primary/80')}>
                   {parentMessage.sender.full_name || 'User'}
                 </p>
-                <p className={cn('truncate', isOwn ? 'text-primary-foreground/60' : 'text-muted-foreground/80')}>
+                <p className={cn('truncate mt-0.5', isOwn ? 'text-primary-foreground/50' : 'text-muted-foreground/70')}>
                   {parentMessage.content || '📎 Attachment'}
                 </p>
               </div>
@@ -347,22 +347,25 @@ export function ChatMessageBubble({
                 </div>
               </div>
             ) : message.content && !isVoice ? (
-              <div className="px-3 py-[6px]">
+              <div className="px-3 py-[7px]">
                 {renderMessageContent(message.content, isOwn)}
               </div>
             ) : null}
 
-            {/* Timestamp & Read Status — inside bubble */}
+            {/* Timestamp & Read Status — inside bubble, compact */}
             <div className={cn(
-              'px-3 pb-1 flex items-center gap-1',
-              isOwn ? 'justify-end' : 'justify-end',
+              'px-3 pb-1.5 flex items-center gap-1',
+              'justify-end',
               !message.content && hasAttachment && 'pt-0.5'
             )}>
-              <p className={cn('text-[10px]', isOwn ? 'text-primary-foreground/50' : 'text-muted-foreground/60')}>
+              <p className={cn(
+                'text-[10px] leading-none',
+                isOwn ? 'text-primary-foreground/45' : 'text-muted-foreground/50'
+              )}>
                 {format(new Date(message.created_at), 'h:mm a')}
               </p>
               {isOwn && isDM && (
-                <span className={cn('flex items-center', isRead ? 'text-blue-400' : isOwn ? 'text-primary-foreground/50' : 'text-muted-foreground')}>
+                <span className={cn('flex items-center', isRead ? 'text-blue-400' : isOwn ? 'text-primary-foreground/45' : 'text-muted-foreground')}>
                   {isOptimistic ? (
                     <Clock className="w-3 h-3" />
                   ) : isRead ? (
