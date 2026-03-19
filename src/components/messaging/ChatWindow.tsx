@@ -509,72 +509,88 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onEditMe
           </div>
         )}
 
-        {/* Input — Instagram style: emoji on left, input, then mic/image/send on right */}
-        <div className="px-3 py-2 border-t border-border bg-card">
+        {/* Input area */}
+        <div className="border-t border-border bg-card">
           {isArchived ? (
-            <div className="flex items-center justify-center gap-2 text-muted-foreground py-2">
+            <div className="flex items-center justify-center gap-2 text-muted-foreground py-3 px-3">
               <Lock className="w-4 h-4" />
               <span className="text-sm">This chat is archived</span>
             </div>
           ) : (
-            <div className="flex items-center gap-1">
+            <div className="flex flex-col">
+              {/* Formatting toolbar — only show when not voice recording */}
               {!isVoiceRecording && (
-                <>
-                  {/* Emoji */}
-                  <EmojiPicker onSelect={(emoji) => setMessageInput(prev => prev + emoji)} />
-
-                  {/* Input */}
-                  <div className="flex-1 relative">
-                    <textarea
-                      ref={textareaRef}
-                      value={messageInput}
-                      onChange={handleInputChange}
-                      onKeyDown={handleKeyDown}
-                      placeholder={replyingTo ? "Reply..." : "Message..."}
-                      disabled={uploadProgress.uploading}
-                      rows={1}
-                      className="w-full bg-transparent text-foreground text-[14px] placeholder:text-muted-foreground/50 outline-none py-2 px-1 resize-none overflow-y-auto leading-[20px]"
-                      style={{ maxHeight: '150px' }}
-                    />
-                  </div>
-                </>
-              )}
-
-              {/* Right side actions */}
-              {hasInput && !isVoiceRecording ? (
-                <button
-                  onClick={handleSend}
-                  disabled={sending}
-                  className="p-2 text-primary font-semibold text-[14px] hover:text-primary/80 transition-colors disabled:opacity-40"
-                >
-                  Send
-                </button>
-              ) : (
-                <div className={cn("flex items-center gap-0.5", isVoiceRecording && "flex-1")}>
-                  <VoiceRecordButton
-                    onSendVoice={handleVoiceSend}
-                    onRecordingStateChange={setIsVoiceRecording}
-                    disabled={uploadProgress.uploading}
+                <div className="flex items-center gap-1 px-3 pt-2 pb-0">
+                  <FormattingToolbar
+                    textareaRef={textareaRef}
+                    value={messageInput}
+                    onChange={(val) => {
+                      setMessageInput(val);
+                      requestAnimationFrame(autoResizeTextarea);
+                    }}
                   />
-                  {!isVoiceRecording && (
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={uploadProgress.uploading}
-                      className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors disabled:opacity-40"
-                    >
-                      <ImageIcon className="w-5 h-5" />
-                    </button>
-                  )}
                 </div>
               )}
 
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*,video/*,audio/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar"
-                className="hidden"
-                onChange={handleFileSelect}
-              />
+              <div className="flex items-end gap-1 px-3 py-2">
+                {!isVoiceRecording && (
+                  <>
+                    {/* Emoji */}
+                    <EmojiPicker onSelect={(emoji) => setMessageInput(prev => prev + emoji)} />
+
+                    {/* Textarea */}
+                    <div className="flex-1 relative">
+                      <textarea
+                        ref={textareaRef}
+                        value={messageInput}
+                        onChange={handleInputChange}
+                        onKeyDown={handleKeyDown}
+                        placeholder={replyingTo ? "Reply..." : "Message..."}
+                        disabled={uploadProgress.uploading}
+                        rows={1}
+                        className="w-full bg-transparent text-foreground text-[14px] placeholder:text-muted-foreground/50 outline-none py-2 px-1 resize-none overflow-y-auto leading-[20px]"
+                        style={{ maxHeight: '150px' }}
+                      />
+                    </div>
+                  </>
+                )}
+
+                {/* Right side actions */}
+                {hasInput && !isVoiceRecording ? (
+                  <button
+                    onClick={handleSend}
+                    disabled={sending}
+                    className="p-2 text-primary font-semibold text-[14px] hover:text-primary/80 transition-colors disabled:opacity-40"
+                  >
+                    Send
+                  </button>
+                ) : (
+                  <div className={cn("flex items-center gap-0.5", isVoiceRecording && "flex-1")}>
+                    <VoiceRecordButton
+                      onSendVoice={handleVoiceSend}
+                      onRecordingStateChange={setIsVoiceRecording}
+                      disabled={uploadProgress.uploading}
+                    />
+                    {!isVoiceRecording && (
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploadProgress.uploading}
+                        className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors disabled:opacity-40"
+                      >
+                        <ImageIcon className="w-5 h-5" />
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,video/*,audio/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar"
+                  className="hidden"
+                  onChange={handleFileSelect}
+                />
+              </div>
             </div>
           )}
         </div>
