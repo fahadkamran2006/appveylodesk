@@ -172,6 +172,11 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onEditMe
       };
       setOptimisticMessages(prev => [...prev, optimistic]);
       setMessageInput('');
+      requestAnimationFrame(() => {
+        if (textareaRef.current) {
+          textareaRef.current.style.height = 'auto';
+        }
+      });
       setReplyingTo(null);
       setIsAtBottom(true);
     }
@@ -205,9 +210,20 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onEditMe
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const autoResizeTextarea = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 150) + 'px';
+  }, []);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setMessageInput(e.target.value);
     if (e.target.value.trim()) onTyping();
+    // auto-resize on next frame
+    requestAnimationFrame(autoResizeTextarea);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -508,13 +524,16 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onEditMe
 
                   {/* Input */}
                   <div className="flex-1 relative">
-                    <input
+                    <textarea
+                      ref={textareaRef}
                       value={messageInput}
                       onChange={handleInputChange}
                       onKeyDown={handleKeyDown}
                       placeholder={replyingTo ? "Reply..." : "Message..."}
                       disabled={uploadProgress.uploading}
-                      className="w-full bg-transparent text-foreground text-[14px] placeholder:text-muted-foreground/50 outline-none py-2 px-1"
+                      rows={1}
+                      className="w-full bg-transparent text-foreground text-[14px] placeholder:text-muted-foreground/50 outline-none py-2 px-1 resize-none overflow-y-auto leading-[20px]"
+                      style={{ maxHeight: '150px' }}
                     />
                   </div>
                 </>
