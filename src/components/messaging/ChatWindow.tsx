@@ -67,6 +67,19 @@ interface ChatWindowProps {
 
 const GROUP_THRESHOLD_MS = 5 * 60 * 1000;
 
+/** Inline markdown parser for preview */
+function parseMarkdownPreview(text: string): string {
+  let result = text.replace(/```([^`]+)```/g, '<code class="block bg-background/30 rounded px-2 py-1 text-xs font-mono my-1 whitespace-pre-wrap">$1</code>');
+  result = result.replace(/`([^`]+)`/g, '<code class="bg-background/30 rounded px-1 py-0.5 text-xs font-mono">$1</code>');
+  result = result.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  result = result.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
+  result = result.replace(/~~(.+?)~~/g, '<s>$1</s>');
+  result = result.replace(/^>\s?(.*)$/gm, '<span class="border-l-2 border-muted-foreground/40 pl-2 text-muted-foreground italic block">$1</span>');
+  // linkify
+  result = result.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="underline break-all">$1</a>');
+  return result;
+}
+
 function shouldGroup(prev: Message | undefined, curr: Message): boolean {
   if (!prev) return false;
   if (prev.sender_id !== curr.sender_id) return false;
