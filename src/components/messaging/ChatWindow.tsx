@@ -205,9 +205,20 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onEditMe
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const autoResizeTextarea = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 150) + 'px';
+  }, []);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setMessageInput(e.target.value);
     if (e.target.value.trim()) onTyping();
+    // auto-resize on next frame
+    requestAnimationFrame(autoResizeTextarea);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
