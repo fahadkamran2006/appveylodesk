@@ -3,8 +3,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Send, Lock, MoreVertical, VolumeX, Volume2, FolderKanban, MessageSquare, Trash2, ArrowLeft, Info, ArrowDown, Smile, Image as ImageIcon, Hash } from 'lucide-react';
+import { Send, Lock, MoreVertical, VolumeX, Volume2, FolderKanban, MessageSquare, Trash2, ArrowLeft, Info, ArrowDown, Smile, Image as ImageIcon, Hash, Eye, EyeOff } from 'lucide-react';
 import { FormattingToolbar } from './FormattingToolbar';
+import DOMPurify from 'dompurify';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { useChannelMutes, useMessaging } from '@/hooks/useMessaging';
@@ -66,6 +67,19 @@ interface ChatWindowProps {
 
 const GROUP_THRESHOLD_MS = 5 * 60 * 1000;
 
+/** Inline markdown parser for preview */
+function parseMarkdownPreview(text: string): string {
+  let result = text.replace(/```([^`]+)```/g, '<code class="block bg-background/30 rounded px-2 py-1 text-xs font-mono my-1 whitespace-pre-wrap">$1</code>');
+  result = result.replace(/`([^`]+)`/g, '<code class="bg-background/30 rounded px-1 py-0.5 text-xs font-mono">$1</code>');
+  result = result.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  result = result.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
+  result = result.replace(/~~(.+?)~~/g, '<s>$1</s>');
+  result = result.replace(/^>\s?(.*)$/gm, '<span class="border-l-2 border-muted-foreground/40 pl-2 text-muted-foreground italic block">$1</span>');
+  // linkify
+  result = result.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="underline break-all">$1</a>');
+  return result;
+}
+
 function shouldGroup(prev: Message | undefined, curr: Message): boolean {
   if (!prev) return false;
   if (prev.sender_id !== curr.sender_id) return false;
@@ -90,6 +104,7 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onEditMe
   const [optimisticMessages, setOptimisticMessages] = useState<Message[]>([]);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [isVoiceRecording, setIsVoiceRecording] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -544,15 +559,46 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onEditMe
             </div>
           ) : (
             <div className="flex flex-col">
-              {/* Formatting toolbar — only show when not voice recording */}
+              {/* Formatting toolbar + preview toggle — only show when not voice recording */}
               {!isVoiceRecording && (
-                <div className="flex items-center gap-1 px-3 pt-2 pb-0">
+                <div className="flex items-center justify-between px-3 pt-2 pb-0">
                   <FormattingToolbar
                     textareaRef={textareaRef}
                     value={messageInput}
                     onChange={(val) => {
                       setMessageInput(val);
                       requestAnimationFrame(autoResizeTextarea);
+                    }}
+                  />
+                  {messageInput.trim() && (
+                    <button
+                      type="button"
+                      onClick={() => setShowPreview(p => !p)}
+                      className={cn(
+                        "p-1.5 rounded-md transition-colors text-muted-foreground hover:text-foreground hover:bg-muted/60",
+                        showPreview && "text-primary bg-primary/10"
+                      )}
+                      title={showPreview ? "Hide preview" : "Show preview"}
+                    >
+                      {showPreview ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Markdown preview */}
+              {showPreview && messageInput.trim() && !isVoiceRecording && (
+                <div className="mx-3 mt-2 px-3 py-2 rounded-lg bg-muted/40 border border-border/50 max-h-[120px] overflow-y-auto">
+                  <div
+                    className="text-[14px] leading-[20px] whitespace-pre-wrap break-words text-foreground"
+                    dangerouslySetInnerHTML={{
+                      __html: DOMPurify.sanitize(
+                        parseMarkdownPreview(messageInput),
+                        {
+                          ALLOWED_TAGS: ['strong', 'b', 'em', 'i', 'code', 'a', 's', 'span'],
+                          ALLOWED_ATTR: ['href', 'target', 'rel', 'class'],
+                        }
+                      ),
                     }}
                   />
                 </div>

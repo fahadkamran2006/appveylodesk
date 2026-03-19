@@ -61,12 +61,16 @@ function linkifyText(text: string): string {
   return text.replace(urlRegex, '<a href="$1" target="_blank" rel="noopener noreferrer" class="underline break-all">$1</a>');
 }
 
-/** Basic markdown: **bold**, *italic*, `code`, ```code blocks``` */
+/** Basic markdown: **bold**, *italic*, ~~strikethrough~~, `code`, ```code blocks```, > quotes */
 function parseMarkdown(text: string): string {
   let result = text.replace(/```([^`]+)```/g, '<code class="block bg-background/30 rounded px-2 py-1 text-xs font-mono my-1 whitespace-pre-wrap">$1</code>');
   result = result.replace(/`([^`]+)`/g, '<code class="bg-background/30 rounded px-1 py-0.5 text-xs font-mono">$1</code>');
   result = result.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-  result = result.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  result = result.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
+  result = result.replace(/~~(.+?)~~/g, '<s>$1</s>');
+  // Block quotes: lines starting with >
+  result = result.replace(/^&gt;\s?(.*)$/gm, '<span class="border-l-2 border-muted-foreground/40 pl-2 text-muted-foreground italic block">$1</span>');
+  result = result.replace(/^>\s?(.*)$/gm, '<span class="border-l-2 border-muted-foreground/40 pl-2 text-muted-foreground italic block">$1</span>');
   return result;
 }
 
@@ -87,9 +91,9 @@ function renderMessageContent(content: string, isOwn: boolean) {
   const processed = linkifyText(parseMarkdown(content));
   return (
     <div
-      className="text-[14px] leading-[18px] whitespace-pre-wrap break-words"
+    className="text-[14px] leading-[20px] whitespace-pre-wrap break-words"
       dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(processed, {
-        ALLOWED_TAGS: ['strong', 'b', 'em', 'i', 'code', 'a'],
+        ALLOWED_TAGS: ['strong', 'b', 'em', 'i', 'code', 'a', 's', 'span'],
         ALLOWED_ATTR: ['href', 'target', 'rel', 'class'],
       }) }}
     />
