@@ -263,15 +263,15 @@ export function ChatMessageBubble({
             {/* Reply Preview — Instagram style */}
             {parentMessage && (
               <div className={cn(
-                'mx-2 mt-2 px-3 py-1.5 rounded-lg text-[12px]',
+                'mx-2 mt-2 px-3 py-2 rounded-lg text-[12px] leading-snug',
                 isOwn
-                  ? 'bg-primary-foreground/10'
-                  : 'bg-muted/60'
+                  ? 'bg-primary-foreground/10 border-l-2 border-primary-foreground/30'
+                  : 'bg-muted/50 border-l-2 border-primary/40'
               )}>
-                <p className={cn('font-medium', isOwn ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
+                <p className={cn('font-semibold text-[11px]', isOwn ? 'text-primary-foreground/70' : 'text-primary/80')}>
                   {parentMessage.sender.full_name || 'User'}
                 </p>
-                <p className={cn('truncate', isOwn ? 'text-primary-foreground/60' : 'text-muted-foreground/80')}>
+                <p className={cn('truncate mt-0.5', isOwn ? 'text-primary-foreground/50' : 'text-muted-foreground/70')}>
                   {parentMessage.content || '📎 Attachment'}
                 </p>
               </div>
