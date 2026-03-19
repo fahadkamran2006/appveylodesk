@@ -172,6 +172,11 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onEditMe
       };
       setOptimisticMessages(prev => [...prev, optimistic]);
       setMessageInput('');
+      requestAnimationFrame(() => {
+        if (textareaRef.current) {
+          textareaRef.current.style.height = 'auto';
+        }
+      });
       setReplyingTo(null);
       setIsAtBottom(true);
     }
