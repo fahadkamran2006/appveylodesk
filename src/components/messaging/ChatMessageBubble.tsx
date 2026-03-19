@@ -91,9 +91,9 @@ function renderMessageContent(content: string, isOwn: boolean) {
   const processed = linkifyText(parseMarkdown(content));
   return (
     <div
-      className="text-[14px] leading-[18px] whitespace-pre-wrap break-words"
+    className="text-[14px] leading-[20px] whitespace-pre-wrap break-words"
       dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(processed, {
-        ALLOWED_TAGS: ['strong', 'b', 'em', 'i', 'code', 'a'],
+        ALLOWED_TAGS: ['strong', 'b', 'em', 'i', 'code', 'a', 's', 'span'],
         ALLOWED_ATTR: ['href', 'target', 'rel', 'class'],
       }) }}
     />

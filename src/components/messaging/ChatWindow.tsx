@@ -546,15 +546,46 @@ export function ChatWindow({ channel, messages, loading, onSendMessage, onEditMe
             </div>
           ) : (
             <div className="flex flex-col">
-              {/* Formatting toolbar — only show when not voice recording */}
+              {/* Formatting toolbar + preview toggle — only show when not voice recording */}
               {!isVoiceRecording && (
-                <div className="flex items-center gap-1 px-3 pt-2 pb-0">
+                <div className="flex items-center justify-between px-3 pt-2 pb-0">
                   <FormattingToolbar
                     textareaRef={textareaRef}
                     value={messageInput}
                     onChange={(val) => {
                       setMessageInput(val);
                       requestAnimationFrame(autoResizeTextarea);
+                    }}
+                  />
+                  {messageInput.trim() && (
+                    <button
+                      type="button"
+                      onClick={() => setShowPreview(p => !p)}
+                      className={cn(
+                        "p-1.5 rounded-md transition-colors text-muted-foreground hover:text-foreground hover:bg-muted/60",
+                        showPreview && "text-primary bg-primary/10"
+                      )}
+                      title={showPreview ? "Hide preview" : "Show preview"}
+                    >
+                      {showPreview ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Markdown preview */}
+              {showPreview && messageInput.trim() && !isVoiceRecording && (
+                <div className="mx-3 mt-2 px-3 py-2 rounded-lg bg-muted/40 border border-border/50 max-h-[120px] overflow-y-auto">
+                  <div
+                    className="text-[14px] leading-[20px] whitespace-pre-wrap break-words text-foreground"
+                    dangerouslySetInnerHTML={{
+                      __html: DOMPurify.sanitize(
+                        parseMarkdownPreview(messageInput),
+                        {
+                          ALLOWED_TAGS: ['strong', 'b', 'em', 'i', 'code', 'a', 's', 'span'],
+                          ALLOWED_ATTR: ['href', 'target', 'rel', 'class'],
+                        }
+                      ),
                     }}
                   />
                 </div>
