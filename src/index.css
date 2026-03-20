@@ -254,6 +254,11 @@ html.theme-transition *::after {
   .btn-glow:hover {
     box-shadow: 0 0 30px hsl(var(--primary) / 0.5), 0 0 60px hsl(var(--primary) / 0.3);
   }
+
+  /* Pulsing CTA glow animation — draws the eye */
+  .cta-pulse {
+    animation: cta-glow-pulse 2.5s ease-in-out infinite;
+  }
 }
 
 @keyframes float {
