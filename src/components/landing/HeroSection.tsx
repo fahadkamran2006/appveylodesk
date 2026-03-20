@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Play, CheckCircle2 } from "lucide-react";
+import { ArrowRight, Play, CheckCircle2, Shield, CreditCard, X } from "lucide-react";
 import { motion, useScroll, useTransform, useSpring } from "framer-motion";
 import { AnimatedCounter, TextReveal, CharReveal, TiltCard, Float3D } from "./ScrollAnimations";
 
@@ -14,21 +14,13 @@ const HeroSection = () => {
     offset: ["start start", "end start"],
   });
 
-  // Dashboard transforms on scroll
   const dashboardY = useTransform(scrollYProgress, [0, 0.5], [0, -80]);
   const dashboardScale = useTransform(scrollYProgress, [0, 0.5], [1, 0.92]);
   const dashboardRotateX = useTransform(scrollYProgress, [0, 0.3], [0, 5]);
-  const perspective = useTransform(scrollYProgress, [0, 0.5], [1200, 800]);
-  
-  // Light mode transition on scroll — starts later, transitions over a comfortable range
   const lightOpacity = useTransform(scrollYProgress, [0.15, 0.45], [0, 1]);
   const darkOpacity = useTransform(scrollYProgress, [0.15, 0.45], [1, 0]);
-  
-  // Parallax for glow orbs
   const orbY1 = useTransform(scrollYProgress, [0, 1], [0, -200]);
   const orbY2 = useTransform(scrollYProgress, [0, 1], [0, -150]);
-  
-  // Spring for smooth motion
   const springY = useSpring(dashboardY, { stiffness: 100, damping: 30 });
   const springScale = useSpring(dashboardScale, { stiffness: 100, damping: 30 });
 
@@ -66,50 +58,50 @@ const HeroSection = () => {
             initial={{ opacity: 0, y: 20, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 0.6, ease: "easeOut" }}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary/10 border border-primary/20 mb-10"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-destructive/10 border border-destructive/20 mb-10"
           >
-            <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            <span className="text-sm font-medium text-primary tracking-wide">
-              Built for Video Agencies
+            <span className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
+            <span className="text-sm font-medium text-destructive tracking-wide">
+              Your Agency Is Leaking Money
             </span>
           </motion.div>
 
-          {/* Headline with character reveal */}
+          {/* PAS Headline — Problem + Agitation */}
           <motion.h1
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.3, delay: 0.1 }}
             className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold leading-[0.95] tracking-tighter mb-8"
           >
-            <TextReveal staggerDelay={0.04}>Run Your Agency From</TextReveal>{" "}
+            <TextReveal staggerDelay={0.04}>Stop Losing Money on</TextReveal>{" "}
             <span className="text-gradient">
-              <CharReveal staggerDelay={0.03}>One Command Center</CharReveal>
+              <CharReveal staggerDelay={0.03}>Unbilled Revisions.</CharReveal>
             </span>
           </motion.h1>
 
-          {/* Subheadline */}
+          {/* Agitate + Solution */}
           <motion.p
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.6, ease: "easeOut" }}
             className="text-lg sm:text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto mb-14 leading-relaxed"
           >
-            Stop managing chaos. Start scaling. Manage{" "}
-            <span className="text-foreground font-medium">Clients</span>,{" "}
-            <span className="text-foreground font-medium">Editors</span>, and{" "}
-            <span className="text-foreground font-medium">Projects</span> in one tab.
+            Chasing clients for payments. Drowning in messy Google Drive feedback.
+            Managing editors across 5 different apps.{" "}
+            <span className="text-foreground font-semibold">It ends today.</span>{" "}
+            Veylodesk is the one tab that replaces them all.
           </motion.p>
 
-          {/* CTA Buttons */}
+          {/* CTA Buttons — Action-Oriented */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.7, ease: "easeOut" }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-5 mb-16"
+            className="flex flex-col sm:flex-row items-center justify-center gap-5 mb-8"
           >
-            <Button variant="hero" size="xl" className="btn-glow" asChild>
+            <Button variant="hero" size="xl" className="btn-glow cta-pulse" asChild>
               <Link to="/pricing">
-                Start Scaling Today
+                Set Up My Workspace
                 <ArrowRight className="w-5 h-5" />
               </Link>
             </Button>
@@ -121,23 +113,27 @@ const HeroSection = () => {
             </Button>
           </motion.div>
 
-          {/* Trust Indicators */}
+          {/* Trust Badges — Directly Under CTA */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.8, ease: "easeOut" }}
-            className="flex flex-wrap items-center justify-center gap-8 text-sm text-muted-foreground"
+            className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground"
           >
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-success" />
-              <span>Unlimited team members</span>
+              <Shield className="w-4 h-4 text-success" />
+              <span>Secure Checkout via Paddle</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CreditCard className="w-4 h-4 text-success" />
+              <span>No setup fees</span>
             </div>
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-success" />
               <span>14-day money-back guarantee</span>
             </div>
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-success" />
+              <X className="w-4 h-4 text-success" />
               <span>Cancel anytime</span>
             </div>
           </motion.div>
@@ -156,11 +152,9 @@ const HeroSection = () => {
           }}
         >
           <TiltCard intensity={5} className="relative">
-            {/* Massive Glow Effect */}
             <div className="absolute -inset-8 bg-gradient-to-r from-primary/30 via-indigo-soft/20 to-primary/30 rounded-3xl blur-3xl opacity-50" />
             <div className="absolute -inset-4 bg-gradient-glow rounded-3xl opacity-60" />
             
-            {/* Dashboard Card */}
             <div className="relative glass-card-premium rounded-3xl p-3 overflow-hidden" style={{ perspective: "1200px" }}>
               <motion.div 
                 className="rounded-2xl overflow-hidden relative"
@@ -168,7 +162,6 @@ const HeroSection = () => {
               >
                 {/* DARK MODE Dashboard */}
                 <motion.div style={{ opacity: darkOpacity }} className="bg-midnight-deep">
-                  {/* Browser Chrome */}
                   <div className="flex items-center gap-2 px-5 py-4 border-b border-white/[0.06]">
                     <div className="flex gap-2">
                       <div className="w-3 h-3 rounded-full bg-destructive/60" />
@@ -182,7 +175,6 @@ const HeroSection = () => {
                     </div>
                   </div>
                   
-                  {/* Dashboard Content - Dark */}
                   <div className="p-8 min-h-[450px] bg-gradient-cinematic">
                     <div className="flex items-center justify-between mb-8">
                       <div>
@@ -196,7 +188,6 @@ const HeroSection = () => {
                       </div>
                     </div>
 
-                    {/* Stats Cards with animated numbers */}
                     <div className="grid grid-cols-3 gap-5 mb-8">
                       <div className="glass-card-premium rounded-2xl p-5">
                         <p className="text-sm text-muted-foreground mb-2">Total Revenue</p>
@@ -221,7 +212,6 @@ const HeroSection = () => {
                       </div>
                     </div>
 
-                    {/* Kanban Preview */}
                     <div className="grid grid-cols-4 gap-4">
                       {["Backlog", "In Progress", "Review", "Done"].map((status, i) => (
                         <div key={status} className="glass rounded-xl p-4">
@@ -247,12 +237,11 @@ const HeroSection = () => {
                   </div>
                 </motion.div>
 
-                {/* LIGHT MODE Dashboard (overlaid, fades in on scroll) */}
+                {/* LIGHT MODE Dashboard */}
                 <motion.div 
                   style={{ opacity: lightOpacity }} 
                   className="absolute inset-0 bg-[hsl(220,20%,97%)]"
                 >
-                  {/* Browser Chrome - Light */}
                   <div className="flex items-center gap-2 px-5 py-4 border-b border-[hsl(220,13%,90%)]">
                     <div className="flex gap-2">
                       <div className="w-3 h-3 rounded-full bg-red-400" />
@@ -266,7 +255,6 @@ const HeroSection = () => {
                     </div>
                   </div>
                   
-                  {/* Dashboard Content - Light */}
                   <div className="p-8 min-h-[450px] bg-[hsl(220,20%,97%)]">
                     <div className="flex items-center justify-between mb-8">
                       <div>
@@ -324,6 +312,16 @@ const HeroSection = () => {
             </div>
           </TiltCard>
         </motion.div>
+      </div>
+
+      {/* Sticky Mobile CTA */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-[hsl(var(--midnight-deep))]/90 backdrop-blur-xl border-t border-border/20 md:hidden safe-area-bottom">
+        <Button variant="hero" size="lg" className="w-full cta-pulse" asChild>
+          <Link to="/pricing">
+            Set Up My Workspace
+            <ArrowRight className="w-5 h-5" />
+          </Link>
+        </Button>
       </div>
     </section>
   );

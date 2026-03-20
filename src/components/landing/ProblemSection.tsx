@@ -1,29 +1,28 @@
-import { MessageSquare, Trello, FolderOpen, AlertTriangle, Clock, Brain } from "lucide-react";
+import { MessageSquare, Trello, FolderOpen, AlertTriangle, Clock, Brain, DollarSign } from "lucide-react";
 import { motion } from "framer-motion";
-import { TextReveal, ScrollFade, TiltCard, LineReveal, ParallaxSection } from "./ScrollAnimations";
+import { TextReveal, ScrollFade, TiltCard, LineReveal } from "./ScrollAnimations";
 
 const ProblemSection = () => {
   const problems = [
     {
-      icon: Clock,
-      title: "14-Hour Days",
-      description: "Chasing updates, managing files, coordinating editors. You're working in your business, not on it.",
+      icon: DollarSign,
+      title: "Unbilled Revisions",
+      description: "\"One more tweak\" turns into three. You eat the cost every time — and your margins shrink to nothing.",
     },
     {
       icon: MessageSquare,
-      title: "Scattered Communication",
-      description: "Clients in Slack, editors in WhatsApp, feedback in email. Context is lost.",
+      title: "Scattered Feedback",
+      description: "Clients in Slack, editors in WhatsApp, feedback in email. Files in Google Drive. Context is permanently lost.",
     },
     {
-      icon: Brain,
-      title: "Mental Overload",
-      description: "Remembering which project is where, who needs what, and when invoices are due.",
+      icon: Clock,
+      title: "14-Hour Days",
+      description: "Chasing payments, managing files, coordinating editors. You're working in your business, not on it.",
     },
   ];
 
   return (
     <section className="relative py-32 lg:py-44 overflow-hidden">
-      {/* Cinematic Background */}
       <div className="absolute inset-0 bg-gradient-section" />
       <LineReveal className="absolute top-0 left-0 right-0" />
       <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-[500px] h-[500px] bg-destructive/5 rounded-full blur-[150px]" />
@@ -42,7 +41,7 @@ const ProblemSection = () => {
                   {i > 0 && <span className="text-3xl text-muted-foreground/50">+</span>}
                   <motion.div
                     whileHover={{ scale: 1.1, rotateZ: 5 }}
-                    className={`w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg`}
+                    className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg"
                     style={{ backgroundColor: item.color, boxShadow: `0 8px 30px ${item.color}33` }}
                   >
                     <item.icon className="w-8 h-8 text-white" />
@@ -61,20 +60,21 @@ const ProblemSection = () => {
           </ScrollFade>
 
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-8">
-            <TextReveal staggerDelay={0.04}>Drowning in Tabs?</TextReveal>{" "}
+            <TextReveal staggerDelay={0.04}>Stop Managing Chaos.</TextReveal>{" "}
             <span className="text-destructive">
-              <TextReveal staggerDelay={0.04}>That's Not Scaling.</TextReveal>
+              <TextReveal staggerDelay={0.04}>Start Making Money.</TextReveal>
             </span>
           </h2>
           
           <ScrollFade delay={0.2}>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-              You didn't start an agency to play traffic cop with files and messages.
+              You didn't start an agency to chase clients for payments and 
+              dig through Google Drive for the "final" version of a video.
             </p>
           </ScrollFade>
         </div>
 
-        {/* Problem Cards with 3D tilt */}
+        {/* Problem Cards */}
         <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
           {problems.map((problem, index) => (
             <ScrollFade key={problem.title} delay={index * 0.15} direction={index === 0 ? "left" : index === 2 ? "right" : "up"}>
