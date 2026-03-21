@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Loader2, Mail, RotateCcw, Trash2, Clock } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { InvitationTimeline } from '@/components/invitations/InvitationTimeline';
 
 interface PendingInvitation {
   id: string;
