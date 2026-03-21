@@ -96,6 +96,7 @@ export function FileManager({
   const { toast } = useToast();
   const { addToQueue } = useUploadContext();
   const { startDownload } = useDownloadContext();
+  const remoteUploads = useRemoteUploads(projectId);
   const [deleteTarget, setDeleteTarget] = useState<Deliverable | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
