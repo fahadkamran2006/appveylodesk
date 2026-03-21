@@ -196,6 +196,42 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
   const abortControllerRef = useRef<AbortController | null>(null);
   const tusControllerRef = useRef<TusUploadController | null>(null);
   const processingRef = useRef(false);
+  const uploaderNameRef = useRef<string>('');
+
+  // Fetch uploader name once
+  useEffect(() => {
+    if (user) {
+      supabase.from('profiles').select('full_name, email').eq('id', user.id).maybeSingle()
+        .then(({ data }) => {
+          uploaderNameRef.current = data?.full_name || data?.email || 'Someone';
+        });
+    }
+  }, [user?.id]);
+
+  // Broadcast upload status to other users via Realtime
+  const broadcastUploadStatus = useCallback((projectId: string, uploadId: string, fileName: string, progress: number, status: 'uploading' | 'completed' | 'failed') => {
+    if (!user) return;
+    const channel = supabase.channel(`upload-activity:${projectId}`);
+    channel.subscribe((subStatus) => {
+      if (subStatus === 'SUBSCRIBED') {
+        channel.send({
+          type: 'broadcast',
+          event: 'upload-progress',
+          payload: {
+            id: uploadId,
+            projectId,
+            fileName,
+            uploaderName: uploaderNameRef.current,
+            uploaderId: user.id,
+            progress,
+            status,
+          },
+        });
+        // Detach after sending
+        setTimeout(() => supabase.removeChannel(channel), 500);
+      }
+    });
+  }, [user]);
 
   const generateId = () => `upload-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
