@@ -554,14 +554,21 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
           item.file,
           (loaded, total, speed, remainingTime) => {
             const percentage = Math.round((loaded / total) * 100);
-            setState(prev => ({
-              ...prev,
-              queue: prev.queue.map(q =>
-                q.id === item.id
-                  ? { ...q, progress: percentage, speed, remainingTime }
-                  : q
-              ),
-            }));
+            setState(prev => {
+              // Broadcast every ~15%
+              const prevItem = prev.queue.find(q => q.id === item.id);
+              if (prevItem && Math.abs(percentage - prevItem.progress) >= 15) {
+                broadcastUploadStatus(item.projectId, item.id, item.file.name, percentage, 'uploading');
+              }
+              return {
+                ...prev,
+                queue: prev.queue.map(q =>
+                  q.id === item.id
+                    ? { ...q, progress: percentage, speed, remainingTime }
+                    : q
+                ),
+              };
+            });
           },
           abortControllerRef.current
         );

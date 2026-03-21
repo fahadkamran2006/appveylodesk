@@ -168,7 +168,16 @@ export function FileManager({
       {/* File list */}
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-2">
-          {deliverables.length === 0 ? (
+          {/* Remote upload indicators (other users uploading) */}
+          {remoteUploads.length > 0 && (
+            <div className="space-y-2 mb-3">
+              {remoteUploads.map(upload => (
+                <RemoteUploadCard key={upload.id} upload={upload} />
+              ))}
+            </div>
+          )}
+
+          {deliverables.length === 0 && remoteUploads.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <File className="w-10 h-10 mx-auto mb-3 opacity-50" />
               <p className="text-sm font-medium">{emptyTitle}</p>
@@ -176,6 +185,8 @@ export function FileManager({
                 {emptyDescription || (canUpload ? 'Upload your first file' : 'No files have been uploaded')}
               </p>
             </div>
+          ) : deliverables.length === 0 && remoteUploads.length > 0 ? (
+            null // Just show the remote uploads above
           ) : (
             deliverables.map(deliverable => (
               <div
