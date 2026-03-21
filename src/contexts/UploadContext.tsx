@@ -653,8 +653,14 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
       ),
     }));
 
+    // Broadcast upload start
+    broadcastUploadStatus(pendingItem.projectId, pendingItem.id, pendingItem.file.name, 0, 'uploading');
+
     try {
       const success = await uploadFile(pendingItem);
+      
+      // Broadcast completion
+      broadcastUploadStatus(pendingItem.projectId, pendingItem.id, pendingItem.file.name, 100, success ? 'completed' : 'failed');
       
       setState(prev => {
         const updatedQueue = prev.queue.map(q => {
