@@ -685,6 +685,8 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
         });
       }
     } catch (error: any) {
+      broadcastUploadStatus(pendingItem.projectId, pendingItem.id, pendingItem.file.name, 0, 'failed');
+      
       setState(prev => ({
         ...prev,
         queue: prev.queue.map(q =>
