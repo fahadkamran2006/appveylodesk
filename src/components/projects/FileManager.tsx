@@ -33,6 +33,8 @@ import { format } from 'date-fns';
 import { isDefinitelyBunnyStreamUrl } from '@/lib/bunnyStream';
 import { supabase } from '@/integrations/supabase/client';
 import { useDownloadContext } from '@/contexts/DownloadContext';
+import { useRemoteUploads } from '@/hooks/useRemoteUploads';
+import { RemoteUploadCard } from '@/components/projects/RemoteUploadCard';
 
 interface FileManagerProps {
   projectId: string;
