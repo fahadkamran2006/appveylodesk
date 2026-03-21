@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Loader2, Mail, RotateCcw, Trash2, Clock } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { InvitationTimeline } from '@/components/invitations/InvitationTimeline';
 
 interface PendingInvitation {
   id: string;
@@ -132,16 +133,9 @@ export function PendingInvitationCard({
                 Pending
               </Badge>
             </div>
-            <div className="flex items-center gap-1 text-sm text-muted-foreground mb-2">
+            <div className="flex items-center gap-1 text-sm text-muted-foreground">
               <Mail className="w-3 h-3" />
               <span className="truncate">{invitation.email}</span>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Badge variant="secondary" className="text-xs">
-                {roleLabel}
-              </Badge>
-              <span>•</span>
-              <span>Sent {formatDistanceToNow(new Date(invitation.created_at), { addSuffix: true })}</span>
             </div>
           </div>
 
@@ -195,6 +189,13 @@ export function PendingInvitationCard({
             </AlertDialog>
           </div>
         </div>
+
+        {/* Invitation Progress Timeline */}
+        <InvitationTimeline
+          createdAt={invitation.created_at}
+          acceptedAt={null}
+          role={invitation.role}
+        />
       </CardContent>
     </Card>
   );
