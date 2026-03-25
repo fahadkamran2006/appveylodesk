@@ -107,6 +107,7 @@ const App = () => (
                   <Route path="/review/:token" element={<PublicReview />} />
                   <Route path="/review/internal/:projectId/:deliverableId" element={<InternalReview />} />
                   <Route path="/founding-members" element={<FoundingMembers />} />
+                  <Route path="/about" element={<About />} />
 
                   {/* Onboarding */}
                   <Route path="/onboarding" element={<Onboarding />} />

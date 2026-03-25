@@ -55,6 +55,12 @@ const Navbar = () => {
             >
               Testimonials
             </a>
+            <Link
+              to="/about"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              About
+            </Link>
           </div>
 
           {/* CTA Buttons */}
