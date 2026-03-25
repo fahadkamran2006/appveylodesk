@@ -60,6 +60,7 @@ import InvoiceDetailPage from "./pages/invoices/InvoiceDetail";
 import PublicReview from "./pages/review/PublicReview";
 import InternalReview from "./pages/review/InternalReview";
 import FoundingMembers from "./pages/FoundingMembers";
+import About from "./pages/About";
 import { SuperAdminGuard } from "./components/super-admin/SuperAdminGuard";
 import SuperAdminDashboard from "./pages/super-admin/SuperAdminDashboard";
 
