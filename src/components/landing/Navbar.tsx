@@ -55,6 +55,12 @@ const Navbar = () => {
             >
               Testimonials
             </a>
+            <Link
+              to="/about"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              About
+            </Link>
           </div>
 
           {/* CTA Buttons */}
@@ -121,6 +127,13 @@ const Navbar = () => {
                 >
                   Testimonials
                 </a>
+                <Link
+                  to="/about"
+                  className="text-lg font-medium text-muted-foreground hover:text-foreground transition-colors py-3 px-3 rounded-lg hover:bg-muted/40"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  About
+                </Link>
               </nav>
 
               {/* Spacer */}
