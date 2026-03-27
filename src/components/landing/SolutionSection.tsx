@@ -2,6 +2,8 @@ import { useRef } from "react";
 import { Shield, Users, LayoutDashboard, FileCheck, DollarSign, Upload, Eye, CheckCircle, BarChart3, MessageSquare, Calendar, Clock } from "lucide-react";
 import { motion, useScroll, useTransform, useSpring } from "framer-motion";
 import { TextReveal, ScrollFade, LineReveal } from "./ScrollAnimations";
+import dashboardPreview from "@/assets/dashboard-preview.png";
+import clientViewPreview from "@/assets/client-view-preview.png";
 
 const dashboardViews = [
   {
@@ -16,9 +18,9 @@ const dashboardViews = [
       { icon: BarChart3, text: "Performance analytics", desc: "Revenue trends and team metrics" },
     ],
     color: "primary",
-    urlBar: "app.veylodesk.com/admin/dashboard",
     side: "left" as const,
-    mockup: "admin",
+    image: dashboardPreview,
+    imageAlt: "Admin Command Center Dashboard",
   },
   {
     id: "client",
@@ -32,9 +34,9 @@ const dashboardViews = [
       { icon: MessageSquare, text: "Built-in messaging", desc: "Feedback without email chaos" },
     ],
     color: "success",
-    urlBar: "app.veylodesk.com/client/projects",
     side: "right" as const,
-    mockup: "client",
+    image: clientViewPreview,
+    imageAlt: "Client Projects View",
   },
   {
     id: "editor",
@@ -48,96 +50,23 @@ const dashboardViews = [
       { icon: Calendar, text: "Task calendar view", desc: "See deadlines at a glance" },
     ],
     color: "warning",
-    urlBar: "app.veylodesk.com/editor/tasks",
     side: "left" as const,
-    mockup: "editor",
+    image: null,
+    imageAlt: "Editor Tasks View",
   },
 ];
 
-// Individual dashboard mockup content
-function AdminMockup() {
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h4 className="font-semibold text-base text-foreground">Command Center</h4>
-          <p className="text-xs text-muted-foreground mt-0.5">Welcome back, Agency Owner</p>
-        </div>
-        <div className="px-3 py-1.5 rounded-lg bg-success/10 border border-success/20 text-success text-xs font-medium">
-          5 Active
-        </div>
-      </div>
-      <div className="grid grid-cols-3 gap-3 mb-4">
-        {[
-          { label: "Revenue", value: "$47,280", change: "+12%", changeColor: "text-success" },
-          { label: "Clients", value: "18", change: "3 pending", changeColor: "text-muted-foreground" },
-          { label: "Invoices", value: "$8,450", change: "4 unpaid", changeColor: "text-warning" },
-        ].map((s) => (
-          <div key={s.label} className="glass-card-premium rounded-xl p-3">
-            <p className="text-[10px] text-muted-foreground mb-1">{s.label}</p>
-            <p className="text-lg font-bold text-foreground">{s.value}</p>
-            <p className={`text-[10px] mt-0.5 ${s.changeColor}`}>{s.change}</p>
-          </div>
-        ))}
-      </div>
-      <div className="grid grid-cols-4 gap-2">
-        {["Backlog", "In Progress", "Review", "Done"].map((status, i) => (
-          <div key={status} className="glass rounded-lg p-2.5">
-            <div className="flex items-center gap-1.5 mb-2">
-              <div className={`w-1.5 h-1.5 rounded-full ${
-                i === 0 ? "bg-muted-foreground" : i === 1 ? "bg-primary" : i === 2 ? "bg-warning" : "bg-success"
-              }`} />
-              <span className="text-[10px] font-medium text-foreground">{status}</span>
-            </div>
-            {[...Array(i === 1 ? 2 : 1)].map((_, j) => (
-              <div key={j} className="p-2 rounded bg-midnight-deep/60 border border-white/[0.04] mb-1.5">
-                <div className="h-1.5 w-3/4 bg-muted/40 rounded mb-1" />
-                <div className="h-1.5 w-1/2 bg-muted/20 rounded" />
-              </div>
-            ))}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function ClientMockup() {
-  return (
-    <div className="space-y-4">
-      <h4 className="font-semibold text-base text-foreground mb-5">Your Projects</h4>
-      {[
-        { name: "Brand Video Q4", status: "In Review", progress: 90, statusColor: "text-success" },
-        { name: "Social Ads Pack", status: "In Progress", progress: 45, statusColor: "text-primary" },
-        { name: "Product Launch", status: "Completed", progress: 100, statusColor: "text-success" },
-      ].map((project) => (
-        <div key={project.name} className="p-4 rounded-xl bg-muted/20 border border-white/[0.04]">
-          <div className="flex justify-between mb-2">
-            <span className="font-medium text-sm text-foreground">{project.name}</span>
-            <span className={`text-xs ${project.statusColor}`}>{project.status}</span>
-          </div>
-          <div className="h-1.5 rounded-full bg-muted/40 overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-primary to-indigo-soft rounded-full transition-all duration-1000"
-              style={{ width: `${project.progress}%` }}
-            />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
+// Fallback mockup for editor (no screenshot yet)
 function EditorMockup() {
   return (
-    <div className="space-y-4">
+    <div className="p-5 min-h-[300px] bg-gradient-cinematic">
       <h4 className="font-semibold text-base text-foreground mb-5">Your Tasks</h4>
       {[
         { name: "Edit Intro Sequence", client: "TechCorp", due: "Today", urgent: true },
         { name: "Color Grading - Ep3", client: "Startup X", due: "Tomorrow", urgent: false },
         { name: "Sound Design Pass", client: "Brand Co", due: "Wed", urgent: false },
       ].map((task) => (
-        <div key={task.name} className="p-4 rounded-xl bg-muted/20 border border-white/[0.04] flex items-center justify-between">
+        <div key={task.name} className="p-4 rounded-xl bg-muted/20 border border-white/[0.04] flex items-center justify-between mb-3">
           <div>
             <p className="font-medium text-sm text-foreground">{task.name}</p>
             <p className="text-xs text-muted-foreground mt-0.5">{task.client}</p>
@@ -155,13 +84,6 @@ function EditorMockup() {
   );
 }
 
-const mockupComponents: Record<string, React.FC> = {
-  admin: AdminMockup,
-  client: ClientMockup,
-  editor: EditorMockup,
-};
-
-// Single dashboard view block with 3D tilt
 function DashboardViewBlock({ view, index }: { view: typeof dashboardViews[0]; index: number }) {
   const ref = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
@@ -171,7 +93,6 @@ function DashboardViewBlock({ view, index }: { view: typeof dashboardViews[0]; i
 
   const isLeft = view.side === "left";
   
-  // 3D entrance animation driven by scroll
   const rotateY = useTransform(scrollYProgress, [0, 0.6, 1], [isLeft ? -25 : 25, isLeft ? -8 : 8, 0]);
   const x = useTransform(scrollYProgress, [0, 0.6, 1], [isLeft ? -120 : 120, isLeft ? -20 : 20, 0]);
   const opacity = useTransform(scrollYProgress, [0, 0.3, 0.6], [0, 0.5, 1]);
@@ -181,12 +102,9 @@ function DashboardViewBlock({ view, index }: { view: typeof dashboardViews[0]; i
   const springX = useSpring(x, { stiffness: 80, damping: 25 });
   const springScale = useSpring(scale, { stiffness: 80, damping: 25 });
 
-  // Text side animation
   const textX = useTransform(scrollYProgress, [0, 0.5, 1], [isLeft ? 80 : -80, isLeft ? 15 : -15, 0]);
   const textOpacity = useTransform(scrollYProgress, [0, 0.4, 0.7], [0, 0.3, 1]);
   const springTextX = useSpring(textX, { stiffness: 80, damping: 25 });
-
-  const MockupComponent = mockupComponents[view.mockup];
 
   const colorMap: Record<string, string> = {
     primary: "bg-primary/20 text-primary",
@@ -213,27 +131,33 @@ function DashboardViewBlock({ view, index }: { view: typeof dashboardViews[0]; i
       className="w-full lg:w-[55%]"
     >
       <div className="relative">
-        {/* Glow */}
         <div className={`absolute -inset-6 bg-gradient-to-r ${glowColorMap[view.color]} rounded-3xl blur-2xl opacity-60`} />
         
         <div className="relative glass-card-premium rounded-2xl overflow-hidden border border-white/[0.08]">
-          {/* Browser chrome */}
-          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/[0.06] bg-surface-dark/50">
-            <div className="flex gap-1.5">
-              <div className="w-2 h-2 rounded-full bg-destructive/60" />
-              <div className="w-2 h-2 rounded-full bg-warning/60" />
-              <div className="w-2 h-2 rounded-full bg-success/60" />
-            </div>
-            <div className="flex-1 flex justify-center">
-              <div className="px-3 py-1 rounded-md bg-muted/20 text-[10px] text-muted-foreground font-mono">
-                {view.urlBar}
+          {view.image ? (
+            <img
+              src={view.image}
+              alt={view.imageAlt}
+              className="w-full h-auto block"
+              loading="lazy"
+            />
+          ) : (
+            <>
+              <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/[0.06] bg-surface-dark/50">
+                <div className="flex gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-destructive/60" />
+                  <div className="w-2 h-2 rounded-full bg-warning/60" />
+                  <div className="w-2 h-2 rounded-full bg-success/60" />
+                </div>
+                <div className="flex-1 flex justify-center">
+                  <div className="px-3 py-1 rounded-md bg-muted/20 text-[10px] text-muted-foreground font-mono">
+                    app.veylodesk.com/editor/tasks
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-          
-          <div className="p-5 min-h-[300px] bg-gradient-cinematic">
-            <MockupComponent />
-          </div>
+              <EditorMockup />
+            </>
+          )}
         </div>
       </div>
     </motion.div>
@@ -244,7 +168,6 @@ function DashboardViewBlock({ view, index }: { view: typeof dashboardViews[0]; i
       style={{ x: springTextX, opacity: textOpacity }}
       className="w-full lg:w-[45%] flex flex-col justify-center"
     >
-      {/* View label */}
       <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full w-fit mb-6 ${
         view.color === "primary" ? "bg-primary/10 border border-primary/20" :
         view.color === "success" ? "bg-success/10 border border-success/20" :
@@ -303,13 +226,11 @@ function DashboardViewBlock({ view, index }: { view: typeof dashboardViews[0]; i
 const SolutionSection = () => {
   return (
     <section id="features" className="relative overflow-hidden">
-      {/* Background */}
       <div className="absolute inset-0 bg-gradient-cinematic" />
       <LineReveal className="absolute top-0 left-0 right-0" />
       <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-glow opacity-30" />
 
       <div className="container relative z-10 mx-auto px-6">
-        {/* Header */}
         <div className="max-w-4xl mx-auto text-center pt-24 pb-8">
           <ScrollFade>
             <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-success/10 border border-success/20 mb-6">
@@ -331,7 +252,6 @@ const SolutionSection = () => {
           </ScrollFade>
         </div>
 
-        {/* Dashboard views - alternating left/right with 3D */}
         {dashboardViews.map((view, index) => (
           <DashboardViewBlock key={view.id} view={view} index={index} />
         ))}
