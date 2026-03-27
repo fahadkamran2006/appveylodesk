@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Menu, X, Command } from "lucide-react";
 import { motion, AnimatePresence, useMotionValueEvent, useScroll } from "framer-motion";
 
-const spring = { type: "spring", stiffness: 260, damping: 28, mass: 0.8 };
+const spring = { type: "spring" as const, stiffness: 260, damping: 28, mass: 0.8 };
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
