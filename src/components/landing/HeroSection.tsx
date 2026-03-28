@@ -91,17 +91,6 @@ const HeroSection = () => {
             </Button>
           </motion.div>
 
-          {/* Trust — compact row */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.5 }}
-            className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs sm:text-sm text-muted-foreground"
-          >
-            <span className="flex items-center gap-1.5 text-warning font-semibold">
-              ⚠ {SPOTS_REMAINING} of 50 spots remaining. Price doubles when they're gone.
-            </span>
-          </motion.div>
         </div>
 
         {/* Dashboard Preview */}
