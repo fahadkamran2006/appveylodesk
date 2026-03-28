@@ -1,32 +1,26 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Menu, X, Command } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useMotionValueEvent, useScroll } from "framer-motion";
 
-const EASE = "cubic-bezier(0.16, 1, 0.3, 1)";
+const easeOut = [0.16, 1, 0.3, 1] as const;
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [introPhase, setIntroPhase] = useState<"logo" | "shrink" | "done">("logo");
+  const [introPhase, setIntroPhase] = useState<"logo" | "expanding" | "done">("logo");
+  const { scrollY } = useScroll();
 
-  // Debounced scroll handler to avoid rapid re-renders at the threshold
-  const handleScroll = useCallback(() => {
-    const y = window.scrollY;
-    setIsScrolled(y > 60);
-  }, []);
-
-  useEffect(() => {
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [handleScroll]);
+  useMotionValueEvent(scrollY, "change", (latest) => {
+    setIsScrolled(latest > 50);
+  });
 
   useEffect(() => {
-    // Phase 1: Centered logo with glow pulse for 1.6s
-    const t1 = setTimeout(() => setIntroPhase("shrink"), 1600);
-    // Phase 2: After shrink+fly completes, reveal full nav
-    const t2 = setTimeout(() => setIntroPhase("done"), 2600);
+    // Phase 1: Show centered logo for 1.2s
+    const t1 = setTimeout(() => setIntroPhase("expanding"), 1200);
+    // Phase 2: After logo moves to header, reveal full nav
+    const t2 = setTimeout(() => setIntroPhase("done"), 2000);
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
@@ -34,56 +28,22 @@ const Navbar = () => {
 
   return (
     <>
-      {/* ── Intro overlay: cinematic centered logo ── */}
+      {/* ── Intro overlay: centered logo ── */}
       <AnimatePresence>
         {introPhase === "logo" && (
           <motion.div
             className="fixed inset-0 z-[100] flex items-center justify-center bg-background"
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.6, ease: easeOut }}
           >
             <motion.div
               className="flex items-center gap-3"
-              initial={{ opacity: 0, scale: 0.6 }}
-              animate={{
-                opacity: 1,
-                scale: [0.6, 1.08, 1],
-              }}
-              transition={{
-                duration: 1.2,
-                ease: [0.16, 1, 0.3, 1],
-                times: [0, 0.6, 1],
-              }}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, ease: easeOut }}
             >
-              {/* Glow ring behind the logo */}
-              <div className="relative">
-                <motion.div
-                  className="absolute inset-0 rounded-xl bg-primary/30"
-                  initial={{ scale: 1, opacity: 0 }}
-                  animate={{
-                    scale: [1, 1.8, 2.2],
-                    opacity: [0, 0.4, 0],
-                  }}
-                  transition={{
-                    duration: 1.4,
-                    delay: 0.3,
-                    ease: "easeOut",
-                  }}
-                  style={{ filter: "blur(16px)" }}
-                />
-                <motion.div
-                  className="w-14 h-14 rounded-xl bg-gradient-primary flex items-center justify-center relative z-10"
-                  animate={{
-                    boxShadow: [
-                      "0 0 20px hsl(240 76% 59% / 0.2)",
-                      "0 0 60px hsl(240 76% 59% / 0.5)",
-                      "0 0 30px hsl(240 76% 59% / 0.3)",
-                    ],
-                  }}
-                  transition={{ duration: 1.4, delay: 0.2, ease: "easeInOut" }}
-                >
-                  <Command className="w-7 h-7 text-primary-foreground" />
-                </motion.div>
+              <div className="w-12 h-12 rounded-xl bg-gradient-primary flex items-center justify-center shadow-glow">
+                <Command className="w-6 h-6 text-primary-foreground" />
               </div>
               <span className="text-3xl font-bold text-foreground">
                 Veylo<span className="text-gradient">desk</span>
@@ -93,71 +53,26 @@ const Navbar = () => {
         )}
       </AnimatePresence>
 
-      {/* ── Shrink-and-fly phase: logo moves to header position ── */}
-      <AnimatePresence>
-        {introPhase === "shrink" && (
-          <motion.div
-            className="fixed inset-0 z-[100] pointer-events-none"
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <motion.div
-              className="flex items-center gap-2 absolute"
-              initial={{
-                top: "50%",
-                left: "50%",
-                x: "-50%",
-                y: "-50%",
-                scale: 1,
-              }}
-              animate={{
-                top: "0px",
-                left: "20px",
-                x: "0%",
-                y: "12px",
-                scale: 0.7,
-              }}
-              transition={{
-                duration: 0.9,
-                ease: [0.22, 1, 0.36, 1],
-              }}
-            >
-              <div className="w-14 h-14 rounded-xl bg-gradient-primary flex items-center justify-center shadow-glow">
-                <Command className="w-7 h-7 text-primary-foreground" />
-              </div>
-              <span className="text-3xl font-bold text-foreground whitespace-nowrap">
-                Veylo<span className="text-gradient">desk</span>
-              </span>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* ── Header ── */}
-      <header
+      <motion.header
         className="fixed top-0 left-0 right-0 z-50 flex justify-center pointer-events-none"
-        style={{
-          opacity: introPhase === "logo" ? 0 : 1,
-          transition: `opacity 0.5s ${EASE}`,
-        }}
+        initial={{ opacity: 0, y: -20 }}
+        animate={introPhase !== "logo" ? { opacity: 1, y: 0 } : { opacity: 0, y: -20 }}
+        transition={{ duration: 0.7, ease: easeOut, delay: introPhase === "expanding" ? 0.1 : 0 }}
       >
-        {/* Morphing container — pure CSS transitions for 60fps */}
+        {/* Morphing container — pure CSS transitions, no layout thrash */}
         <div
-          className="pointer-events-auto relative will-change-[width,margin-top,border-radius]"
+          className="pointer-events-auto relative transition-all duration-700"
           style={{
             width: isScrolled ? "min(720px, calc(100% - 32px))" : "100%",
             marginTop: isScrolled ? 12 : 0,
             borderRadius: isScrolled ? 50 : 0,
-            transition: `
-              width 0.8s ${EASE},
-              margin-top 0.8s ${EASE},
-              border-radius 0.8s ${EASE}
-            `,
+            transitionTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)",
           }}
         >
-          {/* Glass background */}
+          {/* Glass background — CSS transition for buttery smoothness */}
           <div
-            className="absolute inset-0 will-change-[background-color,backdrop-filter,box-shadow,border-color]"
+            className="absolute inset-0 transition-all duration-700"
             style={{
               borderRadius: "inherit",
               backgroundColor: isScrolled ? "rgba(12, 12, 18, 0.72)" : "rgba(0, 0, 0, 0)",
@@ -167,13 +82,7 @@ const Navbar = () => {
                 ? "0 8px 32px -8px rgba(0,0,0,0.6), inset 0 0.5px 0 0 rgba(255,255,255,0.06)"
                 : "0 0 0 0 rgba(0,0,0,0)",
               border: isScrolled ? "1px solid rgba(255,255,255,0.08)" : "1px solid transparent",
-              transition: `
-                background-color 0.8s ${EASE},
-                backdrop-filter 0.8s ${EASE},
-                -webkit-backdrop-filter 0.8s ${EASE},
-                box-shadow 0.8s ${EASE},
-                border-color 0.8s ${EASE}
-              `,
+              transitionTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)",
             }}
           />
 
@@ -183,43 +92,40 @@ const Navbar = () => {
               {/* Logo */}
               <Link to="/" className="flex items-center gap-2 group shrink-0">
                 <div
-                  className="rounded-lg bg-gradient-primary flex items-center justify-center will-change-[width,height]"
+                  className="rounded-lg bg-gradient-primary flex items-center justify-center transition-all duration-700"
                   style={{
                     width: isScrolled ? 28 : 36,
                     height: isScrolled ? 28 : 36,
                     boxShadow: isScrolled
                       ? "0 0 20px hsl(240 76% 59% / 0.3)"
                       : "0 0 30px hsl(240 76% 59% / 0.25)",
-                    transition: `all 0.8s ${EASE}`,
+                    transitionTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)",
                   }}
                 >
                   <Command
-                    className="text-primary-foreground"
+                    className="text-primary-foreground transition-all duration-700"
                     style={{
                       width: isScrolled ? 14 : 18,
                       height: isScrolled ? 14 : 18,
-                      transition: `all 0.8s ${EASE}`,
+                      transitionTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)",
                     }}
                   />
                 </div>
                 <span
-                  className="font-bold text-foreground whitespace-nowrap"
+                  className="font-bold text-foreground whitespace-nowrap transition-all duration-700"
                   style={{
                     fontSize: isScrolled ? "0.95rem" : "1.25rem",
-                    transition: `font-size 0.8s ${EASE}`,
+                    transitionTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)",
                   }}
                 >
                   Veylo<span className="text-gradient">desk</span>
                 </span>
               </Link>
 
-              {/* Desktop Navigation */}
+              {/* Desktop Navigation — centered */}
               <nav
-                className="hidden md:flex items-center gap-5 mx-auto"
-                style={{
-                  opacity: showNav ? 1 : 0,
-                  transition: `opacity 0.5s ${EASE}`,
-                }}
+                className="hidden md:flex items-center gap-5 mx-auto transition-opacity duration-500"
+                style={{ opacity: showNav ? 1 : 0 }}
               >
                 {[
                   { label: "Features", href: "#features", isAnchor: true },
@@ -249,11 +155,8 @@ const Navbar = () => {
 
               {/* CTA Buttons */}
               <div
-                className="hidden md:flex items-center gap-2 shrink-0"
-                style={{
-                  opacity: showNav ? 1 : 0,
-                  transition: `opacity 0.5s ${EASE}`,
-                }}
+                className="hidden md:flex items-center gap-2 shrink-0 transition-opacity duration-500"
+                style={{ opacity: showNav ? 1 : 0 }}
               >
                 <Button variant="ghost" size="sm" className="text-[13px] h-8" asChild>
                   <Link to="/auth/login">Login</Link>
@@ -265,12 +168,8 @@ const Navbar = () => {
 
               {/* Mobile Menu Toggle */}
               <button
-                className="md:hidden p-2 text-foreground"
-                style={{
-                  opacity: showNav ? 1 : 0,
-                  pointerEvents: showNav ? "auto" : "none",
-                  transition: `opacity 0.5s ${EASE}`,
-                }}
+                className="md:hidden p-2 text-foreground transition-opacity duration-500"
+                style={{ opacity: showNav ? 1 : 0, pointerEvents: showNav ? "auto" : "none" }}
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               >
                 {isMobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
@@ -278,7 +177,7 @@ const Navbar = () => {
             </div>
           </div>
         </div>
-      </header>
+      </motion.header>
 
       {/* Height spacer */}
       <div className="h-14 md:h-16" />
