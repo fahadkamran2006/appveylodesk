@@ -33,7 +33,7 @@ const CTASection = () => {
           </ScrollFade>
 
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-8">
-            <TextReveal staggerDelay={0.05}>{SPOTS_REMAINING} agency owners have</TextReveal>{" "}
+            <TextReveal staggerDelay={0.05}>{`${SPOTS_REMAINING} agency owners have`}</TextReveal>{" "}
             <span className="text-gradient">
               <TextReveal staggerDelay={0.05}>already claimed their spot.</TextReveal>
             </span>
