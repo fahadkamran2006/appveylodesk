@@ -6,6 +6,8 @@ import { motion, useScroll, useTransform, useSpring } from "framer-motion";
 import { AnimatedCounter, TiltCard, Float3D } from "./ScrollAnimations";
 import HeroDashboardPreview from "./HeroDashboardPreview";
 
+const SPOTS_REMAINING = 50; // ← Update this number as spots are claimed
+
 const HeroSection = () => {
   const sectionRef = useRef<HTMLElement>(null);
 
@@ -53,8 +55,8 @@ const HeroSection = () => {
             transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
             className="text-[2.5rem] leading-[1.1] sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6"
           >
-            One tab to run your{" "}
-            <span className="text-gradient">entire agency.</span>
+            Your Clients Deserve Better{" "}
+            <span className="text-gradient">Than a Google Drive Link.</span>
           </motion.h1>
 
           {/* Sub — concise, one breath */}
@@ -64,8 +66,9 @@ const HeroSection = () => {
             transition={{ duration: 0.7, delay: 0.15, ease: "easeOut" }}
             className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed"
           >
-            Projects, clients, editors, invoices, and feedback — managed from a
-            single command center built for video agencies.
+            Veylodesk gives your agency a white-labeled client portal, frame-accurate
+            video approvals, and a pay-to-download system that makes chasing invoices
+            a thing of the past — all in one tab.
           </motion.p>
 
           {/* CTA */}
@@ -76,9 +79,8 @@ const HeroSection = () => {
             className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8"
           >
             <Button variant="hero" size="xl" className="btn-glow cta-pulse" asChild>
-              <Link to="/pricing">
-                Get Started Free
-                <ArrowRight className="w-5 h-5" />
+              <Link to="/founding-members">
+                Claim Your Founding Member Spot →
               </Link>
             </Button>
             <Button variant="hero-outline" size="xl" asChild>
@@ -96,14 +98,8 @@ const HeroSection = () => {
             transition={{ duration: 0.5, delay: 0.5 }}
             className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs sm:text-sm text-muted-foreground"
           >
-            <span className="flex items-center gap-1.5">
-              <Shield className="w-3.5 h-3.5 text-success" /> Secure via Paddle
-            </span>
-            <span className="flex items-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5 text-success" /> 14-day money-back
-            </span>
-            <span className="flex items-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5 text-success" /> Cancel anytime
+            <span className="flex items-center gap-1.5 text-warning font-semibold">
+              ⚠ {SPOTS_REMAINING} of 50 spots remaining. Price doubles when they're gone.
             </span>
           </motion.div>
         </div>
@@ -123,9 +119,8 @@ const HeroSection = () => {
       {/* Sticky Mobile CTA */}
       <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-background/90 backdrop-blur-xl border-t border-border/20 md:hidden safe-area-bottom">
         <Button variant="hero" size="lg" className="w-full cta-pulse" asChild>
-          <Link to="/pricing">
-            Get Started Free
-            <ArrowRight className="w-5 h-5" />
+          <Link to="/founding-members">
+            Claim Your Founding Member Spot →
           </Link>
         </Button>
       </div>

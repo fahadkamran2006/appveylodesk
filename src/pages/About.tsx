@@ -90,18 +90,17 @@ const About = () => {
             initial="hidden" animate="visible" variants={fadeUp} custom={1}
             className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.08] mb-7"
           >
-            Built by an agency owner,
+            This wasn't built
             <br className="hidden sm:block" />
-            <span className="text-gradient">for agency owners.</span>
+            <span className="text-gradient">in a boardroom.</span>
           </motion.h1>
 
           <motion.p
             initial="hidden" animate="visible" variants={fadeUp} custom={2}
             className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed"
           >
-            Veylodesk wasn't built in a boardroom. It was built in the trenches
-            of the editing room to solve the exact bottlenecks holding creative
-            agencies back.
+            Every feature exists because I personally felt that pain. This isn't
+            a product built for a market. It's a product built from the trenches.
           </motion.p>
 
           {/* Scroll indicator */}
@@ -176,19 +175,19 @@ const About = () => {
                 </motion.span>
 
                 <motion.p variants={fadeUp} custom={1} className="text-xl md:text-2xl text-foreground font-medium leading-relaxed">
-                  Hi, I'm <span className="text-gradient font-bold">Fahad Kamran</span>.
+                  My name is <span className="text-gradient font-bold">Fahad Kamran</span>.
                 </motion.p>
 
                 <motion.p variants={fadeUp} custom={2} className="text-base md:text-lg text-foreground/70 leading-[1.85]">
-                  I started my journey spending two years straight in the trenches creating documentaries and running my own video editing agency, <span className="text-foreground font-medium">Videoflickz</span>, right here in Pakistan.
+                  I'm 19, I'm from Pakistan, and I spent two years running a video editing agency called <span className="text-foreground font-medium">Videoflickz</span>. The work was great. The operations were a disaster.
                 </motion.p>
 
                 <motion.p variants={fadeUp} custom={3} className="text-base md:text-lg text-foreground/70 leading-[1.85]">
-                  By age 19, I realized the biggest roadblock to scaling wasn't finding clients or editing faster — it was the <span className="text-foreground font-semibold">absolute chaos</span> of managing files, tracking Slack messages, and chasing down invoice payments.
+                  I was losing money to unpaid invoices, losing time to scattered feedback, and losing clients to a process that felt unprofessional — even when the edits were <span className="text-foreground font-semibold">world-class</span>.
                 </motion.p>
 
                 <motion.p variants={fadeUp} custom={4} className="text-base md:text-lg text-foreground/70 leading-[1.85]">
-                  I built Veylodesk to replace the duct-taped mess of Google Drive, Frame.io, and spreadsheets with <span className="text-gradient font-bold">one single, ruthless system</span>.
+                  I built Veylodesk to solve my own problems. Every feature exists because I personally felt that pain. This isn't a product built for a market. It's a product built <span className="text-gradient font-bold">from the trenches</span>.
                 </motion.p>
 
                 {/* Founder link card */}

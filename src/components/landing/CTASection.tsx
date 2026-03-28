@@ -4,6 +4,8 @@ import { ArrowRight, Command, Shield, CheckCircle2, CreditCard } from "lucide-re
 import { motion } from "framer-motion";
 import { TextReveal, ScrollFade, Float3D, LineReveal } from "./ScrollAnimations";
 
+const SPOTS_REMAINING = 50; // ← Update this number as spots are claimed
+
 const CTASection = () => {
   return (
     <section className="relative py-32 lg:py-44 overflow-hidden">
@@ -31,25 +33,24 @@ const CTASection = () => {
           </ScrollFade>
 
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-8">
-            <TextReveal staggerDelay={0.05}>Every Day You Wait,</TextReveal>{" "}
+            <TextReveal staggerDelay={0.05}>{`${SPOTS_REMAINING} agency owners have`}</TextReveal>{" "}
             <span className="text-gradient">
-              <TextReveal staggerDelay={0.05}>You Lose Money.</TextReveal>
+              <TextReveal staggerDelay={0.05}>already claimed their spot.</TextReveal>
             </span>
           </h2>
           
           <ScrollFade delay={0.2}>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-14 leading-relaxed">
-              Unbilled revisions. Missed invoices. Hours lost to chaos.
-              Set up your workspace in 2 minutes and start running your agency like a machine.
+              When the 50th spot is filled, this page closes. The price doubles. No exceptions, no extensions. 
+              If you've been running your agency on five different tools and a lot of patience — this is the moment to fix that.
             </p>
           </ScrollFade>
 
           <ScrollFade delay={0.3}>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-5">
               <Button variant="hero" size="xl" className="btn-glow cta-pulse" asChild>
-                <Link to="/pricing">
-                  Unlock My Dashboard
-                  <ArrowRight className="w-5 h-5" />
+                <Link to="/founding-members">
+                  Claim Spot #{SPOTS_REMAINING} →
                 </Link>
               </Button>
               <Button variant="glass" size="xl" asChild>
@@ -64,16 +65,13 @@ const CTASection = () => {
           <ScrollFade delay={0.4}>
             <div className="flex flex-wrap items-center justify-center gap-6 mt-10 text-sm text-muted-foreground">
               <span className="flex items-center gap-1.5">
-                <Shield className="w-4 h-4 text-success" /> Secure Checkout via Paddle
-              </span>
-              <span className="flex items-center gap-1.5">
-                <CreditCard className="w-4 h-4 text-success" /> No setup fees
-              </span>
-              <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-success" /> 14-day money-back guarantee
+                <Shield className="w-4 h-4 text-success" /> Secure checkout via Paddle
               </span>
               <span className="flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-success" /> Cancel anytime
+              </span>
+              <span className="flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-success" /> Your price never increases
               </span>
             </div>
           </ScrollFade>
