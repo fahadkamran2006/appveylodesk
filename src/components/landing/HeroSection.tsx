@@ -1,8 +1,8 @@
-import { useRef } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Play, CheckCircle2, Shield } from "lucide-react";
-import { motion, useScroll, useTransform, useSpring } from "framer-motion";
+import { motion, useScroll, useTransform, useSpring, useMotionValue } from "framer-motion";
 import { AnimatedCounter, TiltCard, Float3D } from "./ScrollAnimations";
 import HeroDashboardPreview from "./HeroDashboardPreview";
 
@@ -18,37 +18,83 @@ const HeroSection = () => {
 
   const dashboardY = useTransform(scrollYProgress, [0, 0.5], [0, -80]);
   const dashboardScale = useTransform(scrollYProgress, [0, 0.5], [1, 0.92]);
-  const orbY1 = useTransform(scrollYProgress, [0, 1], [0, -200]);
-  const orbY2 = useTransform(scrollYProgress, [0, 1], [0, -150]);
   const springY = useSpring(dashboardY, { stiffness: 100, damping: 30 });
   const springScale = useSpring(dashboardScale, { stiffness: 100, damping: 30 });
+
+  // Mouse parallax
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    const { clientX, clientY, currentTarget } = e;
+    const target = currentTarget as HTMLElement;
+    if (!target) return;
+    const { width, height } = target.getBoundingClientRect();
+    // Normalize to -1 to 1
+    const nx = (clientX / width - 0.5) * 2;
+    const ny = (clientY / height - 0.5) * 2;
+    mouseX.set(nx);
+    mouseY.set(ny);
+  }, [mouseX, mouseY]);
+
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el) return;
+    const handler = (e: MouseEvent) => handleMouseMove(e);
+    el.addEventListener("mousemove", handler, { passive: true });
+    return () => el.removeEventListener("mousemove", handler);
+  }, [handleMouseMove]);
+
+  // Parallax layers with different intensities
+  const orbX1 = useSpring(useTransform(mouseX, [-1, 1], [30, -30]), { stiffness: 50, damping: 20 });
+  const orbY1 = useSpring(useTransform(mouseY, [-1, 1], [20, -20]), { stiffness: 50, damping: 20 });
+  const orbX2 = useSpring(useTransform(mouseX, [-1, 1], [-20, 20]), { stiffness: 40, damping: 25 });
+  const orbY2 = useSpring(useTransform(mouseY, [-1, 1], [-15, 15]), { stiffness: 40, damping: 25 });
+  const shapeX1 = useSpring(useTransform(mouseX, [-1, 1], [15, -15]), { stiffness: 60, damping: 20 });
+  const shapeY1 = useSpring(useTransform(mouseY, [-1, 1], [10, -10]), { stiffness: 60, damping: 20 });
+  const shapeX2 = useSpring(useTransform(mouseX, [-1, 1], [-12, 12]), { stiffness: 45, damping: 22 });
+  const shapeY2 = useSpring(useTransform(mouseY, [-1, 1], [-8, 8]), { stiffness: 45, damping: 22 });
+
+  // Scroll-based parallax for orbs
+  const scrollOrbY1 = useTransform(scrollYProgress, [0, 1], [0, -200]);
+  const scrollOrbY2 = useTransform(scrollYProgress, [0, 1], [0, -150]);
 
   return (
     <section ref={sectionRef} className="relative min-h-screen flex items-start justify-center pt-24">
       {/* Cinematic Background */}
       <div className="absolute inset-0 bg-gradient-hero" />
       
-      {/* Ambient orbs */}
+      {/* Ambient orbs — mouse + scroll parallax */}
       <motion.div 
-        style={{ y: orbY1 }}
+        style={{ x: orbX1, y: orbY1, translateY: scrollOrbY1 }}
         className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-glow animate-pulse-glow" 
       />
       <motion.div 
-        style={{ y: orbY2 }}
+        style={{ x: orbX2, y: orbY2, translateY: scrollOrbY2 }}
         className="absolute top-40 left-20 w-[400px] h-[400px] bg-primary/5 rounded-full blur-[120px] animate-float" 
       />
 
-      {/* Floating shapes */}
-      <Float3D className="absolute top-32 right-[15%] opacity-20 hidden md:block" amplitude={15} duration={8}>
-        <div className="w-16 h-16 rounded-xl border border-primary/30 rotate-45" />
-      </Float3D>
-      <Float3D className="absolute top-[60%] left-[10%] opacity-15 hidden md:block" amplitude={20} duration={10}>
-        <div className="w-12 h-12 rounded-full border border-indigo-soft/30" />
-      </Float3D>
+      {/* Floating shapes — mouse parallax */}
+      <motion.div
+        style={{ x: shapeX1, y: shapeY1 }}
+        className="absolute top-32 right-[15%] opacity-20 hidden md:block"
+      >
+        <Float3D amplitude={15} duration={8}>
+          <div className="w-16 h-16 rounded-xl border border-primary/30 rotate-45" />
+        </Float3D>
+      </motion.div>
+      <motion.div
+        style={{ x: shapeX2, y: shapeY2 }}
+        className="absolute top-[60%] left-[10%] opacity-15 hidden md:block"
+      >
+        <Float3D amplitude={20} duration={10}>
+          <div className="w-12 h-12 rounded-full border border-indigo-soft/30" />
+        </Float3D>
+      </motion.div>
 
       <div className="container relative z-10 mx-auto px-6 py-20 md:py-32">
         <div className="max-w-4xl mx-auto text-center">
-          {/* Headline — short, punchy, no clip */}
+          {/* Headline */}
           <motion.h1
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -59,7 +105,7 @@ const HeroSection = () => {
             <span className="text-gradient">Than a Google Drive Link.</span>
           </motion.h1>
 
-          {/* Sub — concise, one breath */}
+          {/* Sub */}
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -91,7 +137,7 @@ const HeroSection = () => {
             </Button>
           </motion.div>
 
-          {/* Trust — compact row */}
+          {/* Trust */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
