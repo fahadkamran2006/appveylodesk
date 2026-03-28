@@ -1,56 +1,89 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Menu, X, Command } from "lucide-react";
 import { motion, AnimatePresence, useMotionValueEvent, useScroll } from "framer-motion";
 
-const spring = { type: "spring" as const, stiffness: 260, damping: 28, mass: 0.8 };
+const easeOut = [0.16, 1, 0.3, 1] as const;
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [introPhase, setIntroPhase] = useState<"logo" | "expanding" | "done">("logo");
   const { scrollY } = useScroll();
 
   useMotionValueEvent(scrollY, "change", (latest) => {
     setIsScrolled(latest > 50);
   });
 
+  useEffect(() => {
+    // Phase 1: Show centered logo for 1.2s
+    const t1 = setTimeout(() => setIntroPhase("expanding"), 1200);
+    // Phase 2: After logo moves to header, reveal full nav
+    const t2 = setTimeout(() => setIntroPhase("done"), 2000);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, []);
+
+  const showNav = introPhase === "done";
+
   return (
     <>
-      {/* Fixed anchor — full width, centered */}
+      {/* ── Intro overlay: centered logo ── */}
+      <AnimatePresence>
+        {introPhase === "logo" && (
+          <motion.div
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-background"
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.6, ease: easeOut }}
+          >
+            <motion.div
+              className="flex items-center gap-3"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, ease: easeOut }}
+            >
+              <div className="w-12 h-12 rounded-xl bg-gradient-primary flex items-center justify-center shadow-glow">
+                <Command className="w-6 h-6 text-primary-foreground" />
+              </div>
+              <span className="text-3xl font-bold text-foreground">
+                Veylo<span className="text-gradient">desk</span>
+              </span>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Header ── */}
       <motion.header
-        className="fixed top-0 left-0 right-0 z-50 pointer-events-none"
-        style={{ display: "flex", justifyContent: "center" }}
+        className="fixed top-0 left-0 right-0 z-50 flex justify-center pointer-events-none"
+        initial={{ opacity: 0, y: -20 }}
+        animate={introPhase !== "logo" ? { opacity: 1, y: 0 } : { opacity: 0, y: -20 }}
+        transition={{ duration: 0.7, ease: easeOut, delay: introPhase === "expanding" ? 0.1 : 0 }}
       >
-        <motion.div
-          className="pointer-events-auto relative"
-          layout
+        {/* Morphing container — pure CSS transitions, no layout thrash */}
+        <div
+          className="pointer-events-auto relative transition-all duration-700"
           style={{
             width: isScrolled ? "min(720px, calc(100% - 32px))" : "100%",
             marginTop: isScrolled ? 12 : 0,
             borderRadius: isScrolled ? 50 : 0,
+            transitionTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)",
           }}
-          transition={spring}
         >
-          {/* Glass background layer */}
-          <motion.div
-            className="absolute inset-0"
-            style={{ borderRadius: "inherit" }}
-            animate={{
-              backgroundColor: isScrolled
-                ? "rgba(12, 12, 18, 0.72)"
-                : "rgba(0, 0, 0, 0)",
+          {/* Glass background — CSS transition for buttery smoothness */}
+          <div
+            className="absolute inset-0 transition-all duration-700"
+            style={{
+              borderRadius: "inherit",
+              backgroundColor: isScrolled ? "rgba(12, 12, 18, 0.72)" : "rgba(0, 0, 0, 0)",
               backdropFilter: isScrolled ? "blur(20px) saturate(1.6)" : "blur(0px) saturate(1)",
+              WebkitBackdropFilter: isScrolled ? "blur(20px) saturate(1.6)" : "blur(0px) saturate(1)",
               boxShadow: isScrolled
                 ? "0 8px 32px -8px rgba(0,0,0,0.6), inset 0 0.5px 0 0 rgba(255,255,255,0.06)"
                 : "0 0 0 0 rgba(0,0,0,0)",
-              borderWidth: 1,
-              borderStyle: "solid" as any,
-              borderColor: isScrolled
-                ? "rgba(255,255,255,0.08)"
-                : "rgba(255,255,255,0)",
+              border: isScrolled ? "1px solid rgba(255,255,255,0.08)" : "1px solid transparent",
+              transitionTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)",
             }}
-            transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
           />
 
           {/* Content */}
@@ -58,33 +91,42 @@ const Navbar = () => {
             <div className="flex items-center justify-between h-14 md:h-16">
               {/* Logo */}
               <Link to="/" className="flex items-center gap-2 group shrink-0">
-                <motion.div
-                  className="rounded-lg bg-gradient-primary flex items-center justify-center"
-                  animate={{
+                <div
+                  className="rounded-lg bg-gradient-primary flex items-center justify-center transition-all duration-700"
+                  style={{
                     width: isScrolled ? 28 : 36,
                     height: isScrolled ? 28 : 36,
                     boxShadow: isScrolled
                       ? "0 0 20px hsl(240 76% 59% / 0.3)"
                       : "0 0 30px hsl(240 76% 59% / 0.25)",
+                    transitionTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)",
                   }}
-                  transition={spring}
                 >
                   <Command
-                    className="text-primary-foreground"
-                    style={{ width: isScrolled ? 14 : 18, height: isScrolled ? 14 : 18 }}
+                    className="text-primary-foreground transition-all duration-700"
+                    style={{
+                      width: isScrolled ? 14 : 18,
+                      height: isScrolled ? 14 : 18,
+                      transitionTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)",
+                    }}
                   />
-                </motion.div>
-                <motion.span
-                  className="font-bold text-foreground whitespace-nowrap"
-                  animate={{ fontSize: isScrolled ? "0.95rem" : "1.25rem" }}
-                  transition={spring}
+                </div>
+                <span
+                  className="font-bold text-foreground whitespace-nowrap transition-all duration-700"
+                  style={{
+                    fontSize: isScrolled ? "0.95rem" : "1.25rem",
+                    transitionTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)",
+                  }}
                 >
                   Veylo<span className="text-gradient">desk</span>
-                </motion.span>
+                </span>
               </Link>
 
               {/* Desktop Navigation — centered */}
-              <nav className="hidden md:flex items-center gap-5 mx-auto">
+              <nav
+                className="hidden md:flex items-center gap-5 mx-auto transition-opacity duration-500"
+                style={{ opacity: showNav ? 1 : 0 }}
+              >
                 {[
                   { label: "Features", href: "#features", isAnchor: true },
                   { label: "Pricing", href: "/pricing" },
@@ -112,7 +154,10 @@ const Navbar = () => {
               </nav>
 
               {/* CTA Buttons */}
-              <div className="hidden md:flex items-center gap-2 shrink-0">
+              <div
+                className="hidden md:flex items-center gap-2 shrink-0 transition-opacity duration-500"
+                style={{ opacity: showNav ? 1 : 0 }}
+              >
                 <Button variant="ghost" size="sm" className="text-[13px] h-8" asChild>
                   <Link to="/auth/login">Login</Link>
                 </Button>
@@ -123,14 +168,15 @@ const Navbar = () => {
 
               {/* Mobile Menu Toggle */}
               <button
-                className="md:hidden p-2 text-foreground"
+                className="md:hidden p-2 text-foreground transition-opacity duration-500"
+                style={{ opacity: showNav ? 1 : 0, pointerEvents: showNav ? "auto" : "none" }}
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               >
                 {isMobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
               </button>
             </div>
           </div>
-        </motion.div>
+        </div>
       </motion.header>
 
       {/* Height spacer */}
