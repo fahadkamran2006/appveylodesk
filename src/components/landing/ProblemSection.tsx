@@ -6,18 +6,18 @@ const ProblemSection = () => {
   const problems = [
     {
       icon: DollarSign,
-      title: "Unbilled Revisions",
-      description: "\"One more tweak\" turns into three. You eat the cost every time — and your margins shrink to nothing.",
+      title: "Five tools. Zero integration.",
+      description: "Google Drive for files. Frame.io for reviews. Slack for feedback. Stripe for invoices. A spreadsheet for everything else. You're paying for five tools that don't talk to each other.",
     },
     {
       icon: MessageSquare,
-      title: "Scattered Feedback",
-      description: "Clients in Slack, editors in WhatsApp, feedback in email. Files in Google Drive. Context is permanently lost.",
+      title: "Your clients have no idea how good you are.",
+      description: "The experience of working with you looks anything but professional — even when the edits are world-class. That's not a client problem. That's a systems problem.",
     },
     {
       icon: Clock,
-      title: "14-Hour Days",
-      description: "Chasing payments, managing files, coordinating editors. You're working in your business, not on it.",
+      title: "Duct tape and hope.",
+      description: "You're running your entire agency on workarounds, manual follow-ups, and sheer willpower. It works — until it doesn't.",
     },
   ];
 
@@ -60,16 +60,16 @@ const ProblemSection = () => {
           </ScrollFade>
 
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-8">
-            <TextReveal staggerDelay={0.04}>Stop Managing Chaos.</TextReveal>{" "}
+            <TextReveal staggerDelay={0.04}>You're running your agency on</TextReveal>{" "}
             <span className="text-destructive">
-              <TextReveal staggerDelay={0.04}>Start Making Money.</TextReveal>
+              <TextReveal staggerDelay={0.04}>duct tape and hope.</TextReveal>
             </span>
           </h2>
           
           <ScrollFade delay={0.2}>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-              You didn't start an agency to chase clients for payments and 
-              dig through Google Drive for the "final" version of a video.
+              Google Drive for files. Frame.io for reviews. Slack for feedback. Stripe for invoices. 
+              A spreadsheet for everything else. You're paying for five tools that don't talk to each other.
             </p>
           </ScrollFade>
         </div>

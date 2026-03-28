@@ -319,9 +319,9 @@ const SolutionSection = () => {
           </ScrollFade>
 
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
-            <TextReveal staggerDelay={0.05}>Three Dashboards.</TextReveal>{" "}
+            <TextReveal staggerDelay={0.05}>One tab. Your entire agency.</TextReveal>{" "}
             <span className="text-gradient">
-              <TextReveal staggerDelay={0.05}>Zero Confusion.</TextReveal>
+              <TextReveal staggerDelay={0.05}>Your clients impressed from day one.</TextReveal>
             </span>
           </h2>
           <ScrollFade delay={0.2}>

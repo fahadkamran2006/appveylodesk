@@ -16,22 +16,22 @@ const SPOTS_CLAIMED = 0;
 const benefits = [
   {
     icon: Crown,
-    title: "Grandfathered Pricing",
-    description: "Lock in today's rate forever. When the price increases, yours stays the same. Guaranteed.",
+    title: "Lifetime 50% Off — Grandfathered Forever",
+    description: "Lock in today's rate forever, no matter how we scale. When the price increases, yours stays the same. Guaranteed.",
     iconColor: "text-amber-400",
     bg: "bg-amber-500/10",
   },
   {
     icon: MessageCircle,
-    title: "Direct Founder Access",
-    description: "A private line to the founder. Your feedback shapes the roadmap — not a support queue.",
+    title: "Direct Access to the Founder",
+    description: "Request features and influence the roadmap directly. Your feedback shapes what gets built — not a support queue.",
     iconColor: "text-primary",
     bg: "bg-primary/10",
   },
   {
     icon: Headphones,
-    title: "Priority Support",
-    description: "Skip the queue. First-response priority on every request, forever.",
+    title: "Priority Support — Always First",
+    description: "Your issues get handled first, always. Skip the queue. First-response priority on every request, forever.",
     iconColor: "text-emerald-400",
     bg: "bg-emerald-500/10",
   },
@@ -186,8 +186,8 @@ export default function FoundingMembers() {
                   <span className="text-sm font-medium text-primary">Founding Perks</span>
                 </div>
                 <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-3">
-                  Perks that{" "}
-                  <span className="text-gradient">won't exist again.</span>
+                  The Founding Member Offer.{" "}
+                  <span className="text-gradient">50 spots. No exceptions.</span>
                 </h2>
                 <p className="text-muted-foreground text-base max-w-md mx-auto">
                   After 50 members, these benefits are permanently off the table.
@@ -260,21 +260,22 @@ export default function FoundingMembers() {
           <div className="container relative z-10 mx-auto px-6 text-center">
             <ScrollFade>
               <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold mb-5 max-w-2xl mx-auto leading-tight">
-                The price doubles after 50.{" "}
+                {spotsLeft} agency owners have already claimed their spot.{" "}
                 <span className="text-gradient">Lock yours in now.</span>
               </h2>
             </ScrollFade>
 
             <ScrollFade delay={0.15}>
               <p className="text-base text-muted-foreground max-w-md mx-auto mb-8">
-                This isn't a gimmick. After {spotsLeft} spots, the price increases permanently.
+                When the 50th spot is filled, this page closes. The price doubles. No exceptions, no extensions.
+                If you've been running your agency on five different tools and a lot of patience — this is the moment to fix that.
               </p>
             </ScrollFade>
 
             <ScrollFade delay={0.25}>
               <Button variant="hero" size="xl" asChild className="min-w-[240px] cta-pulse">
                 <Link to="/pricing">
-                  Lock In My Price <ArrowRight className="w-5 h-5 ml-1" />
+                  Claim Spot #{spotsLeft} → <ArrowRight className="w-5 h-5 ml-1" />
                 </Link>
               </Button>
             </ScrollFade>

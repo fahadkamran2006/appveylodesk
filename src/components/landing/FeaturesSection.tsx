@@ -18,14 +18,14 @@ const features = [
   {
     id: "dashboards",
     icon: Monitor,
-    tag: "Dashboards",
-    title: "Dedicated Client & Editor Portals",
+    tag: "Client Portal",
+    title: "A client portal that makes you look enterprise-grade",
     description:
-      "Give clients a premium portal to view projects and approve deliverables. Give editors a distraction-free workspace with only what they need.",
+      "Your clients get their own branded dashboard — your name, your logo, their projects, their approvals, their files. No more sending Drive links. No more 'check your email.' A portal that makes a one-person agency look like a 20-person studio.",
     bullets: [
-      "Role-specific views — zero clutter",
-      "Branded white-label client portal",
-      "Editor task queue with deadlines",
+      "White-labeled with your branding",
+      "Dedicated project & approval views",
+      "Zero learning curve for clients",
     ],
     mockup: "dashboards",
   },
@@ -33,29 +33,43 @@ const features = [
     id: "approval",
     icon: MessageCircle,
     tag: "Video Review",
-    title: "Next-Gen Video Approval",
+    title: "Video approvals that kill the feedback chaos",
     description:
-      "Time-stamped, frame-accurate client comments — no account required. Share a link, collect feedback, iterate faster.",
+      "Frame-accurate, timestamped comments directly on the timeline. Clients approve with one click — no account needed. Every revision is logged, contextualized, and tied to the project. Not a WhatsApp message from three weeks ago.",
     bullets: [
       "Frame-accurate timestamped comments",
-      "No sign-up required for reviewers",
-      "Version comparison side-by-side",
+      "One-click approval, no sign-up required",
+      "Full revision history per project",
     ],
     mockup: "approval",
   },
   {
     id: "invoicing",
     icon: FileText,
-    tag: "Invoicing",
-    title: "Automated Invoicing & Payments",
+    tag: "Payments",
+    title: "Get paid before they get the file. Every time.",
     description:
-      "Lock final master files behind a paywall. Auto-generate branded invoices and track every dollar in real time.",
+      "Final deliverables are locked behind payment. Your client pays — the download unlocks automatically. No chasing. No awkward follow-ups. No working for free.",
     bullets: [
-      "One-click invoice generation",
-      "Payment link integration",
-      "Automatic payment tracking",
+      "Pay-to-download file locking",
+      "Auto-generated branded invoices",
+      "Real-time payment tracking",
     ],
     mockup: "invoicing",
+  },
+  {
+    id: "editors",
+    icon: UserCog,
+    tag: "Team Ops",
+    title: "Manage your team like a real operation",
+    description:
+      "Editor dashboards, attendance tracking, task logs, and payroll calculations — all built in. Your team knows what to work on. You know where every project stands.",
+    bullets: [
+      "Editor task queues & deadlines",
+      "Attendance & work log tracking",
+      "Payroll-ready monthly reports",
+    ],
+    mockup: "editors",
   },
   {
     id: "projects",
@@ -84,20 +98,6 @@ const features = [
       "Read receipts & typing indicators",
     ],
     mockup: "messaging",
-  },
-  {
-    id: "editors",
-    icon: UserCog,
-    tag: "Editor Mgmt",
-    title: "Intelligent Editor Management",
-    description:
-      "Auto-assign pending videos to available editors. They report finished tasks directly — you review and approve.",
-    bullets: [
-      "Smart task assignment",
-      "Performance leaderboard",
-      "Per-project & per-editor payouts",
-    ],
-    mockup: "editors",
   },
   {
     id: "hr",
