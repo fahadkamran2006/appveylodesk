@@ -513,18 +513,23 @@ function FeatureCard({
             style={{ y: springMockupY }}
           >
             <div className="relative group">
-              {/* Dynamic border glow */}
-              <div
-                className="absolute -inset-px rounded-2xl opacity-50 blur-sm transition-opacity duration-500 group-hover:opacity-80"
+              {/* Animated rotating gradient border */}
+              <div className="absolute -inset-[1px] rounded-2xl overflow-hidden">
+                <div
+                  className="absolute -inset-[50%] animate-spin-slow opacity-30 group-hover:opacity-60 transition-opacity duration-1000"
+                  style={{
+                    background: "conic-gradient(from 0deg, hsl(var(--primary)), hsl(var(--primary) / 0.1) 25%, transparent 40%, hsl(var(--primary) / 0.08) 55%, transparent 70%, hsl(var(--primary) / 0.15) 85%, hsl(var(--primary)))",
+                  }}
+                />
+              </div>
+              {/* Outer glow */}
+              <div className="absolute -inset-6 rounded-3xl blur-2xl opacity-20 group-hover:opacity-40 transition-opacity duration-1000"
                 style={{
-                  background:
-                    "linear-gradient(135deg, hsl(var(--primary) / 0.4) 0%, transparent 40%, transparent 60%, hsl(var(--primary) / 0.3) 100%)",
+                  background: "radial-gradient(ellipse at 50% 50%, hsl(var(--primary) / 0.2), transparent 70%)",
                 }}
               />
-              {/* Outer glow */}
-              <div className="absolute -inset-6 rounded-3xl bg-primary/5 blur-2xl opacity-40" />
 
-              <div className="relative glass-card-premium rounded-2xl overflow-hidden border border-white/[0.08]">
+              <div className="relative glass-card-premium rounded-2xl overflow-hidden border border-white/[0.06]">
                 {/* Browser chrome */}
                 <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/[0.06] bg-surface-dark/60">
                   <div className="flex gap-1.5">

@@ -13,18 +13,22 @@ const HeroDashboardPreview = ({ scrollYProgress }: Props) => {
 
   return (
     <TiltCard intensity={5} className="relative group">
-      {/* Animated rotating gradient glow */}
-      <div className="absolute -inset-[2px] rounded-2xl md:rounded-3xl overflow-hidden opacity-60 group-hover:opacity-100 transition-opacity duration-700">
+      {/* Animated rotating gradient border */}
+      <div className="absolute -inset-[1.5px] rounded-2xl md:rounded-3xl overflow-hidden">
         <div
-          className="absolute inset-0 animate-spin-slow"
+          className="absolute -inset-[50%] animate-spin-slow opacity-50 group-hover:opacity-80 transition-opacity duration-1000"
           style={{
-            background: "conic-gradient(from 0deg, hsl(var(--primary)), transparent 40%, hsl(var(--primary) / 0.4), transparent 70%, hsl(var(--primary)))",
+            background: "conic-gradient(from 0deg, hsl(var(--primary)), hsl(var(--primary) / 0.15) 25%, transparent 40%, hsl(var(--primary) / 0.1) 55%, transparent 70%, hsl(var(--primary) / 0.2) 85%, hsl(var(--primary)))",
           }}
         />
       </div>
       {/* Soft outer glow */}
-      <div className="absolute -inset-8 bg-gradient-to-r from-primary/25 via-indigo-soft/15 to-primary/25 rounded-3xl blur-3xl opacity-50 group-hover:opacity-70 transition-opacity duration-700" />
-      
+      <div className="absolute -inset-12 rounded-[2rem] blur-3xl opacity-30 group-hover:opacity-50 transition-opacity duration-1000"
+        style={{
+          background: "radial-gradient(ellipse at 50% 50%, hsl(var(--primary) / 0.25), transparent 70%)",
+        }}
+      />
+
       <motion.div
         className="relative glass-card-premium rounded-2xl md:rounded-3xl p-2 md:p-3 overflow-hidden bg-background"
         style={{ perspective: "1200px", scale, y }}
