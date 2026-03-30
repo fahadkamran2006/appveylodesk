@@ -13,25 +13,36 @@ const HeroDashboardPreview = ({ scrollYProgress }: Props) => {
 
   return (
     <TiltCard intensity={5} className="relative group">
-      {/* Animated rotating gradient border */}
-      <div className="absolute -inset-[1.5px] rounded-2xl md:rounded-3xl overflow-hidden">
-        <div
-          className="absolute -inset-[50%] animate-spin-slow opacity-50 group-hover:opacity-80 transition-opacity duration-1000"
-          style={{
-            background: "conic-gradient(from 0deg, hsl(var(--primary)), hsl(var(--primary) / 0.15) 25%, transparent 40%, hsl(var(--primary) / 0.1) 55%, transparent 70%, hsl(var(--primary) / 0.2) 85%, hsl(var(--primary)))",
-          }}
-        />
-      </div>
-      {/* Soft outer glow */}
-      <div className="absolute -inset-12 rounded-[2rem] blur-3xl opacity-30 group-hover:opacity-50 transition-opacity duration-1000"
+      {/* Bottom ambient light pool */}
+      <div
+        className="absolute -bottom-16 left-[10%] right-[10%] h-40 blur-[80px] opacity-40 group-hover:opacity-60 transition-opacity duration-[2s]"
         style={{
-          background: "radial-gradient(ellipse at 50% 50%, hsl(var(--primary) / 0.25), transparent 70%)",
+          background: "radial-gradient(ellipse at 50% 100%, hsl(var(--primary) / 0.5), hsl(var(--primary) / 0.15) 50%, transparent 80%)",
+        }}
+      />
+      {/* Side edge highlights */}
+      <div
+        className="absolute -inset-px rounded-2xl md:rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-[2s]"
+        style={{
+          background: "linear-gradient(180deg, hsl(var(--primary) / 0.15) 0%, transparent 30%, transparent 70%, hsl(var(--primary) / 0.25) 100%)",
+        }}
+      />
+      {/* Soft radial glow */}
+      <div
+        className="absolute -inset-20 rounded-[3rem] opacity-20 group-hover:opacity-35 transition-opacity duration-[2s]"
+        style={{
+          background: "radial-gradient(ellipse at 50% 60%, hsl(var(--primary) / 0.2), transparent 65%)",
         }}
       />
 
       <motion.div
-        className="relative glass-card-premium rounded-2xl md:rounded-3xl p-2 md:p-3 overflow-hidden bg-background"
-        style={{ perspective: "1200px", scale, y }}
+        className="relative rounded-2xl md:rounded-3xl p-2 md:p-3 overflow-hidden border border-white/[0.08] group-hover:border-primary/20 transition-colors duration-[2s]"
+        style={{
+          perspective: "1200px",
+          scale,
+          y,
+          background: "linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--background) / 0.95) 100%)",
+        }}
       >
         <motion.div className="rounded-xl md:rounded-2xl overflow-hidden bg-midnight-deep" style={{ rotateX }}>
           <div className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.06]">
