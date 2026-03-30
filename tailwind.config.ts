@@ -145,7 +145,14 @@ export default {
         "slide-up": "slide-up 0.5s ease-out",
         "slide-down": "slide-down 0.5s ease-out",
         "scale-in": "scale-in 0.3s ease-out",
+        "spin-slow": "spin-slow 6s linear infinite",
       },
+      keyframes: {
+        // ... existing keyframes above — this block merges
+        "spin-slow": {
+          from: { transform: "rotate(0deg)" },
+          to: { transform: "rotate(360deg)" },
+        },
     },
   },
   plugins: [require("tailwindcss-animate")],
