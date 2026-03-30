@@ -513,23 +513,22 @@ function FeatureCard({
             style={{ y: springMockupY }}
           >
             <div className="relative group">
-              {/* Animated rotating gradient border */}
-              <div className="absolute -inset-[1px] rounded-2xl overflow-hidden">
-                <div
-                  className="absolute -inset-[50%] animate-spin-slow opacity-30 group-hover:opacity-60 transition-opacity duration-1000"
-                  style={{
-                    background: "conic-gradient(from 0deg, hsl(var(--primary)), hsl(var(--primary) / 0.1) 25%, transparent 40%, hsl(var(--primary) / 0.08) 55%, transparent 70%, hsl(var(--primary) / 0.15) 85%, hsl(var(--primary)))",
-                  }}
-                />
-              </div>
-              {/* Outer glow */}
-              <div className="absolute -inset-6 rounded-3xl blur-2xl opacity-20 group-hover:opacity-40 transition-opacity duration-1000"
+              {/* Bottom ambient glow */}
+              <div
+                className="absolute -bottom-10 left-[15%] right-[15%] h-28 blur-[60px] opacity-0 group-hover:opacity-50 transition-opacity duration-[2s]"
                 style={{
-                  background: "radial-gradient(ellipse at 50% 50%, hsl(var(--primary) / 0.2), transparent 70%)",
+                  background: "radial-gradient(ellipse at 50% 100%, hsl(var(--primary) / 0.4), transparent 75%)",
+                }}
+              />
+              {/* Soft radial glow */}
+              <div
+                className="absolute -inset-10 rounded-3xl opacity-0 group-hover:opacity-25 transition-opacity duration-[2s]"
+                style={{
+                  background: "radial-gradient(ellipse at 50% 60%, hsl(var(--primary) / 0.15), transparent 65%)",
                 }}
               />
 
-              <div className="relative glass-card-premium rounded-2xl overflow-hidden border border-white/[0.06]">
+              <div className="relative rounded-2xl overflow-hidden border border-white/[0.08] group-hover:border-primary/20 transition-colors duration-[2s]" style={{ background: "hsl(var(--background))" }}>
                 {/* Browser chrome */}
                 <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/[0.06] bg-surface-dark/60">
                   <div className="flex gap-1.5">
