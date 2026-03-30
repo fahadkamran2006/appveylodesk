@@ -12,11 +12,21 @@ const HeroDashboardPreview = ({ scrollYProgress }: Props) => {
   const y = useTransform(scrollYProgress, [0, 0.4], [0, -20]);
 
   return (
-    <TiltCard intensity={5} className="relative">
-      <div className="absolute -inset-8 bg-gradient-to-r from-primary/20 via-indigo-soft/15 to-primary/20 rounded-3xl blur-3xl opacity-40" />
+    <TiltCard intensity={5} className="relative group">
+      {/* Animated rotating gradient glow */}
+      <div className="absolute -inset-[2px] rounded-2xl md:rounded-3xl overflow-hidden opacity-60 group-hover:opacity-100 transition-opacity duration-700">
+        <div
+          className="absolute inset-0 animate-spin-slow"
+          style={{
+            background: "conic-gradient(from 0deg, hsl(var(--primary)), transparent 40%, hsl(var(--primary) / 0.4), transparent 70%, hsl(var(--primary)))",
+          }}
+        />
+      </div>
+      {/* Soft outer glow */}
+      <div className="absolute -inset-8 bg-gradient-to-r from-primary/25 via-indigo-soft/15 to-primary/25 rounded-3xl blur-3xl opacity-50 group-hover:opacity-70 transition-opacity duration-700" />
       
       <motion.div
-        className="relative glass-card-premium rounded-2xl md:rounded-3xl p-2 md:p-3 overflow-hidden"
+        className="relative glass-card-premium rounded-2xl md:rounded-3xl p-2 md:p-3 overflow-hidden bg-background"
         style={{ perspective: "1200px", scale, y }}
       >
         <motion.div className="rounded-xl md:rounded-2xl overflow-hidden bg-midnight-deep" style={{ rotateX }}>
