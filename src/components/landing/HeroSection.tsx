@@ -46,41 +46,55 @@ const HeroSection = () => {
         <div className="w-12 h-12 rounded-full border border-indigo-soft/30" />
       </Float3D>
 
-      <div className="container relative z-10 mx-auto px-6 py-20 md:py-32">
-        <div className="max-w-4xl mx-auto text-center">
-          {/* Headline — short, punchy, no clip */}
+      <div className="container relative z-10 mx-auto px-6 py-20 md:py-36">
+        <div className="max-w-5xl mx-auto">
+          {/* Eyebrow */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="mb-6"
+          >
+            <span className="inline-flex items-center gap-2 text-xs font-medium tracking-widest uppercase text-primary/80 border border-primary/20 rounded-full px-4 py-1.5 backdrop-blur-sm bg-primary/5">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+              Built for agency operators
+            </span>
+          </motion.div>
+
+          {/* Headline — left-aligned, staggered */}
           <motion.h1
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-            className="text-[2.5rem] leading-[1.1] sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6"
+            className="text-[2.5rem] leading-[1.08] sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-8 max-w-4xl"
           >
             Your Clients Deserve Better{" "}
             <span className="text-gradient">Than a Google Drive Link.</span>
           </motion.h1>
 
-          {/* Sub — concise, one breath */}
+          {/* Sub — left-aligned, narrower */}
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.15, ease: "easeOut" }}
-            className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed"
+            className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mb-12 leading-relaxed"
           >
             Veylodesk gives your agency a white-labeled client portal, frame-accurate
             video approvals, and a pay-to-download system that makes chasing invoices
             a thing of the past — all in one tab.
           </motion.p>
 
-          {/* CTA */}
+          {/* CTA row */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3, ease: "easeOut" }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8"
+            className="flex flex-col sm:flex-row items-start gap-4 mb-6"
           >
             <Button variant="hero" size="xl" className="btn-glow cta-pulse" asChild>
-              <Link to="/founding-members">
-                Claim Your Founding Member Spot →
+              <Link to="/signup">
+                Get Started
+                <ArrowRight className="w-4 h-4 ml-2" />
               </Link>
             </Button>
             <Button variant="hero-outline" size="xl" asChild>
@@ -89,6 +103,23 @@ const HeroSection = () => {
                 Watch Demo
               </Link>
             </Button>
+          </motion.div>
+
+          {/* Trust signals */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.5 }}
+            className="flex items-center gap-6 text-xs text-muted-foreground/60"
+          >
+            <span className="flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-primary/50" />
+              No credit card required
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Shield className="w-3.5 h-3.5 text-primary/50" />
+              Cancel anytime
+            </span>
           </motion.div>
 
         </div>
