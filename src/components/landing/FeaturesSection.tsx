@@ -386,11 +386,11 @@ function MaskReveal({
   const hasGradient = wordClassName.includes("text-gradient");
 
   return (
-    <span ref={ref} className={`inline ${className}`}>
+    <span ref={ref} className={`inline leading-[1.15] ${className}`}>
       {words.map((word, i) => (
-        <span key={i} className="inline-block overflow-hidden mr-[0.25em] pb-[0.15em]">
+        <span key={i} className="inline-block overflow-visible mr-[0.25em] align-baseline">
           <motion.span
-            className={`inline-block ${wordClassName}`}
+            className={`inline-block pb-[0.12em] ${wordClassName}`}
             initial={hasGradient
               ? { y: "120%", opacity: 0 }
               : { y: "120%", opacity: 0, filter: "blur(4px)" }

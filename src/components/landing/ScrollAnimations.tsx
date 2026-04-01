@@ -60,11 +60,11 @@ export function TextReveal({
   const words = children.split(" ");
 
   return (
-    <span ref={ref} className={`inline ${className}`}>
+    <span ref={ref} className={`inline leading-[1.15] ${className}`}>
       {words.map((word, i) => (
-        <span key={i} className="inline-block overflow-hidden mr-[0.25em] pb-[0.15em]">
+        <span key={i} className="inline-block overflow-visible mr-[0.25em] align-baseline">
           <motion.span
-            className={`inline-block ${gradient ? "text-gradient" : ""}`}
+            className={`inline-block pb-[0.12em] ${gradient ? "text-gradient" : ""}`}
             initial={{ y: "100%", opacity: 0 }}
             animate={isInView ? { y: 0, opacity: 1 } : {}}
             transition={{
