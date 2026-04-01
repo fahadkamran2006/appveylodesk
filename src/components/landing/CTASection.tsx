@@ -1,10 +1,11 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Command, Shield, CheckCircle2, CreditCard } from "lucide-react";
+import { Command, Shield, CheckCircle2 } from "lucide-react";
 import { motion } from "framer-motion";
-import { TextReveal, ScrollFade, Float3D, LineReveal } from "./ScrollAnimations";
+import { ScrollFade, Float3D, LineReveal } from "./ScrollAnimations";
+import TypewriterText from "./TypewriterText";
 
-const SPOTS_REMAINING = 50; // ← Update this number as spots are claimed
+const SPOTS_REMAINING = 50;
 
 const CTASection = () => {
   return (
@@ -32,16 +33,17 @@ const CTASection = () => {
             </motion.div>
           </ScrollFade>
 
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-8">
-            <TextReveal staggerDelay={0.05}>{`${SPOTS_REMAINING} agency owners have`}</TextReveal>{" "}
-            <span className="text-gradient">
-              <TextReveal staggerDelay={0.05}>already claimed their spot.</TextReveal>
-            </span>
-          </h2>
+          <ScrollFade delay={0.1}>
+            <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-8">
+              Stop managing your agency on
+              <br />
+              <TypewriterText />
+            </h2>
+          </ScrollFade>
           
           <ScrollFade delay={0.2}>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-14 leading-relaxed">
-              When the 50th spot is filled, this page closes. The price doubles. No exceptions, no extensions. 
+              When the {SPOTS_REMAINING}th spot is filled, this page closes. The price doubles. No exceptions, no extensions. 
               If you've been running your agency on five different tools and a lot of patience — this is the moment to fix that.
             </p>
           </ScrollFade>
@@ -61,7 +63,6 @@ const CTASection = () => {
             </div>
           </ScrollFade>
 
-          {/* Trust Badges */}
           <ScrollFade delay={0.4}>
             <div className="flex flex-wrap items-center justify-center gap-6 mt-10 text-sm text-muted-foreground">
               <span className="flex items-center gap-1.5">
