@@ -114,7 +114,7 @@ export function CharReveal({
   );
 }
 
-// ─── Scroll Fade Section ───
+// ─── Scroll Fade Section (blur fade-in) ───
 export function ScrollFade({ 
   children, 
   className = "",
@@ -127,13 +127,13 @@ export function ScrollFade({
   delay?: number;
 }) {
   const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-100px" });
+  const isInView = useInView(ref, { once: true, margin: "-60px" });
   
   const directionMap = {
-    up: { y: 60, x: 0 },
-    down: { y: -60, x: 0 },
-    left: { x: 60, y: 0 },
-    right: { x: -60, y: 0 },
+    up: { y: 30, x: 0 },
+    down: { y: -30, x: 0 },
+    left: { x: 40, y: 0 },
+    right: { x: -40, y: 0 },
   };
 
   const offset = directionMap[direction];
@@ -142,9 +142,10 @@ export function ScrollFade({
     <motion.div
       ref={ref}
       className={className}
-      initial={{ opacity: 0, ...offset }}
-      animate={isInView ? { opacity: 1, x: 0, y: 0 } : {}}
-      transition={{ duration: 0.8, delay, ease: [0.22, 1, 0.36, 1] }}
+      initial={{ opacity: 0, filter: "blur(10px)", ...offset }}
+      animate={isInView ? { opacity: 1, filter: "blur(0px)", x: 0, y: 0 } : {}}
+      transition={{ duration: 0.9, delay, ease: [0.22, 1, 0.36, 1] }}
+      style={{ willChange: "transform, opacity, filter" }}
     >
       {children}
     </motion.div>
