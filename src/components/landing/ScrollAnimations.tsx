@@ -93,7 +93,7 @@ export function CharReveal({
   staggerDelay?: number;
 }) {
   const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-80px" });
+  const isInView = useInView(ref, { once: true, amount: 0.1 });
 
   return (
     <span ref={ref} className={`inline-block pb-[0.1em] ${className}`}>
