@@ -21,9 +21,7 @@ const DemoVideoSection = () => {
           
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6">
             <TextReveal staggerDelay={0.04}>Watch How</TextReveal>{" "}
-            <span className="text-gradient">
-              <TextReveal staggerDelay={0.04}>Veylodesk Works</TextReveal>
-            </span>
+            <TextReveal staggerDelay={0.04} gradient>Veylodesk Works</TextReveal>
           </h2>
           <ScrollFade delay={0.2}>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">

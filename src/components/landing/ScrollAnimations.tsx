@@ -43,15 +43,17 @@ export function AnimatedCounter({
   );
 }
 
-// ─── Text Reveal (word by word — smooth blur fade) ───
+// ─── Text Reveal (word by word — smooth fade) ───
 export function TextReveal({ 
   children, 
   className = "",
   staggerDelay = 0.03,
+  gradient = false,
 }: { 
   children: string; 
   className?: string;
   staggerDelay?: number;
+  gradient?: boolean;
 }) {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-80px" });
@@ -62,7 +64,7 @@ export function TextReveal({
       {words.map((word, i) => (
         <span key={i} className="inline-block overflow-hidden mr-[0.25em] pb-[0.15em]">
           <motion.span
-            className="inline-block"
+            className={`inline-block ${gradient ? "text-gradient" : ""}`}
             initial={{ y: "100%", opacity: 0 }}
             animate={isInView ? { y: 0, opacity: 1 } : {}}
             transition={{
