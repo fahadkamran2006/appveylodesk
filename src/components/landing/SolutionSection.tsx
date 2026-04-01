@@ -320,9 +320,7 @@ const SolutionSection = () => {
 
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
             <TextReveal staggerDelay={0.05}>One tab. Your entire agency.</TextReveal>{" "}
-            <span className="text-gradient">
-              <TextReveal staggerDelay={0.05}>Your clients impressed from day one.</TextReveal>
-            </span>
+            <TextReveal staggerDelay={0.05} gradient>Your clients impressed from day one.</TextReveal>
           </h2>
           <ScrollFade delay={0.2}>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">

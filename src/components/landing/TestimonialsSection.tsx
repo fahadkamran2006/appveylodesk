@@ -45,9 +45,7 @@ const TestimonialsSection = () => {
         <div className="max-w-4xl mx-auto text-center mb-24">
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-8">
             <TextReveal staggerDelay={0.04}>Built by Agency Owners,</TextReveal>{" "}
-            <span className="text-gradient">
-              <TextReveal staggerDelay={0.04}>for Agency Owners</TextReveal>
-            </span>
+            <TextReveal staggerDelay={0.04} gradient>for Agency Owners</TextReveal>
           </h2>
           <ScrollFade delay={0.2}>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
