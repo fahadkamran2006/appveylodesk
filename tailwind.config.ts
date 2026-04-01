@@ -154,6 +154,7 @@ export default {
         "slide-down": "slide-down 0.5s ease-out",
         "scale-in": "scale-in 0.3s ease-out",
         "spin-slow": "spin-slow 30s linear infinite",
+        blink: "blink 1s step-end infinite",
       },
     },
   },
