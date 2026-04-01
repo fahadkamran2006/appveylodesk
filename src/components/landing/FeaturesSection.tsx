@@ -381,7 +381,7 @@ function MaskReveal({
   wordClassName?: string;
 }) {
   const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-60px" });
+  const isInView = useInView(ref, { once: true, amount: 0.1 });
   const words = children.split(" ");
   const hasGradient = wordClassName.includes("text-gradient");
 
