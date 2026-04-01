@@ -63,14 +63,14 @@ export function TextReveal({
         <span key={i} className="inline-block overflow-hidden mr-[0.25em] pb-[0.15em]">
           <motion.span
             className="inline-block"
-            initial={{ y: "100%", opacity: 0, filter: "blur(8px)" }}
-            animate={isInView ? { y: 0, opacity: 1, filter: "blur(0px)" } : {}}
+            initial={{ y: "100%", opacity: 0 }}
+            animate={isInView ? { y: 0, opacity: 1 } : {}}
             transition={{
               duration: 0.7,
               delay: i * staggerDelay,
               ease: [0.22, 1, 0.36, 1],
             }}
-            style={{ willChange: "transform, opacity, filter" }}
+            style={{ willChange: "transform, opacity" }}
           >
             {word}
           </motion.span>
@@ -99,14 +99,14 @@ export function CharReveal({
         <motion.span
           key={i}
           className="inline-block"
-          initial={{ opacity: 0, y: 20, filter: "blur(6px)" }}
-          animate={isInView ? { opacity: 1, y: 0, filter: "blur(0px)" } : {}}
+          initial={{ opacity: 0, y: 20 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{
             duration: 0.5,
             delay: i * staggerDelay,
             ease: [0.22, 1, 0.36, 1],
           }}
-          style={{ willChange: "transform, opacity, filter" }}
+          style={{ willChange: "transform, opacity" }}
         >
           {char === " " ? "\u00A0" : char}
         </motion.span>
@@ -143,10 +143,10 @@ export function ScrollFade({
     <motion.div
       ref={ref}
       className={className}
-      initial={{ opacity: 0, filter: "blur(10px)", ...offset }}
-      animate={isInView ? { opacity: 1, filter: "blur(0px)", x: 0, y: 0 } : {}}
+      initial={{ opacity: 0, ...offset }}
+      animate={isInView ? { opacity: 1, x: 0, y: 0 } : {}}
       transition={{ duration: 0.9, delay, ease: [0.22, 1, 0.36, 1] }}
-      style={{ willChange: "transform, opacity, filter" }}
+      style={{ willChange: "transform, opacity" }}
     >
       {children}
     </motion.div>

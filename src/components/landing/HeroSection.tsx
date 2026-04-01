@@ -51,8 +51,8 @@ const HeroSection = () => {
         <div className="max-w-5xl mx-auto">
           {/* Eyebrow */}
           <motion.div
-            initial={{ opacity: 0, filter: "blur(10px)", y: 10 }}
-            animate={{ opacity: 1, filter: "blur(0px)", y: 0 }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
             className="mb-6"
           >
@@ -64,8 +64,8 @@ const HeroSection = () => {
 
           {/* Headline — left-aligned, staggered */}
           <motion.h1
-            initial={{ opacity: 0, filter: "blur(12px)", y: 20 }}
-            animate={{ opacity: 1, filter: "blur(0px)", y: 0 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
             className="text-[2.5rem] leading-[1.12] sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-8 max-w-4xl"
           >
@@ -77,10 +77,10 @@ const HeroSection = () => {
 
           {/* Sub — left-aligned, narrower */}
           <motion.p
-            initial={{ opacity: 0, filter: "blur(10px)", y: 15 }}
-            animate={{ opacity: 1, filter: "blur(0px)", y: 0 }}
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.9, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            style={{ willChange: "transform, opacity, filter" }}
+            style={{ willChange: "transform, opacity" }}
             className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mb-12 leading-relaxed"
           >
             Veylodesk gives your agency a white-labeled client portal, frame-accurate
@@ -90,8 +90,8 @@ const HeroSection = () => {
 
           {/* CTA row */}
           <motion.div
-            initial={{ opacity: 0, filter: "blur(8px)", y: 15 }}
-            animate={{ opacity: 1, filter: "blur(0px)", y: 0 }}
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.45, ease: [0.22, 1, 0.36, 1] }}
             className="flex flex-col sm:flex-row items-start gap-4 mb-6"
           >
@@ -111,8 +111,8 @@ const HeroSection = () => {
 
           {/* Trust signals */}
           <motion.div
-            initial={{ opacity: 0, filter: "blur(6px)" }}
-            animate={{ opacity: 1, filter: "blur(0px)" }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.6 }}
             className="flex items-center gap-6 text-xs text-muted-foreground/60"
           >
@@ -130,8 +130,8 @@ const HeroSection = () => {
 
         {/* Dashboard Preview */}
         <motion.div
-          initial={{ opacity: 0, filter: "blur(16px)", y: 40, scale: 0.97 }}
-          animate={{ opacity: 1, filter: "blur(0px)", y: 0, scale: 1 }}
+          initial={{ opacity: 0, y: 40, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 1.2, delay: 0.7, ease: [0.22, 1, 0.36, 1] }}
           className="mt-16 md:mt-24 max-w-6xl mx-auto"
           style={{ y: springY, scale: springScale }}
