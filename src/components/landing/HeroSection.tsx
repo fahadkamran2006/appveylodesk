@@ -64,9 +64,9 @@ const HeroSection = () => {
 
           {/* Headline — left-aligned, staggered */}
           <motion.h1
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+            initial={{ opacity: 0, filter: "blur(12px)", y: 20 }}
+            animate={{ opacity: 1, filter: "blur(0px)", y: 0 }}
+            transition={{ duration: 1, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
             className="text-[2.5rem] leading-[1.12] sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-8 max-w-4xl"
           >
             Your Clients Deserve Better
