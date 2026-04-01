@@ -51,9 +51,9 @@ const HeroSection = () => {
         <div className="max-w-5xl mx-auto">
           {/* Eyebrow */}
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
+            initial={{ opacity: 0, filter: "blur(10px)", y: 10 }}
+            animate={{ opacity: 1, filter: "blur(0px)", y: 0 }}
+            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
             className="mb-6"
           >
             <span className="inline-flex items-center gap-2 text-xs font-medium tracking-widest uppercase text-primary/80 border border-primary/20 rounded-full px-4 py-1.5 backdrop-blur-sm bg-primary/5">
