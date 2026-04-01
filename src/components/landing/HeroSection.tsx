@@ -77,10 +77,10 @@ const HeroSection = () => {
 
           {/* Sub — left-aligned, narrower */}
           <motion.p
-            initial={{ opacity: 0, filter: "blur(10px)", y: 15 }}
-            animate={{ opacity: 1, filter: "blur(0px)", y: 0 }}
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.9, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            style={{ willChange: "transform, opacity, filter" }}
+            style={{ willChange: "transform, opacity" }}
             className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mb-12 leading-relaxed"
           >
             Veylodesk gives your agency a white-labeled client portal, frame-accurate
