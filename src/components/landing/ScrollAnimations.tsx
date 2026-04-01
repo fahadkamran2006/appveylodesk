@@ -127,9 +127,6 @@ export function ScrollFade({
   direction?: "up" | "down" | "left" | "right";
   delay?: number;
 }) {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-60px" });
-  
   const directionMap = {
     up: { y: 30, x: 0 },
     down: { y: -30, x: 0 },
@@ -141,10 +138,10 @@ export function ScrollFade({
 
   return (
     <motion.div
-      ref={ref}
       className={className}
       initial={{ opacity: 0, ...offset }}
-      animate={isInView ? { opacity: 1, x: 0, y: 0 } : {}}
+      whileInView={{ opacity: 1, x: 0, y: 0 }}
+      viewport={{ once: true, margin: "-60px" }}
       transition={{ duration: 0.9, delay, ease: [0.22, 1, 0.36, 1] }}
       style={{ willChange: "transform, opacity" }}
     >
