@@ -143,10 +143,10 @@ export function ScrollFade({
     <motion.div
       ref={ref}
       className={className}
-      initial={{ opacity: 0, filter: "blur(10px)", ...offset }}
-      animate={isInView ? { opacity: 1, filter: "blur(0px)", x: 0, y: 0 } : {}}
+      initial={{ opacity: 0, ...offset }}
+      animate={isInView ? { opacity: 1, x: 0, y: 0 } : {}}
       transition={{ duration: 0.9, delay, ease: [0.22, 1, 0.36, 1] }}
-      style={{ willChange: "transform, opacity, filter" }}
+      style={{ willChange: "transform, opacity" }}
     >
       {children}
     </motion.div>
