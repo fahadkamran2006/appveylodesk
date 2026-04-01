@@ -130,8 +130,8 @@ const HeroSection = () => {
 
         {/* Dashboard Preview */}
         <motion.div
-          initial={{ opacity: 0, filter: "blur(16px)", y: 40, scale: 0.97 }}
-          animate={{ opacity: 1, filter: "blur(0px)", y: 0, scale: 1 }}
+          initial={{ opacity: 0, y: 40, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 1.2, delay: 0.7, ease: [0.22, 1, 0.36, 1] }}
           className="mt-16 md:mt-24 max-w-6xl mx-auto"
           style={{ y: springY, scale: springScale }}
