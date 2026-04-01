@@ -43,7 +43,7 @@ export function AnimatedCounter({
   );
 }
 
-// ─── Text Reveal (word by word) ───
+// ─── Text Reveal (word by word — smooth blur fade) ───
 export function TextReveal({ 
   children, 
   className = "",
@@ -63,13 +63,14 @@ export function TextReveal({
         <span key={i} className="inline-block overflow-hidden mr-[0.25em] pb-[0.15em]">
           <motion.span
             className="inline-block"
-            initial={{ y: "110%", opacity: 0 }}
-            animate={isInView ? { y: 0, opacity: 1 } : {}}
+            initial={{ y: "100%", opacity: 0, filter: "blur(8px)" }}
+            animate={isInView ? { y: 0, opacity: 1, filter: "blur(0px)" } : {}}
             transition={{
-              duration: 0.5,
+              duration: 0.7,
               delay: i * staggerDelay,
               ease: [0.22, 1, 0.36, 1],
             }}
+            style={{ willChange: "transform, opacity, filter" }}
           >
             {word}
           </motion.span>
@@ -79,7 +80,7 @@ export function TextReveal({
   );
 }
 
-// ─── Character Reveal ───
+// ─── Character Reveal (smooth blur) ───
 export function CharReveal({ 
   children, 
   className = "",
@@ -98,13 +99,14 @@ export function CharReveal({
         <motion.span
           key={i}
           className="inline-block"
-          initial={{ opacity: 0, y: 40, rotateX: -90 }}
-          animate={isInView ? { opacity: 1, y: 0, rotateX: 0 } : {}}
+          initial={{ opacity: 0, y: 20, filter: "blur(6px)" }}
+          animate={isInView ? { opacity: 1, y: 0, filter: "blur(0px)" } : {}}
           transition={{
-            duration: 0.4,
+            duration: 0.5,
             delay: i * staggerDelay,
             ease: [0.22, 1, 0.36, 1],
           }}
+          style={{ willChange: "transform, opacity, filter" }}
         >
           {char === " " ? "\u00A0" : char}
         </motion.span>
@@ -113,7 +115,7 @@ export function CharReveal({
   );
 }
 
-// ─── Scroll Fade Section ───
+// ─── Scroll Fade Section (blur fade-in) ───
 export function ScrollFade({ 
   children, 
   className = "",
@@ -126,13 +128,13 @@ export function ScrollFade({
   delay?: number;
 }) {
   const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-100px" });
+  const isInView = useInView(ref, { once: true, margin: "-60px" });
   
   const directionMap = {
-    up: { y: 60, x: 0 },
-    down: { y: -60, x: 0 },
-    left: { x: 60, y: 0 },
-    right: { x: -60, y: 0 },
+    up: { y: 30, x: 0 },
+    down: { y: -30, x: 0 },
+    left: { x: 40, y: 0 },
+    right: { x: -40, y: 0 },
   };
 
   const offset = directionMap[direction];
@@ -141,9 +143,10 @@ export function ScrollFade({
     <motion.div
       ref={ref}
       className={className}
-      initial={{ opacity: 0, ...offset }}
-      animate={isInView ? { opacity: 1, x: 0, y: 0 } : {}}
-      transition={{ duration: 0.8, delay, ease: [0.22, 1, 0.36, 1] }}
+      initial={{ opacity: 0, filter: "blur(10px)", ...offset }}
+      animate={isInView ? { opacity: 1, filter: "blur(0px)", x: 0, y: 0 } : {}}
+      transition={{ duration: 0.9, delay, ease: [0.22, 1, 0.36, 1] }}
+      style={{ willChange: "transform, opacity, filter" }}
     >
       {children}
     </motion.div>

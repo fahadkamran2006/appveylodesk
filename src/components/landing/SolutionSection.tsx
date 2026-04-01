@@ -269,10 +269,10 @@ function DashboardViewBlock({ view, index }: { view: typeof dashboardViews[0]; i
         {view.features.map((feature, i) => (
           <motion.div
             key={feature.text}
-            initial={{ opacity: 0, x: isLeft ? 30 : -30 }}
-            whileInView={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, x: isLeft ? 20 : -20, filter: "blur(8px)" }}
+            whileInView={{ opacity: 1, x: 0, filter: "blur(0px)" }}
             viewport={{ once: true, margin: "-50px" }}
-            transition={{ duration: 0.4, delay: i * 0.1, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.6, delay: i * 0.1, ease: [0.22, 1, 0.36, 1] }}
             className="flex items-start gap-4 p-3.5 rounded-xl bg-surface-glass/30 border border-white/[0.06] backdrop-blur-sm"
           >
             <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${colorMap[view.color]}`}>
