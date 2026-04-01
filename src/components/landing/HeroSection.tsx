@@ -111,8 +111,8 @@ const HeroSection = () => {
 
           {/* Trust signals */}
           <motion.div
-            initial={{ opacity: 0, filter: "blur(6px)" }}
-            animate={{ opacity: 1, filter: "blur(0px)" }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.6 }}
             className="flex items-center gap-6 text-xs text-muted-foreground/60"
           >
