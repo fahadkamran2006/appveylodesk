@@ -90,9 +90,9 @@ const HeroSection = () => {
 
           {/* CTA row */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3, ease: "easeOut" }}
+            initial={{ opacity: 0, filter: "blur(8px)", y: 15 }}
+            animate={{ opacity: 1, filter: "blur(0px)", y: 0 }}
+            transition={{ duration: 0.8, delay: 0.45, ease: [0.22, 1, 0.36, 1] }}
             className="flex flex-col sm:flex-row items-start gap-4 mb-6"
           >
             <Button variant="hero" size="xl" className="btn-glow cta-pulse" asChild>
