@@ -63,14 +63,14 @@ export function TextReveal({
         <span key={i} className="inline-block overflow-hidden mr-[0.25em] pb-[0.15em]">
           <motion.span
             className="inline-block"
-            initial={{ y: "100%", opacity: 0, filter: "blur(8px)" }}
-            animate={isInView ? { y: 0, opacity: 1, filter: "blur(0px)" } : {}}
+            initial={{ y: "100%", opacity: 0 }}
+            animate={isInView ? { y: 0, opacity: 1 } : {}}
             transition={{
               duration: 0.7,
               delay: i * staggerDelay,
               ease: [0.22, 1, 0.36, 1],
             }}
-            style={{ willChange: "transform, opacity, filter" }}
+            style={{ willChange: "transform, opacity" }}
           >
             {word}
           </motion.span>
