@@ -16,7 +16,7 @@ export function AnimatedCounter({
   className?: string;
 }) {
   const ref = useRef<HTMLSpanElement>(null);
-  const isInView = useInView(ref, { once: true, margin: "-50px" });
+  const isInView = useInView(ref, { once: true, amount: 0.1 });
   const [count, setCount] = useState(0);
 
   useEffect(() => {
@@ -56,7 +56,7 @@ export function TextReveal({
   gradient?: boolean;
 }) {
   const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-80px" });
+  const isInView = useInView(ref, { once: true, amount: 0.1 });
   const words = children.split(" ");
 
   return (
@@ -93,7 +93,7 @@ export function CharReveal({
   staggerDelay?: number;
 }) {
   const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-80px" });
+  const isInView = useInView(ref, { once: true, amount: 0.1 });
 
   return (
     <span ref={ref} className={`inline-block pb-[0.1em] ${className}`}>
@@ -143,7 +143,7 @@ export function ScrollFade({
       className={className}
       initial={{ opacity: 0, ...offset }}
       whileInView={{ opacity: 1, x: 0, y: 0 }}
-      viewport={{ once: true, margin: "-60px" }}
+      viewport={{ once: true, amount: 0.05 }}
       transition={{ duration: 0.9, delay, ease: [0.22, 1, 0.36, 1] }}
       style={{ willChange: "transform, opacity" }}
     >
@@ -226,7 +226,7 @@ export function ParallaxSection({
 // ─── Horizontal Line Reveal ───
 export function LineReveal({ className = "" }: { className?: string }) {
   const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-50px" });
+  const isInView = useInView(ref, { once: true, amount: 0.1 });
   
   return (
     <div ref={ref} className={`overflow-hidden ${className}`}>
