@@ -5,6 +5,7 @@ import { ArrowRight, Play, CheckCircle2, Shield } from "lucide-react";
 import { motion, useScroll, useTransform, useSpring } from "framer-motion";
 import { AnimatedCounter, TiltCard, Float3D } from "./ScrollAnimations";
 import HeroDashboardPreview from "./HeroDashboardPreview";
+import TypewriterText from "./TypewriterText";
 
 const SPOTS_REMAINING = 50; // ← Update this number as spots are claimed
 
