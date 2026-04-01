@@ -41,7 +41,7 @@ const ProblemSection = () => {
                   {i > 0 && <span className="text-3xl text-muted-foreground/50">+</span>}
                   <motion.div
                     whileHover={{ scale: 1.1, rotateZ: 5 }}
-                    className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg"
+                    className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg transition-transform duration-500"
                     style={{ backgroundColor: item.color, boxShadow: `0 8px 30px ${item.color}33` }}
                   >
                     <item.icon className="w-8 h-8 text-white" />
