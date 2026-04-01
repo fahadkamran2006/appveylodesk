@@ -99,14 +99,14 @@ export function CharReveal({
         <motion.span
           key={i}
           className="inline-block"
-          initial={{ opacity: 0, y: 20, filter: "blur(6px)" }}
-          animate={isInView ? { opacity: 1, y: 0, filter: "blur(0px)" } : {}}
+          initial={{ opacity: 0, y: 20 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{
             duration: 0.5,
             delay: i * staggerDelay,
             ease: [0.22, 1, 0.36, 1],
           }}
-          style={{ willChange: "transform, opacity, filter" }}
+          style={{ willChange: "transform, opacity" }}
         >
           {char === " " ? "\u00A0" : char}
         </motion.span>
