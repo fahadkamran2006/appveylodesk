@@ -80,7 +80,7 @@ export function TextReveal({
   );
 }
 
-// ─── Character Reveal ───
+// ─── Character Reveal (smooth blur) ───
 export function CharReveal({ 
   children, 
   className = "",
@@ -99,13 +99,14 @@ export function CharReveal({
         <motion.span
           key={i}
           className="inline-block"
-          initial={{ opacity: 0, y: 40, rotateX: -90 }}
-          animate={isInView ? { opacity: 1, y: 0, rotateX: 0 } : {}}
+          initial={{ opacity: 0, y: 20, filter: "blur(6px)" }}
+          animate={isInView ? { opacity: 1, y: 0, filter: "blur(0px)" } : {}}
           transition={{
-            duration: 0.4,
+            duration: 0.5,
             delay: i * staggerDelay,
             ease: [0.22, 1, 0.36, 1],
           }}
+          style={{ willChange: "transform, opacity, filter" }}
         >
           {char === " " ? "\u00A0" : char}
         </motion.span>
