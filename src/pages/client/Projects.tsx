@@ -131,6 +131,9 @@ export default function ClientProjects() {
   const filteredVideos = useMemo(() => {
     let result = videos;
 
+    // Hide quality_check projects from clients
+    result = result.filter(v => v.status !== 'quality_check');
+
     if (isProjectBoardView && selectedProjectId) {
       result = result.filter(v => v.container_id === selectedProjectId);
     }
