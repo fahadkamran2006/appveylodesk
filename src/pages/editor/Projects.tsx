@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ProjectDetailSheet } from '@/components/projects/ProjectDetailSheet';
 
-type ProjectStatus = 'backlog' | 'in_progress' | 'review' | 'done';
+type ProjectStatus = 'backlog' | 'in_progress' | 'review' | 'quality_check' | 'done';
 
 interface Project {
   id: string;
