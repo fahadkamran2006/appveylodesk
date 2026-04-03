@@ -51,6 +51,11 @@ const columnStyles: Record<ProjectStatus, { bg: string; border: string; dot: str
     border: 'border-warning/20',
     dot: 'bg-warning',
   },
+  quality_check: {
+    bg: 'bg-indigo-500/5',
+    border: 'border-indigo-500/20',
+    dot: 'bg-indigo-500',
+  },
   done: {
     bg: 'bg-success/5',
     border: 'border-success/20',
