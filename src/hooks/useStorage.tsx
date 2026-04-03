@@ -21,6 +21,8 @@ export interface Deliverable {
   created_at: string;
   uploader_name?: string;
   file_type: 'asset' | 'deliverable';
+  is_locked?: boolean;
+  linked_invoice_id?: string | null;
 }
 
 export interface UploadProgress {
