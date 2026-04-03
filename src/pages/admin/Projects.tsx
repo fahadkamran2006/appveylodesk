@@ -14,6 +14,7 @@ import { ProjectBreadcrumb } from '@/components/projects/ProjectBreadcrumb';
 import { CreateProjectModal } from '@/components/projects/CreateProjectModal';
 import { CreateProjectContainerModal } from '@/components/projects/CreateProjectContainerModal';
 import { ProjectDetailSheet } from '@/components/projects/ProjectDetailSheet';
+import { DeliverVideoModal } from '@/components/projects/DeliverVideoModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Loader2, ArrowLeft, LayoutGrid, Video } from 'lucide-react';
