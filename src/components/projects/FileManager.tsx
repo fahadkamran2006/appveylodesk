@@ -50,6 +50,7 @@ interface FileManagerProps {
   emptyTitle?: string;
   emptyDescription?: string;
   uploadLabel?: string;
+  userRole?: string;
 }
 
 const getFileIcon = (fileName: string) => {
