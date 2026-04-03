@@ -93,6 +93,7 @@ export function FileManager({
   emptyTitle = 'No files yet',
   emptyDescription,
   uploadLabel = 'Click to upload files',
+  userRole,
 }: FileManagerProps) {
   const { deleteDeliverable, formatBytes, loading } = useStorage();
   const { toast } = useToast();
