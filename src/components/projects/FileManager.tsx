@@ -234,14 +234,32 @@ export function FileManager({
                       <Eye className="w-4 h-4" />
                     </Button>
                   )}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDownload(deliverable)}
-                    title="Download"
-                  >
-                    <Download className="w-4 h-4" />
-                  </Button>
+                  {deliverable.is_locked && userRole === 'client' ? (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        toast({
+                          title: 'Download locked',
+                          description: 'Payment required — please complete payment before downloading this file.',
+                          variant: 'destructive',
+                        });
+                      }}
+                      title="Payment required to download"
+                      className="text-warning hover:text-warning"
+                    >
+                      <Lock className="w-4 h-4" />
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDownload(deliverable)}
+                      title="Download"
+                    >
+                      <Download className="w-4 h-4" />
+                    </Button>
+                  )}
                   {canDelete && (
                     <Button
                       variant="ghost"
