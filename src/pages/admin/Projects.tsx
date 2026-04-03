@@ -14,6 +14,7 @@ import { ProjectBreadcrumb } from '@/components/projects/ProjectBreadcrumb';
 import { CreateProjectModal } from '@/components/projects/CreateProjectModal';
 import { CreateProjectContainerModal } from '@/components/projects/CreateProjectContainerModal';
 import { ProjectDetailSheet } from '@/components/projects/ProjectDetailSheet';
+import { DeliverVideoModal } from '@/components/projects/DeliverVideoModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Loader2, ArrowLeft, LayoutGrid, Video } from 'lucide-react';
@@ -24,6 +25,7 @@ const COLUMNS: { id: ProjectStatus; title: string }[] = [
   { id: 'backlog', title: 'Backlog' },
   { id: 'in_progress', title: 'In Progress' },
   { id: 'review', title: 'Review' },
+  { id: 'quality_check', title: 'Quality Check' },
   { id: 'done', title: 'Delivered' },
   { id: 'paid', title: 'Paid' },
   { id: 'archived', title: 'Archived' },
@@ -69,6 +71,7 @@ const AdminProjects = () => {
   const [createVideoModalOpen, setCreateVideoModalOpen] = useState(false);
   const [createProjectModalOpen, setCreateProjectModalOpen] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [deliverModalProject, setDeliverModalProject] = useState<{ id: string; title: string } | null>(null);
   
   // Filter state
   const [viewMode, setViewMode] = useState<ViewMode>('kanban');
@@ -361,6 +364,16 @@ const AdminProjects = () => {
     }
 
     const newStatus = destination.droppableId as ProjectStatus;
+    const oldStatus = source.droppableId as ProjectStatus;
+
+    // Intercept QC → Done: show the DeliverVideoModal instead
+    if (oldStatus === 'quality_check' && newStatus === 'done') {
+      const project = projects.find(p => p.id === draggableId);
+      if (project) {
+        setDeliverModalProject({ id: project.id, title: project.title });
+      }
+      return; // Don't move yet — modal handles it
+    }
 
     // Optimistic update
     setProjects((prev) =>
@@ -663,6 +676,17 @@ const AdminProjects = () => {
         onOpenChange={(open) => !open && setSelectedProjectId(null)}
         onProjectDeleted={fetchData}
       />
+
+      {/* Deliver Video Modal (QC → Done) */}
+      {deliverModalProject && (
+        <DeliverVideoModal
+          open={!!deliverModalProject}
+          onOpenChange={(open) => !open && setDeliverModalProject(null)}
+          projectId={deliverModalProject.id}
+          projectTitle={deliverModalProject.title}
+          onSuccess={fetchData}
+        />
+      )}
     </>
   );
 };

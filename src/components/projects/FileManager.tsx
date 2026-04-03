@@ -24,7 +24,8 @@ import {
   Trash2,
   Download,
   Eye,
-  Loader2
+  Loader2,
+  Lock
 } from 'lucide-react';
 import { Deliverable, useStorage } from '@/hooks/useStorage';
 import { useToast } from '@/hooks/use-toast';
@@ -49,6 +50,7 @@ interface FileManagerProps {
   emptyTitle?: string;
   emptyDescription?: string;
   uploadLabel?: string;
+  userRole?: string;
 }
 
 const getFileIcon = (fileName: string) => {
@@ -91,6 +93,7 @@ export function FileManager({
   emptyTitle = 'No files yet',
   emptyDescription,
   uploadLabel = 'Click to upload files',
+  userRole,
 }: FileManagerProps) {
   const { deleteDeliverable, formatBytes, loading } = useStorage();
   const { toast } = useToast();
@@ -212,6 +215,12 @@ export function FileManager({
                         v{deliverable.version}
                       </Badge>
                     )}
+                    {deliverable.is_locked && (
+                      <Badge variant="outline" className="text-[10px] h-4 text-warning border-warning/30">
+                        <Lock className="w-2.5 h-2.5 mr-0.5" />
+                        Locked
+                      </Badge>
+                    )}
                     <span>by {deliverable.uploader_name}</span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
@@ -231,14 +240,32 @@ export function FileManager({
                       <Eye className="w-4 h-4" />
                     </Button>
                   )}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDownload(deliverable)}
-                    title="Download"
-                  >
-                    <Download className="w-4 h-4" />
-                  </Button>
+                  {deliverable.is_locked && userRole === 'client' ? (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        toast({
+                          title: 'Download locked',
+                          description: 'Payment required — please complete payment before downloading this file.',
+                          variant: 'destructive',
+                        });
+                      }}
+                      title="Payment required to download"
+                      className="text-warning hover:text-warning"
+                    >
+                      <Lock className="w-4 h-4" />
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDownload(deliverable)}
+                      title="Download"
+                    >
+                      <Download className="w-4 h-4" />
+                    </Button>
+                  )}
                   {canDelete && (
                     <Button
                       variant="ghost"

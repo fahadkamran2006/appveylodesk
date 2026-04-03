@@ -86,6 +86,7 @@ const STATUS_COLORS: Record<string, string> = {
   backlog: 'bg-muted text-muted-foreground',
   in_progress: 'bg-primary/20 text-primary',
   review: 'bg-warning/20 text-warning',
+  quality_check: 'bg-indigo-500/20 text-indigo-500',
   done: 'bg-accent/20 text-accent',
   paid: 'bg-emerald-500/20 text-emerald-500',
   archived: 'bg-slate-500/20 text-slate-500',
@@ -97,6 +98,7 @@ const STATUS_LABELS: Record<string, string> = {
   backlog: 'Backlog',
   in_progress: 'In Progress',
   review: 'Review',
+  quality_check: 'Quality Check',
   done: 'Delivered',
   paid: 'Paid',
   archived: 'Archived',
@@ -611,6 +613,7 @@ export function ProjectDetailSheet({
                     emptyTitle="No project assets"
                     emptyDescription="Upload raw footage, scripts, or reference materials"
                     uploadLabel="Upload raw assets"
+                    userRole={userRole || undefined}
                   />
                 </TabsContent>
 
@@ -627,6 +630,7 @@ export function ProjectDetailSheet({
                     emptyTitle="No deliverables yet"
                     emptyDescription="Editors will upload finished versions here"
                     uploadLabel="Upload deliverable"
+                    userRole={userRole || undefined}
                   />
                 </TabsContent>
 

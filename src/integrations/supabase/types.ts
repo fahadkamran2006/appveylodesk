@@ -599,6 +599,8 @@ export type Database = {
           file_type: string
           file_url: string
           id: string
+          is_locked: boolean
+          linked_invoice_id: string | null
           project_id: string
           uploaded_by: string
           version: number | null
@@ -610,6 +612,8 @@ export type Database = {
           file_type?: string
           file_url: string
           id?: string
+          is_locked?: boolean
+          linked_invoice_id?: string | null
           project_id: string
           uploaded_by: string
           version?: number | null
@@ -621,11 +625,20 @@ export type Database = {
           file_type?: string
           file_url?: string
           id?: string
+          is_locked?: boolean
+          linked_invoice_id?: string | null
           project_id?: string
           uploaded_by?: string
           version?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "deliverables_linked_invoice_id_fkey"
+            columns: ["linked_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "deliverables_project_id_fkey"
             columns: ["project_id"]
@@ -1770,6 +1783,7 @@ export type Database = {
         | "backlog"
         | "in_progress"
         | "review"
+        | "quality_check"
         | "done"
         | "proposal"
         | "cancelled"
@@ -1923,6 +1937,7 @@ export const Constants = {
         "backlog",
         "in_progress",
         "review",
+        "quality_check",
         "done",
         "proposal",
         "cancelled",

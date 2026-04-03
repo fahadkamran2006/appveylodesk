@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ProjectDetailSheet } from '@/components/projects/ProjectDetailSheet';
 
-type ProjectStatus = 'backlog' | 'in_progress' | 'review' | 'done';
+type ProjectStatus = 'backlog' | 'in_progress' | 'review' | 'quality_check' | 'done';
 
 interface Project {
   id: string;
@@ -30,10 +30,11 @@ const COLUMNS: { id: ProjectStatus; title: string }[] = [
   { id: 'done', title: 'Done' },
 ];
 
-const columnStyles: Record<ProjectStatus, string> = {
+const columnStyles: Partial<Record<ProjectStatus, string>> = {
   backlog: 'border-muted-foreground/30',
   in_progress: 'border-primary/50',
   review: 'border-amber-500/50',
+  quality_check: 'border-indigo-500/50',
   done: 'border-emerald-500/50',
 };
 
