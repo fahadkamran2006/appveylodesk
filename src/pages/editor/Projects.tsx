@@ -31,10 +31,16 @@ const COLUMNS: { id: ProjectStatus; title: string }[] = [
 ];
 
 const columnStyles: Record<ProjectStatus, string> = {
+  request: 'border-warning/30',
+  proposal: 'border-purple-500/30',
   backlog: 'border-muted-foreground/30',
   in_progress: 'border-primary/50',
   review: 'border-amber-500/50',
+  quality_check: 'border-indigo-500/50',
   done: 'border-emerald-500/50',
+  paid: 'border-emerald-500/30',
+  archived: 'border-slate-500/30',
+  cancelled: 'border-destructive/30',
 };
 
 export default function EditorProjects() {

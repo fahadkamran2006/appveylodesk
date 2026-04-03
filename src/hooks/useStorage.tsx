@@ -369,6 +369,8 @@ export function useStorage() {
         ...d,
         uploader_name: profileMap.get(d.uploaded_by) || 'Unknown',
         file_type: (d as any).file_type || 'deliverable',
+        is_locked: (d as any).is_locked ?? false,
+        linked_invoice_id: (d as any).linked_invoice_id ?? null,
       }));
     } catch (error) {
       console.error('Error fetching deliverables:', error);

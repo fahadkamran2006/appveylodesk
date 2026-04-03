@@ -43,6 +43,7 @@ const statusConfig: Record<string, { label: string; icon: typeof Clock; classNam
   backlog: { label: 'Backlog', icon: Clock, className: 'bg-muted text-muted-foreground border-border' },
   in_progress: { label: 'In Progress', icon: AlertCircle, className: 'bg-primary/10 text-primary border-primary/20' },
   review: { label: 'In Review', icon: Clock, className: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
+  quality_check: { label: 'Quality Check', icon: Clock, className: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20' },
   done: { label: 'Delivered', icon: CheckCircle, className: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' },
   cancelled: { label: 'Cancelled', icon: AlertCircle, className: 'bg-destructive/10 text-destructive border-destructive/20' },
 };
