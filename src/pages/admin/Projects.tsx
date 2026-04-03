@@ -71,6 +71,7 @@ const AdminProjects = () => {
   const [createVideoModalOpen, setCreateVideoModalOpen] = useState(false);
   const [createProjectModalOpen, setCreateProjectModalOpen] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [deliverModalProject, setDeliverModalProject] = useState<{ id: string; title: string } | null>(null);
   
   // Filter state
   const [viewMode, setViewMode] = useState<ViewMode>('kanban');
