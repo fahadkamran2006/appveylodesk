@@ -215,6 +215,12 @@ export function FileManager({
                         v{deliverable.version}
                       </Badge>
                     )}
+                    {deliverable.is_locked && (
+                      <Badge variant="outline" className="text-[10px] h-4 text-warning border-warning/30">
+                        <Lock className="w-2.5 h-2.5 mr-0.5" />
+                        Locked
+                      </Badge>
+                    )}
                     <span>by {deliverable.uploader_name}</span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
