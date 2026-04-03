@@ -676,6 +676,17 @@ const AdminProjects = () => {
         onOpenChange={(open) => !open && setSelectedProjectId(null)}
         onProjectDeleted={fetchData}
       />
+
+      {/* Deliver Video Modal (QC → Done) */}
+      {deliverModalProject && (
+        <DeliverVideoModal
+          open={!!deliverModalProject}
+          onOpenChange={(open) => !open && setDeliverModalProject(null)}
+          projectId={deliverModalProject.id}
+          projectTitle={deliverModalProject.title}
+          onSuccess={fetchData}
+        />
+      )}
     </>
   );
 };

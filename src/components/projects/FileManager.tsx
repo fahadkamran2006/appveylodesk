@@ -24,7 +24,8 @@ import {
   Trash2,
   Download,
   Eye,
-  Loader2
+  Loader2,
+  Lock
 } from 'lucide-react';
 import { Deliverable, useStorage } from '@/hooks/useStorage';
 import { useToast } from '@/hooks/use-toast';
