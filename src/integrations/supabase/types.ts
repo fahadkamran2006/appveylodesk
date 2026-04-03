@@ -1770,6 +1770,7 @@ export type Database = {
         | "backlog"
         | "in_progress"
         | "review"
+        | "quality_check"
         | "done"
         | "proposal"
         | "cancelled"
@@ -1923,6 +1924,7 @@ export const Constants = {
         "backlog",
         "in_progress",
         "review",
+        "quality_check",
         "done",
         "proposal",
         "cancelled",
