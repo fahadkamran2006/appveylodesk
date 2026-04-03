@@ -630,6 +630,7 @@ export function ProjectDetailSheet({
                     emptyTitle="No deliverables yet"
                     emptyDescription="Editors will upload finished versions here"
                     uploadLabel="Upload deliverable"
+                    userRole={userRole || undefined}
                   />
                 </TabsContent>
 
