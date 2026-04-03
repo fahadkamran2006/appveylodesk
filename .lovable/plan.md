@@ -1,119 +1,98 @@
-# Super Admin Dashboard ("God Mode")
+
+
+# Quality Check Pipeline + Video Locking System
 
 ## Overview
-Build a hidden `/super-admin` route accessible only to `hello@fahadkamran.com`. This dashboard provides platform-wide visibility into all agencies, revenue, storage, and system activity -- completely separate from the normal admin/client/editor dashboards.
 
-## Phase 1: Route Protection and Empty Shell
+This feature introduces a **Quality Check (QC) stage** in the Kanban workflow and a **per-deliverable lock mechanism** that controls client download access. Here is the full flow:
 
-### 1. Database: Security Definer Function
-Create a Postgres function `is_super_admin(uuid)` that checks if a user's email matches the hardcoded super admin email. This function will be used by a new RLS policy (or called from edge functions) to allow cross-tenant reads.
+1. Editor uploads a deliverable → video lands in **"Quality Check"** status (not visible to clients)
+2. Admin reviews the video in QC
+3. Admin moves video from QC → **"Delivered"** with a toggle to **lock** the video
+4. If locked, admin can immediately create and link an invoice to that video
+5. Client can **view** locked videos but **cannot download** them until the linked invoice is paid
+
+## Database Changes
+
+### 1. Add `quality_check` to the `project_status` enum
+A new Kanban column for internal QC review.
 
 ```sql
-CREATE OR REPLACE FUNCTION public.is_super_admin(_user_id uuid)
-RETURNS boolean
-LANGUAGE sql
-STABLE SECURITY DEFINER
-SET search_path = 'public'
-AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM auth.users
-    WHERE id = _user_id AND email = 'hello@fahadkamran.com'
-  );
-$$;
+ALTER TYPE public.project_status ADD VALUE 'quality_check' BEFORE 'done';
 ```
 
-### 2. Database: Aggregation View
-Create a `admin_agency_stats` view (accessed via a security definer function to bypass per-agency RLS) that joins agencies with user_roles to produce:
-- Agency name, plan_tier, subscription_plan, subscription_ends_at
-- storage_used_bytes, storage_limit_bytes
-- client_count (COUNT of client roles per agency)
-- editor_count (COUNT of editor roles per agency)
+### 2. Add `is_locked` and `linked_invoice_id` columns to `deliverables` table
+Per-file lock status and invoice linkage.
 
-### 3. Database: System Logs Table
-Create a `system_logs` table for tracking platform-wide events:
-
-| Column | Type |
-|--------|------|
-| id | uuid (PK) |
-| event_type | text (signup, subscription_change, webhook_failure, cancellation) |
-| message | text |
-| metadata | jsonb |
-| created_at | timestamptz |
-
-RLS: SELECT only for super admin (using `is_super_admin`). INSERT via security definer triggers/functions only.
-
-### 4. Edge Function: `super-admin-stats`
-A single edge function that:
-- Verifies the caller is `hello@fahadkamran.com` using the JWT
-- Uses the service role key to query across all agencies
-- Returns: total agencies, total MRR (calculated from plan tiers), total storage, agency leaderboard, top storage users, recent system logs
-
-### 5. Frontend: Route Guard Component
-Create `SuperAdminGuard.tsx`:
-- Checks `user.email === 'hello@fahadkamran.com'`
-- If not, redirects to `/` or shows 404
-- Wraps the super admin page
-
-### 6. Frontend: Super Admin Page
-Create `src/pages/super-admin/SuperAdminDashboard.tsx` with:
-
-**Layout**: Full-width with its own minimal sidebar (Overview, Agencies, Revenue, Storage, System Health tabs -- implemented as in-page tabs initially, expandable to separate routes later).
-
-**Top Cards ("Big Numbers")**:
-- Total MRR (calculated: Starter count x $29 + Growth count x $79 + Scale count x $149)
-- Total Agencies
-- Total Storage Used (formatted in TB)
-- Active vs Churned agencies
-
-**Agency Leaderboard Table** (sortable):
-- Agency Name | Plan | Status | Revenue | Client Count | Editor Count | Storage Used
-
-**Storage Monitor**:
-- Bar chart or progress bars showing top agencies by storage usage %
-- Red highlight for agencies above 90%
-
-**Recent System Events** feed:
-- Pulls from the `system_logs` table
-- Shows: new signups, subscription changes, webhook failures
-
-### 7. App.tsx Route
-Add the route before the catch-all:
-```
-<Route path="/super-admin" element={<SuperAdminGuard><SuperAdminDashboard /></SuperAdminGuard>} />
+```sql
+ALTER TABLE public.deliverables
+  ADD COLUMN is_locked boolean NOT NULL DEFAULT false,
+  ADD COLUMN linked_invoice_id uuid REFERENCES public.invoices(id) ON DELETE SET NULL;
 ```
 
-## File Changes Summary
+### 3. Update RLS policies on `deliverables`
+- Clients can SELECT deliverables only when the parent project status is NOT `quality_check`
+- Existing admin/editor policies remain unchanged (full access)
 
-| Action | File |
-|--------|------|
-| Create | `src/pages/super-admin/SuperAdminDashboard.tsx` |
-| Create | `src/components/super-admin/SuperAdminGuard.tsx` |
-| Create | `src/components/super-admin/SuperAdminSidebar.tsx` |
-| Create | `src/hooks/useSuperAdminStats.tsx` |
-| Create | `supabase/functions/super-admin-stats/index.ts` |
-| Migration | `is_super_admin` function, `system_logs` table, RLS policies |
-| Edit | `src/App.tsx` (add route) |
+## Frontend Changes
 
-## Security Notes
-- The super admin email is checked server-side in the edge function using the JWT -- not just client-side
-- All cross-tenant data access goes through the edge function using the service role key, so normal RLS still protects data for regular users
-- The `system_logs` table uses strict RLS (super admin read only)
-- The client-side guard is just UX -- the real protection is the edge function rejecting non-super-admin callers
+### 1. Kanban Board — Add "Quality Check" column
+**File:** `src/pages/admin/Projects.tsx` and `src/components/projects/KanbanColumn.tsx`
+- Add `quality_check` to the `COLUMNS` array (between "Review" and "Delivered")
+- Add styling for the new column (blue/indigo theme)
+- Update `ProjectStatus` type union
 
-# Employee Attendance, Work Logs & Leave Management System ✅ IMPLEMENTED
+### 2. Auto-route editor uploads to Quality Check
+**File:** `src/hooks/useStorage.tsx` or upload flow
+- When an editor uploads a deliverable to a project, if the project is in `in_progress`, automatically transition it to `quality_check`
+- Only admin can move projects out of `quality_check` → `done`
 
-## Database
-- `daily_logs` table (unified attendance + task logs) with RLS
-- `leave_requests` table with RLS (editors insert/view own, admins view/update agency)
+### 3. Client project visibility — Hide QC projects
+**Files:** `src/pages/client/Projects.tsx`
+- Filter out projects with `status = 'quality_check'` from client views
+- Clients should not see videos until admin moves them to "Delivered"
 
-## UI Components
-- `AttendanceCard` — salaried check-in/out with timer, freelance daily task log
-- `CheckoutModal` — mandatory work summary before checkout
-- `LeaveRequestCard` — editor leave request submission with type/date/reason
-- `AttendanceReport` — admin date-filtered attendance table with stats
-- `LeaveManagement` — admin approve/reject leave requests
+### 4. Deliver + Lock Modal (Admin only)
+**File:** New `src/components/projects/DeliverVideoModal.tsx`
+- Triggered when admin drags/moves a video from Quality Check → Delivered
+- Contains:
+  - Toggle: "Lock video (require payment before download)"
+  - If lock is ON: option to create a new invoice or link an existing unpaid invoice
+  - Inline invoice creation form (amount, due date, notes) — reuses existing invoice creation logic
+- On confirm: updates project status to `done`, sets `is_locked` on deliverables, creates/links invoice
 
-## Integrations
-- Editor Dashboard: attendance + leave cards at top
-- Admin Team page: leave management section + attendance/leave tabs in editor detail sheet
-- Admin Payroll: days present, hours worked, unpaid leaves columns
+### 5. Download gating per deliverable
+**File:** `src/components/projects/FileManager.tsx`
+- Replace the previous project-level `useDownloadGate` approach with per-deliverable `is_locked` check
+- For clients: if `deliverable.is_locked === true`, show a lock icon instead of download, with tooltip "Payment required"
+- Admin can unlock individual files from the ProjectDetailSheet
+
+### 6. ProjectDetailSheet — Lock management
+**File:** `src/components/projects/ProjectDetailSheet.tsx`
+- Admin sees lock/unlock toggle per deliverable in the file list
+- Shows linked invoice status badge (Paid/Unpaid) next to locked files
+- When invoice is paid, auto-unlock the linked deliverables (via DB trigger or client-side check)
+
+### 7. Auto-unlock on invoice payment
+**Migration:** Create a database trigger on `invoices` table
+- When `status` changes to `paid`, set `is_locked = false` on all deliverables where `linked_invoice_id` matches
+
+## Technical Details
+
+- The `quality_check` status is admin/editor-only — RLS on `projects` will filter it out for client role queries
+- The drag-and-drop handler in `handleDragEnd` will intercept QC → Done transitions to show the DeliverVideoModal
+- Invoice linking uses the existing `invoices` table with `project_id` — the new `linked_invoice_id` on deliverables provides granular per-file linkage
+- The auto-unlock trigger ensures files become downloadable immediately when payment is confirmed
+
+## Files to Create
+1. `src/components/projects/DeliverVideoModal.tsx` — Modal for admin to deliver + lock + invoice
+
+## Files to Edit
+1. `src/components/projects/KanbanColumn.tsx` — Add QC column type + styling
+2. `src/pages/admin/Projects.tsx` — Add QC column, intercept drag to show modal
+3. `src/pages/client/Projects.tsx` — Filter out QC status
+4. `src/components/projects/FileManager.tsx` — Per-deliverable lock UI
+5. `src/components/projects/ProjectDetailSheet.tsx` — Lock management UI
+6. `src/hooks/useStorage.tsx` — Pass lock state through deliverable type
+7. Database migration — Enum update, columns, trigger, RLS
+
