@@ -613,6 +613,7 @@ export function ProjectDetailSheet({
                     emptyTitle="No project assets"
                     emptyDescription="Upload raw footage, scripts, or reference materials"
                     uploadLabel="Upload raw assets"
+                    userRole={userRole || undefined}
                   />
                 </TabsContent>
 
