@@ -2,7 +2,7 @@ import { Droppable, Draggable } from '@hello-pangea/dnd';
 import { ProjectCard } from './ProjectCard';
 import { cn } from '@/lib/utils';
 
-export type ProjectStatus = 'request' | 'proposal' | 'backlog' | 'in_progress' | 'review' | 'done' | 'paid' | 'archived' | 'cancelled';
+export type ProjectStatus = 'request' | 'proposal' | 'backlog' | 'in_progress' | 'review' | 'quality_check' | 'done' | 'paid' | 'archived' | 'cancelled';
 
 export interface Project {
   id: string;
