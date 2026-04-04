@@ -146,10 +146,10 @@ export function DeliverVideoModal({
         if (lockError) throw lockError;
       }
 
-      // 4. Move project to 'done' status
+      // 4. Move project to 'review' status (client can now see and comment)
       const { error: statusError } = await supabase
         .from('projects')
-        .update({ status: 'done' })
+        .update({ status: 'review' })
         .eq('id', projectId);
 
       if (statusError) throw statusError;
