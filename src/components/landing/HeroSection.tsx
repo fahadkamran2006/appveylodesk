@@ -143,7 +143,7 @@ const HeroSection = () => {
       {/* Sticky Mobile CTA */}
       <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-background/90 backdrop-blur-xl border-t border-border/20 md:hidden safe-area-bottom">
         <Button variant="hero" size="lg" className="w-full cta-pulse" asChild>
-          <Link to="/signup">
+          <Link to="/auth/signup">
             Get Started <ArrowRight className="w-4 h-4 ml-1" />
           </Link>
         </Button>
