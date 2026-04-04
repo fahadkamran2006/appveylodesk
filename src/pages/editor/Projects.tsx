@@ -27,6 +27,7 @@ const COLUMNS: { id: ProjectStatus; title: string }[] = [
   { id: 'backlog', title: 'Backlog' },
   { id: 'in_progress', title: 'In Progress' },
   { id: 'review', title: 'Review' },
+  { id: 'quality_check', title: 'Quality Check' },
   { id: 'done', title: 'Done' },
 ];
 
@@ -70,7 +71,7 @@ export default function EditorProjects() {
         .from('projects')
         .select('id, title, description, status, due_date, editor_rate')
         .in('id', projectIds)
-        .in('status', ['backlog', 'in_progress', 'review', 'done'])
+        .in('status', ['backlog', 'in_progress', 'review', 'quality_check', 'done'])
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -101,6 +102,16 @@ export default function EditorProjects() {
 
     const { draggableId, destination } = result;
     const newStatus = destination.droppableId as ProjectStatus;
+
+    // Editors cannot move projects to 'done' — only admin can via DeliverVideoModal
+    if (newStatus === 'done') {
+      toast({
+        title: 'Not allowed',
+        description: 'Only admin can deliver videos from Quality Check.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     // Optimistic update
     setProjects((prev) => prev.map((p) => (p.id === draggableId ? { ...p, status: newStatus } : p)));
