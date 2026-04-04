@@ -315,12 +315,12 @@ export function DeliverVideoModal({
             {isSubmitting ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Delivering...
+                Sending...
               </>
             ) : (
               <>
                 {isLocked ? <Lock className="w-4 h-4 mr-2" /> : null}
-                Deliver {isLocked ? '& Lock' : 'Video'}
+                Send to Review{isLocked ? ' & Lock' : ''}
               </>
             )}
           </Button>

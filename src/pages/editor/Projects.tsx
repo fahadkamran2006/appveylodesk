@@ -103,11 +103,11 @@ export default function EditorProjects() {
     const { draggableId, destination } = result;
     const newStatus = destination.droppableId as ProjectStatus;
 
-    // Editors cannot move projects to 'done' — only admin can via DeliverVideoModal
-    if (newStatus === 'done') {
+    // Editors cannot move projects to 'review' or 'done' — only admin can
+    if (newStatus === 'review' || newStatus === 'done') {
       toast({
         title: 'Not allowed',
-        description: 'Only admin can deliver videos from Quality Check.',
+        description: 'Only admin can move projects to Review or Delivered.',
         variant: 'destructive',
       });
       return;
