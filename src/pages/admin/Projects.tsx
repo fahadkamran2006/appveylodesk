@@ -24,8 +24,8 @@ const COLUMNS: { id: ProjectStatus; title: string }[] = [
   { id: 'proposal', title: 'Proposals' },
   { id: 'backlog', title: 'Backlog' },
   { id: 'in_progress', title: 'In Progress' },
-  { id: 'review', title: 'Review' },
   { id: 'quality_check', title: 'Quality Check' },
+  { id: 'review', title: 'Review' },
   { id: 'done', title: 'Delivered' },
   { id: 'paid', title: 'Paid' },
   { id: 'archived', title: 'Archived' },
@@ -366,8 +366,8 @@ const AdminProjects = () => {
     const newStatus = destination.droppableId as ProjectStatus;
     const oldStatus = source.droppableId as ProjectStatus;
 
-    // Intercept QC → Done: show the DeliverVideoModal instead
-    if (oldStatus === 'quality_check' && newStatus === 'done') {
+    // Intercept QC → Review: show the DeliverVideoModal instead (only admin can send to review)
+    if (oldStatus === 'quality_check' && newStatus === 'review') {
       const project = projects.find(p => p.id === draggableId);
       if (project) {
         setDeliverModalProject({ id: project.id, title: project.title });

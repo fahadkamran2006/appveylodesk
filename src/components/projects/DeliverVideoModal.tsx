@@ -146,19 +146,19 @@ export function DeliverVideoModal({
         if (lockError) throw lockError;
       }
 
-      // 4. Move project to 'done' status
+      // 4. Move project to 'review' status (client can now see and comment)
       const { error: statusError } = await supabase
         .from('projects')
-        .update({ status: 'done' })
+        .update({ status: 'review' })
         .eq('id', projectId);
 
       if (statusError) throw statusError;
 
       toast({
-        title: 'Video delivered',
+        title: 'Sent to Review',
         description: isLocked
-          ? 'Video delivered and locked. Client must pay to download.'
-          : 'Video delivered to client successfully.',
+          ? 'Video sent for review and locked. Client must pay to download.'
+          : 'Video sent to client for review.',
       });
 
       onSuccess();
@@ -179,9 +179,9 @@ export function DeliverVideoModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Deliver Video</DialogTitle>
+          <DialogTitle>Send to Review</DialogTitle>
           <DialogDescription>
-            Moving "{projectTitle}" from Quality Check to Delivered.
+            Moving "{projectTitle}" from Quality Check to Review. Client will be able to view and comment.
           </DialogDescription>
         </DialogHeader>
 
@@ -315,12 +315,12 @@ export function DeliverVideoModal({
             {isSubmitting ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Delivering...
+                Sending...
               </>
             ) : (
               <>
                 {isLocked ? <Lock className="w-4 h-4 mr-2" /> : null}
-                Deliver {isLocked ? '& Lock' : 'Video'}
+                Send to Review{isLocked ? ' & Lock' : ''}
               </>
             )}
           </Button>
