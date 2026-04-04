@@ -179,9 +179,9 @@ export function DeliverVideoModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Deliver Video</DialogTitle>
+          <DialogTitle>Send to Review</DialogTitle>
           <DialogDescription>
-            Moving "{projectTitle}" from Quality Check to Delivered.
+            Moving "{projectTitle}" from Quality Check to Review. Client will be able to view and comment.
           </DialogDescription>
         </DialogHeader>
 
