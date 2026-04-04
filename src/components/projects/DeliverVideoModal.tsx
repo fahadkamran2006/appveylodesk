@@ -155,10 +155,10 @@ export function DeliverVideoModal({
       if (statusError) throw statusError;
 
       toast({
-        title: 'Video delivered',
+        title: 'Sent to Review',
         description: isLocked
-          ? 'Video delivered and locked. Client must pay to download.'
-          : 'Video delivered to client successfully.',
+          ? 'Video sent for review and locked. Client must pay to download.'
+          : 'Video sent to client for review.',
       });
 
       onSuccess();
