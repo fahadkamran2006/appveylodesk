@@ -26,9 +26,9 @@ interface Project {
 const COLUMNS: { id: ProjectStatus; title: string }[] = [
   { id: 'backlog', title: 'Backlog' },
   { id: 'in_progress', title: 'In Progress' },
-  { id: 'review', title: 'Review' },
   { id: 'quality_check', title: 'Quality Check' },
-  { id: 'done', title: 'Done' },
+  { id: 'review', title: 'Review' },
+  { id: 'done', title: 'Delivered' },
 ];
 
 const columnStyles: Partial<Record<ProjectStatus, string>> = {
