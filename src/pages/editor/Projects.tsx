@@ -71,7 +71,7 @@ export default function EditorProjects() {
         .from('projects')
         .select('id, title, description, status, due_date, editor_rate')
         .in('id', projectIds)
-        .in('status', ['backlog', 'in_progress', 'review', 'done'])
+        .in('status', ['backlog', 'in_progress', 'review', 'quality_check', 'done'])
         .order('created_at', { ascending: false });
 
       if (error) throw error;
