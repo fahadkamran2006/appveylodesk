@@ -103,6 +103,16 @@ export default function EditorProjects() {
     const { draggableId, destination } = result;
     const newStatus = destination.droppableId as ProjectStatus;
 
+    // Editors cannot move projects to 'done' — only admin can via DeliverVideoModal
+    if (newStatus === 'done') {
+      toast({
+        title: 'Not allowed',
+        description: 'Only admin can deliver videos from Quality Check.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     // Optimistic update
     setProjects((prev) => prev.map((p) => (p.id === draggableId ? { ...p, status: newStatus } : p)));
 
