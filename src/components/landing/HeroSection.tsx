@@ -96,7 +96,7 @@ const HeroSection = () => {
             className="flex flex-col sm:flex-row items-start gap-4 mb-6"
           >
             <Button variant="hero" size="xl" className="btn-glow cta-pulse" asChild>
-              <Link to="/signup">
+              <Link to="/auth/signup">
                 Get Started
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Link>
