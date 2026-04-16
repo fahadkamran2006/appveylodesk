@@ -6,18 +6,21 @@ const ProblemSection = () => {
   const problems = [
     {
       icon: DollarSign,
+      label: "01",
       title: "Five tools. Zero integration.",
-      description: "Google Drive for files. Frame.io for reviews. Slack for feedback. Stripe for invoices. A spreadsheet for everything else. You're paying for five tools that don't talk to each other.",
+      description: "Drive, Frame.io, Slack, Stripe, spreadsheets. Five subscriptions that never talk to each other.",
     },
     {
       icon: MessageSquare,
-      title: "Your clients have no idea how good you are.",
-      description: "The experience of working with you looks anything but professional — even when the edits are world-class. That's not a client problem. That's a systems problem.",
+      label: "02",
+      title: "Clients can't see your craft.",
+      description: "World-class edits, amateur-hour delivery. The experience hides the work.",
     },
     {
       icon: Clock,
-      title: "Duct tape and hope.",
-      description: "You're running your entire agency on workarounds, manual follow-ups, and sheer willpower. It works — until it doesn't.",
+      label: "03",
+      title: "Held together by willpower.",
+      description: "Manual follow-ups. Forgotten invoices. It works — until the day it doesn't.",
     },
   ];
 
