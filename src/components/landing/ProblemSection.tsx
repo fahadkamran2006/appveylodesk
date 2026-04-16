@@ -1,7 +1,9 @@
 import { MessageSquare, AlertTriangle, Clock, DollarSign } from "lucide-react";
 import { motion } from "framer-motion";
 import { TextReveal, ScrollFade, TiltCard, LineReveal } from "./ScrollAnimations";
-import { SlackIcon, GoogleDriveIcon, FrameIoIcon } from "./BrandIcons";
+import slackLogo from "@/assets/logo-slack.png";
+import driveLogo from "@/assets/logo-google-drive.avif";
+import frameioLogo from "@/assets/logo-frameio.webp";
 
 const ProblemSection = () => {
   const problems = [
@@ -45,18 +47,23 @@ const ProblemSection = () => {
           <ScrollFade delay={0.1}>
             <div className="flex items-center justify-center gap-4 sm:gap-5 mb-12">
               {[
-                { color: "#4A154B", icon: SlackIcon },
-                { color: "#5B53FF", icon: FrameIoIcon },
-                { color: "#1FA463", icon: GoogleDriveIcon },
+                { name: "Slack", logo: slackLogo, glow: "#ECB22E" },
+                { name: "Frame.io", logo: frameioLogo, glow: "#5B53FF" },
+                { name: "Google Drive", logo: driveLogo, glow: "#1FA463" },
               ].map((item, i) => (
-                <motion.div key={i} className="contents">
+                <motion.div key={item.name} className="contents">
                   {i > 0 && <span className="text-2xl text-muted-foreground/40 font-light">+</span>}
                   <motion.div
                     whileHover={{ scale: 1.08, rotateZ: 4 }}
-                    className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center shadow-lg transition-transform duration-500"
-                    style={{ backgroundColor: item.color, boxShadow: `0 8px 30px ${item.color}33` }}
+                    className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center bg-white border border-white/10 transition-transform duration-500 p-2.5 sm:p-3"
+                    style={{ boxShadow: `0 8px 30px ${item.glow}33` }}
                   >
-                    <item.icon className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
+                    <img
+                      src={item.logo}
+                      alt={`${item.name} logo`}
+                      loading="lazy"
+                      className="w-full h-full object-contain"
+                    />
                   </motion.div>
                 </motion.div>
               ))}
