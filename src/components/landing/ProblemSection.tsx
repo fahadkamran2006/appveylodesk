@@ -1,6 +1,7 @@
-import { MessageSquare, Trello, FolderOpen, AlertTriangle, Clock, Brain, DollarSign } from "lucide-react";
+import { MessageSquare, AlertTriangle, Clock, DollarSign } from "lucide-react";
 import { motion } from "framer-motion";
 import { TextReveal, ScrollFade, TiltCard, LineReveal } from "./ScrollAnimations";
+import { SlackIcon, GoogleDriveIcon, FrameIoIcon } from "./BrandIcons";
 
 const ProblemSection = () => {
   const problems = [
@@ -44,9 +45,9 @@ const ProblemSection = () => {
           <ScrollFade delay={0.1}>
             <div className="flex items-center justify-center gap-4 sm:gap-5 mb-12">
               {[
-                { color: "#4A154B", icon: MessageSquare },
-                { color: "#0079BF", icon: Trello },
-                { color: "#4285F4", icon: FolderOpen },
+                { color: "#4A154B", icon: SlackIcon },
+                { color: "#5B53FF", icon: FrameIoIcon },
+                { color: "#1FA463", icon: GoogleDriveIcon },
               ].map((item, i) => (
                 <motion.div key={i} className="contents">
                   {i > 0 && <span className="text-2xl text-muted-foreground/40 font-light">+</span>}
