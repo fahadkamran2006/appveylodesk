@@ -11,9 +11,9 @@ const Footer = () => {
       { name: "Testimonials", href: "#testimonials" },
     ],
     company: [
-      { name: "About", href: "#" },
-      { name: "Blog", href: "#" },
-      { name: "Contact", href: "#" },
+      { name: "About", href: "/about", isRoute: true },
+      { name: "Founding Members", href: "/founding-members", isRoute: true },
+      { name: "Contact", href: "mailto:hello@veylodesk.com" },
     ],
     legal: [
       { name: "Privacy", href: "/privacy", isRoute: true },
@@ -86,9 +86,15 @@ const Footer = () => {
             <ul className="space-y-3">
               {links.company.map((link) => (
                 <li key={link.name}>
-                  <a href={link.href} className="text-muted-foreground hover:text-foreground transition-colors">
-                    {link.name}
-                  </a>
+                  {(link as any).isRoute ? (
+                    <Link to={link.href} className="text-muted-foreground hover:text-foreground transition-colors">
+                      {link.name}
+                    </Link>
+                  ) : (
+                    <a href={link.href} className="text-muted-foreground hover:text-foreground transition-colors">
+                      {link.name}
+                    </a>
+                  )}
                 </li>
               ))}
             </ul>
