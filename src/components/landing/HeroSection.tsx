@@ -102,10 +102,10 @@ const HeroSection = () => {
               </Link>
             </Button>
             <Button variant="hero-outline" size="xl" asChild>
-              <Link to="#demo">
+              <a href="#demo">
                 <Play className="w-5 h-5" />
                 Watch Demo
-              </Link>
+              </a>
             </Button>
           </motion.div>
 

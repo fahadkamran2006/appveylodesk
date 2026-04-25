@@ -44,7 +44,7 @@ const DemoVideoSection = () => {
                 <div className="relative glass-card-premium rounded-2xl p-2 overflow-hidden shadow-2xl">
                   <div className="relative rounded-xl overflow-hidden bg-midnight-deep aspect-video">
                     <iframe
-                      src="https://www.youtube.com/embed/GdBbO1Svbxk"
+                      src="https://www.youtube.com/embed/v0sQxRYuzTo"
                       title="Veylodesk Demo Video"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                       allowFullScreen
