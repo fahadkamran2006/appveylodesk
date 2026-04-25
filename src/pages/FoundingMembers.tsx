@@ -260,7 +260,7 @@ export default function FoundingMembers() {
           <div className="container relative z-10 mx-auto px-6 text-center">
             <ScrollFade>
               <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold mb-5 max-w-2xl mx-auto leading-tight">
-                {spotsLeft} agency owners have already claimed their spot.{" "}
+                Only {spotsLeft} founding spots remain.{" "}
                 <span className="text-gradient">Lock yours in now.</span>
               </h2>
             </ScrollFade>
@@ -275,7 +275,7 @@ export default function FoundingMembers() {
             <ScrollFade delay={0.25}>
               <Button variant="hero" size="xl" asChild className="min-w-[240px] cta-pulse">
                 <Link to="/pricing">
-                  Claim Spot #{spotsLeft} → <ArrowRight className="w-5 h-5 ml-1" />
+                  Claim Your Spot <ArrowRight className="w-5 h-5 ml-1" />
                 </Link>
               </Button>
             </ScrollFade>
