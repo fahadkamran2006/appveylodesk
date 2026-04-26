@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -27,6 +27,9 @@ import {
   ArrowUpRight,
   Receipt,
   ShieldCheck,
+  FileText,
+  Download,
+  History,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
