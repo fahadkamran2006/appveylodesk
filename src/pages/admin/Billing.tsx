@@ -124,6 +124,7 @@ const BillingPage = () => {
   const [syncLoading, setSyncLoading] = useState(false);
   const [checkoutLoadingPlan, setCheckoutLoadingPlan] = useState<PlanKey | null>(null);
   const [pendingChange, setPendingChange] = useState<PlanKey | null>(null);
+  const [cancelOpen, setCancelOpen] = useState(false);
 
   // Proration preview state
   interface ProrationPreview {
