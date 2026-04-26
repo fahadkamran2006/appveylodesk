@@ -179,11 +179,8 @@ const BillingPage = () => {
     return 'secondary';
   };
 
-  // Redirect non-admins
-  if (!authLoading && userRole && userRole !== 'admin') {
-    navigate('/');
-    return null;
-  }
+  // Access control is handled by AdminOnlyGuard wrapping this route in App.tsx,
+  // so non-admins never reach this component. No in-render redirect needed.
 
   const loading = authLoading || subLoading;
 
