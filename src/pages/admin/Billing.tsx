@@ -99,6 +99,70 @@ const BillingPage = () => {
   const [syncLoading, setSyncLoading] = useState(false);
   const [checkoutLoadingPlan, setCheckoutLoadingPlan] = useState<PlanKey | null>(null);
 
+  // Billing history state
+  interface BillingTransaction {
+    id: string;
+    status: string;
+    invoice_number: string | null;
+    billed_at: string;
+    currency: string;
+    grand_total: string;
+    description: string;
+    invoice_url: string | null;
+  }
+  const [history, setHistory] = useState<BillingTransaction[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+
+  const fetchHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    setHistoryError(null);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session?.session?.access_token) {
+        setHistoryError('Please log in to view billing history');
+        return;
+      }
+      const { data, error } = await supabase.functions.invoke('paddle-billing-history', {
+        headers: { Authorization: `Bearer ${session.session.access_token}` },
+      });
+      if (error) {
+        setHistoryError('Could not load billing history');
+        return;
+      }
+      setHistory(data?.transactions ?? []);
+    } catch {
+      setHistoryError('Could not load billing history');
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!authLoading && userRole === 'admin') {
+      fetchHistory();
+    }
+  }, [authLoading, userRole, fetchHistory]);
+
+  const formatMoney = (amountMinor: string, currency: string) => {
+    const num = Number(amountMinor) / 100;
+    if (Number.isNaN(num)) return `${amountMinor} ${currency}`;
+    try {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currency || 'USD',
+      }).format(num);
+    } catch {
+      return `$${num.toFixed(2)}`;
+    }
+  };
+
+  const statusVariant = (s: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
+    if (s === 'completed' || s === 'paid' || s === 'billed') return 'default';
+    if (s === 'past_due' || s === 'canceled') return 'destructive';
+    return 'secondary';
+  };
+
   // Redirect non-admins
   if (!authLoading && userRole && userRole !== 'admin') {
     navigate('/');
