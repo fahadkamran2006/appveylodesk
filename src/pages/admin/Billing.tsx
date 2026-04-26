@@ -255,25 +255,41 @@ const BillingPage = () => {
     }
   };
 
+  // Compare plans by tier order to determine upgrade vs downgrade
+  const getChangeKind = (target: PlanKey): 'upgrade' | 'downgrade' | 'same' | 'new' => {
+    if (!isActive || !planTier) return 'new';
+    const currentIdx = PLAN_ORDER.indexOf(planTier as PlanKey);
+    const targetIdx = PLAN_ORDER.indexOf(target);
+    if (currentIdx === -1) return 'new';
+    if (currentIdx === targetIdx) return 'same';
+    return targetIdx > currentIdx ? 'upgrade' : 'downgrade';
+  };
+
   const handleSelectPlan = async (plan: PlanKey) => {
     if (!agencyId) {
       toast.error('Agency not found. Please refresh and try again.');
       return;
     }
 
-    // If user already has an active sub, route them to portal for plan changes
+    // Active subscriber → confirm change first, then route to portal
     if (isActive) {
-      toast.info('Opening customer portal to manage your plan…');
-      await openCustomerPortal();
+      setPendingChange(plan);
       return;
     }
 
+    // No active sub → direct checkout
     setCheckoutLoadingPlan(plan);
     try {
       openPaddleCheckout(plan, billingInterval, agencyId, user?.email);
     } finally {
       setTimeout(() => setCheckoutLoadingPlan(null), 1500);
     }
+  };
+
+  const confirmPlanChange = async () => {
+    setPendingChange(null);
+    toast.info('Opening customer portal to complete your plan change…');
+    await openCustomerPortal();
   };
 
   if (loading) {
