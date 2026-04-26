@@ -106,7 +106,59 @@ export const openPaddleCheckout = (
   userEmail?: string
 ) => {
   const priceId = getPaddlePriceId(plan, interval);
-  
+
+  // Track session lifecycle so we can tell a real abandonment apart from
+  // a "closed" event that fires after a successful payment.
+  let completed = false;
+  let failureReason: 'closed' | 'payment_failed' | 'error' | null = null;
+  let failureMessage: string | undefined;
+
+  const dispatchFailure = (reason: 'closed' | 'payment_failed' | 'error', message?: string) => {
+    window.dispatchEvent(
+      new CustomEvent('veylo:checkout-failure', {
+        detail: {
+          reason,
+          plan,
+          interval,
+          agencyId,
+          userEmail,
+          errorMessage: message,
+        },
+      })
+    );
+  };
+
+  const eventCallback = (event: any) => {
+    if (!event || !event.name) return;
+    switch (event.name) {
+      case 'checkout.completed':
+        completed = true;
+        break;
+      case 'checkout.payment.failed':
+        failureReason = 'payment_failed';
+        failureMessage =
+          event?.data?.payment?.error_message ||
+          event?.data?.error?.detail ||
+          undefined;
+        break;
+      case 'checkout.error':
+        failureReason = 'error';
+        failureMessage =
+          event?.data?.error?.detail ||
+          event?.data?.message ||
+          undefined;
+        break;
+      case 'checkout.closed':
+        if (completed) return;
+        // Defer slightly so a payment_failed/error event that arrives just
+        // before close has a chance to set the more specific reason.
+        setTimeout(() => {
+          dispatchFailure(failureReason ?? 'closed', failureMessage);
+        }, 50);
+        break;
+    }
+  };
+
   const checkoutSettings: any = {
     items: [{ priceId, quantity: 1 }],
     customData: { agency_id: agencyId },
@@ -115,6 +167,7 @@ export const openPaddleCheckout = (
       theme: 'dark',
       successUrl: `${window.location.origin}/admin/dashboard`,
     },
+    eventCallback,
   };
 
   if (userEmail) {
@@ -127,5 +180,6 @@ export const openPaddleCheckout = (
     window.Paddle.Checkout.open(checkoutSettings);
   } else {
     console.error('Paddle.js not loaded');
+    dispatchFailure('error', 'Checkout could not start. Please refresh and try again.');
   }
 };
