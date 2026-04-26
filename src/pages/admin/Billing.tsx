@@ -303,6 +303,51 @@ const BillingPage = () => {
     }
   };
 
+  // Fetch a Paddle proration preview whenever the user opens the change dialog
+  const fetchPreview = useCallback(async (plan: PlanKey) => {
+    setPreview(null);
+    setPreviewError(null);
+    setPreviewLoading(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session?.session?.access_token) {
+        setPreviewError('Please log in to preview this change.');
+        return;
+      }
+      const { data, error } = await supabase.functions.invoke('paddle-preview-change', {
+        headers: { Authorization: `Bearer ${session.session.access_token}` },
+        body: { plan, interval: billingInterval, proration_mode: 'prorated_immediately' },
+      });
+      if (error) {
+        setPreviewError("We couldn't load a proration preview. You can still continue to the customer portal.");
+        return;
+      }
+      if (data?.error) {
+        if (data.error === 'no_subscription') {
+          setPreviewError('No active subscription was found to preview against.');
+        } else {
+          setPreviewError(data.message || "We couldn't load a proration preview.");
+        }
+        return;
+      }
+      setPreview(data as ProrationPreview);
+    } catch {
+      setPreviewError("We couldn't load a proration preview. You can still continue to the customer portal.");
+    } finally {
+      setPreviewLoading(false);
+    }
+  }, [billingInterval]);
+
+  useEffect(() => {
+    if (pendingChange) {
+      fetchPreview(pendingChange);
+    } else {
+      setPreview(null);
+      setPreviewError(null);
+      setPreviewLoading(false);
+    }
+  }, [pendingChange, fetchPreview]);
+
   const confirmPlanChange = async () => {
     setPendingChange(null);
     toast.info('Opening customer portal to complete your plan change…');
