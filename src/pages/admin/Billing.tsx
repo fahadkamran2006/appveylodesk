@@ -45,7 +45,13 @@ import {
   Sparkles,
   Clock,
   Info,
+  Bell,
+  AlertTriangle,
+  RotateCw,
+  FileCheck,
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
