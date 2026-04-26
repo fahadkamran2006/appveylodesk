@@ -5,6 +5,7 @@ import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { SubscriptionGuard } from '@/components/SubscriptionGuard';
 import { DashboardHeader } from '@/components/notifications/DashboardHeader';
 import { RestrictionBanner } from '@/components/RestrictionBanner';
+import { PaymentStatusBanner } from '@/components/PaymentStatusBanner';
 import { usePushNotificationListener } from '@/hooks/usePushNotifications';
 import { cn } from '@/lib/utils';
 
@@ -53,6 +54,7 @@ export function DashboardLayout({ role, children, className, hideHeader = false 
         {!hideHeader && <DashboardHeader />}
         
         <RestrictionBanner />
+        <PaymentStatusBanner />
 
         <SubscriptionGuard bypass={shouldBypassGuard}>
           {children}
