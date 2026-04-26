@@ -115,6 +115,24 @@ const BillingPage = () => {
   const [checkoutLoadingPlan, setCheckoutLoadingPlan] = useState<PlanKey | null>(null);
   const [pendingChange, setPendingChange] = useState<PlanKey | null>(null);
 
+  // Proration preview state
+  interface ProrationPreview {
+    currency: string;
+    immediate: {
+      grand_total_minor: string | null;
+      subtotal_minor: string | null;
+      tax_minor: string | null;
+    } | null;
+    next_billing: {
+      grand_total_minor: string | null;
+      billed_at: string | null;
+      currency: string;
+    } | null;
+  }
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<ProrationPreview | null>(null);
+
   // Billing history state
   interface BillingTransaction {
     id: string;
