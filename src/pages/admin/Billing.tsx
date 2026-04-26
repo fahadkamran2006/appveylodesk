@@ -239,6 +239,19 @@ const BillingPage = () => {
     });
   };
 
+  // Track when the user last manually synced subscription data with Paddle
+  const lastSyncKey = agencyId ? `billing-last-sync:${agencyId}` : null;
+  const [lastSyncAt, setLastSyncAt] = useState<string | null>(null);
+  useEffect(() => {
+    if (!lastSyncKey) return;
+    try {
+      const raw = localStorage.getItem(lastSyncKey);
+      if (raw) setLastSyncAt(raw);
+    } catch {
+      // ignore
+    }
+  }, [lastSyncKey]);
+
   const formatMoney = (amountMinor: string, currency: string) => {
     const num = Number(amountMinor) / 100;
     if (Number.isNaN(num)) return `${amountMinor} ${currency}`;
