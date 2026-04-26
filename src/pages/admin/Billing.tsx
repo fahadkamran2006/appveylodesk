@@ -115,6 +115,24 @@ const BillingPage = () => {
   const [checkoutLoadingPlan, setCheckoutLoadingPlan] = useState<PlanKey | null>(null);
   const [pendingChange, setPendingChange] = useState<PlanKey | null>(null);
 
+  // Proration preview state
+  interface ProrationPreview {
+    currency: string;
+    immediate: {
+      grand_total_minor: string | null;
+      subtotal_minor: string | null;
+      tax_minor: string | null;
+    } | null;
+    next_billing: {
+      grand_total_minor: string | null;
+      billed_at: string | null;
+      currency: string;
+    } | null;
+  }
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<ProrationPreview | null>(null);
+
   // Billing history state
   interface BillingTransaction {
     id: string;
@@ -284,6 +302,51 @@ const BillingPage = () => {
       setTimeout(() => setCheckoutLoadingPlan(null), 1500);
     }
   };
+
+  // Fetch a Paddle proration preview whenever the user opens the change dialog
+  const fetchPreview = useCallback(async (plan: PlanKey) => {
+    setPreview(null);
+    setPreviewError(null);
+    setPreviewLoading(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session?.session?.access_token) {
+        setPreviewError('Please log in to preview this change.');
+        return;
+      }
+      const { data, error } = await supabase.functions.invoke('paddle-preview-change', {
+        headers: { Authorization: `Bearer ${session.session.access_token}` },
+        body: { plan, interval: billingInterval, proration_mode: 'prorated_immediately' },
+      });
+      if (error) {
+        setPreviewError("We couldn't load a proration preview. You can still continue to the customer portal.");
+        return;
+      }
+      if (data?.error) {
+        if (data.error === 'no_subscription') {
+          setPreviewError('No active subscription was found to preview against.');
+        } else {
+          setPreviewError(data.message || "We couldn't load a proration preview.");
+        }
+        return;
+      }
+      setPreview(data as ProrationPreview);
+    } catch {
+      setPreviewError("We couldn't load a proration preview. You can still continue to the customer portal.");
+    } finally {
+      setPreviewLoading(false);
+    }
+  }, [billingInterval]);
+
+  useEffect(() => {
+    if (pendingChange) {
+      fetchPreview(pendingChange);
+    } else {
+      setPreview(null);
+      setPreviewError(null);
+      setPreviewLoading(false);
+    }
+  }, [pendingChange, fetchPreview]);
 
   const confirmPlanChange = async () => {
     setPendingChange(null);
@@ -793,6 +856,132 @@ const BillingPage = () => {
                           </>
                         )}
                       </ul>
+                    </div>
+
+                    {/* Proration preview from Paddle */}
+                    <div className="p-3 rounded-lg border border-border/50 bg-surface-elevated">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Receipt className="w-4 h-4 text-muted-foreground" />
+                        <p className="text-sm font-semibold text-foreground">
+                          Proration preview
+                        </p>
+                        {previewLoading && (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground ml-auto" />
+                        )}
+                      </div>
+
+                      {previewLoading ? (
+                        <p className="text-xs text-muted-foreground ml-6">
+                          Calculating exact charge or credit from Paddle…
+                        </p>
+                      ) : previewError ? (
+                        <p className="text-xs text-muted-foreground ml-6">
+                          {previewError}
+                        </p>
+                      ) : preview ? (
+                        (() => {
+                          const totalMinor = preview.immediate?.grand_total_minor;
+                          const taxMinor = preview.immediate?.tax_minor;
+                          const subtotalMinor = preview.immediate?.subtotal_minor;
+                          const currency = preview.currency || 'USD';
+                          const num = totalMinor != null ? Number(totalMinor) / 100 : null;
+                          const isCredit = num !== null && num < 0;
+                          const isFree = num !== null && num === 0;
+                          const fmt = (minor: string | null | undefined) => {
+                            if (minor == null) return '—';
+                            const n = Number(minor) / 100;
+                            if (Number.isNaN(n)) return '—';
+                            try {
+                              return new Intl.NumberFormat('en-US', {
+                                style: 'currency',
+                                currency,
+                                signDisplay: 'auto',
+                              }).format(Math.abs(n));
+                            } catch {
+                              return `$${Math.abs(n).toFixed(2)}`;
+                            }
+                          };
+
+                          if (num === null) {
+                            return (
+                              <p className="text-xs text-muted-foreground ml-6">
+                                No immediate charge — change applies at next cycle.
+                              </p>
+                            );
+                          }
+
+                          return (
+                            <div className="ml-6 space-y-2">
+                              <div className="flex items-baseline justify-between gap-3">
+                                <span className="text-xs text-muted-foreground">
+                                  {isCredit
+                                    ? "Credit applied today"
+                                    : isFree
+                                      ? "Charge today"
+                                      : "Charge today (prorated)"}
+                                </span>
+                                <span
+                                  className={cn(
+                                    'text-lg font-bold tabular-nums',
+                                    isCredit
+                                      ? 'text-emerald-600 dark:text-emerald-400'
+                                      : 'text-foreground'
+                                  )}
+                                >
+                                  {isCredit ? '−' : ''}
+                                  {fmt(totalMinor)}
+                                </span>
+                              </div>
+                              {(subtotalMinor || taxMinor) && (
+                                <div className="text-[11px] text-muted-foreground space-y-0.5 pt-1 border-t border-border/40">
+                                  {subtotalMinor != null && (
+                                    <div className="flex justify-between">
+                                      <span>Subtotal</span>
+                                      <span className="tabular-nums">{fmt(subtotalMinor)}</span>
+                                    </div>
+                                  )}
+                                  {taxMinor != null && Number(taxMinor) !== 0 && (
+                                    <div className="flex justify-between">
+                                      <span>Tax</span>
+                                      <span className="tabular-nums">{fmt(taxMinor)}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                              {preview.next_billing?.grand_total_minor != null && (
+                                <div className="flex justify-between text-[11px] text-muted-foreground pt-1.5 border-t border-border/40">
+                                  <span>Next renewal</span>
+                                  <span className="tabular-nums">
+                                    {(() => {
+                                      const n = Number(preview.next_billing!.grand_total_minor) / 100;
+                                      try {
+                                        return new Intl.NumberFormat('en-US', {
+                                          style: 'currency',
+                                          currency: preview.next_billing!.currency || currency,
+                                        }).format(n);
+                                      } catch {
+                                        return `$${n.toFixed(2)}`;
+                                      }
+                                    })()}
+                                    {preview.next_billing.billed_at && (
+                                      <span className="text-muted-foreground/80">
+                                        {' '}on {formatDate(preview.next_billing.billed_at)}
+                                      </span>
+                                    )}
+                                  </span>
+                                </div>
+                              )}
+                              <p className="text-[11px] text-muted-foreground/80 pt-1">
+                                Live preview from Paddle. Final amount may vary slightly with taxes at checkout.
+                              </p>
+                            </div>
+                          );
+                        })()
+                      ) : (
+                        <p className="text-xs text-muted-foreground ml-6">
+                          Preview unavailable.
+                        </p>
+                      )}
                     </div>
 
                     {/* Portal note */}
