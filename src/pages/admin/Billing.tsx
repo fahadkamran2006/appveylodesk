@@ -154,10 +154,11 @@ const BillingPage = () => {
   }, []);
 
   useEffect(() => {
-    if (!authLoading && userRole === 'admin') {
+    // AdminOnlyGuard ensures only admins reach this component
+    if (!authLoading) {
       fetchHistory();
     }
-  }, [authLoading, userRole, fetchHistory]);
+  }, [authLoading, fetchHistory]);
 
   const formatMoney = (amountMinor: string, currency: string) => {
     const num = Number(amountMinor) / 100;
@@ -178,11 +179,8 @@ const BillingPage = () => {
     return 'secondary';
   };
 
-  // Redirect non-admins
-  if (!authLoading && userRole && userRole !== 'admin') {
-    navigate('/');
-    return null;
-  }
+  // Access control is handled by AdminOnlyGuard wrapping this route in App.tsx,
+  // so non-admins never reach this component. No in-render redirect needed.
 
   const loading = authLoading || subLoading;
 
