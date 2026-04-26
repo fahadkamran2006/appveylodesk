@@ -13,6 +13,16 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Crown,
   Zap,
   Rocket,
@@ -25,11 +35,15 @@ import {
   CreditCard,
   CheckCircle2,
   ArrowUpRight,
+  ArrowDownRight,
   Receipt,
   ShieldCheck,
   FileText,
   Download,
   History,
+  Sparkles,
+  Clock,
+  Info,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
