@@ -112,6 +112,7 @@ const BillingPage = () => {
   const [portalLoading, setPortalLoading] = useState(false);
   const [syncLoading, setSyncLoading] = useState(false);
   const [checkoutLoadingPlan, setCheckoutLoadingPlan] = useState<PlanKey | null>(null);
+  const [pendingChange, setPendingChange] = useState<PlanKey | null>(null);
 
   // Billing history state
   interface BillingTransaction {
