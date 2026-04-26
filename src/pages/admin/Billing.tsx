@@ -185,6 +185,56 @@ const BillingPage = () => {
     }
   }, [authLoading, fetchHistory]);
 
+  // Billing notification preferences (persisted per agency in localStorage)
+  interface BillingNotifPrefs {
+    masterEnabled: boolean;
+    paymentFailures: boolean;
+    renewals: boolean;
+    invoiceReady: boolean;
+  }
+  const DEFAULT_PREFS: BillingNotifPrefs = {
+    masterEnabled: true,
+    paymentFailures: true,
+    renewals: true,
+    invoiceReady: true,
+  };
+  const [notifPrefs, setNotifPrefs] = useState<BillingNotifPrefs>(DEFAULT_PREFS);
+
+  const prefsKey = agencyId ? `billing-notif-prefs:${agencyId}` : null;
+
+  useEffect(() => {
+    if (!prefsKey) return;
+    try {
+      const raw = localStorage.getItem(prefsKey);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Partial<BillingNotifPrefs>;
+        setNotifPrefs({ ...DEFAULT_PREFS, ...parsed });
+      }
+    } catch {
+      // ignore corrupt prefs
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefsKey]);
+
+  const updateNotifPref = (key: keyof BillingNotifPrefs, value: boolean) => {
+    setNotifPrefs((prev) => {
+      const next = { ...prev, [key]: value };
+      if (prefsKey) {
+        try {
+          localStorage.setItem(prefsKey, JSON.stringify(next));
+        } catch {
+          // ignore quota errors
+        }
+      }
+      if (key === 'masterEnabled') {
+        toast.success(value ? 'Billing alerts turned on' : 'Billing alerts turned off');
+      } else {
+        toast.success('Notification preference saved');
+      }
+      return next;
+    });
+  };
+
   const formatMoney = (amountMinor: string, currency: string) => {
     const num = Number(amountMinor) / 100;
     if (Number.isNaN(num)) return `${amountMinor} ${currency}`;
