@@ -504,7 +504,7 @@ const BillingPage = () => {
                 </div>
 
                 {isActive && (
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Button
                       variant="outline"
                       onClick={openCustomerPortal}
@@ -516,6 +516,14 @@ const BillingPage = () => {
                         <ExternalLink className="w-4 h-4 mr-2" />
                       )}
                       Customer Portal
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setCancelOpen(true)}
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+                    >
+                      <XCircle className="w-4 h-4 mr-2" />
+                      Cancel subscription
                     </Button>
                     <Button
                       variant="ghost"
