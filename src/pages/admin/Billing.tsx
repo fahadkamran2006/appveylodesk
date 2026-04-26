@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -27,6 +27,9 @@ import {
   ArrowUpRight,
   Receipt,
   ShieldCheck,
+  FileText,
+  Download,
+  History,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -95,6 +98,70 @@ const BillingPage = () => {
   const [portalLoading, setPortalLoading] = useState(false);
   const [syncLoading, setSyncLoading] = useState(false);
   const [checkoutLoadingPlan, setCheckoutLoadingPlan] = useState<PlanKey | null>(null);
+
+  // Billing history state
+  interface BillingTransaction {
+    id: string;
+    status: string;
+    invoice_number: string | null;
+    billed_at: string;
+    currency: string;
+    grand_total: string;
+    description: string;
+    invoice_url: string | null;
+  }
+  const [history, setHistory] = useState<BillingTransaction[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+
+  const fetchHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    setHistoryError(null);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session?.session?.access_token) {
+        setHistoryError('Please log in to view billing history');
+        return;
+      }
+      const { data, error } = await supabase.functions.invoke('paddle-billing-history', {
+        headers: { Authorization: `Bearer ${session.session.access_token}` },
+      });
+      if (error) {
+        setHistoryError('Could not load billing history');
+        return;
+      }
+      setHistory(data?.transactions ?? []);
+    } catch {
+      setHistoryError('Could not load billing history');
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!authLoading && userRole === 'admin') {
+      fetchHistory();
+    }
+  }, [authLoading, userRole, fetchHistory]);
+
+  const formatMoney = (amountMinor: string, currency: string) => {
+    const num = Number(amountMinor) / 100;
+    if (Number.isNaN(num)) return `${amountMinor} ${currency}`;
+    try {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currency || 'USD',
+      }).format(num);
+    } catch {
+      return `$${num.toFixed(2)}`;
+    }
+  };
+
+  const statusVariant = (s: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
+    if (s === 'completed' || s === 'paid' || s === 'billed') return 'default';
+    if (s === 'past_due' || s === 'canceled') return 'destructive';
+    return 'secondary';
+  };
 
   // Redirect non-admins
   if (!authLoading && userRole && userRole !== 'admin') {
@@ -471,6 +538,103 @@ const BillingPage = () => {
                   </p>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Billing History */}
+          <Card className="glass-card border-border/50">
+            <CardHeader>
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <History className="w-5 h-5" />
+                    Billing history
+                  </CardTitle>
+                  <CardDescription>
+                    Past invoices and payment receipts from Paddle. Click any row to view or download the hosted document.
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={fetchHistory}
+                  disabled={historyLoading}
+                >
+                  {historyLoading ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                  )}
+                  Refresh
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {historyLoading && history.length === 0 ? (
+                <div className="flex items-center justify-center py-10">
+                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : historyError ? (
+                <div className="p-4 rounded-lg bg-destructive/5 border border-destructive/20 text-sm text-destructive">
+                  {historyError}
+                </div>
+              ) : history.length === 0 ? (
+                <div className="text-center py-10 px-4 rounded-lg bg-muted/30 border border-dashed border-border/60">
+                  <FileText className="w-10 h-10 text-muted-foreground/60 mx-auto mb-3" />
+                  <p className="text-sm font-medium text-foreground">No billing history yet</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Once you subscribe, your invoices and receipts will appear here.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {history.map((tx) => (
+                    <div
+                      key={tx.id}
+                      className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-lg bg-surface-elevated border border-border/50 hover:border-border transition-colors"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-medium text-foreground truncate">
+                            {tx.invoice_number || tx.description}
+                          </span>
+                          <Badge variant={statusVariant(tx.status)} className="capitalize text-[10px]">
+                            {tx.status.replace('_', ' ')}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {formatDate(tx.billed_at)} · {tx.description}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3 sm:gap-4">
+                        <span className="text-sm font-semibold text-foreground tabular-nums">
+                          {formatMoney(tx.grand_total, tx.currency)}
+                        </span>
+                        {tx.invoice_url ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            asChild
+                          >
+                            <a
+                              href={tx.invoice_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <Download className="w-3.5 h-3.5 mr-1.5" />
+                              Invoice
+                            </a>
+                          </Button>
+                        ) : (
+                          <Badge variant="outline" className="text-[10px]">
+                            No document
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
