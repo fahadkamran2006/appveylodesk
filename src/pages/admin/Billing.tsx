@@ -708,6 +708,120 @@ const BillingPage = () => {
             </CardContent>
           </Card>
 
+          {/* Billing notification preferences */}
+          <Card className="glass-card border-border/50">
+            <CardHeader>
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                <div className="space-y-1">
+                  <CardTitle className="flex items-center gap-2">
+                    <Bell className="w-5 h-5" />
+                    Billing notifications
+                  </CardTitle>
+                  <CardDescription>
+                    Choose which billing emails you'd like to receive. Critical security and legal notices are always sent.
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-muted/40 border border-border/50">
+                  <div className="text-right">
+                    <Label htmlFor="billing-notif-master" className="text-sm font-medium cursor-pointer">
+                      All billing alerts
+                    </Label>
+                    <p className="text-[11px] text-muted-foreground">
+                      {notifPrefs.masterEnabled ? 'Currently on' : 'Currently off'}
+                    </p>
+                  </div>
+                  <Switch
+                    id="billing-notif-master"
+                    checked={notifPrefs.masterEnabled}
+                    onCheckedChange={(v) => updateNotifPref('masterEnabled', v)}
+                  />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div
+                className={cn(
+                  'space-y-2 transition-opacity',
+                  !notifPrefs.masterEnabled && 'opacity-50 pointer-events-none'
+                )}
+                aria-disabled={!notifPrefs.masterEnabled}
+              >
+                <div className="flex items-start justify-between gap-4 p-4 rounded-lg border border-border/50 hover:border-border transition-colors">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-destructive/10 flex items-center justify-center">
+                      <AlertTriangle className="w-4 h-4 text-destructive" />
+                    </div>
+                    <div className="min-w-0 space-y-0.5">
+                      <Label htmlFor="notif-payment-failures" className="text-sm font-medium cursor-pointer">
+                        Payment failures
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Get notified immediately if your card is declined or a renewal charge fails.
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    id="notif-payment-failures"
+                    checked={notifPrefs.paymentFailures}
+                    onCheckedChange={(v) => updateNotifPref('paymentFailures', v)}
+                    disabled={!notifPrefs.masterEnabled}
+                  />
+                </div>
+
+                <div className="flex items-start justify-between gap-4 p-4 rounded-lg border border-border/50 hover:border-border transition-colors">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <RotateCw className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="min-w-0 space-y-0.5">
+                      <Label htmlFor="notif-renewals" className="text-sm font-medium cursor-pointer">
+                        Renewal reminders
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        A heads-up email a few days before your subscription renews.
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    id="notif-renewals"
+                    checked={notifPrefs.renewals}
+                    onCheckedChange={(v) => updateNotifPref('renewals', v)}
+                    disabled={!notifPrefs.masterEnabled}
+                  />
+                </div>
+
+                <div className="flex items-start justify-between gap-4 p-4 rounded-lg border border-border/50 hover:border-border transition-colors">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                      <FileCheck className="w-4 h-4 text-emerald-500" />
+                    </div>
+                    <div className="min-w-0 space-y-0.5">
+                      <Label htmlFor="notif-invoice-ready" className="text-sm font-medium cursor-pointer">
+                        Invoice ready
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Receive a copy of every new invoice as soon as it's generated.
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    id="notif-invoice-ready"
+                    checked={notifPrefs.invoiceReady}
+                    onCheckedChange={(v) => updateNotifPref('invoiceReady', v)}
+                    disabled={!notifPrefs.masterEnabled}
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 mt-4 p-3 rounded-lg bg-muted/30 border border-border/50">
+                <Info className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-muted-foreground">
+                  Preferences are saved instantly. Critical notices (refunds, plan cancellations, security alerts) are always delivered regardless of these settings.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Billing History */}
           <Card className="glass-card border-border/50">
             <CardHeader>
