@@ -13,6 +13,16 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Crown,
   Zap,
   Rocket,
@@ -25,11 +35,15 @@ import {
   CreditCard,
   CheckCircle2,
   ArrowUpRight,
+  ArrowDownRight,
   Receipt,
   ShieldCheck,
   FileText,
   Download,
   History,
+  Sparkles,
+  Clock,
+  Info,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -98,6 +112,7 @@ const BillingPage = () => {
   const [portalLoading, setPortalLoading] = useState(false);
   const [syncLoading, setSyncLoading] = useState(false);
   const [checkoutLoadingPlan, setCheckoutLoadingPlan] = useState<PlanKey | null>(null);
+  const [pendingChange, setPendingChange] = useState<PlanKey | null>(null);
 
   // Billing history state
   interface BillingTransaction {
@@ -240,25 +255,41 @@ const BillingPage = () => {
     }
   };
 
+  // Compare plans by tier order to determine upgrade vs downgrade
+  const getChangeKind = (target: PlanKey): 'upgrade' | 'downgrade' | 'same' | 'new' => {
+    if (!isActive || !planTier) return 'new';
+    const currentIdx = PLAN_ORDER.indexOf(planTier as PlanKey);
+    const targetIdx = PLAN_ORDER.indexOf(target);
+    if (currentIdx === -1) return 'new';
+    if (currentIdx === targetIdx) return 'same';
+    return targetIdx > currentIdx ? 'upgrade' : 'downgrade';
+  };
+
   const handleSelectPlan = async (plan: PlanKey) => {
     if (!agencyId) {
       toast.error('Agency not found. Please refresh and try again.');
       return;
     }
 
-    // If user already has an active sub, route them to portal for plan changes
+    // Active subscriber → confirm change first, then route to portal
     if (isActive) {
-      toast.info('Opening customer portal to manage your plan…');
-      await openCustomerPortal();
+      setPendingChange(plan);
       return;
     }
 
+    // No active sub → direct checkout
     setCheckoutLoadingPlan(plan);
     try {
       openPaddleCheckout(plan, billingInterval, agencyId, user?.email);
     } finally {
       setTimeout(() => setCheckoutLoadingPlan(null), 1500);
     }
+  };
+
+  const confirmPlanChange = async () => {
+    setPendingChange(null);
+    toast.info('Opening customer portal to complete your plan change…');
+    await openCustomerPortal();
   };
 
   if (loading) {
@@ -476,25 +507,43 @@ const BillingPage = () => {
                         ))}
                       </ul>
 
-                      <Button
-                        variant={isCurrent ? 'outline' : key === 'growth' ? 'hero' : 'default'}
-                        className="w-full"
-                        disabled={isCurrent || isLoadingThis}
-                        onClick={() => handleSelectPlan(key)}
-                      >
-                        {isLoadingThis ? (
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        ) : isCurrent ? (
-                          'Current Plan'
-                        ) : isActive ? (
-                          <>
-                            Change to {plan.name}
-                            <ArrowUpRight className="w-4 h-4 ml-2" />
-                          </>
-                        ) : (
-                          `Choose ${plan.name}`
-                        )}
-                      </Button>
+                      {(() => {
+                        const kind = getChangeKind(key);
+                        return (
+                          <Button
+                            variant={
+                              isCurrent
+                                ? 'outline'
+                                : kind === 'downgrade'
+                                ? 'outline'
+                                : key === 'growth'
+                                ? 'hero'
+                                : 'default'
+                            }
+                            className="w-full"
+                            disabled={isCurrent || isLoadingThis}
+                            onClick={() => handleSelectPlan(key)}
+                          >
+                            {isLoadingThis ? (
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            ) : isCurrent ? (
+                              'Current Plan'
+                            ) : kind === 'upgrade' ? (
+                              <>
+                                <ArrowUpRight className="w-4 h-4 mr-2" />
+                                Upgrade to {plan.name}
+                              </>
+                            ) : kind === 'downgrade' ? (
+                              <>
+                                <ArrowDownRight className="w-4 h-4 mr-2" />
+                                Downgrade to {plan.name}
+                              </>
+                            ) : (
+                              `Choose ${plan.name}`
+                            )}
+                          </Button>
+                        );
+                      })()}
                     </div>
                   );
                 })}
@@ -638,6 +687,135 @@ const BillingPage = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Plan change confirmation dialog — explains what changes immediately vs next cycle */}
+        <AlertDialog open={pendingChange !== null} onOpenChange={(open) => !open && setPendingChange(null)}>
+          <AlertDialogContent className="max-w-lg">
+            {pendingChange && (() => {
+              const target = PLANS[pendingChange];
+              const current = currentPlan;
+              const kind = getChangeKind(pendingChange);
+              const isUpgrade = kind === 'upgrade';
+              const TargetIcon = target.icon;
+              return (
+                <>
+                  <AlertDialogHeader>
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center', target.bgColor)}>
+                        <TargetIcon className={cn('w-5 h-5', target.color)} />
+                      </div>
+                      <div>
+                        <AlertDialogTitle className="text-left">
+                          {isUpgrade ? 'Upgrade' : 'Downgrade'} to {target.name}?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-left text-xs mt-0.5">
+                          {current?.name} → {target.name}
+                        </AlertDialogDescription>
+                      </div>
+                    </div>
+                  </AlertDialogHeader>
+
+                  <div className="space-y-3">
+                    {/* Immediate changes */}
+                    <div className={cn(
+                      'p-3 rounded-lg border',
+                      isUpgrade ? 'bg-primary/5 border-primary/20' : 'bg-muted/30 border-border/50'
+                    )}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Sparkles className={cn('w-4 h-4', isUpgrade ? 'text-primary' : 'text-muted-foreground')} />
+                        <p className="text-sm font-semibold text-foreground">Effective immediately</p>
+                      </div>
+                      {isUpgrade ? (
+                        <ul className="text-xs text-muted-foreground space-y-1.5 ml-6 list-disc">
+                          <li>
+                            Client limit increases to{' '}
+                            <span className="font-medium text-foreground">
+                              {typeof target.clients === 'number' ? target.clients : 'Unlimited'}
+                            </span>
+                          </li>
+                          <li>
+                            Storage increases to{' '}
+                            <span className="font-medium text-foreground">{target.storage}</span>
+                          </li>
+                          <li>All {target.name} features unlocked</li>
+                          <li>You'll be charged a prorated amount for the rest of this cycle</li>
+                        </ul>
+                      ) : (
+                        <ul className="text-xs text-muted-foreground space-y-1.5 ml-6 list-disc">
+                          <li>You keep full {current?.name} access until your current cycle ends</li>
+                          <li>No refund is issued for the unused portion</li>
+                        </ul>
+                      )}
+                    </div>
+
+                    {/* Next cycle */}
+                    <div className="p-3 rounded-lg border border-border/50 bg-surface-elevated">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Clock className="w-4 h-4 text-muted-foreground" />
+                        <p className="text-sm font-semibold text-foreground">
+                          Next billing cycle ({formatDate(subscriptionEndsAt)})
+                        </p>
+                      </div>
+                      <ul className="text-xs text-muted-foreground space-y-1.5 ml-6 list-disc">
+                        <li>
+                          You'll be billed{' '}
+                          <span className="font-medium text-foreground">
+                            ${billingInterval === 'monthly' ? target.monthlyPrice : target.yearlyPrice}/
+                            {billingInterval === 'monthly' ? 'mo' : 'yr'}
+                          </span>{' '}
+                          on the {target.name} plan
+                        </li>
+                        {!isUpgrade && (
+                          <>
+                            <li>
+                              Client limit drops to{' '}
+                              <span className="font-medium text-foreground">
+                                {typeof target.clients === 'number' ? target.clients : 'Unlimited'}
+                              </span>
+                            </li>
+                            <li>
+                              Storage drops to{' '}
+                              <span className="font-medium text-foreground">{target.storage}</span>
+                              {currentPlan && storageUsedBytes > 0 && (
+                                <span className="text-amber-600 dark:text-amber-400">
+                                  {' '}— make sure you're under this limit
+                                </span>
+                              )}
+                            </li>
+                          </>
+                        )}
+                      </ul>
+                    </div>
+
+                    {/* Portal note */}
+                    <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/20 border border-border/40">
+                      <Info className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                      <p className="text-xs text-muted-foreground">
+                        We'll open the secure Paddle portal to confirm and process your plan change.
+                        Changes take effect once Paddle confirms — refresh this page after to see the update.
+                      </p>
+                    </div>
+                  </div>
+
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={confirmPlanChange}
+                      className={cn(
+                        isUpgrade
+                          ? 'bg-primary hover:bg-primary/90'
+                          : 'bg-foreground/80 hover:bg-foreground'
+                      )}
+                    >
+                      Continue to Paddle
+                      <ExternalLink className="w-4 h-4 ml-2" />
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </>
+              );
+            })()}
+          </AlertDialogContent>
+        </AlertDialog>
       </DashboardLayout>
     </>
   );
