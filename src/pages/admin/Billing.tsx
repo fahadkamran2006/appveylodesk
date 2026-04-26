@@ -1415,6 +1415,71 @@ const BillingPage = () => {
             })()}
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Cancel subscription confirmation */}
+        <AlertDialog open={cancelOpen} onOpenChange={setCancelOpen}>
+          <AlertDialogContent className="max-w-lg">
+            <AlertDialogHeader>
+              <div className="flex items-center gap-3 mb-1">
+                <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center">
+                  <XCircle className="w-5 h-5 text-destructive" />
+                </div>
+                <AlertDialogTitle>Cancel your {currentPlan?.name || ''} subscription?</AlertDialogTitle>
+              </div>
+              <AlertDialogDescription>
+                Your subscription will be scheduled for cancellation. You won't be charged again, and you'll keep full access until your current cycle ends.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+
+            <div className="space-y-3 py-2">
+              {/* Access window */}
+              <div className="rounded-lg border border-border/50 bg-surface-elevated p-3 space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                  <Calendar className="w-4 h-4 text-muted-foreground" />
+                  You keep access until
+                </div>
+                <p className="text-base font-semibold text-foreground ml-6">
+                  {formatDate(subscriptionEndsAt)}
+                </p>
+                <p className="text-xs text-muted-foreground ml-6">
+                  After this date, your plan switches to inactive. Projects, files, and history stay safe — you can resubscribe anytime.
+                </p>
+              </div>
+
+              {/* What happens */}
+              <div className="rounded-lg border border-border/50 bg-surface-elevated p-3 space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                  <Info className="w-4 h-4 text-muted-foreground" />
+                  What changes after that date
+                </div>
+                <ul className="text-xs text-muted-foreground space-y-1 ml-6 list-disc list-inside">
+                  <li>New project creation and client invites are paused</li>
+                  <li>Storage above the free tier becomes read-only</li>
+                  <li>Team members lose dashboard access until you reactivate</li>
+                </ul>
+              </div>
+
+              {/* Portal note */}
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/20 border border-border/40">
+                <ExternalLink className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-muted-foreground">
+                  We'll open the secure Paddle portal to confirm the cancellation. You can also reverse it from there before the cycle ends.
+                </p>
+              </div>
+            </div>
+
+            <AlertDialogFooter>
+              <AlertDialogCancel>Keep my plan</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmCancelSubscription}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Continue to cancel
+                <ExternalLink className="w-4 h-4 ml-2" />
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </DashboardLayout>
     </>
   );
