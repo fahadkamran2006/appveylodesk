@@ -13,6 +13,7 @@ import { DownloadProvider } from "@/contexts/DownloadContext";
 import { BrandingProvider } from "@/contexts/BrandingContext";
 import { GlobalUploadTray } from "@/components/upload/GlobalUploadTray";
 import { GlobalDownloadTray } from "@/components/download/GlobalDownloadTray";
+import { CheckoutFailureModal } from "@/components/CheckoutFailureModal";
 
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
