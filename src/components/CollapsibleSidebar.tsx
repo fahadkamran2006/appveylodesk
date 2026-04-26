@@ -237,7 +237,7 @@ export function CollapsibleSidebar({ role = 'admin' }: CollapsibleSidebarProps) 
               <Tooltip delayDuration={0}>
                 <TooltipTrigger asChild>
                   <Link 
-                    to="/admin/settings"
+                    to="/admin/billing"
                     className="flex justify-center items-center p-2 rounded-lg hover:bg-muted/50 transition-colors mb-2"
                   >
                     <PlanIcon className={cn("w-4 h-4", getPlanColor())} />
@@ -254,7 +254,7 @@ export function CollapsibleSidebar({ role = 'admin' }: CollapsibleSidebarProps) 
               </Tooltip>
             ) : (
               <Link 
-                to="/admin/settings"
+                to="/admin/billing"
                 className="flex flex-col gap-2 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors mb-3"
               >
                 <div className="flex items-center gap-2">
