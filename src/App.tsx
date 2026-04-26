@@ -35,6 +35,7 @@ import AdminTeam from "./pages/admin/Team";
 import AdminEditorPerformance from "./pages/admin/EditorPerformance";
 import AdminInvoices from "./pages/admin/Invoices";
 import AdminPayroll from "./pages/admin/Payroll";
+import AdminBilling from "./pages/admin/Billing";
 
 import ClientDashboard from "./pages/client/Dashboard";
 import ClientInvoices from "./pages/client/Invoices";
@@ -123,6 +124,7 @@ const App = () => (
                   <Route path="/admin/storage" element={<StoragePage />} />
                   <Route path="/admin/messages" element={<MessagesPage />} />
                   <Route path="/admin/calendar" element={<CalendarPage />} />
+                  <Route path="/admin/billing" element={<AdminBilling />} />
                   <Route path="/admin/settings" element={<SettingsPage />} />
 
                   {/* Client */}
