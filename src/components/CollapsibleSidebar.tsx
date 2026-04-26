@@ -30,6 +30,7 @@ import {
   Zap,
   Crown,
   Rocket,
+  CreditCard,
 } from 'lucide-react';
 
 interface NavItem {
@@ -48,6 +49,7 @@ const adminNavItems: NavItem[] = [
   { label: 'Storage', icon: HardDrive, href: '/admin/storage' },
   { label: 'Messages', icon: MessageSquare, href: '/admin/messages' },
   { label: 'Calendar', icon: Calendar, href: '/admin/calendar' },
+  { label: 'Billing', icon: CreditCard, href: '/admin/billing' },
   { label: 'Settings', icon: Settings, href: '/admin/settings' },
 ];
 
