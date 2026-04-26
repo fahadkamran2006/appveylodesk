@@ -635,52 +635,61 @@ const BillingPage = () => {
                   </p>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  {history.map((tx) => (
-                    <div
-                      key={tx.id}
-                      className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-lg bg-surface-elevated border border-border/50 hover:border-border transition-colors"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-medium text-foreground truncate">
-                            {tx.invoice_number || tx.description}
-                          </span>
-                          <Badge variant={statusVariant(tx.status)} className="capitalize text-[10px]">
-                            {tx.status.replace('_', ' ')}
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {formatDate(tx.billed_at)} · {tx.description}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-3 sm:gap-4">
-                        <span className="text-sm font-semibold text-foreground tabular-nums">
-                          {formatMoney(tx.grand_total, tx.currency)}
-                        </span>
-                        {tx.invoice_url ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            asChild
-                          >
-                            <a
-                              href={tx.invoice_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              <Download className="w-3.5 h-3.5 mr-1.5" />
-                              Invoice
-                            </a>
-                          </Button>
-                        ) : (
-                          <Badge variant="outline" className="text-[10px]">
-                            No document
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                <div className="rounded-lg border border-border/50 overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-surface-elevated hover:bg-surface-elevated">
+                        <TableHead className="w-[140px]">Invoice</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead className="w-[140px]">Date</TableHead>
+                        <TableHead className="w-[110px]">Status</TableHead>
+                        <TableHead className="w-[120px] text-right">Amount</TableHead>
+                        <TableHead className="w-[120px] text-right">Document</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {history.map((tx) => (
+                        <TableRow key={tx.id}>
+                          <TableCell className="font-medium text-foreground">
+                            <span className="tabular-nums text-sm">
+                              {tx.invoice_number || '—'}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground max-w-[280px] truncate">
+                            {tx.description}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                            {formatDate(tx.billed_at)}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={statusVariant(tx.status)} className="capitalize text-[10px]">
+                              {tx.status.replace('_', ' ')}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right font-semibold text-foreground tabular-nums text-sm">
+                            {formatMoney(tx.grand_total, tx.currency)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {tx.invoice_url ? (
+                              <Button variant="outline" size="sm" asChild>
+                                <a
+                                  href={tx.invoice_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  aria-label={`Download invoice ${tx.invoice_number || ''}`}
+                                >
+                                  <Download className="w-3.5 h-3.5 mr-1.5" />
+                                  PDF
+                                </a>
+                              </Button>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
               )}
             </CardContent>
