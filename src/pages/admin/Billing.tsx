@@ -437,6 +437,12 @@ const BillingPage = () => {
     await openCustomerPortal();
   };
 
+  const confirmCancelSubscription = async () => {
+    setCancelOpen(false);
+    toast.info('Opening customer portal to finish cancelling your subscription…');
+    await openCustomerPortal();
+  };
+
   if (loading) {
     return (
       <DashboardLayout role="admin">
