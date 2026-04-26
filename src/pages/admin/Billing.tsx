@@ -49,6 +49,10 @@ import {
   AlertTriangle,
   RotateCw,
   FileCheck,
+  Activity,
+  Sparkle,
+  XCircle,
+  RefreshCcw,
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
