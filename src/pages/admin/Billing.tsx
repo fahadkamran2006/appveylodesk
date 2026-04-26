@@ -507,25 +507,43 @@ const BillingPage = () => {
                         ))}
                       </ul>
 
-                      <Button
-                        variant={isCurrent ? 'outline' : key === 'growth' ? 'hero' : 'default'}
-                        className="w-full"
-                        disabled={isCurrent || isLoadingThis}
-                        onClick={() => handleSelectPlan(key)}
-                      >
-                        {isLoadingThis ? (
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        ) : isCurrent ? (
-                          'Current Plan'
-                        ) : isActive ? (
-                          <>
-                            Change to {plan.name}
-                            <ArrowUpRight className="w-4 h-4 ml-2" />
-                          </>
-                        ) : (
-                          `Choose ${plan.name}`
-                        )}
-                      </Button>
+                      {(() => {
+                        const kind = getChangeKind(key);
+                        return (
+                          <Button
+                            variant={
+                              isCurrent
+                                ? 'outline'
+                                : kind === 'downgrade'
+                                ? 'outline'
+                                : key === 'growth'
+                                ? 'hero'
+                                : 'default'
+                            }
+                            className="w-full"
+                            disabled={isCurrent || isLoadingThis}
+                            onClick={() => handleSelectPlan(key)}
+                          >
+                            {isLoadingThis ? (
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            ) : isCurrent ? (
+                              'Current Plan'
+                            ) : kind === 'upgrade' ? (
+                              <>
+                                <ArrowUpRight className="w-4 h-4 mr-2" />
+                                Upgrade to {plan.name}
+                              </>
+                            ) : kind === 'downgrade' ? (
+                              <>
+                                <ArrowDownRight className="w-4 h-4 mr-2" />
+                                Downgrade to {plan.name}
+                              </>
+                            ) : (
+                              `Choose ${plan.name}`
+                            )}
+                          </Button>
+                        );
+                      })()}
                     </div>
                   );
                 })}
