@@ -89,6 +89,7 @@ const App = () => (
                 <DownloadProvider>
                   <GlobalUploadTray />
                   <GlobalDownloadTray />
+                  <CheckoutFailureModal />
                 <Routes>
                   {/* Public invite signup routes (must remain unguarded) */}
                   <Route path="/join-client" element={<JoinClient />} />
