@@ -848,6 +848,197 @@ const BillingPage = () => {
             </CardContent>
           </Card>
 
+          {/* Subscription events timeline */}
+          {(() => {
+            type TimelineEvent = {
+              id: string;
+              kind: 'start' | 'renewal' | 'failed' | 'refund' | 'scheduled_cancel' | 'sync';
+              title: string;
+              description?: string;
+              at: string;
+              amount?: string;
+            };
+
+            const events: TimelineEvent[] = [];
+
+            // 1. Subscription start — earliest completed/billed transaction
+            const sortedAsc = [...history].sort(
+              (a, b) => new Date(a.billed_at).getTime() - new Date(b.billed_at).getTime()
+            );
+            const first = sortedAsc[0];
+            if (first) {
+              events.push({
+                id: `start-${first.id}`,
+                kind: 'start',
+                title: 'Subscription started',
+                description: first.description,
+                at: first.billed_at,
+                amount: formatMoney(first.grand_total, first.currency),
+              });
+            }
+
+            // 2. Renewals & failed payments — every subsequent transaction
+            sortedAsc.slice(1).forEach((tx) => {
+              const isFailed = tx.status === 'past_due' || tx.status === 'canceled';
+              const isRefund = tx.status === 'refunded';
+              events.push({
+                id: tx.id,
+                kind: isFailed ? 'failed' : isRefund ? 'refund' : 'renewal',
+                title: isFailed
+                  ? 'Payment failed'
+                  : isRefund
+                    ? 'Refund issued'
+                    : 'Subscription renewed',
+                description: tx.description,
+                at: tx.billed_at,
+                amount: formatMoney(tx.grand_total, tx.currency),
+              });
+            });
+
+            // 3. Scheduled cancellation — set when subscription_ends_at is in the future
+            if (isActive && subscriptionEndsAt && new Date(subscriptionEndsAt) > new Date()) {
+              events.push({
+                id: 'scheduled-cancel',
+                kind: 'scheduled_cancel',
+                title: 'Cancellation scheduled',
+                description: `Your plan will end on ${formatDate(subscriptionEndsAt)}. You'll keep access until then.`,
+                at: subscriptionEndsAt,
+              });
+            }
+
+            // 4. Last manual sync
+            if (lastSyncAt) {
+              events.push({
+                id: 'last-sync',
+                kind: 'sync',
+                title: 'Subscription synced with Paddle',
+                description: 'You manually refreshed billing data from the payment provider.',
+                at: lastSyncAt,
+              });
+            }
+
+            // Sort newest → oldest
+            events.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+
+            const eventStyle = (kind: TimelineEvent['kind']) => {
+              switch (kind) {
+                case 'start':
+                  return { Icon: Sparkle, dot: 'bg-primary text-primary-foreground', ring: 'ring-primary/30' };
+                case 'renewal':
+                  return { Icon: RefreshCcw, dot: 'bg-emerald-500 text-white', ring: 'ring-emerald-500/30' };
+                case 'failed':
+                  return { Icon: AlertTriangle, dot: 'bg-destructive text-destructive-foreground', ring: 'ring-destructive/30' };
+                case 'refund':
+                  return { Icon: ArrowDownRight, dot: 'bg-amber-500 text-white', ring: 'ring-amber-500/30' };
+                case 'scheduled_cancel':
+                  return { Icon: XCircle, dot: 'bg-amber-500 text-white', ring: 'ring-amber-500/30' };
+                case 'sync':
+                  return { Icon: RotateCw, dot: 'bg-muted text-muted-foreground', ring: 'ring-border' };
+              }
+            };
+
+            const formatDateTime = (s: string) => {
+              const d = new Date(s);
+              if (Number.isNaN(d.getTime())) return s;
+              return d.toLocaleString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+              });
+            };
+
+            return (
+              <Card className="glass-card border-border/50">
+                <CardHeader>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <Activity className="w-5 h-5" />
+                        Subscription events
+                      </CardTitle>
+                      <CardDescription>
+                        A chronological view of plan changes, renewals, cancellations, and the last time we synced with Paddle.
+                      </CardDescription>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={syncSubscription}
+                      disabled={syncLoading}
+                    >
+                      {syncLoading ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <RotateCw className="w-4 h-4 mr-2" />
+                      )}
+                      Sync now
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {historyLoading && events.length === 0 ? (
+                    <div className="flex items-center justify-center py-10">
+                      <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : events.length === 0 ? (
+                    <div className="text-center py-10 px-4 rounded-lg bg-muted/30 border border-dashed border-border/60">
+                      <Activity className="w-10 h-10 text-muted-foreground/60 mx-auto mb-3" />
+                      <p className="text-sm font-medium text-foreground">No subscription events yet</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Once you subscribe, every renewal, plan change, and sync will appear here.
+                      </p>
+                    </div>
+                  ) : (
+                    <ol className="relative space-y-5 pl-2">
+                      {/* Vertical line */}
+                      <div
+                        className="absolute left-[18px] top-2 bottom-2 w-px bg-border"
+                        aria-hidden="true"
+                      />
+                      {events.map((ev) => {
+                        const { Icon, dot, ring } = eventStyle(ev.kind);
+                        return (
+                          <li key={ev.id} className="relative flex gap-4">
+                            <div
+                              className={cn(
+                                'relative z-10 flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center ring-4 ring-background',
+                                dot,
+                                ring
+                              )}
+                            >
+                              <Icon className="w-4 h-4" />
+                            </div>
+                            <div className="flex-1 min-w-0 pt-1 pb-1">
+                              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+                                <p className="text-sm font-semibold text-foreground">{ev.title}</p>
+                                {ev.amount && (
+                                  <span className="text-xs font-medium tabular-nums text-muted-foreground">
+                                    {ev.amount}
+                                  </span>
+                                )}
+                              </div>
+                              {ev.description && (
+                                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                                  {ev.description}
+                                </p>
+                              )}
+                              <p className="text-[11px] text-muted-foreground/80 mt-1 flex items-center gap-1.5">
+                                <Clock className="w-3 h-3" />
+                                {formatDateTime(ev.at)}
+                              </p>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ol>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })()}
+
           {/* Billing History */}
           <Card className="glass-card border-border/50">
             <CardHeader>
