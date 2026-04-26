@@ -127,7 +127,7 @@ const App = () => (
                   <Route path="/admin/storage" element={<StoragePage />} />
                   <Route path="/admin/messages" element={<MessagesPage />} />
                   <Route path="/admin/calendar" element={<CalendarPage />} />
-                  <Route path="/admin/billing" element={<AdminBilling />} />
+                  <Route path="/admin/billing" element={<AdminOnlyGuard><AdminBilling /></AdminOnlyGuard>} />
                   <Route path="/admin/settings" element={<SettingsPage />} />
 
                   {/* Client */}
