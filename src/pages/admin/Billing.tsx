@@ -336,6 +336,15 @@ const BillingPage = () => {
       if (data?.success) {
         toast.success(data.message || 'Subscription synced successfully');
         refetchLimits();
+        const stamp = new Date().toISOString();
+        setLastSyncAt(stamp);
+        if (lastSyncKey) {
+          try {
+            localStorage.setItem(lastSyncKey, stamp);
+          } catch {
+            // ignore
+          }
+        }
         setTimeout(() => window.location.reload(), 800);
       }
     } catch {
