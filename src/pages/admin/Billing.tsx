@@ -858,6 +858,132 @@ const BillingPage = () => {
                       </ul>
                     </div>
 
+                    {/* Proration preview from Paddle */}
+                    <div className="p-3 rounded-lg border border-border/50 bg-surface-elevated">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Receipt className="w-4 h-4 text-muted-foreground" />
+                        <p className="text-sm font-semibold text-foreground">
+                          Proration preview
+                        </p>
+                        {previewLoading && (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground ml-auto" />
+                        )}
+                      </div>
+
+                      {previewLoading ? (
+                        <p className="text-xs text-muted-foreground ml-6">
+                          Calculating exact charge or credit from Paddle…
+                        </p>
+                      ) : previewError ? (
+                        <p className="text-xs text-muted-foreground ml-6">
+                          {previewError}
+                        </p>
+                      ) : preview ? (
+                        (() => {
+                          const totalMinor = preview.immediate?.grand_total_minor;
+                          const taxMinor = preview.immediate?.tax_minor;
+                          const subtotalMinor = preview.immediate?.subtotal_minor;
+                          const currency = preview.currency || 'USD';
+                          const num = totalMinor != null ? Number(totalMinor) / 100 : null;
+                          const isCredit = num !== null && num < 0;
+                          const isFree = num !== null && num === 0;
+                          const fmt = (minor: string | null | undefined) => {
+                            if (minor == null) return '—';
+                            const n = Number(minor) / 100;
+                            if (Number.isNaN(n)) return '—';
+                            try {
+                              return new Intl.NumberFormat('en-US', {
+                                style: 'currency',
+                                currency,
+                                signDisplay: 'auto',
+                              }).format(Math.abs(n));
+                            } catch {
+                              return `$${Math.abs(n).toFixed(2)}`;
+                            }
+                          };
+
+                          if (num === null) {
+                            return (
+                              <p className="text-xs text-muted-foreground ml-6">
+                                No immediate charge — change applies at next cycle.
+                              </p>
+                            );
+                          }
+
+                          return (
+                            <div className="ml-6 space-y-2">
+                              <div className="flex items-baseline justify-between gap-3">
+                                <span className="text-xs text-muted-foreground">
+                                  {isCredit
+                                    ? "Credit applied today"
+                                    : isFree
+                                      ? "Charge today"
+                                      : "Charge today (prorated)"}
+                                </span>
+                                <span
+                                  className={cn(
+                                    'text-lg font-bold tabular-nums',
+                                    isCredit
+                                      ? 'text-emerald-600 dark:text-emerald-400'
+                                      : 'text-foreground'
+                                  )}
+                                >
+                                  {isCredit ? '−' : ''}
+                                  {fmt(totalMinor)}
+                                </span>
+                              </div>
+                              {(subtotalMinor || taxMinor) && (
+                                <div className="text-[11px] text-muted-foreground space-y-0.5 pt-1 border-t border-border/40">
+                                  {subtotalMinor != null && (
+                                    <div className="flex justify-between">
+                                      <span>Subtotal</span>
+                                      <span className="tabular-nums">{fmt(subtotalMinor)}</span>
+                                    </div>
+                                  )}
+                                  {taxMinor != null && Number(taxMinor) !== 0 && (
+                                    <div className="flex justify-between">
+                                      <span>Tax</span>
+                                      <span className="tabular-nums">{fmt(taxMinor)}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                              {preview.next_billing?.grand_total_minor != null && (
+                                <div className="flex justify-between text-[11px] text-muted-foreground pt-1.5 border-t border-border/40">
+                                  <span>Next renewal</span>
+                                  <span className="tabular-nums">
+                                    {(() => {
+                                      const n = Number(preview.next_billing!.grand_total_minor) / 100;
+                                      try {
+                                        return new Intl.NumberFormat('en-US', {
+                                          style: 'currency',
+                                          currency: preview.next_billing!.currency || currency,
+                                        }).format(n);
+                                      } catch {
+                                        return `$${n.toFixed(2)}`;
+                                      }
+                                    })()}
+                                    {preview.next_billing.billed_at && (
+                                      <span className="text-muted-foreground/80">
+                                        {' '}on {formatDate(preview.next_billing.billed_at)}
+                                      </span>
+                                    )}
+                                  </span>
+                                </div>
+                              )}
+                              <p className="text-[11px] text-muted-foreground/80 pt-1">
+                                Live preview from Paddle. Final amount may vary slightly with taxes at checkout.
+                              </p>
+                            </div>
+                          );
+                        })()
+                      ) : (
+                        <p className="text-xs text-muted-foreground ml-6">
+                          Preview unavailable.
+                        </p>
+                      )}
+                    </div>
+
                     {/* Portal note */}
                     <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/20 border border-border/40">
                       <Info className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
