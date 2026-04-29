@@ -1510,7 +1510,6 @@ const BillingPage = () => {
                   We'll open the secure Paddle portal to confirm the cancellation. You can also reverse it from there before the cycle ends.
                 </p>
               </div>
-            </div>
 
               {/* Reason for cancelling */}
               <div className="rounded-lg border border-border/50 bg-surface-elevated p-3 space-y-3">
