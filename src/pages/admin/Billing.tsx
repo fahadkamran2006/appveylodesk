@@ -1452,7 +1452,16 @@ const BillingPage = () => {
         </AlertDialog>
 
         {/* Cancel subscription confirmation */}
-        <AlertDialog open={cancelOpen} onOpenChange={setCancelOpen}>
+        <AlertDialog
+          open={cancelOpen}
+          onOpenChange={(open) => {
+            setCancelOpen(open);
+            if (!open) {
+              setCancelReason('');
+              setCancelReasonDetail('');
+            }
+          }}
+        >
           <AlertDialogContent className="max-w-lg">
             <AlertDialogHeader>
               <div className="flex items-center gap-3 mb-1">
