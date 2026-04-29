@@ -1512,11 +1512,45 @@ const BillingPage = () => {
               </div>
             </div>
 
+              {/* Reason for cancelling */}
+              <div className="rounded-lg border border-border/50 bg-surface-elevated p-3 space-y-3">
+                <div>
+                  <Label className="text-sm font-medium text-foreground">
+                    Why are you cancelling? <span className="text-muted-foreground font-normal">(optional, but helpful)</span>
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Your feedback helps us improve. Pick the closest reason.
+                  </p>
+                </div>
+                <RadioGroup value={cancelReason} onValueChange={setCancelReason} className="grid gap-2">
+                  {CANCEL_REASONS.map((opt) => (
+                    <label
+                      key={opt.value}
+                      htmlFor={`cancel-reason-${opt.value}`}
+                      className="flex items-center gap-2 text-sm text-foreground cursor-pointer rounded-md px-2 py-1.5 hover:bg-muted/40 transition-colors"
+                    >
+                      <RadioGroupItem id={`cancel-reason-${opt.value}`} value={opt.value} />
+                      <span>{opt.label}</span>
+                    </label>
+                  ))}
+                </RadioGroup>
+                {cancelReason === 'other' && (
+                  <Textarea
+                    value={cancelReasonDetail}
+                    onChange={(e) => setCancelReasonDetail(e.target.value)}
+                    placeholder="Tell us a little more (optional)…"
+                    className="min-h-[72px] resize-none"
+                  />
+                )}
+              </div>
+            </div>
+
             <AlertDialogFooter>
               <AlertDialogCancel>Keep my plan</AlertDialogCancel>
               <AlertDialogAction
                 onClick={confirmCancelSubscription}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={!cancelReason}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
               >
                 Continue to cancel
                 <ExternalLink className="w-4 h-4 ml-2" />
