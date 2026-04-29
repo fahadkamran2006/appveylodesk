@@ -127,6 +127,8 @@ const BillingPage = () => {
   const [checkoutLoadingPlan, setCheckoutLoadingPlan] = useState<PlanKey | null>(null);
   const [pendingChange, setPendingChange] = useState<PlanKey | null>(null);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState<string>('');
+  const [cancelReasonDetail, setCancelReasonDetail] = useState<string>('');
 
   // Proration preview state
   interface ProrationPreview {
