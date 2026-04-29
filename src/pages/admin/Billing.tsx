@@ -441,7 +441,38 @@ const BillingPage = () => {
     await openCustomerPortal();
   };
 
+  const CANCEL_REASONS: { value: string; label: string }[] = [
+    { value: 'too_expensive', label: 'Too expensive' },
+    { value: 'missing_features', label: 'Missing features I need' },
+    { value: 'switching', label: 'Switching to another tool' },
+    { value: 'not_using', label: "I'm not using it enough" },
+    { value: 'temporary_pause', label: 'Just need a temporary pause' },
+    { value: 'technical_issues', label: 'Technical issues or bugs' },
+    { value: 'other', label: 'Other' },
+  ];
+
   const confirmCancelSubscription = async () => {
+    if (!cancelReason) {
+      toast.error('Please select a reason so we can improve.');
+      return;
+    }
+    try {
+      const reasonLabel = CANCEL_REASONS.find((r) => r.value === cancelReason)?.label || cancelReason;
+      const key = agencyId ? `billing-cancel-reason:${agencyId}` : null;
+      if (key) {
+        localStorage.setItem(
+          key,
+          JSON.stringify({
+            reason: cancelReason,
+            label: reasonLabel,
+            detail: cancelReasonDetail.trim(),
+            at: new Date().toISOString(),
+          }),
+        );
+      }
+    } catch {
+      // ignore storage errors
+    }
     setCancelOpen(false);
     toast.info('Opening customer portal to finish cancelling your subscription…');
     await openCustomerPortal();
