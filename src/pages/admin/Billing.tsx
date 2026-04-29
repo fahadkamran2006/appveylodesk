@@ -13,6 +13,8 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Textarea } from '@/components/ui/textarea';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -125,6 +127,8 @@ const BillingPage = () => {
   const [checkoutLoadingPlan, setCheckoutLoadingPlan] = useState<PlanKey | null>(null);
   const [pendingChange, setPendingChange] = useState<PlanKey | null>(null);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState<string>('');
+  const [cancelReasonDetail, setCancelReasonDetail] = useState<string>('');
 
   // Proration preview state
   interface ProrationPreview {
@@ -437,7 +441,38 @@ const BillingPage = () => {
     await openCustomerPortal();
   };
 
+  const CANCEL_REASONS: { value: string; label: string }[] = [
+    { value: 'too_expensive', label: 'Too expensive' },
+    { value: 'missing_features', label: 'Missing features I need' },
+    { value: 'switching', label: 'Switching to another tool' },
+    { value: 'not_using', label: "I'm not using it enough" },
+    { value: 'temporary_pause', label: 'Just need a temporary pause' },
+    { value: 'technical_issues', label: 'Technical issues or bugs' },
+    { value: 'other', label: 'Other' },
+  ];
+
   const confirmCancelSubscription = async () => {
+    if (!cancelReason) {
+      toast.error('Please select a reason so we can improve.');
+      return;
+    }
+    try {
+      const reasonLabel = CANCEL_REASONS.find((r) => r.value === cancelReason)?.label || cancelReason;
+      const key = agencyId ? `billing-cancel-reason:${agencyId}` : null;
+      if (key) {
+        localStorage.setItem(
+          key,
+          JSON.stringify({
+            reason: cancelReason,
+            label: reasonLabel,
+            detail: cancelReasonDetail.trim(),
+            at: new Date().toISOString(),
+          }),
+        );
+      }
+    } catch {
+      // ignore storage errors
+    }
     setCancelOpen(false);
     toast.info('Opening customer portal to finish cancelling your subscription…');
     await openCustomerPortal();
@@ -1417,7 +1452,16 @@ const BillingPage = () => {
         </AlertDialog>
 
         {/* Cancel subscription confirmation */}
-        <AlertDialog open={cancelOpen} onOpenChange={setCancelOpen}>
+        <AlertDialog
+          open={cancelOpen}
+          onOpenChange={(open) => {
+            setCancelOpen(open);
+            if (!open) {
+              setCancelReason('');
+              setCancelReasonDetail('');
+            }
+          }}
+        >
           <AlertDialogContent className="max-w-lg">
             <AlertDialogHeader>
               <div className="flex items-center gap-3 mb-1">
@@ -1466,13 +1510,46 @@ const BillingPage = () => {
                   We'll open the secure Paddle portal to confirm the cancellation. You can also reverse it from there before the cycle ends.
                 </p>
               </div>
+
+              {/* Reason for cancelling */}
+              <div className="rounded-lg border border-border/50 bg-surface-elevated p-3 space-y-3">
+                <div>
+                  <Label className="text-sm font-medium text-foreground">
+                    Why are you cancelling? <span className="text-muted-foreground font-normal">(optional, but helpful)</span>
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Your feedback helps us improve. Pick the closest reason.
+                  </p>
+                </div>
+                <RadioGroup value={cancelReason} onValueChange={setCancelReason} className="grid gap-2">
+                  {CANCEL_REASONS.map((opt) => (
+                    <label
+                      key={opt.value}
+                      htmlFor={`cancel-reason-${opt.value}`}
+                      className="flex items-center gap-2 text-sm text-foreground cursor-pointer rounded-md px-2 py-1.5 hover:bg-muted/40 transition-colors"
+                    >
+                      <RadioGroupItem id={`cancel-reason-${opt.value}`} value={opt.value} />
+                      <span>{opt.label}</span>
+                    </label>
+                  ))}
+                </RadioGroup>
+                {cancelReason === 'other' && (
+                  <Textarea
+                    value={cancelReasonDetail}
+                    onChange={(e) => setCancelReasonDetail(e.target.value)}
+                    placeholder="Tell us a little more (optional)…"
+                    className="min-h-[72px] resize-none"
+                  />
+                )}
+              </div>
             </div>
 
             <AlertDialogFooter>
               <AlertDialogCancel>Keep my plan</AlertDialogCancel>
               <AlertDialogAction
                 onClick={confirmCancelSubscription}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={!cancelReason}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
               >
                 Continue to cancel
                 <ExternalLink className="w-4 h-4 ml-2" />
