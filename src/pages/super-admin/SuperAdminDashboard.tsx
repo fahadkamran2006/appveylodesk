@@ -72,6 +72,7 @@ export default function SuperAdminDashboard() {
           <TabsList>
             <TabsTrigger value="agencies">Agency Leaderboard</TabsTrigger>
             <TabsTrigger value="storage">Storage Monitor</TabsTrigger>
+            <TabsTrigger value="cancellations">Cancellations</TabsTrigger>
             <TabsTrigger value="bugs">Bug Reports</TabsTrigger>
             <TabsTrigger value="marketing">Marketing</TabsTrigger>
             <TabsTrigger value="logs">System Events</TabsTrigger>
