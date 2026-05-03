@@ -1527,6 +1527,7 @@ const BillingPage = () => {
             if (!open) {
               setCancelReason('');
               setCancelReasonDetail('');
+              setCancelReasonError(null);
             }
           }}
         >
