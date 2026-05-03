@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import AgencyDrilldownSheet from "@/components/super-admin/AgencyDrilldownSheet";
 import BugReportsTab from "@/components/super-admin/BugReportsTab";
 import MarketingTab from "@/components/super-admin/MarketingTab";
+import CancellationsTab from "@/components/super-admin/CancellationsTab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -71,6 +72,7 @@ export default function SuperAdminDashboard() {
           <TabsList>
             <TabsTrigger value="agencies">Agency Leaderboard</TabsTrigger>
             <TabsTrigger value="storage">Storage Monitor</TabsTrigger>
+            <TabsTrigger value="cancellations">Cancellations</TabsTrigger>
             <TabsTrigger value="bugs">Bug Reports</TabsTrigger>
             <TabsTrigger value="marketing">Marketing</TabsTrigger>
             <TabsTrigger value="logs">System Events</TabsTrigger>
@@ -142,6 +144,11 @@ export default function SuperAdminDashboard() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Cancellations */}
+          <TabsContent value="cancellations">
+            <CancellationsTab />
           </TabsContent>
 
           {/* Bug Reports */}
