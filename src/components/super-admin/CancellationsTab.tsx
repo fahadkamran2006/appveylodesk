@@ -86,12 +86,13 @@ export default function CancellationsTab({ onOpenAgency }: CancellationsTabProps
   }, [preset, customRange]);
 
   // Reset page when filters change
-  useEffect(() => { setPage(0); }, [preset, customRange, search, sortKey, sortDir]);
+  useEffect(() => { setPage(0); }, [preset, customRange, search, sortKey, sortDir, reasonFilter]);
 
   const buildQuery = () => {
     let q = supabase.from('subscription_cancellation_logs').select('*', { count: 'exact' });
     if (dateBounds?.from) q = q.gte('created_at', dateBounds.from);
     if (dateBounds?.to) q = q.lte('created_at', dateBounds.to);
+    if (reasonFilter.length > 0) q = q.in('reason_code', reasonFilter);
     const term = search.trim();
     if (term) {
       const safe = term.replace(/[%,()]/g, '');
