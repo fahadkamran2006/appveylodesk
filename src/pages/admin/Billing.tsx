@@ -1581,16 +1581,31 @@ const BillingPage = () => {
               </div>
 
               {/* Reason for cancelling */}
-              <div className="rounded-lg border border-border/50 bg-surface-elevated p-3 space-y-3">
+              <div
+                id="cancel-reason-section"
+                className={cn(
+                  'rounded-lg border bg-surface-elevated p-3 space-y-3 transition-colors',
+                  cancelReasonError ? 'border-destructive ring-1 ring-destructive/40' : 'border-border/50',
+                )}
+                aria-invalid={!!cancelReasonError}
+                aria-describedby={cancelReasonError ? 'cancel-reason-error' : undefined}
+              >
                 <div>
-                  <Label className="text-sm font-medium text-foreground">
-                    Why are you cancelling? <span className="text-muted-foreground font-normal">(optional, but helpful)</span>
+                  <Label className={cn('text-sm font-medium', cancelReasonError ? 'text-destructive' : 'text-foreground')}>
+                    Why are you cancelling? <span className="text-destructive">*</span>
                   </Label>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Your feedback helps us improve. Pick the closest reason.
+                    Your feedback helps us improve. Pick the closest reason — required to continue.
                   </p>
                 </div>
-                <RadioGroup value={cancelReason} onValueChange={setCancelReason} className="grid gap-2">
+                <RadioGroup
+                  value={cancelReason}
+                  onValueChange={(v) => {
+                    setCancelReason(v);
+                    if (v) setCancelReasonError(null);
+                  }}
+                  className="grid gap-2"
+                >
                   {CANCEL_REASONS.map((opt) => (
                     <label
                       key={opt.value}
@@ -1610,18 +1625,43 @@ const BillingPage = () => {
                     className="min-h-[72px] resize-none"
                   />
                 )}
+                {cancelReasonError && (
+                  <p
+                    id="cancel-reason-error"
+                    role="alert"
+                    className="flex items-center gap-1.5 text-xs text-destructive font-medium"
+                  >
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    {cancelReasonError}
+                  </p>
+                )}
               </div>
             </div>
 
             <AlertDialogFooter>
               <AlertDialogCancel>Keep my plan</AlertDialogCancel>
               <AlertDialogAction
-                onClick={confirmCancelSubscription}
-                disabled={!cancelReason}
+                onClick={(e) => {
+                  // Prevent auto-close when validation fails
+                  if (!cancelReason || cancelSubmitting) {
+                    e.preventDefault();
+                  }
+                  confirmCancelSubscription();
+                }}
+                disabled={cancelSubmitting}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
               >
-                Continue to cancel
-                <ExternalLink className="w-4 h-4 ml-2" />
+                {cancelSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Saving…
+                  </>
+                ) : (
+                  <>
+                    Continue to cancel
+                    <ExternalLink className="w-4 h-4 ml-2" />
+                  </>
+                )}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
