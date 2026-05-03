@@ -1010,6 +1010,18 @@ const BillingPage = () => {
               });
             }
 
+            // 3b. User-submitted cancellation requests (audit trail)
+            cancellationLogs.forEach((log) => {
+              const detailSuffix = log.detail ? ` — "${log.detail}"` : '';
+              events.push({
+                id: `cancel-log-${log.id}`,
+                kind: 'cancel_request',
+                title: 'Cancellation requested',
+                description: `Reason: ${log.reason_label}${detailSuffix}`,
+                at: log.created_at,
+              });
+            });
+
             // 4. Last manual sync
             if (lastSyncAt) {
               events.push({
