@@ -27,6 +27,12 @@ interface AgencyDrilldownSheetProps {
   agency: AgencyStat | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  cancellationHighlight?: {
+    cancellationId: string;
+    reasonLabel: string;
+    detail: string | null;
+    createdAt: string;
+  } | null;
 }
 
 interface DrilldownData {
