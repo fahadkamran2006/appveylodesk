@@ -37,7 +37,7 @@ type SortKey = 'created_at' | 'reason_label' | 'plan_tier';
 
 const PAGE_SIZE = 50;
 
-interface CancellationHighlight {
+export interface CancellationHighlight {
   cancellationId: string;
   reasonLabel: string;
   detail: string | null;
