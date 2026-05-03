@@ -199,7 +199,8 @@ export default function SuperAdminDashboard() {
       <AgencyDrilldownSheet
         agency={selectedAgency}
         open={!!selectedAgency}
-        onOpenChange={(open) => !open && setSelectedAgency(null)}
+        onOpenChange={(open) => { if (!open) { setSelectedAgency(null); setHighlight(null); } }}
+        cancellationHighlight={highlight}
       />
     </div>
   );
