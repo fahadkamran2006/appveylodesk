@@ -1525,6 +1525,42 @@ export type Database = {
         }
         Relationships: []
       }
+      subscription_cancellation_logs: {
+        Row: {
+          agency_id: string
+          created_at: string
+          detail: string | null
+          id: string
+          plan_tier: string | null
+          reason_code: string
+          reason_label: string
+          subscription_ends_at: string | null
+          user_id: string
+        }
+        Insert: {
+          agency_id: string
+          created_at?: string
+          detail?: string | null
+          id?: string
+          plan_tier?: string | null
+          reason_code: string
+          reason_label: string
+          subscription_ends_at?: string | null
+          user_id: string
+        }
+        Update: {
+          agency_id?: string
+          created_at?: string
+          detail?: string | null
+          id?: string
+          plan_tier?: string | null
+          reason_code?: string
+          reason_label?: string
+          subscription_ends_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       system_logs: {
         Row: {
           created_at: string
