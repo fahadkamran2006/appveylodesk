@@ -359,6 +359,35 @@ export default function CancellationsTab({ onOpenAgency }: CancellationsTabProps
         </Button>
       </div>
 
+      {/* Reason quick filters */}
+      {stats && stats.reasonRanking.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted-foreground mr-1">Reason:</span>
+          {stats.reasonRanking.map((r) => {
+            const active = reasonFilter.includes(r.code);
+            return (
+              <Badge
+                key={r.code}
+                variant={active ? 'default' : 'outline'}
+                className="cursor-pointer gap-1 select-none"
+                onClick={() => setReasonFilter((prev) =>
+                  prev.includes(r.code) ? prev.filter((c) => c !== r.code) : [...prev, r.code]
+                )}
+                title={`Code: ${r.code}`}
+              >
+                {r.label}
+                <span className="opacity-60 text-[10px] tabular-nums">{r.count}</span>
+              </Badge>
+            );
+          })}
+          {reasonFilter.length > 0 && (
+            <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={() => setReasonFilter([])}>
+              <X className="w-3 h-3 mr-1" /> Clear
+            </Button>
+          )}
+        </div>
+      )}
+
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <SummaryCard icon={XCircle} label="Cancellations in range" value={stats ? String(stats.total) : null} />
