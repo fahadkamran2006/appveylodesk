@@ -129,6 +129,20 @@ const BillingPage = () => {
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState<string>('');
   const [cancelReasonDetail, setCancelReasonDetail] = useState<string>('');
+  const [cancelReasonError, setCancelReasonError] = useState<string | null>(null);
+  const [cancelSubmitting, setCancelSubmitting] = useState(false);
+
+  // Persisted cancellation logs (audit trail)
+  interface CancellationLog {
+    id: string;
+    reason_code: string;
+    reason_label: string;
+    detail: string | null;
+    subscription_ends_at: string | null;
+    plan_tier: string | null;
+    created_at: string;
+  }
+  const [cancellationLogs, setCancellationLogs] = useState<CancellationLog[]>([]);
 
   // Proration preview state
   interface ProrationPreview {
@@ -256,6 +270,21 @@ const BillingPage = () => {
       // ignore
     }
   }, [lastSyncKey]);
+
+  // Fetch persisted cancellation logs for the audit trail
+  const fetchCancellationLogs = useCallback(async () => {
+    if (!agencyId) return;
+    const { data, error } = await supabase
+      .from('subscription_cancellation_logs')
+      .select('id, reason_code, reason_label, detail, subscription_ends_at, plan_tier, created_at')
+      .eq('agency_id', agencyId)
+      .order('created_at', { ascending: false });
+    if (!error && data) setCancellationLogs(data as CancellationLog[]);
+  }, [agencyId]);
+
+  useEffect(() => {
+    fetchCancellationLogs();
+  }, [fetchCancellationLogs]);
 
   const formatMoney = (amountMinor: string, currency: string) => {
     const num = Number(amountMinor) / 100;
@@ -453,26 +482,51 @@ const BillingPage = () => {
 
   const confirmCancelSubscription = async () => {
     if (!cancelReason) {
-      toast.error('Please select a reason so we can improve.');
+      setCancelReasonError('Please select a reason before continuing.');
+      // Focus the first radio for accessibility
+      const firstRadio = document.getElementById(`cancel-reason-${CANCEL_REASONS[0].value}`);
+      firstRadio?.focus();
       return;
     }
+    setCancelReasonError(null);
+    setCancelSubmitting(true);
+    const reasonLabel = CANCEL_REASONS.find((r) => r.value === cancelReason)?.label || cancelReason;
+    const detail = cancelReasonDetail.trim();
+
+    // Persist to server-side audit trail
+    if (agencyId && user?.id) {
+      const { error } = await supabase.from('subscription_cancellation_logs').insert({
+        agency_id: agencyId,
+        user_id: user.id,
+        reason_code: cancelReason,
+        reason_label: reasonLabel,
+        detail: detail || null,
+        subscription_ends_at: subscriptionEndsAt || null,
+        plan_tier: planTier || null,
+      });
+      if (error) {
+        setCancelSubmitting(false);
+        toast.error('Could not save your cancellation reason. Please try again.');
+        return;
+      }
+      // Refresh logs so the timeline updates immediately
+      fetchCancellationLogs();
+    }
+
+    // Keep local backup
     try {
-      const reasonLabel = CANCEL_REASONS.find((r) => r.value === cancelReason)?.label || cancelReason;
       const key = agencyId ? `billing-cancel-reason:${agencyId}` : null;
       if (key) {
         localStorage.setItem(
           key,
-          JSON.stringify({
-            reason: cancelReason,
-            label: reasonLabel,
-            detail: cancelReasonDetail.trim(),
-            at: new Date().toISOString(),
-          }),
+          JSON.stringify({ reason: cancelReason, label: reasonLabel, detail, at: new Date().toISOString() }),
         );
       }
     } catch {
-      // ignore storage errors
+      // ignore
     }
+
+    setCancelSubmitting(false);
     setCancelOpen(false);
     toast.info('Opening customer portal to finish cancelling your subscription…');
     await openCustomerPortal();
@@ -902,7 +956,7 @@ const BillingPage = () => {
           {(() => {
             type TimelineEvent = {
               id: string;
-              kind: 'start' | 'renewal' | 'failed' | 'refund' | 'scheduled_cancel' | 'sync';
+              kind: 'start' | 'renewal' | 'failed' | 'refund' | 'scheduled_cancel' | 'cancel_request' | 'sync';
               title: string;
               description?: string;
               at: string;
@@ -956,6 +1010,18 @@ const BillingPage = () => {
               });
             }
 
+            // 3b. User-submitted cancellation requests (audit trail)
+            cancellationLogs.forEach((log) => {
+              const detailSuffix = log.detail ? ` — "${log.detail}"` : '';
+              events.push({
+                id: `cancel-log-${log.id}`,
+                kind: 'cancel_request',
+                title: 'Cancellation requested',
+                description: `Reason: ${log.reason_label}${detailSuffix}`,
+                at: log.created_at,
+              });
+            });
+
             // 4. Last manual sync
             if (lastSyncAt) {
               events.push({
@@ -982,6 +1048,8 @@ const BillingPage = () => {
                   return { Icon: ArrowDownRight, dot: 'bg-amber-500 text-white', ring: 'ring-amber-500/30' };
                 case 'scheduled_cancel':
                   return { Icon: XCircle, dot: 'bg-amber-500 text-white', ring: 'ring-amber-500/30' };
+                case 'cancel_request':
+                  return { Icon: XCircle, dot: 'bg-destructive text-destructive-foreground', ring: 'ring-destructive/30' };
                 case 'sync':
                   return { Icon: RotateCw, dot: 'bg-muted text-muted-foreground', ring: 'ring-border' };
               }
@@ -1459,6 +1527,7 @@ const BillingPage = () => {
             if (!open) {
               setCancelReason('');
               setCancelReasonDetail('');
+              setCancelReasonError(null);
             }
           }}
         >
@@ -1512,16 +1581,31 @@ const BillingPage = () => {
               </div>
 
               {/* Reason for cancelling */}
-              <div className="rounded-lg border border-border/50 bg-surface-elevated p-3 space-y-3">
+              <div
+                id="cancel-reason-section"
+                className={cn(
+                  'rounded-lg border bg-surface-elevated p-3 space-y-3 transition-colors',
+                  cancelReasonError ? 'border-destructive ring-1 ring-destructive/40' : 'border-border/50',
+                )}
+                aria-invalid={!!cancelReasonError}
+                aria-describedby={cancelReasonError ? 'cancel-reason-error' : undefined}
+              >
                 <div>
-                  <Label className="text-sm font-medium text-foreground">
-                    Why are you cancelling? <span className="text-muted-foreground font-normal">(optional, but helpful)</span>
+                  <Label className={cn('text-sm font-medium', cancelReasonError ? 'text-destructive' : 'text-foreground')}>
+                    Why are you cancelling? <span className="text-destructive">*</span>
                   </Label>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Your feedback helps us improve. Pick the closest reason.
+                    Your feedback helps us improve. Pick the closest reason — required to continue.
                   </p>
                 </div>
-                <RadioGroup value={cancelReason} onValueChange={setCancelReason} className="grid gap-2">
+                <RadioGroup
+                  value={cancelReason}
+                  onValueChange={(v) => {
+                    setCancelReason(v);
+                    if (v) setCancelReasonError(null);
+                  }}
+                  className="grid gap-2"
+                >
                   {CANCEL_REASONS.map((opt) => (
                     <label
                       key={opt.value}
@@ -1541,18 +1625,43 @@ const BillingPage = () => {
                     className="min-h-[72px] resize-none"
                   />
                 )}
+                {cancelReasonError && (
+                  <p
+                    id="cancel-reason-error"
+                    role="alert"
+                    className="flex items-center gap-1.5 text-xs text-destructive font-medium"
+                  >
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    {cancelReasonError}
+                  </p>
+                )}
               </div>
             </div>
 
             <AlertDialogFooter>
               <AlertDialogCancel>Keep my plan</AlertDialogCancel>
               <AlertDialogAction
-                onClick={confirmCancelSubscription}
-                disabled={!cancelReason}
+                onClick={(e) => {
+                  // Prevent auto-close when validation fails
+                  if (!cancelReason || cancelSubmitting) {
+                    e.preventDefault();
+                  }
+                  confirmCancelSubscription();
+                }}
+                disabled={cancelSubmitting}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
               >
-                Continue to cancel
-                <ExternalLink className="w-4 h-4 ml-2" />
+                {cancelSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Saving…
+                  </>
+                ) : (
+                  <>
+                    Continue to cancel
+                    <ExternalLink className="w-4 h-4 ml-2" />
+                  </>
+                )}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
