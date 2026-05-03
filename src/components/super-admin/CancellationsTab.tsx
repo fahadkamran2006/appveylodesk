@@ -12,7 +12,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { XCircle, TrendingDown, MessageSquare, Search, CalendarIcon, Download, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { XCircle, TrendingDown, MessageSquare, Search, CalendarIcon, Download, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, ExternalLink, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { DateRange } from 'react-day-picker';
 import { toast } from 'sonner';
