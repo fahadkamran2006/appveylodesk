@@ -129,6 +129,20 @@ const BillingPage = () => {
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState<string>('');
   const [cancelReasonDetail, setCancelReasonDetail] = useState<string>('');
+  const [cancelReasonError, setCancelReasonError] = useState<string | null>(null);
+  const [cancelSubmitting, setCancelSubmitting] = useState(false);
+
+  // Persisted cancellation logs (audit trail)
+  interface CancellationLog {
+    id: string;
+    reason_code: string;
+    reason_label: string;
+    detail: string | null;
+    subscription_ends_at: string | null;
+    plan_tier: string | null;
+    created_at: string;
+  }
+  const [cancellationLogs, setCancellationLogs] = useState<CancellationLog[]>([]);
 
   // Proration preview state
   interface ProrationPreview {
