@@ -551,6 +551,24 @@ export default function CancellationsTab({ onOpenAgency }: CancellationsTabProps
                     <p className="text-sm text-muted-foreground">No additional feedback provided.</p>
                   )}
                 </div>
+
+                {onOpenAgency && (
+                  <Button
+                    className="w-full gap-2"
+                    onClick={() => {
+                      onOpenAgency(selected.agency_id, {
+                        cancellationId: selected.id,
+                        reasonLabel: selected.reason_label,
+                        detail: selected.detail,
+                        createdAt: selected.created_at,
+                      });
+                      setSelected(null);
+                    }}
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    View agency in Super Admin
+                  </Button>
+                )}
               </div>
             </>
           )}
