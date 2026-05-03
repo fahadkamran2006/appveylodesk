@@ -127,9 +127,19 @@ Deno.serve(async (req) => {
     if (!txResponse.ok) {
       const errorText = await txResponse.text();
       console.error("Paddle transactions error:", txResponse.status, errorText);
+      // Return 200 with empty list so the UI doesn't crash. Common cause:
+      // stale/invalid paddle_customer_id (e.g. sandbox vs. live mismatch).
+      const isInvalidCustomer =
+        txResponse.status === 400 && errorText.includes("customer_id");
       return new Response(
-        JSON.stringify({ error: "Failed to fetch billing history" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({
+          transactions: [],
+          error: isInvalidCustomer
+            ? "Paddle customer not found. Try syncing your subscription."
+            : "Could not load billing history from Paddle.",
+          fallback: true,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
