@@ -157,7 +157,7 @@ export default function SuperAdminDashboard() {
 
           {/* Cancellations */}
           <TabsContent value="cancellations">
-            <CancellationsTab />
+            <CancellationsTab onOpenAgency={openAgencyFromCancellation} />
           </TabsContent>
 
           {/* Bug Reports */}
