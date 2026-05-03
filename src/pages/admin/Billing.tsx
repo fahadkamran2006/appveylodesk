@@ -1048,6 +1048,8 @@ const BillingPage = () => {
                   return { Icon: ArrowDownRight, dot: 'bg-amber-500 text-white', ring: 'ring-amber-500/30' };
                 case 'scheduled_cancel':
                   return { Icon: XCircle, dot: 'bg-amber-500 text-white', ring: 'ring-amber-500/30' };
+                case 'cancel_request':
+                  return { Icon: XCircle, dot: 'bg-destructive text-destructive-foreground', ring: 'ring-destructive/30' };
                 case 'sync':
                   return { Icon: RotateCw, dot: 'bg-muted text-muted-foreground', ring: 'ring-border' };
               }
