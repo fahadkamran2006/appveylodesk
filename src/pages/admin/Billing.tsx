@@ -956,7 +956,7 @@ const BillingPage = () => {
           {(() => {
             type TimelineEvent = {
               id: string;
-              kind: 'start' | 'renewal' | 'failed' | 'refund' | 'scheduled_cancel' | 'sync';
+              kind: 'start' | 'renewal' | 'failed' | 'refund' | 'scheduled_cancel' | 'cancel_request' | 'sync';
               title: string;
               description?: string;
               at: string;
