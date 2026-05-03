@@ -12,7 +12,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { XCircle, TrendingDown, MessageSquare, Search, CalendarIcon, Download, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { XCircle, TrendingDown, MessageSquare, Search, CalendarIcon, Download, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, ExternalLink, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { DateRange } from 'react-day-picker';
 import { toast } from 'sonner';
@@ -37,7 +37,18 @@ type SortKey = 'created_at' | 'reason_label' | 'plan_tier';
 
 const PAGE_SIZE = 50;
 
-export default function CancellationsTab() {
+export interface CancellationHighlight {
+  cancellationId: string;
+  reasonLabel: string;
+  detail: string | null;
+  createdAt: string;
+}
+
+interface CancellationsTabProps {
+  onOpenAgency?: (agencyId: string, highlight: CancellationHighlight) => void;
+}
+
+export default function CancellationsTab({ onOpenAgency }: CancellationsTabProps = {}) {
   const [logs, setLogs] = useState<CancellationLog[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [agencies, setAgencies] = useState<Record<string, AgencyLite>>({});
@@ -52,6 +63,7 @@ export default function CancellationsTab() {
   const [sortKey, setSortKey] = useState<SortKey>('created_at');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [exporting, setExporting] = useState(false);
+  const [reasonFilter, setReasonFilter] = useState<string[]>([]);
 
   // Aggregate stats (independent of pagination, scoped to date range)
   const [stats, setStats] = useState<{
@@ -74,12 +86,13 @@ export default function CancellationsTab() {
   }, [preset, customRange]);
 
   // Reset page when filters change
-  useEffect(() => { setPage(0); }, [preset, customRange, search, sortKey, sortDir]);
+  useEffect(() => { setPage(0); }, [preset, customRange, search, sortKey, sortDir, reasonFilter]);
 
   const buildQuery = () => {
     let q = supabase.from('subscription_cancellation_logs').select('*', { count: 'exact' });
     if (dateBounds?.from) q = q.gte('created_at', dateBounds.from);
     if (dateBounds?.to) q = q.lte('created_at', dateBounds.to);
+    if (reasonFilter.length > 0) q = q.in('reason_code', reasonFilter);
     const term = search.trim();
     if (term) {
       const safe = term.replace(/[%,()]/g, '');
@@ -137,7 +150,7 @@ export default function CancellationsTab() {
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, sortKey, sortDir, dateBounds?.from, dateBounds?.to, search]);
+  }, [page, sortKey, sortDir, dateBounds?.from, dateBounds?.to, search, reasonFilter]);
 
   // Fetch stats for current date range (paginated through to handle >1k)
   useEffect(() => {
@@ -346,6 +359,35 @@ export default function CancellationsTab() {
         </Button>
       </div>
 
+      {/* Reason quick filters */}
+      {stats && stats.reasonRanking.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted-foreground mr-1">Reason:</span>
+          {stats.reasonRanking.map((r) => {
+            const active = reasonFilter.includes(r.code);
+            return (
+              <Badge
+                key={r.code}
+                variant={active ? 'default' : 'outline'}
+                className="cursor-pointer gap-1 select-none"
+                onClick={() => setReasonFilter((prev) =>
+                  prev.includes(r.code) ? prev.filter((c) => c !== r.code) : [...prev, r.code]
+                )}
+                title={`Code: ${r.code}`}
+              >
+                {r.label}
+                <span className="opacity-60 text-[10px] tabular-nums">{r.count}</span>
+              </Badge>
+            );
+          })}
+          {reasonFilter.length > 0 && (
+            <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={() => setReasonFilter([])}>
+              <X className="w-3 h-3 mr-1" /> Clear
+            </Button>
+          )}
+        </div>
+      )}
+
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <SummaryCard icon={XCircle} label="Cancellations in range" value={stats ? String(stats.total) : null} />
@@ -509,6 +551,24 @@ export default function CancellationsTab() {
                     <p className="text-sm text-muted-foreground">No additional feedback provided.</p>
                   )}
                 </div>
+
+                {onOpenAgency && (
+                  <Button
+                    className="w-full gap-2"
+                    onClick={() => {
+                      onOpenAgency(selected.agency_id, {
+                        cancellationId: selected.id,
+                        reasonLabel: selected.reason_label,
+                        detail: selected.detail,
+                        createdAt: selected.created_at,
+                      });
+                      setSelected(null);
+                    }}
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    View agency in Super Admin
+                  </Button>
+                )}
               </div>
             </>
           )}

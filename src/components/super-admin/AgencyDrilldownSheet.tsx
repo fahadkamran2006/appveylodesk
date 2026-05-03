@@ -27,6 +27,12 @@ interface AgencyDrilldownSheetProps {
   agency: AgencyStat | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  cancellationHighlight?: {
+    cancellationId: string;
+    reasonLabel: string;
+    detail: string | null;
+    createdAt: string;
+  } | null;
 }
 
 interface DrilldownData {
@@ -66,7 +72,7 @@ const statusColors: Record<string, string> = {
   request: "bg-indigo-500/10 text-indigo-600 border-indigo-200",
 };
 
-export default function AgencyDrilldownSheet({ agency, open, onOpenChange }: AgencyDrilldownSheetProps) {
+export default function AgencyDrilldownSheet({ agency, open, onOpenChange, cancellationHighlight }: AgencyDrilldownSheetProps) {
   const { data, isLoading } = useQuery<DrilldownData>({
     queryKey: ["super-admin-drilldown", agency?.id],
     queryFn: async () => {
@@ -113,6 +119,25 @@ export default function AgencyDrilldownSheet({ agency, open, onOpenChange }: Age
             {agency?.created_at ? new Date(agency.created_at).toLocaleDateString() : "—"}
           </SheetDescription>
         </SheetHeader>
+
+        {cancellationHighlight && (
+          <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 p-3 animate-in fade-in slide-in-from-top-2">
+            <div className="flex items-start gap-2">
+              <Badge variant="destructive" className="shrink-0 mt-0.5">Cancellation</Badge>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium">{cancellationHighlight.reasonLabel}</p>
+                <p className="text-xs text-muted-foreground">
+                  {new Date(cancellationHighlight.createdAt).toLocaleString()}
+                </p>
+                {cancellationHighlight.detail && (
+                  <p className="text-xs italic text-muted-foreground mt-1.5 line-clamp-3">
+                    "{cancellationHighlight.detail}"
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {isLoading ? (
           <div className="space-y-4 mt-6">

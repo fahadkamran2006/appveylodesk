@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import AgencyDrilldownSheet from "@/components/super-admin/AgencyDrilldownSheet";
 import BugReportsTab from "@/components/super-admin/BugReportsTab";
 import MarketingTab from "@/components/super-admin/MarketingTab";
-import CancellationsTab from "@/components/super-admin/CancellationsTab";
+import CancellationsTab, { type CancellationHighlight } from "@/components/super-admin/CancellationsTab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -30,6 +30,15 @@ export default function SuperAdminDashboard() {
   const [sortKey, setSortKey] = useState<SortKey>("revenue");
   const [sortAsc, setSortAsc] = useState(false);
   const [selectedAgency, setSelectedAgency] = useState<AgencyStat | null>(null);
+  const [highlight, setHighlight] = useState<CancellationHighlight | null>(null);
+
+  const openAgencyFromCancellation = (agencyId: string, h: CancellationHighlight) => {
+    const a = data?.agencies.find((x) => x.id === agencyId);
+    if (a) {
+      setHighlight(h);
+      setSelectedAgency(a);
+    }
+  };
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortAsc(!sortAsc);
@@ -148,7 +157,7 @@ export default function SuperAdminDashboard() {
 
           {/* Cancellations */}
           <TabsContent value="cancellations">
-            <CancellationsTab />
+            <CancellationsTab onOpenAgency={openAgencyFromCancellation} />
           </TabsContent>
 
           {/* Bug Reports */}
@@ -190,7 +199,8 @@ export default function SuperAdminDashboard() {
       <AgencyDrilldownSheet
         agency={selectedAgency}
         open={!!selectedAgency}
-        onOpenChange={(open) => !open && setSelectedAgency(null)}
+        onOpenChange={(open) => { if (!open) { setSelectedAgency(null); setHighlight(null); } }}
+        cancellationHighlight={highlight}
       />
     </div>
   );
