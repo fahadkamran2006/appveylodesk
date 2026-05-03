@@ -30,6 +30,15 @@ export default function SuperAdminDashboard() {
   const [sortKey, setSortKey] = useState<SortKey>("revenue");
   const [sortAsc, setSortAsc] = useState(false);
   const [selectedAgency, setSelectedAgency] = useState<AgencyStat | null>(null);
+  const [highlight, setHighlight] = useState<CancellationHighlight | null>(null);
+
+  const openAgencyFromCancellation = (agencyId: string, h: CancellationHighlight) => {
+    const a = data?.agencies.find((x) => x.id === agencyId);
+    if (a) {
+      setHighlight(h);
+      setSelectedAgency(a);
+    }
+  };
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortAsc(!sortAsc);
