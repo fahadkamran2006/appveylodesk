@@ -150,7 +150,7 @@ export default function CancellationsTab({ onOpenAgency }: CancellationsTabProps
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, sortKey, sortDir, dateBounds?.from, dateBounds?.to, search]);
+  }, [page, sortKey, sortDir, dateBounds?.from, dateBounds?.to, search, reasonFilter]);
 
   // Fetch stats for current date range (paginated through to handle >1k)
   useEffect(() => {
