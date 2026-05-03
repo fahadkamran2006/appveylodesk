@@ -482,26 +482,51 @@ const BillingPage = () => {
 
   const confirmCancelSubscription = async () => {
     if (!cancelReason) {
-      toast.error('Please select a reason so we can improve.');
+      setCancelReasonError('Please select a reason before continuing.');
+      // Focus the first radio for accessibility
+      const firstRadio = document.getElementById(`cancel-reason-${CANCEL_REASONS[0].value}`);
+      firstRadio?.focus();
       return;
     }
+    setCancelReasonError(null);
+    setCancelSubmitting(true);
+    const reasonLabel = CANCEL_REASONS.find((r) => r.value === cancelReason)?.label || cancelReason;
+    const detail = cancelReasonDetail.trim();
+
+    // Persist to server-side audit trail
+    if (agencyId && user?.id) {
+      const { error } = await supabase.from('subscription_cancellation_logs').insert({
+        agency_id: agencyId,
+        user_id: user.id,
+        reason_code: cancelReason,
+        reason_label: reasonLabel,
+        detail: detail || null,
+        subscription_ends_at: subscriptionEndsAt || null,
+        plan_tier: planTier || null,
+      });
+      if (error) {
+        setCancelSubmitting(false);
+        toast.error('Could not save your cancellation reason. Please try again.');
+        return;
+      }
+      // Refresh logs so the timeline updates immediately
+      fetchCancellationLogs();
+    }
+
+    // Keep local backup
     try {
-      const reasonLabel = CANCEL_REASONS.find((r) => r.value === cancelReason)?.label || cancelReason;
       const key = agencyId ? `billing-cancel-reason:${agencyId}` : null;
       if (key) {
         localStorage.setItem(
           key,
-          JSON.stringify({
-            reason: cancelReason,
-            label: reasonLabel,
-            detail: cancelReasonDetail.trim(),
-            at: new Date().toISOString(),
-          }),
+          JSON.stringify({ reason: cancelReason, label: reasonLabel, detail, at: new Date().toISOString() }),
         );
       }
     } catch {
-      // ignore storage errors
+      // ignore
     }
+
+    setCancelSubmitting(false);
     setCancelOpen(false);
     toast.info('Opening customer portal to finish cancelling your subscription…');
     await openCustomerPortal();
