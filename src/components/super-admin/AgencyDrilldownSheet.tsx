@@ -72,7 +72,7 @@ const statusColors: Record<string, string> = {
   request: "bg-indigo-500/10 text-indigo-600 border-indigo-200",
 };
 
-export default function AgencyDrilldownSheet({ agency, open, onOpenChange }: AgencyDrilldownSheetProps) {
+export default function AgencyDrilldownSheet({ agency, open, onOpenChange, cancellationHighlight }: AgencyDrilldownSheetProps) {
   const { data, isLoading } = useQuery<DrilldownData>({
     queryKey: ["super-admin-drilldown", agency?.id],
     queryFn: async () => {
