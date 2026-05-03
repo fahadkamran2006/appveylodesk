@@ -12,9 +12,10 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { XCircle, TrendingDown, MessageSquare, Search, CalendarIcon } from 'lucide-react';
+import { XCircle, TrendingDown, MessageSquare, Search, CalendarIcon, Download, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { DateRange } from 'react-day-picker';
+import { toast } from 'sonner';
 
 interface CancellationLog {
   id: string;
@@ -32,9 +33,13 @@ interface AgencyLite { id: string; name: string }
 interface ProfileLite { id: string; full_name: string | null; email: string }
 
 type RangePreset = '7' | '30' | '90' | 'all' | 'custom';
+type SortKey = 'created_at' | 'reason_label' | 'plan_tier';
+
+const PAGE_SIZE = 50;
 
 export default function CancellationsTab() {
   const [logs, setLogs] = useState<CancellationLog[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [agencies, setAgencies] = useState<Record<string, AgencyLite>>({});
   const [profiles, setProfiles] = useState<Record<string, ProfileLite>>({});
   const [loading, setLoading] = useState(true);
@@ -43,16 +48,56 @@ export default function CancellationsTab() {
   const [preset, setPreset] = useState<RangePreset>('all');
   const [customRange, setCustomRange] = useState<DateRange | undefined>();
   const [selected, setSelected] = useState<CancellationLog | null>(null);
+  const [page, setPage] = useState(0);
+  const [sortKey, setSortKey] = useState<SortKey>('created_at');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [exporting, setExporting] = useState(false);
 
+  // Aggregate stats (independent of pagination, scoped to date range)
+  const [stats, setStats] = useState<{
+    total: number;
+    last30: number;
+    withFeedback: number;
+    reasonRanking: { code: string; label: string; count: number }[];
+  } | null>(null);
+
+  const dateBounds = useMemo(() => {
+    if (preset === 'all') return null;
+    if (preset === 'custom') {
+      if (!customRange?.from) return null;
+      const from = new Date(customRange.from); from.setHours(0, 0, 0, 0);
+      const to = new Date(customRange.to ?? customRange.from); to.setHours(23, 59, 59, 999);
+      return { from: from.toISOString(), to: to.toISOString() };
+    }
+    const days = parseInt(preset, 10);
+    return { from: new Date(Date.now() - days * 86400000).toISOString(), to: null as string | null };
+  }, [preset, customRange]);
+
+  // Reset page when filters change
+  useEffect(() => { setPage(0); }, [preset, customRange, search, sortKey, sortDir]);
+
+  const buildQuery = () => {
+    let q = supabase.from('subscription_cancellation_logs').select('*', { count: 'exact' });
+    if (dateBounds?.from) q = q.gte('created_at', dateBounds.from);
+    if (dateBounds?.to) q = q.lte('created_at', dateBounds.to);
+    const term = search.trim();
+    if (term) {
+      const safe = term.replace(/[%,()]/g, '');
+      q = q.or(`reason_label.ilike.%${safe}%,detail.ilike.%${safe}%,plan_tier.ilike.%${safe}%`);
+    }
+    return q.order(sortKey, { ascending: sortDir === 'asc' });
+  };
+
+  // Fetch the current page
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       setLoading(true);
-      const { data, error: err } = await supabase
-        .from('subscription_cancellation_logs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(500);
+      const from = page * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+      const { data, error: err, count } = await buildQuery().range(from, to);
 
+      if (cancelled) return;
       if (err) {
         setError(err.message);
         setLoading(false);
@@ -60,84 +105,177 @@ export default function CancellationsTab() {
       }
       const rows = (data || []) as CancellationLog[];
       setLogs(rows);
+      setTotalCount(count ?? 0);
 
-      const agencyIds = [...new Set(rows.map((r) => r.agency_id))];
-      const userIds = [...new Set(rows.map((r) => r.user_id))];
-
-      const [agencyRes, profileRes] = await Promise.all([
-        agencyIds.length
-          ? supabase.from('agencies').select('id, name').in('id', agencyIds)
+      // Lookup agencies/profiles for visible rows (merge into cached maps)
+      const newAgencyIds = [...new Set(rows.map((r) => r.agency_id))].filter((id) => !agencies[id]);
+      const newUserIds = [...new Set(rows.map((r) => r.user_id))].filter((id) => !profiles[id]);
+      const [aRes, pRes] = await Promise.all([
+        newAgencyIds.length
+          ? supabase.from('agencies').select('id, name').in('id', newAgencyIds)
           : Promise.resolve({ data: [] as AgencyLite[] }),
-        userIds.length
-          ? supabase.from('profiles').select('id, full_name, email').in('id', userIds)
+        newUserIds.length
+          ? supabase.from('profiles').select('id, full_name, email').in('id', newUserIds)
           : Promise.resolve({ data: [] as ProfileLite[] }),
       ]);
-
-      const aMap: Record<string, AgencyLite> = {};
-      (agencyRes.data as AgencyLite[] | null)?.forEach((a) => { aMap[a.id] = a; });
-      const pMap: Record<string, ProfileLite> = {};
-      (profileRes.data as ProfileLite[] | null)?.forEach((p) => { pMap[p.id] = p; });
-
-      setAgencies(aMap);
-      setProfiles(pMap);
+      if (cancelled) return;
+      if (aRes.data?.length) {
+        setAgencies((prev) => {
+          const next = { ...prev };
+          (aRes.data as AgencyLite[]).forEach((a) => { next[a.id] = a; });
+          return next;
+        });
+      }
+      if (pRes.data?.length) {
+        setProfiles((prev) => {
+          const next = { ...prev };
+          (pRes.data as ProfileLite[]).forEach((p) => { next[p.id] = p; });
+          return next;
+        });
+      }
       setLoading(false);
     })();
-  }, []);
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, sortKey, sortDir, dateBounds?.from, dateBounds?.to, search]);
 
-  // Date-range filtered logs (used by both stats and the table)
-  const dateFiltered = useMemo(() => {
-    if (preset === 'all') return logs;
-    if (preset === 'custom') {
-      if (!customRange?.from) return logs;
-      const from = customRange.from.getTime();
-      const to = (customRange.to ?? customRange.from).getTime() + 24 * 60 * 60 * 1000 - 1;
-      return logs.filter((l) => {
-        const t = new Date(l.created_at).getTime();
-        return t >= from && t <= to;
+  // Fetch stats for current date range (paginated through to handle >1k)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const all: Pick<CancellationLog, 'reason_code' | 'reason_label' | 'detail' | 'created_at'>[] = [];
+      let from = 0;
+      const PAGE = 1000;
+      while (true) {
+        let q = supabase
+          .from('subscription_cancellation_logs')
+          .select('reason_code, reason_label, detail, created_at')
+          .order('created_at', { ascending: false })
+          .range(from, from + PAGE - 1);
+        if (dateBounds?.from) q = q.gte('created_at', dateBounds.from);
+        if (dateBounds?.to) q = q.lte('created_at', dateBounds.to);
+        const { data, error: err } = await q;
+        if (err || !data) break;
+        all.push(...data);
+        if (data.length < PAGE) break;
+        from += PAGE;
+        if (from > 50000) break; // safety cap
+      }
+      if (cancelled) return;
+      const byReason = new Map<string, { code: string; label: string; count: number }>();
+      all.forEach((l) => {
+        const e = byReason.get(l.reason_code) || { code: l.reason_code, label: l.reason_label, count: 0 };
+        e.count++;
+        byReason.set(l.reason_code, e);
       });
-    }
-    const days = parseInt(preset, 10);
-    const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
-    return logs.filter((l) => new Date(l.created_at).getTime() >= cutoff);
-  }, [logs, preset, customRange]);
-
-  const stats = useMemo(() => {
-    const total = dateFiltered.length;
-    const byReason = new Map<string, { code: string; label: string; count: number }>();
-    dateFiltered.forEach((l) => {
-      const e = byReason.get(l.reason_code) || { code: l.reason_code, label: l.reason_label, count: 0 };
-      e.count++;
-      byReason.set(l.reason_code, e);
-    });
-    const reasonRanking = [...byReason.values()].sort((a, b) => b.count - a.count);
-    const last30 = dateFiltered.filter(
-      (l) => new Date(l.created_at).getTime() > Date.now() - 30 * 24 * 60 * 60 * 1000,
-    ).length;
-    const withFeedback = dateFiltered.filter((l) => (l.detail || '').trim().length > 0).length;
-    return { total, reasonRanking, last30, withFeedback };
-  }, [dateFiltered]);
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return dateFiltered;
-    return dateFiltered.filter((l) => {
-      const a = agencies[l.agency_id]?.name?.toLowerCase() || '';
-      const p = profiles[l.user_id];
-      const who = `${p?.full_name || ''} ${p?.email || ''}`.toLowerCase();
-      return (
-        a.includes(q)
-        || who.includes(q)
-        || l.reason_label.toLowerCase().includes(q)
-        || (l.detail || '').toLowerCase().includes(q)
-        || (l.plan_tier || '').toLowerCase().includes(q)
-      );
-    });
-  }, [dateFiltered, search, agencies, profiles]);
+      const last30Cutoff = Date.now() - 30 * 86400000;
+      setStats({
+        total: all.length,
+        last30: all.filter((l) => new Date(l.created_at).getTime() > last30Cutoff).length,
+        withFeedback: all.filter((l) => (l.detail || '').trim().length > 0).length,
+        reasonRanking: [...byReason.values()].sort((a, b) => b.count - a.count),
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [dateBounds?.from, dateBounds?.to]);
 
   const fmtDate = (iso: string) =>
     new Date(iso).toLocaleString('en-US', {
       year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
     });
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortKey(key); setSortDir('desc'); }
+  };
+
+  const SortHeader = ({ label, k }: { label: string; k: SortKey }) => (
+    <button
+      type="button"
+      onClick={() => toggleSort(k)}
+      className="inline-flex items-center gap-1 hover:text-foreground"
+    >
+      {label}
+      {sortKey === k && (sortDir === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />)}
+    </button>
+  );
+
+  const handleExportCsv = async () => {
+    setExporting(true);
+    try {
+      // Fetch all matching rows (respecting filters/sort) in pages
+      const all: CancellationLog[] = [];
+      let from = 0;
+      const PAGE = 1000;
+      while (true) {
+        const { data, error: err } = await buildQuery().range(from, from + PAGE - 1);
+        if (err) throw err;
+        const rows = (data || []) as CancellationLog[];
+        all.push(...rows);
+        if (rows.length < PAGE) break;
+        from += PAGE;
+        if (from > 50000) break;
+      }
+
+      // Hydrate any missing agencies/profiles
+      const missingAgencies = [...new Set(all.map((r) => r.agency_id))].filter((id) => !agencies[id]);
+      const missingUsers = [...new Set(all.map((r) => r.user_id))].filter((id) => !profiles[id]);
+      const [aRes, pRes] = await Promise.all([
+        missingAgencies.length
+          ? supabase.from('agencies').select('id, name').in('id', missingAgencies)
+          : Promise.resolve({ data: [] as AgencyLite[] }),
+        missingUsers.length
+          ? supabase.from('profiles').select('id, full_name, email').in('id', missingUsers)
+          : Promise.resolve({ data: [] as ProfileLite[] }),
+      ]);
+      const aMap = { ...agencies };
+      (aRes.data as AgencyLite[] | null)?.forEach((a) => { aMap[a.id] = a; });
+      const pMap = { ...profiles };
+      (pRes.data as ProfileLite[] | null)?.forEach((p) => { pMap[p.id] = p; });
+
+      const headers = [
+        'Created at', 'Agency', 'Agency ID', 'User name', 'User email', 'User ID',
+        'Plan', 'Reason', 'Reason code', 'Feedback', 'Subscription ends at',
+      ];
+      const escape = (v: unknown) => {
+        const s = v == null ? '' : String(v);
+        return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+      };
+      const lines = [headers.join(',')];
+      all.forEach((l) => {
+        const a = aMap[l.agency_id];
+        const p = pMap[l.user_id];
+        lines.push([
+          new Date(l.created_at).toISOString(),
+          a?.name || '',
+          l.agency_id,
+          p?.full_name || '',
+          p?.email || '',
+          l.user_id,
+          l.plan_tier || '',
+          l.reason_label,
+          l.reason_code,
+          l.detail || '',
+          l.subscription_ends_at || '',
+        ].map(escape).join(','));
+      });
+
+      const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `cancellations-${format(new Date(), 'yyyy-MM-dd-HHmm')}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success(`Exported ${all.length} cancellation${all.length === 1 ? '' : 's'}`);
+    } catch (e) {
+      toast.error(`Export failed: ${(e as Error).message}`);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   if (error) {
     return (
@@ -156,6 +294,7 @@ export default function CancellationsTab() {
 
   const selectedAgency = selected ? agencies[selected.agency_id] : null;
   const selectedProfile = selected ? profiles[selected.user_id] : null;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   return (
     <div className="space-y-6">
@@ -200,13 +339,18 @@ export default function CancellationsTab() {
             Clear
           </Button>
         )}
+        <div className="flex-1" />
+        <Button size="sm" variant="outline" onClick={handleExportCsv} disabled={exporting} className="gap-2">
+          <Download className="w-4 h-4" />
+          {exporting ? 'Exporting…' : 'Export CSV'}
+        </Button>
       </div>
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <SummaryCard icon={XCircle} label="Cancellations in range" value={loading ? null : String(stats.total)} />
-        <SummaryCard icon={TrendingDown} label="Last 30 days" value={loading ? null : String(stats.last30)} />
-        <SummaryCard icon={MessageSquare} label="With written feedback" value={loading ? null : String(stats.withFeedback)} />
+        <SummaryCard icon={XCircle} label="Cancellations in range" value={stats ? String(stats.total) : null} />
+        <SummaryCard icon={TrendingDown} label="Last 30 days" value={stats ? String(stats.last30) : null} />
+        <SummaryCard icon={MessageSquare} label="With written feedback" value={stats ? String(stats.withFeedback) : null} />
       </div>
 
       {/* Reason breakdown */}
@@ -215,7 +359,7 @@ export default function CancellationsTab() {
           <CardTitle className="text-base">Top reasons</CardTitle>
         </CardHeader>
         <CardContent>
-          {loading ? (
+          {!stats ? (
             <div className="space-y-2">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-6 w-full" />)}</div>
           ) : stats.reasonRanking.length === 0 ? (
             <p className="text-sm text-muted-foreground">No cancellation reasons collected in this range.</p>
@@ -247,7 +391,7 @@ export default function CancellationsTab() {
           <div className="relative w-64">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search agency, reason, feedback…"
+              placeholder="Search reason, feedback, plan…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-8 h-9"
@@ -257,22 +401,22 @@ export default function CancellationsTab() {
         <CardContent className="p-0">
           {loading ? (
             <div className="p-6 space-y-3">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
-          ) : filtered.length === 0 ? (
+          ) : logs.length === 0 ? (
             <p className="text-sm text-muted-foreground p-6 text-center">No cancellations match your filters.</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>When</TableHead>
+                  <TableHead><SortHeader label="When" k="created_at" /></TableHead>
                   <TableHead>Agency</TableHead>
                   <TableHead>User</TableHead>
-                  <TableHead>Plan</TableHead>
-                  <TableHead>Reason</TableHead>
+                  <TableHead><SortHeader label="Plan" k="plan_tier" /></TableHead>
+                  <TableHead><SortHeader label="Reason" k="reason_label" /></TableHead>
                   <TableHead>Feedback</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((l) => {
+                {logs.map((l) => {
                   const a = agencies[l.agency_id];
                   const p = profiles[l.user_id];
                   return (
@@ -297,6 +441,32 @@ export default function CancellationsTab() {
                 })}
               </TableBody>
             </Table>
+          )}
+
+          {/* Pagination footer */}
+          {totalCount > 0 && (
+            <div className="flex items-center justify-between p-4 border-t text-sm text-muted-foreground">
+              <span>
+                Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, totalCount)} of {totalCount}
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm" variant="outline"
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  disabled={page === 0 || loading}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <span className="tabular-nums">Page {page + 1} of {totalPages}</span>
+                <Button
+                  size="sm" variant="outline"
+                  onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                  disabled={page >= totalPages - 1 || loading}
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
