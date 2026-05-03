@@ -146,6 +146,11 @@ export default function SuperAdminDashboard() {
             </Card>
           </TabsContent>
 
+          {/* Cancellations */}
+          <TabsContent value="cancellations">
+            <CancellationsTab />
+          </TabsContent>
+
           {/* Bug Reports */}
           <TabsContent value="bugs">
             <BugReportsTab />
