@@ -37,7 +37,18 @@ type SortKey = 'created_at' | 'reason_label' | 'plan_tier';
 
 const PAGE_SIZE = 50;
 
-export default function CancellationsTab() {
+interface CancellationHighlight {
+  cancellationId: string;
+  reasonLabel: string;
+  detail: string | null;
+  createdAt: string;
+}
+
+interface CancellationsTabProps {
+  onOpenAgency?: (agencyId: string, highlight: CancellationHighlight) => void;
+}
+
+export default function CancellationsTab({ onOpenAgency }: CancellationsTabProps = {}) {
   const [logs, setLogs] = useState<CancellationLog[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [agencies, setAgencies] = useState<Record<string, AgencyLite>>({});
@@ -52,6 +63,7 @@ export default function CancellationsTab() {
   const [sortKey, setSortKey] = useState<SortKey>('created_at');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [exporting, setExporting] = useState(false);
+  const [reasonFilter, setReasonFilter] = useState<string[]>([]);
 
   // Aggregate stats (independent of pagination, scoped to date range)
   const [stats, setStats] = useState<{
