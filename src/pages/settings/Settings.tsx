@@ -114,7 +114,7 @@ const SettingsPage = () => {
 
           {/* Tabs for Profile vs Notifications vs Payment Methods */}
           <Tabs defaultValue="profile" className="w-full">
-            <TabsList className={`grid w-full mb-6 ${userRole === 'admin' ? 'grid-cols-3' : 'grid-cols-2'}`}>
+            <TabsList className={`grid w-full mb-6 ${userRole === 'admin' ? 'grid-cols-4' : 'grid-cols-2'}`}>
               <TabsTrigger value="profile" className="flex items-center gap-2">
                 <User className="w-4 h-4" />
                 <span className="hidden sm:inline">Profile</span>
@@ -127,6 +127,16 @@ const SettingsPage = () => {
                 <TabsTrigger value="payments" className="flex items-center gap-2">
                   <CreditCard className="w-4 h-4" />
                   <span className="hidden sm:inline">Payments</span>
+                </TabsTrigger>
+              )}
+              {userRole === 'admin' && (
+                <TabsTrigger
+                  value="billing"
+                  className="flex items-center gap-2"
+                  onClick={() => navigate('/admin/billing')}
+                >
+                  <CreditCard className="w-4 h-4" />
+                  <span className="hidden sm:inline">Billing</span>
                 </TabsTrigger>
               )}
             </TabsList>
