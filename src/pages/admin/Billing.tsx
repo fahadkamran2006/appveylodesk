@@ -271,6 +271,21 @@ const BillingPage = () => {
     }
   }, [lastSyncKey]);
 
+  // Fetch persisted cancellation logs for the audit trail
+  const fetchCancellationLogs = useCallback(async () => {
+    if (!agencyId) return;
+    const { data, error } = await supabase
+      .from('subscription_cancellation_logs')
+      .select('id, reason_code, reason_label, detail, subscription_ends_at, plan_tier, created_at')
+      .eq('agency_id', agencyId)
+      .order('created_at', { ascending: false });
+    if (!error && data) setCancellationLogs(data as CancellationLog[]);
+  }, [agencyId]);
+
+  useEffect(() => {
+    fetchCancellationLogs();
+  }, [fetchCancellationLogs]);
+
   const formatMoney = (amountMinor: string, currency: string) => {
     const num = Number(amountMinor) / 100;
     if (Number.isNaN(num)) return `${amountMinor} ${currency}`;
