@@ -76,7 +76,7 @@ P.S. — I'm 19, ran a video editing agency for two years, and built this to fix
 Unsubscribe: ${unsubUrl}`;
 }
 
-async function sendEmail(to: string, subject: string, html: string, text: string, unsubUrl: string) {
+async function sendEmail(to: string, subject: string, html: string, text: string, unsubUrl: string): Promise<string | null> {
   const r = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -102,6 +102,8 @@ async function sendEmail(to: string, subject: string, html: string, text: string
     console.error("Resend error", r.status, body);
     throw new Error(`Resend ${r.status}`);
   }
+  const json = await r.json().catch(() => ({}));
+  return json?.id ?? null;
 }
 
 Deno.serve(async (req) => {
