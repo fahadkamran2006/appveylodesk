@@ -821,6 +821,45 @@ export type Database = {
           },
         ]
       }
+      lead_magnet_subscribers: {
+        Row: {
+          created_at: string
+          downloaded_at: string
+          email: string
+          email_2_sent_at: string | null
+          email_3_sent_at: string | null
+          first_name: string
+          id: string
+          source: string
+          unsubscribe_token: string
+          unsubscribed_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          downloaded_at?: string
+          email: string
+          email_2_sent_at?: string | null
+          email_3_sent_at?: string | null
+          first_name: string
+          id?: string
+          source?: string
+          unsubscribe_token?: string
+          unsubscribed_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          downloaded_at?: string
+          email?: string
+          email_2_sent_at?: string | null
+          email_3_sent_at?: string | null
+          first_name?: string
+          id?: string
+          source?: string
+          unsubscribe_token?: string
+          unsubscribed_at?: string | null
+        }
+        Relationships: []
+      }
       leave_requests: {
         Row: {
           admin_note: string | null

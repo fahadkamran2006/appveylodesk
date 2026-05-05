@@ -50,3 +50,12 @@ verify_jwt = false
 
 [functions.monthly-attendance-summary]
 verify_jwt = false
+
+[functions.lead-magnet-subscribe]
+verify_jwt = false
+
+[functions.lead-magnet-cron]
+verify_jwt = false
+
+[functions.lead-magnet-unsubscribe]
+verify_jwt = false
