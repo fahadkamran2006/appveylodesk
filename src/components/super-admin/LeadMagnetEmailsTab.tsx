@@ -268,6 +268,62 @@ export default function LeadMagnetEmailsTab() {
         </div>
       )}
 
+      <Card>
+        <CardHeader className="pb-3 flex-row items-center justify-between">
+          <CardTitle className="text-sm font-semibold">Resend Settings Check</CardTitle>
+          <Button variant="outline" size="sm" onClick={runResendCheck} disabled={checking}>
+            {checking ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+            Re-check
+          </Button>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+          <div>
+            <div className="text-xs uppercase text-muted-foreground">Audience ID</div>
+            <div className="mt-1">
+              {resendCheck?.audience_valid ? (
+                <Badge variant="outline" className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30">Valid audience</Badge>
+              ) : resendCheck?.audience_id_present ? (
+                <Badge variant="outline" className="bg-red-500/15 text-red-600 border-red-500/30">Invalid / not found</Badge>
+              ) : (
+                <Badge variant="outline" className="bg-amber-500/15 text-amber-600 border-amber-500/30">Not set</Badge>
+              )}
+            </div>
+            {resendCheck?.audience && (
+              <div className="text-xs text-muted-foreground mt-1 truncate">
+                {resendCheck.audience.name} · <code className="text-[10px]">{resendCheck.audience.id.slice(0, 8)}…</code>
+              </div>
+            )}
+          </div>
+          <div>
+            <div className="text-xs uppercase text-muted-foreground">Contacts in audience</div>
+            <div className="font-semibold mt-1">{resendCheck?.contacts_count ?? "—"}</div>
+          </div>
+          <div>
+            <div className="text-xs uppercase text-muted-foreground">Webhook events (24h)</div>
+            <div className="font-semibold mt-1">{resendCheck?.webhook_events_24h ?? 0}</div>
+          </div>
+          <div>
+            <div className="text-xs uppercase text-muted-foreground">Last webhook event</div>
+            {resendCheck?.last_webhook_event ? (
+              <div className="mt-1">
+                {statusBadge(resendCheck.last_webhook_event.event_type)}
+                <div className="text-xs text-muted-foreground mt-1 truncate">
+                  {resendCheck.last_webhook_event.recipient_email} ·{" "}
+                  {formatDistanceToNow(new Date(resendCheck.last_webhook_event.occurred_at), { addSuffix: true })}
+                </div>
+              </div>
+            ) : (
+              <div className="text-xs text-muted-foreground mt-1">No events received yet.</div>
+            )}
+          </div>
+          {resendCheck?.error && (
+            <div className="md:col-span-4 text-xs text-destructive border border-destructive/30 bg-destructive/10 rounded p-2">
+              {resendCheck.error}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard icon={Mail} label="Subscribers" value={totals.total} />
         <StatCard icon={MailCheck} label="Delivered (E1)" value={stats.e1.delivered} sub={`${stats.e1.total ? Math.round((stats.e1.delivered/stats.e1.total)*100) : 0}% of sent`} />
