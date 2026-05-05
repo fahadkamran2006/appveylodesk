@@ -62,13 +62,15 @@ function statusBadge(s: string) {
 
 export default function LeadMagnetEmailsTab() {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
   const [events, setEvents] = useState<EmailEvent[]>([]);
   const [search, setSearch] = useState("");
 
   const load = async () => {
     setLoading(true);
-    const [{ data: subs }, { data: evs }] = await Promise.all([
+    setError(null);
+    const [{ data: subs, error: subsError }, { data: evs, error: evsError }] = await Promise.all([
       supabase
         .from("lead_magnet_subscribers")
         .select("id,email,first_name,downloaded_at,email_2_sent_at,email_3_sent_at,email_1_message_id,email_2_message_id,email_3_message_id,unsubscribed_at")
@@ -80,6 +82,11 @@ export default function LeadMagnetEmailsTab() {
         .order("occurred_at", { ascending: false })
         .limit(5000),
     ]);
+
+    if (subsError || evsError) {
+      setError(subsError?.message ?? evsError?.message ?? "Failed to load lead magnet analytics.");
+    }
+
     setSubscribers((subs as Subscriber[]) || []);
     setEvents((evs as EmailEvent[]) || []);
     setLoading(false);
@@ -224,6 +231,12 @@ export default function LeadMagnetEmailsTab() {
           <RefreshCw className="w-4 h-4 mr-2" /> Refresh
         </Button>
       </div>
+
+      {error && (
+        <div className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard icon={Mail} label="Subscribers" value={totals.total} />
