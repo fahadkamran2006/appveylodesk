@@ -139,18 +139,32 @@ Deno.serve(async (req) => {
     const { data: inserted, error } = await supabase
       .from("lead_magnet_subscribers")
       .insert({ email, first_name: firstName })
-      .select("unsubscribe_token")
+      .select("id, unsubscribe_token")
       .single();
     if (error) throw error;
 
     const unsubUrl = `${SITE_URL}/unsubscribe?token=${inserted.unsubscribe_token}`;
-    await sendEmail(
+    const messageId = await sendEmail(
       email,
       `${firstName}, your agency guide is ready`,
       email1Html(firstName, unsubUrl),
       email1Text(firstName, unsubUrl),
       unsubUrl,
     );
+
+    if (messageId) {
+      await supabase
+        .from("lead_magnet_subscribers")
+        .update({ email_1_message_id: messageId })
+        .eq("id", inserted.id);
+      await supabase.from("lead_magnet_email_events").insert({
+        subscriber_id: inserted.id,
+        message_id: messageId,
+        recipient_email: email,
+        email_type: 1,
+        event_type: "queued",
+      });
+    }
 
     return new Response(JSON.stringify({ ok: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
