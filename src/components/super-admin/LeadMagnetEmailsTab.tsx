@@ -60,12 +60,42 @@ function statusBadge(s: string) {
   return <Badge variant="outline" className={m.cls}>{m.label}</Badge>;
 }
 
+type ResendCheck = {
+  audience_id_present: boolean;
+  audience_id: string | null;
+  audience_valid: boolean;
+  audience: { id: string; name: string; created_at: string } | null;
+  contacts_count: number | null;
+  last_webhook_event: { event_type: string; recipient_email: string; email_type: number | null; occurred_at: string } | null;
+  webhook_events_24h: number;
+  error: string | null;
+};
+
 export default function LeadMagnetEmailsTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
   const [events, setEvents] = useState<EmailEvent[]>([]);
   const [search, setSearch] = useState("");
+  const [resendCheck, setResendCheck] = useState<ResendCheck | null>(null);
+  const [checking, setChecking] = useState(false);
+
+  const runResendCheck = async () => {
+    setChecking(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("lead-magnet-resend-check");
+      if (error) throw error;
+      setResendCheck(data as ResendCheck);
+    } catch (e: any) {
+      setResendCheck({
+        audience_id_present: false, audience_id: null, audience_valid: false, audience: null,
+        contacts_count: null, last_webhook_event: null, webhook_events_24h: 0,
+        error: e?.message ?? String(e),
+      });
+    } finally {
+      setChecking(false);
+    }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -92,7 +122,7 @@ export default function LeadMagnetEmailsTab() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); runResendCheck(); }, []);
 
   // Aggregate latest event per (subscriber, email_type)
   const latestBy = useMemo(() => {
