@@ -40,20 +40,58 @@ Deno.serve(async (req) => {
     const type: string = body?.type || "";
     const data = body?.data || {};
 
-    // Filter to lead-magnet sends only (tag set when sending)
-    const tags: any[] = data?.tags || [];
-    const categoryTag = tags.find((t) => t?.name === "category")?.value as string | undefined;
-    if (!categoryTag || !LEAD_MAGNET_TAGS.has(categoryTag)) {
-      // Not a lead-magnet email — ignore quietly.
-      return new Response(JSON.stringify({ ignored: true }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
+
+    // ---- Handle unsubscribe / complaint events globally (no tag filter) ----
+    // Resend fires these for audience-level unsubscribes and inline list-unsubscribe clicks.
+    const isUnsubEvent =
+      type === "contact.updated" ||
+      type === "contact.deleted" ||
+      type === "email.complained";
+
+    if (isUnsubEvent) {
+      const unsubEmail = String(
+        data?.email ?? (Array.isArray(data?.to) ? data.to[0] : data?.to ?? ""),
+      ).toLowerCase();
+      // For contact.updated, only treat as unsub when unsubscribed=true
+      const isUnsubscribed =
+        type === "contact.deleted" ||
+        type === "email.complained" ||
+        data?.unsubscribed === true;
+
+      if (unsubEmail && isUnsubscribed) {
+        await supabase
+          .from("lead_magnet_subscribers")
+          .update({ unsubscribed_at: new Date().toISOString() })
+          .eq("email", unsubEmail)
+          .is("unsubscribed_at", null);
+
+        await supabase.from("lead_magnet_email_events").insert({
+          recipient_email: unsubEmail,
+          event_type: type === "email.complained" ? "complained" : "unsubscribed",
+          raw: body,
+          occurred_at: body?.created_at
+            ? new Date(body.created_at).toISOString()
+            : new Date().toISOString(),
+        });
+      }
+
+      return new Response(JSON.stringify({ ok: true, handled: "unsubscribe" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ---- Lead-magnet email engagement events ----
+    const tags: any[] = data?.tags || [];
+    const categoryTag = tags.find((t) => t?.name === "category")?.value as string | undefined;
+    if (!categoryTag || !LEAD_MAGNET_TAGS.has(categoryTag)) {
+      return new Response(JSON.stringify({ ignored: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const messageId: string | null = data?.email_id ?? data?.id ?? null;
     const recipientEmail: string = String(
