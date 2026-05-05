@@ -6,7 +6,36 @@ const corsHeaders = {
 };
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
+const RESEND_AUDIENCE_ID = Deno.env.get("RESEND_AUDIENCE_ID") || "";
 const SITE_URL = "https://veylodesk.com";
+
+async function addToResendAudience(email: string, firstName: string) {
+  if (!RESEND_AUDIENCE_ID) return;
+  try {
+    const r = await fetch(
+      `https://api.resend.com/audiences/${RESEND_AUDIENCE_ID}/contacts`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${RESEND_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          first_name: firstName,
+          unsubscribed: false,
+        }),
+      },
+    );
+    if (!r.ok) {
+      const txt = await r.text();
+      // 409/422 = already exists — safe to ignore
+      console.warn("Resend audience add non-2xx", r.status, txt);
+    }
+  } catch (e) {
+    console.error("Resend audience add failed", e);
+  }
+}
 const PDF_URL = "https://bwfnxidpifugpklczfyo.supabase.co/storage/v1/object/public/lead-magnet-assets/veylodesk-agency-guide.pdf";
 const FROM = "Fahad Kamran <fahad@veylodesk.com>";
 const REPLY_TO = "fahad@veylodesk.com";
@@ -165,6 +194,9 @@ Deno.serve(async (req) => {
         event_type: "queued",
       });
     }
+
+    // Add to Resend audience so the lead shows up in your Resend dashboard
+    await addToResendAudience(email, firstName);
 
     return new Response(JSON.stringify({ ok: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
