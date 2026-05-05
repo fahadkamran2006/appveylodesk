@@ -66,6 +66,9 @@ import FoundingMembers from "./pages/FoundingMembers";
 import About from "./pages/About";
 import { SuperAdminGuard } from "./components/super-admin/SuperAdminGuard";
 import SuperAdminDashboard from "./pages/super-admin/SuperAdminDashboard";
+import FreeGuide from "./pages/FreeGuide";
+import Unsubscribe from "./pages/Unsubscribe";
+import AdminLeads from "./pages/admin/Leads";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -112,6 +115,9 @@ const App = () => (
                   <Route path="/review/internal/:projectId/:deliverableId" element={<InternalReview />} />
                   <Route path="/founding-members" element={<FoundingMembers />} />
                   <Route path="/about" element={<About />} />
+                  <Route path="/free-guide" element={<FreeGuide />} />
+                  <Route path="/unsubscribe" element={<Unsubscribe />} />
+                  <Route path="/admin/leads" element={<AdminLeads />} />
 
                   {/* Onboarding */}
                   <Route path="/onboarding" element={<Onboarding />} />
