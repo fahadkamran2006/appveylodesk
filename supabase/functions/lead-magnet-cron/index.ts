@@ -110,7 +110,7 @@ function email3Html(firstName: string, unsubUrl: string) {
     <p style="margin:0 0 18px;">After this email I'll only send useful content — agency tips, product updates, things I'm learning. Nothing pushy.</p>
     <p style="margin:0 0 6px;">Thanks for being here.</p>
     <p style="margin:0;">Fahad<br><span style="color:#6e6e73;">Founder, Veylodesk</span></p>
-    <p style="margin:24px 0 0;color:#6e6e73;font-size:14px;">P.S. — If you have any questions about whether Veylodesk solves your specific situation, just reply. I'll give you a straight answer.</p>
+    <p style="margin:24px 0 0;color:#6e6e73;font-size:14px;">P.S. — If you have any questions about whether Veylodesk solves your specific situation, email me at <a href="mailto:hello@fahadkamran.com" style="color:#4B4BE1;">hello@fahadkamran.com</a>. I'll give you a straight answer.</p>
   `;
   return shell("Last email about this — then I'll leave you alone.", body, unsubUrl);
 }
@@ -137,7 +137,7 @@ Thanks for being here.
 Fahad
 Founder, Veylodesk
 
-P.S. — Any questions about whether Veylodesk fits your situation? Just reply.
+P.S. — Any questions about whether Veylodesk fits your situation? Email me at hello@fahadkamran.com.
 
 —
 Unsubscribe: ${unsubUrl}`;
