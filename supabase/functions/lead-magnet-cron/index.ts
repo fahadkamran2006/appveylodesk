@@ -143,7 +143,7 @@ P.S. — Any questions about whether Veylodesk fits your situation? Just reply.
 Unsubscribe: ${unsubUrl}`;
 }
 
-async function sendEmail(to: string, subject: string, html: string, text: string, unsubUrl: string, tag: string) {
+async function sendEmail(to: string, subject: string, html: string, text: string, unsubUrl: string, tag: string): Promise<string | null> {
   const r = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -166,9 +166,10 @@ async function sendEmail(to: string, subject: string, html: string, text: string
   });
   if (!r.ok) {
     console.error("Resend error", r.status, await r.text());
-    return false;
+    return null;
   }
-  return true;
+  const json = await r.json().catch(() => ({}));
+  return json?.id ?? null;
 }
 
 Deno.serve(async (req) => {
