@@ -79,6 +79,54 @@ export default function LeadMagnetEmailsTab() {
   const [search, setSearch] = useState("");
   const [resendCheck, setResendCheck] = useState<ResendCheck | null>(null);
   const [checking, setChecking] = useState(false);
+  const [testEmail, setTestEmail] = useState("");
+  const [testFirstName, setTestFirstName] = useState("Test");
+  const [testRunning, setTestRunning] = useState(false);
+  const [testError, setTestError] = useState<string | null>(null);
+  const [testResults, setTestResults] = useState<{ type: number; subject: string; message_id: string | null }[] | null>(null);
+
+  const runSequenceTest = async () => {
+    setTestError(null);
+    setTestResults(null);
+    setTestRunning(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("lead-magnet-test-sequence", {
+        body: { email: testEmail.trim().toLowerCase(), first_name: testFirstName.trim() || "Test" },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      setTestResults((data as any).results ?? []);
+      // Refresh events shortly after to pick up sent/delivered/open/click webhook updates
+      setTimeout(() => load(), 4000);
+    } catch (e: any) {
+      setTestError(e?.message ?? String(e));
+    } finally {
+      setTestRunning(false);
+    }
+  };
+
+  // Poll events while test results visible (so badges update as Resend webhooks arrive)
+  useEffect(() => {
+    if (!testResults?.length) return;
+    const ids = testResults.map((r) => r.message_id).filter(Boolean) as string[];
+    if (!ids.length) return;
+    const interval = setInterval(async () => {
+      const { data } = await supabase
+        .from("lead_magnet_email_events")
+        .select("id,subscriber_id,message_id,recipient_email,email_type,event_type,bounce_reason,click_url,occurred_at")
+        .in("message_id", ids)
+        .order("occurred_at", { ascending: false });
+      if (data) {
+        setEvents((prev) => {
+          const seen = new Set(prev.map((p) => p.id));
+          const merged = [...prev];
+          for (const e of data as EmailEvent[]) if (!seen.has(e.id)) merged.unshift(e);
+          return merged;
+        });
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [testResults]);
 
   const runResendCheck = async () => {
     setChecking(true);
