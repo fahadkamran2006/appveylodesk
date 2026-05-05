@@ -195,6 +195,9 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Add to Resend audience so the lead shows up in your Resend dashboard
+    await addToResendAudience(email, firstName);
+
     return new Response(JSON.stringify({ ok: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
