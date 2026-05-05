@@ -172,6 +172,10 @@ export default function SuperAdminDashboard() {
             <MarketingTab />
           </TabsContent>
 
+          <TabsContent value="lead-emails">
+            <LeadMagnetEmailsTab />
+          </TabsContent>
+
           {/* System Logs */}
           <TabsContent value="logs">
             <Card>
