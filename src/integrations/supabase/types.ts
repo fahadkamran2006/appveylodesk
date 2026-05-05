@@ -821,12 +821,71 @@ export type Database = {
           },
         ]
       }
+      lead_magnet_email_events: {
+        Row: {
+          bounce_reason: string | null
+          click_url: string | null
+          created_at: string
+          email_type: number | null
+          event_type: string
+          id: string
+          ip: string | null
+          message_id: string | null
+          occurred_at: string
+          raw: Json | null
+          recipient_email: string
+          subscriber_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          bounce_reason?: string | null
+          click_url?: string | null
+          created_at?: string
+          email_type?: number | null
+          event_type: string
+          id?: string
+          ip?: string | null
+          message_id?: string | null
+          occurred_at?: string
+          raw?: Json | null
+          recipient_email: string
+          subscriber_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          bounce_reason?: string | null
+          click_url?: string | null
+          created_at?: string
+          email_type?: number | null
+          event_type?: string
+          id?: string
+          ip?: string | null
+          message_id?: string | null
+          occurred_at?: string
+          raw?: Json | null
+          recipient_email?: string
+          subscriber_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_magnet_email_events_subscriber_id_fkey"
+            columns: ["subscriber_id"]
+            isOneToOne: false
+            referencedRelation: "lead_magnet_subscribers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_magnet_subscribers: {
         Row: {
           created_at: string
           downloaded_at: string
           email: string
+          email_1_message_id: string | null
+          email_2_message_id: string | null
           email_2_sent_at: string | null
+          email_3_message_id: string | null
           email_3_sent_at: string | null
           first_name: string
           id: string
@@ -838,7 +897,10 @@ export type Database = {
           created_at?: string
           downloaded_at?: string
           email: string
+          email_1_message_id?: string | null
+          email_2_message_id?: string | null
           email_2_sent_at?: string | null
+          email_3_message_id?: string | null
           email_3_sent_at?: string | null
           first_name: string
           id?: string
@@ -850,7 +912,10 @@ export type Database = {
           created_at?: string
           downloaded_at?: string
           email?: string
+          email_1_message_id?: string | null
+          email_2_message_id?: string | null
           email_2_sent_at?: string | null
+          email_3_message_id?: string | null
           email_3_sent_at?: string | null
           first_name?: string
           id?: string
