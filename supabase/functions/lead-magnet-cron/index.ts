@@ -143,7 +143,7 @@ P.S. — Any questions about whether Veylodesk fits your situation? Just reply.
 Unsubscribe: ${unsubUrl}`;
 }
 
-async function sendEmail(to: string, subject: string, html: string, text: string, unsubUrl: string, tag: string) {
+async function sendEmail(to: string, subject: string, html: string, text: string, unsubUrl: string, tag: string): Promise<string | null> {
   const r = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -166,9 +166,10 @@ async function sendEmail(to: string, subject: string, html: string, text: string
   });
   if (!r.ok) {
     console.error("Resend error", r.status, await r.text());
-    return false;
+    return null;
   }
-  return true;
+  const json = await r.json().catch(() => ({}));
+  return json?.id ?? null;
 }
 
 Deno.serve(async (req) => {
@@ -195,7 +196,7 @@ Deno.serve(async (req) => {
 
   for (const s of e2list ?? []) {
     const unsub = `${SITE_URL}/unsubscribe?token=${s.unsubscribe_token}`;
-    const ok = await sendEmail(
+    const msgId = await sendEmail(
       s.email,
       `${s.first_name}, the one change that changed everything`,
       email2Html(s.first_name, unsub),
@@ -203,11 +204,15 @@ Deno.serve(async (req) => {
       unsub,
       "lead_magnet_email_2",
     );
-    if (ok) {
+    if (msgId) {
       await supabase
         .from("lead_magnet_subscribers")
-        .update({ email_2_sent_at: new Date().toISOString() })
+        .update({ email_2_sent_at: new Date().toISOString(), email_2_message_id: msgId })
         .eq("id", s.id);
+      await supabase.from("lead_magnet_email_events").insert({
+        subscriber_id: s.id, message_id: msgId, recipient_email: s.email,
+        email_type: 2, event_type: "queued",
+      });
       results.email2++;
     }
   }
@@ -221,7 +226,7 @@ Deno.serve(async (req) => {
 
   for (const s of e3list ?? []) {
     const unsub = `${SITE_URL}/unsubscribe?token=${s.unsubscribe_token}`;
-    const ok = await sendEmail(
+    const msgId = await sendEmail(
       s.email,
       `Last note, ${s.first_name}`,
       email3Html(s.first_name, unsub),
@@ -229,11 +234,15 @@ Deno.serve(async (req) => {
       unsub,
       "lead_magnet_email_3",
     );
-    if (ok) {
+    if (msgId) {
       await supabase
         .from("lead_magnet_subscribers")
-        .update({ email_3_sent_at: new Date().toISOString() })
+        .update({ email_3_sent_at: new Date().toISOString(), email_3_message_id: msgId })
         .eq("id", s.id);
+      await supabase.from("lead_magnet_email_events").insert({
+        subscriber_id: s.id, message_id: msgId, recipient_email: s.email,
+        email_type: 3, event_type: "queued",
+      });
       results.email3++;
     }
   }

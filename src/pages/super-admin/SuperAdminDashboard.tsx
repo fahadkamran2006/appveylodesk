@@ -5,6 +5,7 @@ import AgencyDrilldownSheet from "@/components/super-admin/AgencyDrilldownSheet"
 import BugReportsTab from "@/components/super-admin/BugReportsTab";
 import MarketingTab from "@/components/super-admin/MarketingTab";
 import CancellationsTab, { type CancellationHighlight } from "@/components/super-admin/CancellationsTab";
+import LeadMagnetEmailsTab from "@/components/super-admin/LeadMagnetEmailsTab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -84,6 +85,7 @@ export default function SuperAdminDashboard() {
             <TabsTrigger value="cancellations">Cancellations</TabsTrigger>
             <TabsTrigger value="bugs">Bug Reports</TabsTrigger>
             <TabsTrigger value="marketing">Marketing</TabsTrigger>
+            <TabsTrigger value="lead-emails">Lead Magnet Emails</TabsTrigger>
             <TabsTrigger value="logs">System Events</TabsTrigger>
           </TabsList>
 
@@ -168,6 +170,10 @@ export default function SuperAdminDashboard() {
           {/* Marketing */}
           <TabsContent value="marketing">
             <MarketingTab />
+          </TabsContent>
+
+          <TabsContent value="lead-emails">
+            <LeadMagnetEmailsTab />
           </TabsContent>
 
           {/* System Logs */}

@@ -59,3 +59,6 @@ verify_jwt = false
 
 [functions.lead-magnet-unsubscribe]
 verify_jwt = false
+
+[functions.lead-magnet-resend-webhook]
+verify_jwt = false
