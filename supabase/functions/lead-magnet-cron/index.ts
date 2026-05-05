@@ -8,7 +8,7 @@ const corsHeaders = {
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
 const SITE_URL = "https://veylodesk.com";
 const FROM = "Fahad Kamran <fahad@veylodesk.com>";
-const REPLY_TO = "fahad@veylodesk.com";
+const REPLY_TO = "hello@fahadkamran.com";
 
 function escapeHtml(s: string) {
   return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
