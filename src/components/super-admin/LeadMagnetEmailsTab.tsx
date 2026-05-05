@@ -372,6 +372,75 @@ export default function LeadMagnetEmailsTab() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold">Run sequence test</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Sends Email 1, 2, and 3 immediately to the address you enter, then tracks delivery, opens, and clicks per message.
+          </p>
+          <div className="flex flex-col md:flex-row gap-2">
+            <Input
+              type="email"
+              placeholder="you@example.com"
+              value={testEmail}
+              onChange={(e) => setTestEmail(e.target.value)}
+              className="md:max-w-xs"
+            />
+            <Input
+              placeholder="First name"
+              value={testFirstName}
+              onChange={(e) => setTestFirstName(e.target.value)}
+              className="md:max-w-[180px]"
+            />
+            <Button onClick={runSequenceTest} disabled={testRunning || !testEmail}>
+              {testRunning ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Mail className="w-4 h-4 mr-2" />}
+              Run sequence test
+            </Button>
+          </div>
+          {testError && (
+            <div className="text-xs text-destructive border border-destructive/30 bg-destructive/10 rounded p-2">
+              {testError}
+            </div>
+          )}
+          {testResults && (
+            <div className="rounded-md border overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Subject</TableHead>
+                    <TableHead>Message ID</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {testResults.map((r) => {
+                    const ev = events.find((e) => e.message_id === r.message_id);
+                    return (
+                      <TableRow key={r.type}>
+                        <TableCell className="font-medium">Email {r.type}</TableCell>
+                        <TableCell className="text-xs">{r.subject}</TableCell>
+                        <TableCell className="text-xs font-mono text-muted-foreground">
+                          {r.message_id ? `${r.message_id.slice(0, 8)}…` : "—"}
+                        </TableCell>
+                        <TableCell>
+                          {r.message_id ? statusBadge(ev?.event_type ?? "queued") : statusBadge("failed")}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+              <p className="text-xs text-muted-foreground p-2">
+                Status updates live as Resend webhooks arrive (delivered → opened → clicked). Open the test email and click the CTA to verify tracking.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard icon={Mail} label="Subscribers" value={totals.total} />
         <StatCard icon={MailCheck} label="Delivered (E1)" value={stats.e1.delivered} sub={`${stats.e1.total ? Math.round((stats.e1.delivered/stats.e1.total)*100) : 0}% of sent`} />
