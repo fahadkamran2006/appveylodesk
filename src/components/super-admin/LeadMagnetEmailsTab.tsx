@@ -79,6 +79,54 @@ export default function LeadMagnetEmailsTab() {
   const [search, setSearch] = useState("");
   const [resendCheck, setResendCheck] = useState<ResendCheck | null>(null);
   const [checking, setChecking] = useState(false);
+  const [testEmail, setTestEmail] = useState("");
+  const [testFirstName, setTestFirstName] = useState("Test");
+  const [testRunning, setTestRunning] = useState(false);
+  const [testError, setTestError] = useState<string | null>(null);
+  const [testResults, setTestResults] = useState<{ type: number; subject: string; message_id: string | null }[] | null>(null);
+
+  const runSequenceTest = async () => {
+    setTestError(null);
+    setTestResults(null);
+    setTestRunning(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("lead-magnet-test-sequence", {
+        body: { email: testEmail.trim().toLowerCase(), first_name: testFirstName.trim() || "Test" },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      setTestResults((data as any).results ?? []);
+      // Refresh events shortly after to pick up sent/delivered/open/click webhook updates
+      setTimeout(() => load(), 4000);
+    } catch (e: any) {
+      setTestError(e?.message ?? String(e));
+    } finally {
+      setTestRunning(false);
+    }
+  };
+
+  // Poll events while test results visible (so badges update as Resend webhooks arrive)
+  useEffect(() => {
+    if (!testResults?.length) return;
+    const ids = testResults.map((r) => r.message_id).filter(Boolean) as string[];
+    if (!ids.length) return;
+    const interval = setInterval(async () => {
+      const { data } = await supabase
+        .from("lead_magnet_email_events")
+        .select("id,subscriber_id,message_id,recipient_email,email_type,event_type,bounce_reason,click_url,occurred_at")
+        .in("message_id", ids)
+        .order("occurred_at", { ascending: false });
+      if (data) {
+        setEvents((prev) => {
+          const seen = new Set(prev.map((p) => p.id));
+          const merged = [...prev];
+          for (const e of data as EmailEvent[]) if (!seen.has(e.id)) merged.unshift(e);
+          return merged;
+        });
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [testResults]);
 
   const runResendCheck = async () => {
     setChecking(true);
@@ -319,6 +367,75 @@ export default function LeadMagnetEmailsTab() {
           {resendCheck?.error && (
             <div className="md:col-span-4 text-xs text-destructive border border-destructive/30 bg-destructive/10 rounded p-2">
               {resendCheck.error}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold">Run sequence test</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Sends Email 1, 2, and 3 immediately to the address you enter, then tracks delivery, opens, and clicks per message.
+          </p>
+          <div className="flex flex-col md:flex-row gap-2">
+            <Input
+              type="email"
+              placeholder="you@example.com"
+              value={testEmail}
+              onChange={(e) => setTestEmail(e.target.value)}
+              className="md:max-w-xs"
+            />
+            <Input
+              placeholder="First name"
+              value={testFirstName}
+              onChange={(e) => setTestFirstName(e.target.value)}
+              className="md:max-w-[180px]"
+            />
+            <Button onClick={runSequenceTest} disabled={testRunning || !testEmail}>
+              {testRunning ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Mail className="w-4 h-4 mr-2" />}
+              Run sequence test
+            </Button>
+          </div>
+          {testError && (
+            <div className="text-xs text-destructive border border-destructive/30 bg-destructive/10 rounded p-2">
+              {testError}
+            </div>
+          )}
+          {testResults && (
+            <div className="rounded-md border overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Subject</TableHead>
+                    <TableHead>Message ID</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {testResults.map((r) => {
+                    const ev = events.find((e) => e.message_id === r.message_id);
+                    return (
+                      <TableRow key={r.type}>
+                        <TableCell className="font-medium">Email {r.type}</TableCell>
+                        <TableCell className="text-xs">{r.subject}</TableCell>
+                        <TableCell className="text-xs font-mono text-muted-foreground">
+                          {r.message_id ? `${r.message_id.slice(0, 8)}…` : "—"}
+                        </TableCell>
+                        <TableCell>
+                          {r.message_id ? statusBadge(ev?.event_type ?? "queued") : statusBadge("failed")}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+              <p className="text-xs text-muted-foreground p-2">
+                Status updates live as Resend webhooks arrive (delivered → opened → clicked). Open the test email and click the CTA to verify tracking.
+              </p>
             </div>
           )}
         </CardContent>
