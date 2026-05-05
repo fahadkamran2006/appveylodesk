@@ -5,6 +5,7 @@ import AgencyDrilldownSheet from "@/components/super-admin/AgencyDrilldownSheet"
 import BugReportsTab from "@/components/super-admin/BugReportsTab";
 import MarketingTab from "@/components/super-admin/MarketingTab";
 import CancellationsTab, { type CancellationHighlight } from "@/components/super-admin/CancellationsTab";
+import LeadMagnetEmailsTab from "@/components/super-admin/LeadMagnetEmailsTab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
