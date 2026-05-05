@@ -38,7 +38,7 @@ async function addToResendAudience(email: string, firstName: string) {
 }
 const PDF_URL = "https://bwfnxidpifugpklczfyo.supabase.co/storage/v1/object/public/lead-magnet-assets/veylodesk-agency-guide.pdf";
 const FROM = "Fahad Kamran <fahad@veylodesk.com>";
-const REPLY_TO = "fahad@veylodesk.com";
+const REPLY_TO = "hello@fahadkamran.com";
 
 function escapeHtml(s: string) {
   return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
@@ -66,7 +66,7 @@ function email1Html(firstName: string, unsubUrl: string) {
         <p style="margin:0 0 18px;">Client portal. Video approvals. Pay-to-download invoicing. Team management. One tab.</p>
         <p style="margin:0 0 18px;">I'll tell you more in a couple of days. For now — read the guide.</p>
         <p style="margin:0 0 6px;">Talk soon,<br>Fahad<br><span style="color:#6e6e73;">Founder, Veylodesk</span></p>
-        <p style="margin:24px 0 0;color:#6e6e73;font-size:14px;">P.S. — I'm 19, ran a video editing agency for two years, and built this to fix my own problems. If you have questions about anything in the guide, just reply to this email. I read every one.</p>
+        <p style="margin:24px 0 0;color:#6e6e73;font-size:14px;">P.S. — I'm 19, ran a video editing agency for two years, and built this to fix my own problems. If you have questions about anything in the guide, email me at <a href="mailto:hello@fahadkamran.com" style="color:#4B4BE1;">hello@fahadkamran.com</a>. I read every one.</p>
       </td></tr>
       <tr><td style="padding-top:28px;border-top:1px solid #e5e5ea;margin-top:28px;font-size:12px;color:#86868b;">
         <p style="margin:18px 0 0;">You're getting this because you downloaded the free agency guide at veylodesk.com. <a href="${unsubUrl}" style="color:#86868b;">Unsubscribe</a>.</p>
@@ -99,7 +99,7 @@ Talk soon,
 Fahad
 Founder, Veylodesk
 
-P.S. — I'm 19, ran a video editing agency for two years, and built this to fix my own problems. If you have questions, just reply. I read every one.
+P.S. — I'm 19, ran a video editing agency for two years, and built this to fix my own problems. If you have questions, email me at hello@fahadkamran.com. I read every one.
 
 —
 Unsubscribe: ${unsubUrl}`;
