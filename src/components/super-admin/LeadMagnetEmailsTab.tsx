@@ -60,12 +60,42 @@ function statusBadge(s: string) {
   return <Badge variant="outline" className={m.cls}>{m.label}</Badge>;
 }
 
+type ResendCheck = {
+  audience_id_present: boolean;
+  audience_id: string | null;
+  audience_valid: boolean;
+  audience: { id: string; name: string; created_at: string } | null;
+  contacts_count: number | null;
+  last_webhook_event: { event_type: string; recipient_email: string; email_type: number | null; occurred_at: string } | null;
+  webhook_events_24h: number;
+  error: string | null;
+};
+
 export default function LeadMagnetEmailsTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
   const [events, setEvents] = useState<EmailEvent[]>([]);
   const [search, setSearch] = useState("");
+  const [resendCheck, setResendCheck] = useState<ResendCheck | null>(null);
+  const [checking, setChecking] = useState(false);
+
+  const runResendCheck = async () => {
+    setChecking(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("lead-magnet-resend-check");
+      if (error) throw error;
+      setResendCheck(data as ResendCheck);
+    } catch (e: any) {
+      setResendCheck({
+        audience_id_present: false, audience_id: null, audience_valid: false, audience: null,
+        contacts_count: null, last_webhook_event: null, webhook_events_24h: 0,
+        error: e?.message ?? String(e),
+      });
+    } finally {
+      setChecking(false);
+    }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -92,7 +122,7 @@ export default function LeadMagnetEmailsTab() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); runResendCheck(); }, []);
 
   // Aggregate latest event per (subscriber, email_type)
   const latestBy = useMemo(() => {
@@ -237,6 +267,62 @@ export default function LeadMagnetEmailsTab() {
           {error}
         </div>
       )}
+
+      <Card>
+        <CardHeader className="pb-3 flex-row items-center justify-between">
+          <CardTitle className="text-sm font-semibold">Resend Settings Check</CardTitle>
+          <Button variant="outline" size="sm" onClick={runResendCheck} disabled={checking}>
+            {checking ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+            Re-check
+          </Button>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+          <div>
+            <div className="text-xs uppercase text-muted-foreground">Audience ID</div>
+            <div className="mt-1">
+              {resendCheck?.audience_valid ? (
+                <Badge variant="outline" className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30">Valid audience</Badge>
+              ) : resendCheck?.audience_id_present ? (
+                <Badge variant="outline" className="bg-red-500/15 text-red-600 border-red-500/30">Invalid / not found</Badge>
+              ) : (
+                <Badge variant="outline" className="bg-amber-500/15 text-amber-600 border-amber-500/30">Not set</Badge>
+              )}
+            </div>
+            {resendCheck?.audience && (
+              <div className="text-xs text-muted-foreground mt-1 truncate">
+                {resendCheck.audience.name} · <code className="text-[10px]">{resendCheck.audience.id.slice(0, 8)}…</code>
+              </div>
+            )}
+          </div>
+          <div>
+            <div className="text-xs uppercase text-muted-foreground">Contacts in audience</div>
+            <div className="font-semibold mt-1">{resendCheck?.contacts_count ?? "—"}</div>
+          </div>
+          <div>
+            <div className="text-xs uppercase text-muted-foreground">Webhook events (24h)</div>
+            <div className="font-semibold mt-1">{resendCheck?.webhook_events_24h ?? 0}</div>
+          </div>
+          <div>
+            <div className="text-xs uppercase text-muted-foreground">Last webhook event</div>
+            {resendCheck?.last_webhook_event ? (
+              <div className="mt-1">
+                {statusBadge(resendCheck.last_webhook_event.event_type)}
+                <div className="text-xs text-muted-foreground mt-1 truncate">
+                  {resendCheck.last_webhook_event.recipient_email} ·{" "}
+                  {formatDistanceToNow(new Date(resendCheck.last_webhook_event.occurred_at), { addSuffix: true })}
+                </div>
+              </div>
+            ) : (
+              <div className="text-xs text-muted-foreground mt-1">No events received yet.</div>
+            )}
+          </div>
+          {resendCheck?.error && (
+            <div className="md:col-span-4 text-xs text-destructive border border-destructive/30 bg-destructive/10 rounded p-2">
+              {resendCheck.error}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard icon={Mail} label="Subscribers" value={totals.total} />
