@@ -65,3 +65,12 @@ verify_jwt = false
 
 [functions.lead-magnet-test-sequence]
 verify_jwt = false
+
+[functions.drive-ops]
+verify_jwt = false
+
+[functions.drive-share-resolve]
+verify_jwt = false
+
+[functions.drive-share-upload]
+verify_jwt = false
