@@ -16,6 +16,7 @@ import {
 import { useDrive, useDriveFolder, type DriveFile } from "@/hooks/useDrive";
 import { NewFolderModal } from "@/components/drive/NewFolderModal";
 import { ShareLinkModal } from "@/components/drive/ShareLinkModal";
+import { FilePreview } from "@/components/drive/FilePreview";
 import { useUploadContext } from "@/contexts/UploadContext";
 import { useDownloadContext } from "@/contexts/DownloadContext";
 import { useToast } from "@/hooks/use-toast";
@@ -50,6 +51,7 @@ export default function DrivePage() {
   const [search, setSearch] = useState("");
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [shareTarget, setShareTarget] = useState<{ id: string; name: string } | null>(null);
+  const [previewFile, setPreviewFile] = useState<DriveFile | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -93,9 +95,11 @@ export default function DrivePage() {
         addToQueue(arr, f.project_id, undefined, "deliverable");
         toast({ title: "Upload started", description: `${arr.length} file(s) added to queue` });
       } else {
+        toast({ title: "Uploading…", description: `${arr.length} file(s)` });
         for (const file of arr) {
-          await uploadCustomFile(file, folderId, registerFile);
+          await uploadCustomFile(file, folderId);
         }
+        toast({ title: "Upload complete" });
         refetch();
       }
     } catch (e: any) {
@@ -177,7 +181,7 @@ export default function DrivePage() {
                 onDelete={f.kind === "custom" ? () => deleteFolder(f.id).then(() => refetch()) : undefined} />
             ))}
             {filteredFiles.map((f) => (
-              <FileCard key={f.id} file={f} onDownload={() => handleDownload(f)}
+              <FileCard key={f.id} file={f} onPreview={() => setPreviewFile(f)} onDownload={() => handleDownload(f)}
                 onDelete={f.source === "user" || f.source === "public_link" ? () => deleteFile(f.id).then(() => refetch()) : undefined} />
             ))}
           </div>
@@ -189,7 +193,7 @@ export default function DrivePage() {
                 onDelete={f.kind === "custom" ? () => deleteFolder(f.id).then(() => refetch()) : undefined} />
             ))}
             {filteredFiles.map((f) => (
-              <FileRow key={f.id} file={f} onDownload={() => handleDownload(f)}
+              <FileRow key={f.id} file={f} onPreview={() => setPreviewFile(f)} onDownload={() => handleDownload(f)}
                 onDelete={f.source === "user" || f.source === "public_link" ? () => deleteFile(f.id).then(() => refetch()) : undefined} />
             ))}
           </div>
@@ -209,15 +213,31 @@ export default function DrivePage() {
           folderName={shareTarget.name}
         />
       )}
+      <FilePreview open={!!previewFile} onOpenChange={(v) => { if (!v) setPreviewFile(null); }} file={previewFile} />
     </DashboardLayout>
   );
 }
 
-async function uploadCustomFile(file: File, folderId: string, registerFile: any) {
+async function uploadCustomFile(file: File, folderId: string) {
   const { supabase } = await import("@/integrations/supabase/client");
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.access_token) throw new Error("Not signed in");
-  throw new Error("Uploads to custom folders are coming soon. Use a project folder, or share a link with upload permission and use it.");
+  if (file.size > 45 * 1024 * 1024) {
+    throw new Error(`"${file.name}" is too large for custom folders (max 45MB). Use a project folder for big videos.`);
+  }
+  const fd = new FormData();
+  fd.append("folderId", folderId);
+  fd.append("file", file);
+  const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/drive-upload`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${session.access_token}` },
+    body: fd,
+  });
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error(t || "Upload failed");
+  }
 }
 
 function FolderCard({ folder, onOpen, onShare, onDelete }: any) {
@@ -242,18 +262,19 @@ function FolderCard({ folder, onOpen, onShare, onDelete }: any) {
   );
 }
 
-function FileCard({ file, onDownload, onDelete }: any) {
+function FileCard({ file, onPreview, onDownload, onDelete }: any) {
   return (
-    <div className="group relative border rounded-lg p-3 hover:bg-muted/30 transition">
+    <div className="group relative border rounded-lg p-3 hover:bg-muted/30 transition cursor-pointer" onDoubleClick={onPreview}>
       <div className="flex items-start justify-between">
-        <div className="flex-1 min-w-0">
+        <button onClick={onPreview} className="flex-1 min-w-0 text-left">
           {fileIcon(file.file_name)}
           <p className="text-sm font-medium truncate mt-2">{file.file_name}</p>
           <p className="text-xs text-muted-foreground">{formatBytes(file.file_size)}</p>
-        </div>
+        </button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="opacity-0 group-hover:opacity-100"><MoreVertical className="w-4 h-4" /></Button></DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={onPreview}>Preview</DropdownMenuItem>
             <DropdownMenuItem onClick={onDownload}><Download className="w-4 h-4 mr-2" />Download</DropdownMenuItem>
             {onDelete && <DropdownMenuItem onClick={onDelete} className="text-destructive"><Trash2 className="w-4 h-4 mr-2" />Delete</DropdownMenuItem>}
           </DropdownMenuContent>
@@ -275,14 +296,14 @@ function FolderRow({ folder, onOpen, onShare, onDelete }: any) {
   );
 }
 
-function FileRow({ file, onDownload, onDelete }: any) {
+function FileRow({ file, onPreview, onDownload, onDelete }: any) {
   return (
     <div className="flex items-center gap-3 p-3 hover:bg-muted/30">
       {fileIcon(file.file_name)}
-      <div className="flex-1 min-w-0">
+      <button onClick={onPreview} className="flex-1 min-w-0 text-left">
         <p className="text-sm font-medium truncate">{file.file_name}</p>
         <p className="text-xs text-muted-foreground">{formatBytes(file.file_size)}</p>
-      </div>
+      </button>
       <Button size="sm" variant="ghost" onClick={onDownload}><Download className="w-4 h-4" /></Button>
       {onDelete && <Button size="sm" variant="ghost" onClick={onDelete}><Trash2 className="w-4 h-4 text-destructive" /></Button>}
     </div>

@@ -74,3 +74,6 @@ verify_jwt = false
 
 [functions.drive-share-upload]
 verify_jwt = false
+
+[functions.drive-upload]
+verify_jwt = false
