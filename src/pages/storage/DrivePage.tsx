@@ -16,6 +16,7 @@ import {
 import { useDrive, useDriveFolder, type DriveFile } from "@/hooks/useDrive";
 import { NewFolderModal } from "@/components/drive/NewFolderModal";
 import { ShareLinkModal } from "@/components/drive/ShareLinkModal";
+import { FilePreview } from "@/components/drive/FilePreview";
 import { useUploadContext } from "@/contexts/UploadContext";
 import { useDownloadContext } from "@/contexts/DownloadContext";
 import { useToast } from "@/hooks/use-toast";
@@ -50,6 +51,7 @@ export default function DrivePage() {
   const [search, setSearch] = useState("");
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [shareTarget, setShareTarget] = useState<{ id: string; name: string } | null>(null);
+  const [previewFile, setPreviewFile] = useState<DriveFile | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -93,9 +95,11 @@ export default function DrivePage() {
         addToQueue(arr, f.project_id, undefined, "deliverable");
         toast({ title: "Upload started", description: `${arr.length} file(s) added to queue` });
       } else {
+        toast({ title: "Uploading…", description: `${arr.length} file(s)` });
         for (const file of arr) {
-          await uploadCustomFile(file, folderId, registerFile);
+          await uploadCustomFile(file, folderId);
         }
+        toast({ title: "Upload complete" });
         refetch();
       }
     } catch (e: any) {
@@ -213,11 +217,26 @@ export default function DrivePage() {
   );
 }
 
-async function uploadCustomFile(file: File, folderId: string, registerFile: any) {
+async function uploadCustomFile(file: File, folderId: string) {
   const { supabase } = await import("@/integrations/supabase/client");
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.access_token) throw new Error("Not signed in");
-  throw new Error("Uploads to custom folders are coming soon. Use a project folder, or share a link with upload permission and use it.");
+  if (file.size > 45 * 1024 * 1024) {
+    throw new Error(`"${file.name}" is too large for custom folders (max 45MB). Use a project folder for big videos.`);
+  }
+  const fd = new FormData();
+  fd.append("folderId", folderId);
+  fd.append("file", file);
+  const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/drive-upload`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${session.access_token}` },
+    body: fd,
+  });
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error(t || "Upload failed");
+  }
 }
 
 function FolderCard({ folder, onOpen, onShare, onDelete }: any) {
