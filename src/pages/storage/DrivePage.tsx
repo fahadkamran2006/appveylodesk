@@ -262,18 +262,19 @@ function FolderCard({ folder, onOpen, onShare, onDelete }: any) {
   );
 }
 
-function FileCard({ file, onDownload, onDelete }: any) {
+function FileCard({ file, onPreview, onDownload, onDelete }: any) {
   return (
-    <div className="group relative border rounded-lg p-3 hover:bg-muted/30 transition">
+    <div className="group relative border rounded-lg p-3 hover:bg-muted/30 transition cursor-pointer" onDoubleClick={onPreview}>
       <div className="flex items-start justify-between">
-        <div className="flex-1 min-w-0">
+        <button onClick={onPreview} className="flex-1 min-w-0 text-left">
           {fileIcon(file.file_name)}
           <p className="text-sm font-medium truncate mt-2">{file.file_name}</p>
           <p className="text-xs text-muted-foreground">{formatBytes(file.file_size)}</p>
-        </div>
+        </button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="opacity-0 group-hover:opacity-100"><MoreVertical className="w-4 h-4" /></Button></DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={onPreview}>Preview</DropdownMenuItem>
             <DropdownMenuItem onClick={onDownload}><Download className="w-4 h-4 mr-2" />Download</DropdownMenuItem>
             {onDelete && <DropdownMenuItem onClick={onDelete} className="text-destructive"><Trash2 className="w-4 h-4 mr-2" />Delete</DropdownMenuItem>}
           </DropdownMenuContent>
@@ -295,14 +296,14 @@ function FolderRow({ folder, onOpen, onShare, onDelete }: any) {
   );
 }
 
-function FileRow({ file, onDownload, onDelete }: any) {
+function FileRow({ file, onPreview, onDownload, onDelete }: any) {
   return (
     <div className="flex items-center gap-3 p-3 hover:bg-muted/30">
       {fileIcon(file.file_name)}
-      <div className="flex-1 min-w-0">
+      <button onClick={onPreview} className="flex-1 min-w-0 text-left">
         <p className="text-sm font-medium truncate">{file.file_name}</p>
         <p className="text-xs text-muted-foreground">{formatBytes(file.file_size)}</p>
-      </div>
+      </button>
       <Button size="sm" variant="ghost" onClick={onDownload}><Download className="w-4 h-4" /></Button>
       {onDelete && <Button size="sm" variant="ghost" onClick={onDelete}><Trash2 className="w-4 h-4 text-destructive" /></Button>}
     </div>
