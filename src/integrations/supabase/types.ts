@@ -648,6 +648,207 @@ export type Database = {
           },
         ]
       }
+      drive_files: {
+        Row: {
+          agency_id: string
+          created_at: string
+          file_name: string
+          file_size: number
+          file_url: string
+          folder_id: string | null
+          id: string
+          mime_type: string | null
+          share_link_id: string | null
+          source: string
+          uploaded_by: string | null
+          uploader_label: string | null
+        }
+        Insert: {
+          agency_id: string
+          created_at?: string
+          file_name: string
+          file_size?: number
+          file_url: string
+          folder_id?: string | null
+          id?: string
+          mime_type?: string | null
+          share_link_id?: string | null
+          source?: string
+          uploaded_by?: string | null
+          uploader_label?: string | null
+        }
+        Update: {
+          agency_id?: string
+          created_at?: string
+          file_name?: string
+          file_size?: number
+          file_url?: string
+          folder_id?: string | null
+          id?: string
+          mime_type?: string | null
+          share_link_id?: string | null
+          source?: string
+          uploaded_by?: string | null
+          uploader_label?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drive_files_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "drive_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      drive_folders: {
+        Row: {
+          agency_id: string
+          created_at: string
+          created_by: string
+          id: string
+          kind: Database["public"]["Enums"]["drive_folder_kind"]
+          name: string
+          parent_id: string | null
+          project_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          agency_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          kind?: Database["public"]["Enums"]["drive_folder_kind"]
+          name: string
+          parent_id?: string | null
+          project_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          agency_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["drive_folder_kind"]
+          name?: string
+          parent_id?: string | null
+          project_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drive_folders_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "drive_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      drive_share_links: {
+        Row: {
+          agency_id: string
+          created_at: string
+          created_by: string
+          expires_at: string | null
+          folder_id: string
+          id: string
+          is_revoked: boolean
+          max_files: number | null
+          max_upload_bytes: number | null
+          password_hash: string | null
+          permission: Database["public"]["Enums"]["drive_share_permission"]
+          token: string
+          used_bytes: number
+          used_files: number
+        }
+        Insert: {
+          agency_id: string
+          created_at?: string
+          created_by: string
+          expires_at?: string | null
+          folder_id: string
+          id?: string
+          is_revoked?: boolean
+          max_files?: number | null
+          max_upload_bytes?: number | null
+          password_hash?: string | null
+          permission?: Database["public"]["Enums"]["drive_share_permission"]
+          token?: string
+          used_bytes?: number
+          used_files?: number
+        }
+        Update: {
+          agency_id?: string
+          created_at?: string
+          created_by?: string
+          expires_at?: string | null
+          folder_id?: string
+          id?: string
+          is_revoked?: boolean
+          max_files?: number | null
+          max_upload_bytes?: number | null
+          password_hash?: string | null
+          permission?: Database["public"]["Enums"]["drive_share_permission"]
+          token?: string
+          used_bytes?: number
+          used_files?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drive_share_links_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "drive_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      drive_share_uploads: {
+        Row: {
+          created_at: string
+          file_id: string | null
+          id: string
+          ip_hash: string | null
+          share_link_id: string
+          uploader_email: string | null
+          uploader_name: string | null
+        }
+        Insert: {
+          created_at?: string
+          file_id?: string | null
+          id?: string
+          ip_hash?: string | null
+          share_link_id: string
+          uploader_email?: string | null
+          uploader_name?: string | null
+        }
+        Update: {
+          created_at?: string
+          file_id?: string | null
+          id?: string
+          ip_hash?: string | null
+          share_link_id?: string
+          uploader_email?: string | null
+          uploader_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drive_share_uploads_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "drive_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drive_share_uploads_share_link_id_fkey"
+            columns: ["share_link_id"]
+            isOneToOne: false
+            referencedRelation: "drive_share_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       editor_balances: {
         Row: {
           agency_id: string
@@ -1906,6 +2107,8 @@ export type Database = {
     Enums: {
       app_role: "admin" | "client" | "editor"
       channel_type: "dm" | "project"
+      drive_folder_kind: "custom" | "project_root"
+      drive_share_permission: "view" | "download" | "upload" | "full"
       employment_type: "freelance" | "salaried"
       invoice_status: "unpaid" | "paid" | "overdue" | "pending"
       notification_type:
@@ -2059,6 +2262,8 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "client", "editor"],
       channel_type: ["dm", "project"],
+      drive_folder_kind: ["custom", "project_root"],
+      drive_share_permission: ["view", "download", "upload", "full"],
       employment_type: ["freelance", "salaried"],
       invoice_status: ["unpaid", "paid", "overdue", "pending"],
       notification_type: [

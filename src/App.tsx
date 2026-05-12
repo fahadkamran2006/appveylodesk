@@ -57,7 +57,8 @@ import Refund from "./pages/legal/Refund";
 // Shared pages
 import SettingsPage from "./pages/settings/Settings";
 import MessagesPage from "./pages/messages/MessagesPage";
-import StoragePage from "./pages/storage/StoragePage";
+import StoragePage from "./pages/storage/DrivePage";
+import SharePage from "./pages/share/SharePage";
 import CalendarPage from "./pages/Calendar";
 import InvoiceDetailPage from "./pages/invoices/InvoiceDetail";
 import PublicReview from "./pages/review/PublicReview";
@@ -118,6 +119,7 @@ const App = () => (
                   <Route path="/free-guide" element={<FreeGuide />} />
                   <Route path="/unsubscribe" element={<Unsubscribe />} />
                   <Route path="/admin/leads" element={<AdminLeads />} />
+                  <Route path="/s/:token" element={<SharePage />} />
 
                   {/* Onboarding */}
                   <Route path="/onboarding" element={<Onboarding />} />
