@@ -181,7 +181,7 @@ export default function DrivePage() {
                 onDelete={f.kind === "custom" ? () => deleteFolder(f.id).then(() => refetch()) : undefined} />
             ))}
             {filteredFiles.map((f) => (
-              <FileCard key={f.id} file={f} onDownload={() => handleDownload(f)}
+              <FileCard key={f.id} file={f} onPreview={() => setPreviewFile(f)} onDownload={() => handleDownload(f)}
                 onDelete={f.source === "user" || f.source === "public_link" ? () => deleteFile(f.id).then(() => refetch()) : undefined} />
             ))}
           </div>
@@ -193,7 +193,7 @@ export default function DrivePage() {
                 onDelete={f.kind === "custom" ? () => deleteFolder(f.id).then(() => refetch()) : undefined} />
             ))}
             {filteredFiles.map((f) => (
-              <FileRow key={f.id} file={f} onDownload={() => handleDownload(f)}
+              <FileRow key={f.id} file={f} onPreview={() => setPreviewFile(f)} onDownload={() => handleDownload(f)}
                 onDelete={f.source === "user" || f.source === "public_link" ? () => deleteFile(f.id).then(() => refetch()) : undefined} />
             ))}
           </div>
@@ -213,6 +213,7 @@ export default function DrivePage() {
           folderName={shareTarget.name}
         />
       )}
+      <FilePreview open={!!previewFile} onOpenChange={(v) => { if (!v) setPreviewFile(null); }} file={previewFile} />
     </DashboardLayout>
   );
 }
