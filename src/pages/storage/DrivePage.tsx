@@ -52,6 +52,8 @@ export default function DrivePage() {
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [shareTarget, setShareTarget] = useState<{ id: string; name: string } | null>(null);
   const [previewFile, setPreviewFile] = useState<DriveFile | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragCounter = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -112,11 +114,42 @@ export default function DrivePage() {
     startDownload(file.id, file.file_name, file.file_url, file.file_size);
   };
 
+  const onDragEnter = (e: React.DragEvent) => {
+    if (!e.dataTransfer?.types?.includes("Files")) return;
+    e.preventDefault();
+    dragCounter.current += 1;
+    setIsDragging(true);
+  };
+  const onDragOver = (e: React.DragEvent) => {
+    if (!e.dataTransfer?.types?.includes("Files")) return;
+    e.preventDefault();
+  };
+  const onDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounter.current -= 1;
+    if (dragCounter.current <= 0) {
+      dragCounter.current = 0;
+      setIsDragging(false);
+    }
+  };
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounter.current = 0;
+    setIsDragging(false);
+    if (e.dataTransfer?.files?.length) handleFiles(e.dataTransfer.files);
+  };
+
   return (
     <DashboardLayout role={(userRole as any) || "client"}>
       <Helmet><title>Drive — Veylodesk</title></Helmet>
 
-      <div className="space-y-4">
+      <div
+        className="space-y-4 relative"
+        onDragEnter={onDragEnter}
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
+      >
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="text-2xl font-semibold flex-1">My Drive</h1>
           <div className="relative">
@@ -196,6 +229,17 @@ export default function DrivePage() {
               <FileRow key={f.id} file={f} onPreview={() => setPreviewFile(f)} onDownload={() => handleDownload(f)}
                 onDelete={f.source === "user" || f.source === "public_link" ? () => deleteFile(f.id).then(() => refetch()) : undefined} />
             ))}
+          </div>
+        )}
+
+        {isDragging && (
+          <div className="pointer-events-none fixed inset-0 z-40 flex items-center justify-center bg-primary/10 backdrop-blur-sm">
+            <div className="border-2 border-dashed border-primary rounded-2xl px-10 py-8 bg-background/90 shadow-xl text-center">
+              <Upload className="w-10 h-10 mx-auto mb-2 text-primary" />
+              <p className="font-medium">
+                {folderId ? "Drop files to upload" : "Open a folder first to upload"}
+              </p>
+            </div>
           </div>
         )}
       </div>
