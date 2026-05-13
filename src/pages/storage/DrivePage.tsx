@@ -260,27 +260,6 @@ export default function DrivePage() {
   );
 }
 
-async function uploadCustomFile(file: File, folderId: string) {
-  const { supabase } = await import("@/integrations/supabase/client");
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.access_token) throw new Error("Not signed in");
-  if (file.size > 45 * 1024 * 1024) {
-    throw new Error(`"${file.name}" is too large for custom folders (max 45MB). Use a project folder for big videos.`);
-  }
-  const fd = new FormData();
-  fd.append("folderId", folderId);
-  fd.append("file", file);
-  const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/drive-upload`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${session.access_token}` },
-    body: fd,
-  });
-  if (!res.ok) {
-    const t = await res.text();
-    throw new Error(t || "Upload failed");
-  }
-}
 
 function FolderCard({ folder, onOpen, onShare, onDelete }: any) {
   return (
