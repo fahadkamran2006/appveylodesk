@@ -342,15 +342,26 @@ export default function DrivePage() {
 
 function FolderCard({ folder, onOpen, onShare, onDelete }: any) {
   return (
-    <div className="group relative border rounded-lg p-3 hover:bg-muted/30 cursor-pointer transition" onDoubleClick={onOpen}>
-      <div className="flex items-start justify-between">
-        <button onClick={onOpen} className="flex-1 text-left">
-          <Folder className="w-10 h-10 text-primary mb-2" />
-          <p className="text-sm font-medium truncate">{folder.name}</p>
-          {folder.kind === "project_root" && <Badge variant="outline" className="text-[10px] mt-1">Project</Badge>}
-        </button>
+    <div
+      className="group relative border border-border rounded-xl p-5 bg-card hover:bg-muted/40 hover:border-primary/40 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer transition-all duration-200"
+      onDoubleClick={onOpen}
+    >
+      <button onClick={onOpen} className="w-full text-left">
+        <div className="flex items-center justify-center h-20 mb-3 rounded-lg bg-primary/5 group-hover:bg-primary/10 transition-colors">
+          <Folder className="w-12 h-12 text-primary" />
+        </div>
+        <p className="text-sm font-medium truncate">{folder.name}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          {folder.kind === "project_root" ? "Project folder" : "Folder"}
+        </p>
+      </button>
+      <div className="absolute top-2 right-2">
         <DropdownMenu>
-          <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="opacity-0 group-hover:opacity-100"><MoreVertical className="w-4 h-4" /></Button></DropdownMenuTrigger>
+          <DropdownMenuTrigger asChild>
+            <Button size="icon" variant="ghost" className="h-8 w-8 opacity-0 group-hover:opacity-100">
+              <MoreVertical className="w-4 h-4" />
+            </Button>
+          </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={onOpen}>Open</DropdownMenuItem>
             <DropdownMenuItem onClick={onShare}><Share2 className="w-4 h-4 mr-2" />Share link</DropdownMenuItem>
@@ -364,15 +375,24 @@ function FolderCard({ folder, onOpen, onShare, onDelete }: any) {
 
 function FileCard({ file, onPreview, onDownload, onShare, onDelete }: any) {
   return (
-    <div className="group relative border rounded-lg p-3 hover:bg-muted/30 transition cursor-pointer" onDoubleClick={onPreview}>
-      <div className="flex items-start justify-between">
-        <button onClick={onPreview} className="flex-1 min-w-0 text-left">
-          {fileIcon(file.file_name)}
-          <p className="text-sm font-medium truncate mt-2">{file.file_name}</p>
-          <p className="text-xs text-muted-foreground">{formatBytes(file.file_size)}</p>
-        </button>
+    <div
+      className="group relative border border-border rounded-xl p-5 bg-card hover:bg-muted/40 hover:border-primary/40 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
+      onDoubleClick={onPreview}
+    >
+      <button onClick={onPreview} className="w-full min-w-0 text-left">
+        <div className="flex items-center justify-center h-20 mb-3 rounded-lg bg-muted/40 group-hover:bg-muted/60 transition-colors">
+          {fileIcon(file.file_name, true)}
+        </div>
+        <p className="text-sm font-medium truncate">{file.file_name}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{formatBytes(file.file_size)}</p>
+      </button>
+      <div className="absolute top-2 right-2">
         <DropdownMenu>
-          <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="opacity-0 group-hover:opacity-100"><MoreVertical className="w-4 h-4" /></Button></DropdownMenuTrigger>
+          <DropdownMenuTrigger asChild>
+            <Button size="icon" variant="ghost" className="h-8 w-8 opacity-0 group-hover:opacity-100">
+              <MoreVertical className="w-4 h-4" />
+            </Button>
+          </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={onPreview}>Preview</DropdownMenuItem>
             <DropdownMenuItem onClick={onDownload}><Download className="w-4 h-4 mr-2" />Download</DropdownMenuItem>
