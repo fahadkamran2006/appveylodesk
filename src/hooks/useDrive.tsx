@@ -144,6 +144,20 @@ export function useDrive() {
   return {
     busy,
     createFolder, renameFolder, deleteFolder, deleteFile, registerFile,
+    restoreFile, restoreFolder, permanentDeleteFile, permanentDeleteFolder,
+    cleanupOrphanBunny,
     syncProjectFolders, createShareLink, listShareLinks, revokeShareLink,
   };
+}
+
+export function useDriveTrash(enabled: boolean) {
+  return useQuery({
+    queryKey: ["drive", "trash"],
+    enabled,
+    queryFn: async () => {
+      const data = await call("list_trash");
+      return data as { folders: (DriveFolder & { deleted_at: string })[]; files: (DriveFile & { deleted_at: string })[] };
+    },
+    staleTime: 30_000,
+  });
 }
