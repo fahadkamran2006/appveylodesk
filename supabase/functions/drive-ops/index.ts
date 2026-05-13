@@ -419,93 +419,102 @@ serve(async (req) => {
         return json({ ok: true });
       }
 
-      // ---------- BACKFILL: ensure client_root → project_root hierarchy ----------
+      // ---------- BACKFILL: Client → Project (container) → Video hierarchy ----------
       case "sync_project_folders": {
         const { data: projects } = await admin
           .from("projects")
-          .select("id, title, client_id")
+          .select("id, title, client_id, container_id")
           .eq("agency_id", agencyId);
 
-        // Group projects by client_id (skip projects without a client)
-        const byClient = new Map<string, { id: string; title: string }[]>();
-        for (const p of projects || []) {
-          if (!p.client_id) continue;
-          if (!byClient.has(p.client_id)) byClient.set(p.client_id, []);
-          byClient.get(p.client_id)!.push({ id: p.id, title: p.title });
-        }
+        const { data: containers } = await admin
+          .from("project_containers")
+          .select("id, title, client_id")
+          .eq("agency_id", agencyId);
+        const containerById = new Map<string, { id: string; title: string; client_id: string }>();
+        for (const c of containers || []) containerById.set(c.id, c as any);
 
-        // Resolve client display names in one query
-        const clientIds = Array.from(byClient.keys());
-        let names = new Map<string, string>();
-        if (clientIds.length) {
+        // Resolve client display names
+        const clientIdSet = new Set<string>();
+        for (const p of projects || []) if (p.client_id) clientIdSet.add(p.client_id);
+        for (const c of containers || []) if (c.client_id) clientIdSet.add(c.client_id);
+        const names = new Map<string, string>();
+        if (clientIdSet.size) {
           const { data: profs } = await admin
             .from("profiles")
             .select("id, full_name, email")
-            .in("id", clientIds);
-          for (const p of profs || []) {
-            names.set(p.id, p.full_name || p.email || "Client");
-          }
+            .in("id", Array.from(clientIdSet));
+          for (const p of profs || []) names.set(p.id, p.full_name || p.email || "Client");
         }
 
-        for (const [clientId, projs] of byClient.entries()) {
-          // Ensure client_root folder
-          let { data: clientRoot } = await admin
+        async function ensureClientRoot(clientId: string) {
+          const { data: existing } = await admin
             .from("drive_folders")
             .select("id")
             .eq("agency_id", agencyId)
             .eq("client_id", clientId)
             .eq("kind", "client_root")
             .maybeSingle();
-          if (!clientRoot) {
-            const { data: inserted } = await admin
-              .from("drive_folders")
-              .insert({
-                agency_id: agencyId,
-                parent_id: null,
-                name: names.get(clientId) || "Client",
-                kind: "client_root",
-                client_id: clientId,
-                created_by: user.id,
-              })
-              .select("id")
-              .single();
-            clientRoot = inserted;
-          }
-
-          // Ensure each project_root sits under its client_root
-          for (const p of projs) {
-            const { data: existing } = await admin
-              .from("drive_folders")
-              .select("id, parent_id, name")
-              .eq("agency_id", agencyId)
-              .eq("project_id", p.id)
-              .eq("kind", "project_root")
-              .maybeSingle();
-            if (!existing) {
-              await admin.from("drive_folders").insert({
-                agency_id: agencyId,
-                parent_id: clientRoot!.id,
-                name: p.title || "Untitled project",
-                kind: "project_root",
-                project_id: p.id,
-                created_by: user.id,
-              });
-            } else if (existing.parent_id !== clientRoot!.id) {
-              // Re-parent legacy flat project folders
-              await admin
-                .from("drive_folders")
-                .update({ parent_id: clientRoot!.id })
-                .eq("id", existing.id);
-            }
-          }
+          if (existing) return existing.id as string;
+          const { data: ins } = await admin
+            .from("drive_folders")
+            .insert({
+              agency_id: agencyId,
+              parent_id: null,
+              name: names.get(clientId) || "Client",
+              kind: "client_root",
+              client_id: clientId,
+              created_by: user.id,
+            })
+            .select("id").single();
+          return ins!.id as string;
         }
 
-        // Orphan projects (no client) — keep at root with project_root kind
-        for (const p of projects || []) {
-          if (p.client_id) continue;
+        async function ensureContainerRoot(containerId: string, parentId: string, title: string) {
           const { data: existing } = await admin
             .from("drive_folders")
-            .select("id")
+            .select("id, parent_id, name")
+            .eq("agency_id", agencyId)
+            .eq("container_id", containerId)
+            .eq("kind", "container_root")
+            .maybeSingle();
+          if (existing) {
+            if (existing.parent_id !== parentId) {
+              await admin.from("drive_folders").update({ parent_id: parentId }).eq("id", existing.id);
+            }
+            return existing.id as string;
+          }
+          const { data: ins } = await admin
+            .from("drive_folders")
+            .insert({
+              agency_id: agencyId,
+              parent_id: parentId,
+              name: title || "Project",
+              kind: "container_root",
+              container_id: containerId,
+              created_by: user.id,
+            })
+            .select("id").single();
+          return ins!.id as string;
+        }
+
+        for (const p of projects || []) {
+          // Resolve target client (container.client_id wins, fall back to project.client_id)
+          const ctn = p.container_id ? containerById.get(p.container_id) : null;
+          const clientId = ctn?.client_id || p.client_id;
+
+          let targetParentId: string | null = null;
+          if (clientId) {
+            const clientRootId = await ensureClientRoot(clientId);
+            targetParentId = clientRootId;
+            if (ctn) {
+              targetParentId = await ensureContainerRoot(ctn.id, clientRootId, ctn.title);
+            }
+          }
+
+          // Ensure project_root (= Video folder) sits under correct parent
+          const { data: existing } = await admin
+            .from("drive_folders")
+            .select("id, parent_id, name")
             .eq("agency_id", agencyId)
             .eq("project_id", p.id)
             .eq("kind", "project_root")
@@ -513,12 +522,14 @@ serve(async (req) => {
           if (!existing) {
             await admin.from("drive_folders").insert({
               agency_id: agencyId,
-              parent_id: null,
-              name: p.title || "Untitled project",
+              parent_id: targetParentId,
+              name: p.title || "Untitled video",
               kind: "project_root",
               project_id: p.id,
               created_by: user.id,
             });
+          } else if (existing.parent_id !== targetParentId) {
+            await admin.from("drive_folders").update({ parent_id: targetParentId }).eq("id", existing.id);
           }
         }
 
