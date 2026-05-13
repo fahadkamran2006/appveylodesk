@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Download, ExternalLink, ChevronLeft, ChevronRight, Loader2, RotateCcw } from "lucide-react";
+import { Download, ExternalLink, ChevronLeft, ChevronRight, Loader2, RotateCcw, Maximize2, Minimize2 } from "lucide-react";
 import { useDownloadContext } from "@/contexts/DownloadContext";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
+import { cn } from "@/lib/utils";
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -28,7 +29,65 @@ function kindOf(name: string, mime?: string | null): "image" | "video" | "audio"
   return "other";
 }
 
-function PdfViewer({ url }: { url: string }) {
+/** Thumbnail that only renders its <Page/> when scrolled into view, throttled. */
+function LazyThumbnail({
+  pageNumber,
+  active,
+  onClick,
+}: {
+  pageNumber: number;
+  active: boolean;
+  onClick: () => void;
+}) {
+  const ref = useRef<HTMLButtonElement>(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (visible || !ref.current) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) {
+            setVisible(true);
+            io.disconnect();
+            break;
+          }
+        }
+      },
+      { root: ref.current.parentElement, rootMargin: "200px 0px", threshold: 0.01 }
+    );
+    io.observe(ref.current);
+    return () => io.disconnect();
+  }, [visible]);
+
+  return (
+    <button
+      ref={ref}
+      data-page={pageNumber}
+      onClick={onClick}
+      className={cn(
+        "block w-full rounded-sm overflow-hidden border-2 transition-colors bg-muted/40",
+        active ? "border-primary" : "border-transparent hover:border-border"
+      )}
+      style={{ minHeight: 110 }}
+    >
+      {visible ? (
+        <Page
+          pageNumber={pageNumber}
+          width={104}
+          renderAnnotationLayer={false}
+          renderTextLayer={false}
+          loading={<div className="h-[140px] flex items-center justify-center"><Loader2 className="w-3 h-3 animate-spin opacity-50" /></div>}
+        />
+      ) : (
+        <div className="h-[140px]" />
+      )}
+      <div className="text-[10px] text-center py-1 text-muted-foreground">{pageNumber}</div>
+    </button>
+  );
+}
+
+function PdfViewer({ url, fullscreen }: { url: string; fullscreen: boolean }) {
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [containerWidth, setContainerWidth] = useState<number>(800);
@@ -49,8 +108,8 @@ function PdfViewer({ url }: { url: string }) {
     t?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }, [pageNumber]);
 
-  const goPrev = () => setPageNumber((p) => Math.max(1, p - 1));
-  const goNext = () => setPageNumber((p) => Math.min(numPages, p + 1));
+  const goPrev = useCallback(() => setPageNumber((p) => Math.max(1, p - 1)), []);
+  const goNext = useCallback(() => setPageNumber((p) => Math.min(numPages, p + 1)), [numPages]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -59,7 +118,10 @@ function PdfViewer({ url }: { url: string }) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [numPages]);
+  }, [goPrev, goNext]);
+
+  const height = fullscreen ? "calc(100vh - 140px)" : "70vh";
+  const maxPageWidth = fullscreen ? 1400 : 900;
 
   return (
     <Document
@@ -68,28 +130,16 @@ function PdfViewer({ url }: { url: string }) {
       loading={<div className="flex items-center justify-center p-8"><Loader2 className="w-6 h-6 animate-spin" /></div>}
       error={<div className="p-8 text-center text-muted-foreground">Failed to load PDF.</div>}
     >
-      <div className="flex gap-3 h-[70vh]">
-        {/* Thumbnails */}
+      <div className="flex gap-3" style={{ height }}>
         <div ref={thumbsRef} className="w-32 shrink-0 overflow-y-auto bg-background/50 rounded-md p-2 space-y-2 border border-border">
           {Array.from({ length: numPages }, (_, i) => i + 1).map((n) => (
-            <button
-              key={n}
-              data-page={n}
-              onClick={() => setPageNumber(n)}
-              className={`block w-full rounded-sm overflow-hidden border-2 transition-colors ${
-                n === pageNumber ? "border-primary" : "border-transparent hover:border-border"
-              }`}
-            >
-              <Page pageNumber={n} width={104} renderAnnotationLayer={false} renderTextLayer={false} />
-              <div className="text-[10px] text-center py-1 text-muted-foreground">{n}</div>
-            </button>
+            <LazyThumbnail key={n} pageNumber={n} active={n === pageNumber} onClick={() => setPageNumber(n)} />
           ))}
         </div>
 
-        {/* Main page */}
         <div className="flex-1 flex flex-col min-w-0">
           <div ref={containerRef} className="flex-1 overflow-auto flex items-start justify-center bg-muted/30 rounded-md">
-            <Page pageNumber={pageNumber} width={Math.min(containerWidth - 16, 900)} />
+            <Page pageNumber={pageNumber} width={Math.min(containerWidth - 16, maxPageWidth)} />
           </div>
           <div className="flex items-center justify-center gap-3 pt-2">
             <Button variant="outline" size="sm" onClick={goPrev} disabled={pageNumber <= 1}>
@@ -108,7 +158,7 @@ function PdfViewer({ url }: { url: string }) {
   );
 }
 
-function VideoViewer({ fileId, url }: { fileId: string; url: string }) {
+function VideoViewer({ fileId, url, fullscreen }: { fileId: string; url: string; fullscreen: boolean }) {
   const ref = useRef<HTMLVideoElement>(null);
   const storageKey = `drive:video:pos:${fileId}`;
   const [resumeAt, setResumeAt] = useState<number | null>(null);
@@ -124,22 +174,16 @@ function VideoViewer({ fileId, url }: { fileId: string; url: string }) {
   const onLoadedMetadata = useCallback(() => {
     const v = ref.current;
     if (!v) return;
-    if (resumeAt && resumeAt < v.duration - 5) {
-      v.currentTime = resumeAt;
-    }
+    if (resumeAt && resumeAt < v.duration - 5) v.currentTime = resumeAt;
   }, [resumeAt]);
 
   const onTimeUpdate = useCallback(() => {
     const v = ref.current;
     if (!v) return;
-    if (Math.floor(v.currentTime) % 3 === 0) {
-      localStorage.setItem(storageKey, String(v.currentTime));
-    }
+    if (Math.floor(v.currentTime) % 3 === 0) localStorage.setItem(storageKey, String(v.currentTime));
   }, [storageKey]);
 
-  const onEnded = useCallback(() => {
-    localStorage.removeItem(storageKey);
-  }, [storageKey]);
+  const onEnded = useCallback(() => localStorage.removeItem(storageKey), [storageKey]);
 
   const restart = () => {
     const v = ref.current;
@@ -161,7 +205,7 @@ function VideoViewer({ fileId, url }: { fileId: string; url: string }) {
         onLoadedMetadata={onLoadedMetadata}
         onTimeUpdate={onTimeUpdate}
         onEnded={onEnded}
-        className="max-h-[65vh] w-full bg-black rounded-md"
+        className={cn("w-full bg-black rounded-md", fullscreen ? "max-h-[calc(100vh-160px)]" : "max-h-[65vh]")}
       />
       {resumeAt && (
         <div className="flex items-center justify-between text-xs text-muted-foreground mt-2 px-1">
@@ -177,22 +221,65 @@ function VideoViewer({ fileId, url }: { fileId: string; url: string }) {
 
 export function FilePreview({ open, onOpenChange, file }: Props) {
   const { startDownload } = useDownloadContext();
+  const [fullscreen, setFullscreen] = useState(false);
+
+  useEffect(() => { if (!open) setFullscreen(false); }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "f" || e.key === "F") {
+        const tag = (e.target as HTMLElement)?.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA") return;
+        setFullscreen((v) => !v);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
   if (!file) return null;
   const k = kindOf(file.file_name, file.mime_type);
+  const canFullscreen = k === "pdf" || k === "video" || k === "image";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl">
+      <DialogContent
+        className={cn(
+          fullscreen
+            ? "max-w-none w-screen h-screen sm:rounded-none p-4 left-0 top-0 translate-x-0 translate-y-0"
+            : "max-w-5xl"
+        )}
+      >
         <DialogHeader>
-          <DialogTitle className="truncate pr-8">{file.file_name}</DialogTitle>
+          <div className="flex items-center justify-between gap-2 pr-8">
+            <DialogTitle className="truncate">{file.file_name}</DialogTitle>
+            {canFullscreen && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setFullscreen((v) => !v)}
+                title={fullscreen ? "Exit fullscreen (F)" : "Fullscreen (F)"}
+                className="shrink-0"
+              >
+                {fullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+              </Button>
+            )}
+          </div>
         </DialogHeader>
 
         <div className="bg-muted/30 rounded-md flex items-center justify-center min-h-[300px] overflow-hidden">
-          {k === "image" && <img src={file.file_url} alt={file.file_name} className="max-h-[70vh] object-contain" />}
-          {k === "video" && <VideoViewer fileId={file.id} url={file.file_url} />}
+          {k === "image" && (
+            <img
+              src={file.file_url}
+              alt={file.file_name}
+              className={cn("object-contain", fullscreen ? "max-h-[calc(100vh-140px)]" : "max-h-[70vh]")}
+            />
+          )}
+          {k === "video" && <VideoViewer fileId={file.id} url={file.file_url} fullscreen={fullscreen} />}
           {k === "audio" && <audio src={file.file_url} controls className="w-full px-6" />}
-          {k === "pdf" && <div className="w-full p-2"><PdfViewer url={file.file_url} /></div>}
-          {k === "text" && <iframe src={file.file_url} className="w-full h-[70vh] bg-background" title={file.file_name} />}
+          {k === "pdf" && <div className="w-full p-2"><PdfViewer url={file.file_url} fullscreen={fullscreen} /></div>}
+          {k === "text" && <iframe src={file.file_url} className={cn("w-full bg-background", fullscreen ? "h-[calc(100vh-140px)]" : "h-[70vh]")} title={file.file_name} />}
           {k === "other" && (
             <div className="text-center p-8 text-muted-foreground">
               <p>No preview available for this file type.</p>
