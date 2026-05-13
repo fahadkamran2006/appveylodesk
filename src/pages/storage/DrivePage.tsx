@@ -105,19 +105,22 @@ export default function DrivePage() {
 
   const handleUploadClick = () => fileInputRef.current?.click();
 
-  const handleFiles = async (selected: FileList | null) => {
-    if (!selected || !folderId) {
+  const handleFiles = async (selected: FileList | null, targetFolderId?: string | null) => {
+    const target = targetFolderId ?? folderId;
+    if (!selected || !target) {
       toast({ title: "Open a folder first", description: "Pick a folder, then upload.", variant: "destructive" });
       return;
     }
     const arr = Array.from(selected);
     try {
       const { supabase } = await import("@/integrations/supabase/client");
-      const { data: f } = await supabase.from("drive_folders").select("kind, project_id, name").eq("id", folderId).maybeSingle();
+      const { data: f } = await supabase.from("drive_folders").select("kind, project_id, name").eq("id", target).maybeSingle();
       if (f?.kind === "project_root" && f.project_id) {
         addToQueue(arr, f.project_id, f.name || undefined, "deliverable");
+      } else if (f?.kind === "client_root") {
+        toast({ title: "Pick a project folder", description: "Open a project folder inside this client to upload.", variant: "destructive" });
       } else {
-        await addDriveUpload(arr, folderId, f?.name);
+        await addDriveUpload(arr, target, f?.name);
       }
     } catch (e: any) {
       toast({ title: "Upload failed", description: e.message, variant: "destructive" });
