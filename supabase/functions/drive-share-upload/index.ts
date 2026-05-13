@@ -107,7 +107,7 @@ serve(async (req) => {
       .from("drive_files")
       .insert({
         agency_id: link.agency_id,
-        folder_id: link.folder_id,
+        folder_id: folderId,
         file_name: file.name,
         file_url: cdnUrl,
         file_size: size,
