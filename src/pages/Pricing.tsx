@@ -118,6 +118,26 @@ const Pricing = () => {
       <Helmet>
         <title>Pricing | Veylodesk</title>
         <meta name="description" content="Simple, transparent pricing for video agencies of all sizes. Subscribe today and start scaling." />
+        <link rel="canonical" href="https://veylodesk.com/pricing" />
+        <meta property="og:title" content="Pricing | Veylodesk" />
+        <meta property="og:description" content="Simple, transparent pricing for video agencies of all sizes." />
+        <meta property="og:url" content="https://veylodesk.com/pricing" />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Product",
+          "name": "Veylodesk Agency OS",
+          "description": "Subscription plans for video editing agencies — Starter, Growth, and Scale.",
+          "brand": { "@type": "Brand", "name": "Veylodesk" },
+          "offers": plans.map((p) => ({
+            "@type": "Offer",
+            "name": p.name,
+            "description": p.description,
+            "price": (isYearly ? p.yearlyPrice : p.monthlyPrice).toString(),
+            "priceCurrency": "USD",
+            "url": `https://veylodesk.com/pricing`,
+            "availability": "https://schema.org/InStock",
+          })),
+        })}</script>
       </Helmet>
 
       <div className="min-h-screen bg-background">

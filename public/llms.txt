@@ -1,0 +1,22 @@
+# Veylodesk
+
+> The Agency Operating System for video editing agencies — manage clients, editors, projects, storage, and billing in one command center.
+
+Veylodesk is a multi-tenant SaaS platform built for video production agencies. It combines project/Kanban workflows, client portals, team collaboration, file storage, video review with timestamped feedback, invoicing, and subscription billing in a single workspace.
+
+## Pages
+
+- [Home](/): Product overview and value proposition for video agencies.
+- [Pricing](/pricing): Starter, Growth, and Scale subscription tiers with monthly and yearly billing.
+- [About](/about): The story behind Veylodesk and founder Fahad Kamran.
+- [Founding Members](/founding-members): Limited-time founding members campaign.
+- [Free Guide](/free-guide): Free downloadable agency operations guide.
+- [Subscribe](/subscribe): Start a paid subscription.
+
+## Optional
+
+- [Privacy Policy](/privacy)
+- [Terms of Service](/terms)
+- [Refund Policy](/refund)
+- [Login](/auth/login)
+- [Sign up](/auth/signup)
