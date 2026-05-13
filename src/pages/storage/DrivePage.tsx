@@ -128,41 +128,58 @@ export default function DrivePage() {
     startDownload(file.id, file.file_name, file.file_url, file.file_size);
   };
 
-  const onDragEnter = (e: React.DragEvent) => {
-    if (!e.dataTransfer?.types?.includes("Files")) return;
-    e.preventDefault();
-    dragCounter.current += 1;
-    setIsDragging(true);
-  };
-  const onDragOver = (e: React.DragEvent) => {
-    if (!e.dataTransfer?.types?.includes("Files")) return;
-    e.preventDefault();
-  };
-  const onDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    dragCounter.current -= 1;
-    if (dragCounter.current <= 0) {
+  // Window-level drag listeners so the entire content area is a drop zone
+  // (without overlaying the sidebar).
+  useEffect(() => {
+    if (showTrash) return;
+    const onEnter = (e: DragEvent) => {
+      if (!e.dataTransfer?.types?.includes("Files")) return;
+      e.preventDefault();
+      dragCounter.current += 1;
+      setIsDragging(true);
+    };
+    const onOver = (e: DragEvent) => {
+      if (!e.dataTransfer?.types?.includes("Files")) return;
+      e.preventDefault();
+    };
+    const onLeave = (e: DragEvent) => {
+      e.preventDefault();
+      dragCounter.current -= 1;
+      if (dragCounter.current <= 0) {
+        dragCounter.current = 0;
+        setIsDragging(false);
+      }
+    };
+    const onDrop = (e: DragEvent) => {
+      e.preventDefault();
       dragCounter.current = 0;
       setIsDragging(false);
-    }
-  };
-  const onDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    dragCounter.current = 0;
-    setIsDragging(false);
-    if (e.dataTransfer?.files?.length) handleFiles(e.dataTransfer.files);
-  };
+      // Only accept drops that land inside the drive content area
+      const zone = dropZoneRef.current;
+      if (!zone) return;
+      const target = e.target as Node | null;
+      if (target && !zone.contains(target)) return;
+      if (e.dataTransfer?.files?.length) handleFiles(e.dataTransfer.files);
+    };
+    window.addEventListener("dragenter", onEnter);
+    window.addEventListener("dragover", onOver);
+    window.addEventListener("dragleave", onLeave);
+    window.addEventListener("drop", onDrop);
+    return () => {
+      window.removeEventListener("dragenter", onEnter);
+      window.removeEventListener("dragover", onOver);
+      window.removeEventListener("dragleave", onLeave);
+      window.removeEventListener("drop", onDrop);
+    };
+  }, [showTrash, folderId]);
 
   return (
     <DashboardLayout role={(userRole as any) || "client"}>
       <Helmet><title>Drive — Veylodesk</title></Helmet>
 
       <div
-        className="space-y-4 relative"
-        onDragEnter={onDragEnter}
-        onDragOver={onDragOver}
-        onDragLeave={onDragLeave}
-        onDrop={onDrop}
+        ref={dropZoneRef}
+        className="space-y-4 relative min-h-[calc(100dvh-10rem)]"
       >
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="text-2xl font-semibold flex-1">My Drive</h1>
