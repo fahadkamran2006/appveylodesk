@@ -43,7 +43,7 @@ export default function DrivePage() {
   const { user, userRole, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { addToQueue } = useUploadContext();
+  const { addToQueue, addDriveUpload } = useUploadContext();
   const { startDownload } = useDownloadContext();
 
   const [folderId, setFolderId] = useState<string | null>(null);
