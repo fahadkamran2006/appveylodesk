@@ -69,11 +69,19 @@ export default function DrivePage() {
 
   useEffect(() => { localStorage.setItem(VIEW_KEY, view); }, [view]);
 
+  useEffect(() => {
+    const onChanged = () => { refetchRef.current?.(); };
+    window.addEventListener('drive-files-changed', onChanged);
+    return () => window.removeEventListener('drive-files-changed', onChanged);
+  }, []);
+  const refetchRef = useRef<(() => void) | null>(null);
+
   const {
     syncProjectFolders, createFolder, deleteFolder, deleteFile, registerFile,
     restoreFile, restoreFolder, permanentDeleteFile, permanentDeleteFolder,
   } = useDrive();
   const { data, isLoading, refetch } = useDriveFolder(folderId);
+  refetchRef.current = refetch;
   const trashQ = useDriveTrash(showTrash);
 
   useEffect(() => {
