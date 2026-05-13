@@ -60,24 +60,26 @@ serve(async (req) => {
         // payload: { folderId?: string|null }
         const folderId = payload.folderId ?? null;
 
-        // Subfolders
+        // Subfolders (exclude trashed)
         const folderQ = admin
           .from("drive_folders")
           .select("*")
           .eq("agency_id", agencyId)
+          .is("deleted_at", null)
           .order("name");
         const { data: folders, error: fErr } = folderId
           ? await folderQ.eq("parent_id", folderId)
           : await folderQ.is("parent_id", null);
         if (fErr) throw fErr;
 
-        // Files in this folder
+        // Files in this folder (exclude trashed)
         let files: any[] = [];
         if (folderId) {
           const { data: dfiles } = await admin
             .from("drive_files")
             .select("*")
             .eq("folder_id", folderId)
+            .is("deleted_at", null)
             .order("created_at", { ascending: false });
           files = dfiles || [];
 
