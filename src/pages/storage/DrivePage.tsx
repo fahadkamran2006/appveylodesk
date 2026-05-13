@@ -58,6 +58,8 @@ export default function DrivePage() {
   const [shareTarget, setShareTarget] = useState<{ kind: "folder" | "file"; id: string; name: string } | null>(null);
   const [previewFile, setPreviewFile] = useState<DriveFile | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [showTrash, setShowTrash] = useState(false);
+  const [confirmPurge, setConfirmPurge] = useState<{ kind: "file" | "folder"; id: string; name: string } | null>(null);
   const dragCounter = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -67,8 +69,12 @@ export default function DrivePage() {
 
   useEffect(() => { localStorage.setItem(VIEW_KEY, view); }, [view]);
 
-  const { syncProjectFolders, createFolder, deleteFolder, deleteFile, registerFile } = useDrive();
+  const {
+    syncProjectFolders, createFolder, deleteFolder, deleteFile, registerFile,
+    restoreFile, restoreFolder, permanentDeleteFile, permanentDeleteFolder,
+  } = useDrive();
   const { data, isLoading, refetch } = useDriveFolder(folderId);
+  const trashQ = useDriveTrash(showTrash);
 
   useEffect(() => {
     if (user && userRole) syncProjectFolders();
