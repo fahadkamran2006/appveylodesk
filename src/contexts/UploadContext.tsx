@@ -585,6 +585,9 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
           xhr.setRequestHeader('x-mime', item.file.type || 'application/octet-stream');
           xhr.send(item.file);
         });
+        try {
+          window.dispatchEvent(new CustomEvent('drive-files-changed', { detail: { folderId: item.driveFolderId } }));
+        } catch {}
         return true;
       }
 
