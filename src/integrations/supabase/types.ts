@@ -652,6 +652,8 @@ export type Database = {
         Row: {
           agency_id: string
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
           file_name: string
           file_size: number
           file_url: string
@@ -666,6 +668,8 @@ export type Database = {
         Insert: {
           agency_id: string
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           file_name: string
           file_size?: number
           file_url: string
@@ -680,6 +684,8 @@ export type Database = {
         Update: {
           agency_id?: string
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           file_name?: string
           file_size?: number
           file_url?: string
@@ -706,6 +712,8 @@ export type Database = {
           agency_id: string
           created_at: string
           created_by: string
+          deleted_at: string | null
+          deleted_by: string | null
           id: string
           kind: Database["public"]["Enums"]["drive_folder_kind"]
           name: string
@@ -717,6 +725,8 @@ export type Database = {
           agency_id: string
           created_at?: string
           created_by: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           kind?: Database["public"]["Enums"]["drive_folder_kind"]
           name: string
@@ -728,6 +738,8 @@ export type Database = {
           agency_id?: string
           created_at?: string
           created_by?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           kind?: Database["public"]["Enums"]["drive_folder_kind"]
           name?: string
