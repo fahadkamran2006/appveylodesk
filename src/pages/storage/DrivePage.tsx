@@ -304,7 +304,7 @@ function FolderCard({ folder, onOpen, onShare, onDelete }: any) {
   );
 }
 
-function FileCard({ file, onPreview, onDownload, onDelete }: any) {
+function FileCard({ file, onPreview, onDownload, onShare, onDelete }: any) {
   return (
     <div className="group relative border rounded-lg p-3 hover:bg-muted/30 transition cursor-pointer" onDoubleClick={onPreview}>
       <div className="flex items-start justify-between">
@@ -318,6 +318,7 @@ function FileCard({ file, onPreview, onDownload, onDelete }: any) {
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={onPreview}>Preview</DropdownMenuItem>
             <DropdownMenuItem onClick={onDownload}><Download className="w-4 h-4 mr-2" />Download</DropdownMenuItem>
+            {onShare && <DropdownMenuItem onClick={onShare}><Share2 className="w-4 h-4 mr-2" />Share link</DropdownMenuItem>}
             {onDelete && <DropdownMenuItem onClick={onDelete} className="text-destructive"><Trash2 className="w-4 h-4 mr-2" />Delete</DropdownMenuItem>}
           </DropdownMenuContent>
         </DropdownMenu>
@@ -338,7 +339,7 @@ function FolderRow({ folder, onOpen, onShare, onDelete }: any) {
   );
 }
 
-function FileRow({ file, onPreview, onDownload, onDelete }: any) {
+function FileRow({ file, onPreview, onDownload, onShare, onDelete }: any) {
   return (
     <div className="flex items-center gap-3 p-3 hover:bg-muted/30">
       {fileIcon(file.file_name)}
@@ -347,6 +348,7 @@ function FileRow({ file, onPreview, onDownload, onDelete }: any) {
         <p className="text-xs text-muted-foreground">{formatBytes(file.file_size)}</p>
       </button>
       <Button size="sm" variant="ghost" onClick={onDownload}><Download className="w-4 h-4" /></Button>
+      {onShare && <Button size="sm" variant="ghost" onClick={onShare}><Share2 className="w-4 h-4" /></Button>}
       {onDelete && <Button size="sm" variant="ghost" onClick={onDelete}><Trash2 className="w-4 h-4 text-destructive" /></Button>}
     </div>
   );
