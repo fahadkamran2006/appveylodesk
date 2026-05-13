@@ -204,11 +204,12 @@ export default function DrivePage() {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
             {filteredFolders.map((f) => (
               <FolderCard key={f.id} folder={f} onOpen={() => setFolderId(f.id)}
-                onShare={() => setShareTarget({ id: f.id, name: f.name })}
+                onShare={() => setShareTarget({ kind: "folder", id: f.id, name: f.name })}
                 onDelete={f.kind === "custom" ? () => deleteFolder(f.id).then(() => refetch()) : undefined} />
             ))}
             {filteredFiles.map((f) => (
               <FileCard key={f.id} file={f} onPreview={() => setPreviewFile(f)} onDownload={() => handleDownload(f)}
+                onShare={() => setShareTarget({ kind: "file", id: f.id, name: f.file_name })}
                 onDelete={f.source === "user" || f.source === "public_link" ? () => deleteFile(f.id).then(() => refetch()) : undefined} />
             ))}
           </div>
@@ -216,11 +217,12 @@ export default function DrivePage() {
           <div className="border rounded-lg divide-y">
             {filteredFolders.map((f) => (
               <FolderRow key={f.id} folder={f} onOpen={() => setFolderId(f.id)}
-                onShare={() => setShareTarget({ id: f.id, name: f.name })}
+                onShare={() => setShareTarget({ kind: "folder", id: f.id, name: f.name })}
                 onDelete={f.kind === "custom" ? () => deleteFolder(f.id).then(() => refetch()) : undefined} />
             ))}
             {filteredFiles.map((f) => (
               <FileRow key={f.id} file={f} onPreview={() => setPreviewFile(f)} onDownload={() => handleDownload(f)}
+                onShare={() => setShareTarget({ kind: "file", id: f.id, name: f.file_name })}
                 onDelete={f.source === "user" || f.source === "public_link" ? () => deleteFile(f.id).then(() => refetch()) : undefined} />
             ))}
           </div>
@@ -247,8 +249,10 @@ export default function DrivePage() {
         <ShareLinkModal
           open={!!shareTarget}
           onOpenChange={(v) => { if (!v) setShareTarget(null); }}
-          folderId={shareTarget.id}
-          folderName={shareTarget.name}
+          folderId={shareTarget.kind === "folder" ? shareTarget.id : undefined}
+          fileId={shareTarget.kind === "file" ? shareTarget.id : undefined}
+          folderName={shareTarget.kind === "folder" ? shareTarget.name : undefined}
+          fileName={shareTarget.kind === "file" ? shareTarget.name : undefined}
         />
       )}
       <FilePreview open={!!previewFile} onOpenChange={(v) => { if (!v) setPreviewFile(null); }} file={previewFile} />
@@ -300,7 +304,7 @@ function FolderCard({ folder, onOpen, onShare, onDelete }: any) {
   );
 }
 
-function FileCard({ file, onPreview, onDownload, onDelete }: any) {
+function FileCard({ file, onPreview, onDownload, onShare, onDelete }: any) {
   return (
     <div className="group relative border rounded-lg p-3 hover:bg-muted/30 transition cursor-pointer" onDoubleClick={onPreview}>
       <div className="flex items-start justify-between">
@@ -314,6 +318,7 @@ function FileCard({ file, onPreview, onDownload, onDelete }: any) {
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={onPreview}>Preview</DropdownMenuItem>
             <DropdownMenuItem onClick={onDownload}><Download className="w-4 h-4 mr-2" />Download</DropdownMenuItem>
+            {onShare && <DropdownMenuItem onClick={onShare}><Share2 className="w-4 h-4 mr-2" />Share link</DropdownMenuItem>}
             {onDelete && <DropdownMenuItem onClick={onDelete} className="text-destructive"><Trash2 className="w-4 h-4 mr-2" />Delete</DropdownMenuItem>}
           </DropdownMenuContent>
         </DropdownMenu>
@@ -334,7 +339,7 @@ function FolderRow({ folder, onOpen, onShare, onDelete }: any) {
   );
 }
 
-function FileRow({ file, onPreview, onDownload, onDelete }: any) {
+function FileRow({ file, onPreview, onDownload, onShare, onDelete }: any) {
   return (
     <div className="flex items-center gap-3 p-3 hover:bg-muted/30">
       {fileIcon(file.file_name)}
@@ -343,6 +348,7 @@ function FileRow({ file, onPreview, onDownload, onDelete }: any) {
         <p className="text-xs text-muted-foreground">{formatBytes(file.file_size)}</p>
       </button>
       <Button size="sm" variant="ghost" onClick={onDownload}><Download className="w-4 h-4" /></Button>
+      {onShare && <Button size="sm" variant="ghost" onClick={onShare}><Share2 className="w-4 h-4" /></Button>}
       {onDelete && <Button size="sm" variant="ghost" onClick={onDelete}><Trash2 className="w-4 h-4 text-destructive" /></Button>}
     </div>
   );
