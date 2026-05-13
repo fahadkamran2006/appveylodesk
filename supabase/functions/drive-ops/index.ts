@@ -149,7 +149,7 @@ serve(async (req) => {
         const { folderId, name } = payload;
         const { data: f } = await admin.from("drive_folders").select("created_by, kind").eq("id", folderId).maybeSingle();
         if (!f) return json({ error: "Not found" }, 404);
-        if (f.kind === "project_root") return json({ error: "Cannot rename project folder" }, 400);
+        if (f.kind === "project_root" || f.kind === "client_root") return json({ error: "Cannot rename system folder" }, 400);
         if (role !== "admin" && f.created_by !== user.id) return json({ error: "Forbidden" }, 403);
         await admin.from("drive_folders").update({ name: name.trim() }).eq("id", folderId);
         return json({ ok: true });
