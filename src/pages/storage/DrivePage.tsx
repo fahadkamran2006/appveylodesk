@@ -468,6 +468,7 @@ function FolderRow({ folder, onOpen, onShare, onDelete, onDropFiles }: any) {
       <button onClick={onOpen} className="flex-1 text-left text-sm font-medium truncate">{folder.name}</button>
       {folder.kind === "project_root" && <Badge variant="outline" className="text-[10px]">Project</Badge>}
       {folder.kind === "client_root" && <Badge variant="outline" className="text-[10px]">Client</Badge>}
+      {folder.kind === "container_root" && <Badge variant="outline" className="text-[10px]">Project</Badge>}
       <Button size="sm" variant="ghost" onClick={onShare}><Share2 className="w-4 h-4" /></Button>
       {onDelete && <Button size="sm" variant="ghost" onClick={onDelete}><Trash2 className="w-4 h-4 text-destructive" /></Button>}
     </div>
