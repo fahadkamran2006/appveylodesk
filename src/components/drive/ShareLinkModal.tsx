@@ -80,8 +80,12 @@ export function ShareLinkModal({ open, onOpenChange, folderId, fileId, folderNam
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Share "{folderName}"</DialogTitle>
-          <DialogDescription>Anyone with the link can access this folder. No account needed.</DialogDescription>
+          <DialogTitle>Share "{targetName}"</DialogTitle>
+          <DialogDescription>
+            {isFile
+              ? "Anyone with the link can view or download this file. No account needed."
+              : "Anyone with the link can access this folder. No account needed."}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
