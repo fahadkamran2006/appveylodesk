@@ -121,7 +121,7 @@ export function useDrive() {
 
   const createShareLink = useCallback(async (params: {
     folderId?: string; fileId?: string;
-    permission: "view" | "download" | "upload" | "full";
+    permission: "view" | "download" | "upload" | "edit" | "full";
     password?: string; expiresAt?: string | null;
     maxUploadBytes?: number | null; maxFiles?: number | null;
   }) => {
