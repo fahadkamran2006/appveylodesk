@@ -17,10 +17,12 @@ export interface QueuedUpload {
   error?: string;
   addedAt: number;
   fileType?: 'asset' | 'deliverable';
-  // TUS-specific fields for resume capability
   tusController?: TusUploadController;
   videoId?: string;
   cdnUrl?: string;
+  /** When set, upload is routed through drive-upload (custom Drive folder). */
+  driveFolderId?: string;
+  driveFolderName?: string;
 }
 
 export interface UploadQueueState {
