@@ -105,19 +105,22 @@ export default function DrivePage() {
 
   const handleUploadClick = () => fileInputRef.current?.click();
 
-  const handleFiles = async (selected: FileList | null) => {
-    if (!selected || !folderId) {
+  const handleFiles = async (selected: FileList | null, targetFolderId?: string | null) => {
+    const target = targetFolderId ?? folderId;
+    if (!selected || !target) {
       toast({ title: "Open a folder first", description: "Pick a folder, then upload.", variant: "destructive" });
       return;
     }
     const arr = Array.from(selected);
     try {
       const { supabase } = await import("@/integrations/supabase/client");
-      const { data: f } = await supabase.from("drive_folders").select("kind, project_id, name").eq("id", folderId).maybeSingle();
+      const { data: f } = await supabase.from("drive_folders").select("kind, project_id, name").eq("id", target).maybeSingle();
       if (f?.kind === "project_root" && f.project_id) {
         addToQueue(arr, f.project_id, f.name || undefined, "deliverable");
+      } else if (f?.kind === "client_root") {
+        toast({ title: "Pick a project folder", description: "Open a project folder inside this client to upload.", variant: "destructive" });
       } else {
-        await addDriveUpload(arr, folderId, f?.name);
+        await addDriveUpload(arr, target, f?.name);
       }
     } catch (e: any) {
       toast({ title: "Upload failed", description: e.message, variant: "destructive" });
@@ -258,6 +261,7 @@ export default function DrivePage() {
             {filteredFolders.map((f) => (
               <FolderCard key={f.id} folder={f} onOpen={() => setFolderId(f.id)}
                 onShare={() => setShareTarget({ kind: "folder", id: f.id, name: f.name })}
+                onDropFiles={f.kind === "client_root" ? undefined : (files) => handleFiles(files, f.id)}
                 onDelete={f.kind === "custom" ? () => deleteFolder(f.id).then(() => refetch()) : undefined} />
             ))}
             {filteredFiles.map((f) => (
@@ -271,6 +275,7 @@ export default function DrivePage() {
             {filteredFolders.map((f) => (
               <FolderRow key={f.id} folder={f} onOpen={() => setFolderId(f.id)}
                 onShare={() => setShareTarget({ kind: "folder", id: f.id, name: f.name })}
+                onDropFiles={f.kind === "client_root" ? undefined : (files) => handleFiles(files, f.id)}
                 onDelete={f.kind === "custom" ? () => deleteFolder(f.id).then(() => refetch()) : undefined} />
             ))}
             {filteredFiles.map((f) => (
@@ -340,10 +345,34 @@ export default function DrivePage() {
 }
 
 
-function FolderCard({ folder, onOpen, onShare, onDelete }: any) {
+function FolderCard({ folder, onOpen, onShare, onDelete, onDropFiles }: any) {
+  const [over, setOver] = useState(false);
+  const dragHandlers = onDropFiles
+    ? {
+        onDragEnter: (e: React.DragEvent) => {
+          if (!e.dataTransfer?.types?.includes("Files")) return;
+          e.preventDefault(); e.stopPropagation(); setOver(true);
+        },
+        onDragOver: (e: React.DragEvent) => {
+          if (!e.dataTransfer?.types?.includes("Files")) return;
+          e.preventDefault(); e.stopPropagation();
+        },
+        onDragLeave: (e: React.DragEvent) => {
+          e.preventDefault(); e.stopPropagation(); setOver(false);
+        },
+        onDrop: (e: React.DragEvent) => {
+          e.preventDefault(); e.stopPropagation(); setOver(false);
+          if (e.dataTransfer?.files?.length) onDropFiles(e.dataTransfer.files);
+        },
+      }
+    : {};
   return (
     <div
-      className="group relative border border-border rounded-xl p-5 bg-card hover:bg-muted/40 hover:border-primary/40 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer transition-all duration-200"
+      {...dragHandlers}
+      className={cn(
+        "group relative border border-border rounded-xl p-5 bg-card hover:bg-muted/40 hover:border-primary/40 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer transition-all duration-200",
+        over && "border-primary bg-primary/10 ring-2 ring-primary/40"
+      )}
       onDoubleClick={onOpen}
     >
       <button onClick={onOpen} className="w-full text-left">
@@ -352,7 +381,7 @@ function FolderCard({ folder, onOpen, onShare, onDelete }: any) {
         </div>
         <p className="text-sm font-medium truncate">{folder.name}</p>
         <p className="text-xs text-muted-foreground mt-0.5">
-          {folder.kind === "project_root" ? "Project folder" : "Folder"}
+          {folder.kind === "client_root" ? "Client" : folder.kind === "project_root" ? "Project folder" : "Folder"}
         </p>
       </button>
       <div className="absolute top-2 right-2">
@@ -405,12 +434,40 @@ function FileCard({ file, onPreview, onDownload, onShare, onDelete }: any) {
   );
 }
 
-function FolderRow({ folder, onOpen, onShare, onDelete }: any) {
+function FolderRow({ folder, onOpen, onShare, onDelete, onDropFiles }: any) {
+  const [over, setOver] = useState(false);
+  const dragHandlers = onDropFiles
+    ? {
+        onDragEnter: (e: React.DragEvent) => {
+          if (!e.dataTransfer?.types?.includes("Files")) return;
+          e.preventDefault(); e.stopPropagation(); setOver(true);
+        },
+        onDragOver: (e: React.DragEvent) => {
+          if (!e.dataTransfer?.types?.includes("Files")) return;
+          e.preventDefault(); e.stopPropagation();
+        },
+        onDragLeave: (e: React.DragEvent) => {
+          e.preventDefault(); e.stopPropagation(); setOver(false);
+        },
+        onDrop: (e: React.DragEvent) => {
+          e.preventDefault(); e.stopPropagation(); setOver(false);
+          if (e.dataTransfer?.files?.length) onDropFiles(e.dataTransfer.files);
+        },
+      }
+    : {};
   return (
-    <div className="flex items-center gap-3 p-3 hover:bg-muted/30 cursor-pointer" onDoubleClick={onOpen}>
+    <div
+      {...dragHandlers}
+      className={cn(
+        "flex items-center gap-3 p-3 hover:bg-muted/30 cursor-pointer",
+        over && "bg-primary/10 ring-2 ring-primary/40 ring-inset"
+      )}
+      onDoubleClick={onOpen}
+    >
       <Folder className="w-5 h-5 text-primary" />
       <button onClick={onOpen} className="flex-1 text-left text-sm font-medium truncate">{folder.name}</button>
       {folder.kind === "project_root" && <Badge variant="outline" className="text-[10px]">Project</Badge>}
+      {folder.kind === "client_root" && <Badge variant="outline" className="text-[10px]">Client</Badge>}
       <Button size="sm" variant="ghost" onClick={onShare}><Share2 className="w-4 h-4" /></Button>
       {onDelete && <Button size="sm" variant="ghost" onClick={onDelete}><Trash2 className="w-4 h-4 text-destructive" /></Button>}
     </div>
