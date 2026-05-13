@@ -17,10 +17,12 @@ export interface QueuedUpload {
   error?: string;
   addedAt: number;
   fileType?: 'asset' | 'deliverable';
-  // TUS-specific fields for resume capability
   tusController?: TusUploadController;
   videoId?: string;
   cdnUrl?: string;
+  /** When set, upload is routed through drive-upload (custom Drive folder). */
+  driveFolderId?: string;
+  driveFolderName?: string;
 }
 
 export interface UploadQueueState {
@@ -49,6 +51,7 @@ interface UploadContextValue {
   isMinimized: boolean;
   setIsMinimized: (minimized: boolean) => void;
   addToQueue: (files: File[], projectId: string, projectTitle?: string, fileType?: 'asset' | 'deliverable') => Promise<string[]>;
+  addDriveUpload: (files: File[], driveFolderId: string, driveFolderName?: string) => Promise<string[]>;
   removeFromQueue: (uploadId: string) => void;
   clearCompleted: () => void;
   reorderQueue: (fromIndex: number, toIndex: number) => void;
@@ -325,6 +328,26 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
     return newItems.map(item => item.id);
   }, [toast, user]);
 
+  const addDriveUpload = useCallback(async (files: File[], driveFolderId: string, driveFolderName?: string) => {
+    const newItems: QueuedUpload[] = files.map(file => ({
+      id: generateId(),
+      file,
+      projectId: `drive:${driveFolderId}`,
+      projectTitle: driveFolderName,
+      status: 'pending',
+      progress: 0,
+      speed: 0,
+      remainingTime: 0,
+      addedAt: Date.now(),
+      driveFolderId,
+      driveFolderName,
+    }));
+    setState(prev => ({ ...prev, queue: [...prev.queue, ...newItems] }));
+    setIsMinimized(false);
+    toast({ title: 'Files added to queue', description: `${files.length} file(s) queued` });
+    return newItems.map(i => i.id);
+  }, [toast]);
+
   // Cleanup orphaned Bunny Stream video when upload is cancelled/removed
   const cleanupOrphanedVideo = useCallback(async (videoId: string) => {
     try {
@@ -519,6 +542,47 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
     let streamVideoId: string | null = null;
 
     try {
+      // ---- Drive custom-folder branch (uses drive-upload edge fn) ----
+      if (item.driveFolderId) {
+        await new Promise<void>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          const startTime = Date.now();
+          let lastLoaded = 0; let lastTime = startTime;
+          xhr.upload.addEventListener('progress', (event) => {
+            if (!event.lengthComputable) return;
+            const now = Date.now();
+            const dt = (now - lastTime) / 1000;
+            const dL = event.loaded - lastLoaded;
+            const speed = dt > 0 ? dL / dt : 0;
+            const remaining = event.total - event.loaded;
+            const remainingTime = speed > 0 ? remaining / speed : 0;
+            const percentage = Math.round((event.loaded / event.total) * 100);
+            setState(prev => ({
+              ...prev,
+              queue: prev.queue.map(q => q.id === item.id ? { ...q, progress: percentage, speed, remainingTime } : q),
+            }));
+            lastLoaded = event.loaded; lastTime = now;
+          });
+          xhr.addEventListener('load', () => {
+            if (xhr.status >= 200 && xhr.status < 300) resolve();
+            else reject(new Error(xhr.responseText || `Upload failed (${xhr.status})`));
+          });
+          xhr.addEventListener('error', () => reject(new Error('Network error')));
+          xhr.addEventListener('abort', () => reject(new Error('Upload cancelled')));
+          if (abortControllerRef.current) {
+            abortControllerRef.current.signal.addEventListener('abort', () => xhr.abort());
+          }
+          const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/drive-upload`;
+          const fd = new FormData();
+          fd.append('folderId', item.driveFolderId!);
+          fd.append('file', item.file);
+          xhr.open('POST', url);
+          xhr.setRequestHeader('Authorization', `Bearer ${session.access_token}`);
+          xhr.send(fd);
+        });
+        return true;
+      }
+
       const shouldUseStream = isVideoFile(item.file.name);
 
       // Step 1: Get presigned upload credentials
@@ -784,6 +848,7 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
       isMinimized,
       setIsMinimized,
       addToQueue,
+      addDriveUpload,
       removeFromQueue,
       clearCompleted,
       reorderQueue,

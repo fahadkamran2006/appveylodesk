@@ -751,7 +751,8 @@ export type Database = {
           created_at: string
           created_by: string
           expires_at: string | null
-          folder_id: string
+          file_id: string | null
+          folder_id: string | null
           id: string
           is_revoked: boolean
           max_files: number | null
@@ -767,7 +768,8 @@ export type Database = {
           created_at?: string
           created_by: string
           expires_at?: string | null
-          folder_id: string
+          file_id?: string | null
+          folder_id?: string | null
           id?: string
           is_revoked?: boolean
           max_files?: number | null
@@ -783,7 +785,8 @@ export type Database = {
           created_at?: string
           created_by?: string
           expires_at?: string | null
-          folder_id?: string
+          file_id?: string | null
+          folder_id?: string | null
           id?: string
           is_revoked?: boolean
           max_files?: number | null
@@ -795,6 +798,13 @@ export type Database = {
           used_files?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "drive_share_links_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "drive_files"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "drive_share_links_folder_id_fkey"
             columns: ["folder_id"]

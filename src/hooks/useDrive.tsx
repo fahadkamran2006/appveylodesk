@@ -96,16 +96,19 @@ export function useDrive() {
   }, [invalidate]);
 
   const createShareLink = useCallback(async (params: {
-    folderId: string; permission: "view" | "download" | "upload" | "full";
-    password?: string; expiresAt?: string | null; maxUploadBytes?: number | null; maxFiles?: number | null;
+    folderId?: string; fileId?: string;
+    permission: "view" | "download" | "upload" | "full";
+    password?: string; expiresAt?: string | null;
+    maxUploadBytes?: number | null; maxFiles?: number | null;
   }) => {
     const data = await call("create_share_link", params);
     invalidate();
     return data.link;
   }, [invalidate]);
 
-  const listShareLinks = useCallback(async (folderId?: string) => {
-    const data = await call("list_share_links", { folderId });
+  const listShareLinks = useCallback(async (target?: { folderId?: string; fileId?: string } | string) => {
+    const payload = typeof target === "string" ? { folderId: target } : (target || {});
+    const data = await call("list_share_links", payload);
     return data.links;
   }, []);
 

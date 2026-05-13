@@ -213,27 +213,38 @@ serve(async (req) => {
 
       // ---------- SHARE LINKS ----------
       case "create_share_link": {
-        const { folderId, permission, password, expiresAt, maxUploadBytes, maxFiles } = payload;
-        const { data: folder } = await admin
-          .from("drive_folders")
-          .select("agency_id")
-          .eq("id", folderId)
-          .maybeSingle();
-        if (!folder || folder.agency_id !== agencyId) return json({ error: "Forbidden" }, 403);
+        const { folderId, fileId, permission, password, expiresAt, maxUploadBytes, maxFiles } = payload;
+        if (!folderId && !fileId) return json({ error: "folderId or fileId required" }, 400);
+        if (folderId && fileId) return json({ error: "Pass only one of folderId/fileId" }, 400);
+
+        if (folderId) {
+          const { data: folder } = await admin
+            .from("drive_folders").select("agency_id").eq("id", folderId).maybeSingle();
+          if (!folder || folder.agency_id !== agencyId) return json({ error: "Forbidden" }, 403);
+        } else {
+          const { data: file } = await admin
+            .from("drive_files").select("agency_id").eq("id", fileId).maybeSingle();
+          if (!file || file.agency_id !== agencyId) return json({ error: "Forbidden" }, 403);
+        }
 
         const password_hash = password ? await hashPassword(password) : null;
+        // File shares only support view/download.
+        const perm = fileId
+          ? (["view", "download"].includes(permission) ? permission : "download")
+          : (permission || "download");
 
         const { data, error } = await admin
           .from("drive_share_links")
           .insert({
             agency_id: agencyId,
-            folder_id: folderId,
+            folder_id: folderId || null,
+            file_id: fileId || null,
             created_by: user.id,
-            permission: permission || "download",
+            permission: perm,
             password_hash,
             expires_at: expiresAt || null,
-            max_upload_bytes: maxUploadBytes || null,
-            max_files: maxFiles || null,
+            max_upload_bytes: fileId ? null : (maxUploadBytes || null),
+            max_files: fileId ? null : (maxFiles || null),
           })
           .select()
           .single();
@@ -242,9 +253,11 @@ serve(async (req) => {
       }
 
       case "list_share_links": {
-        const { folderId } = payload;
-        const q = admin.from("drive_share_links").select("*").eq("agency_id", agencyId).order("created_at", { ascending: false });
-        const { data } = folderId ? await q.eq("folder_id", folderId) : await q;
+        const { folderId, fileId } = payload;
+        let q = admin.from("drive_share_links").select("*").eq("agency_id", agencyId).order("created_at", { ascending: false });
+        if (folderId) q = q.eq("folder_id", folderId);
+        if (fileId) q = q.eq("file_id", fileId);
+        const { data } = await q;
         return json({ ok: true, links: data || [] });
       }
 

@@ -118,6 +118,45 @@ export default function SharePage() {
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground">{error}</div>;
   }
 
+  // ----- Single-file share -----
+  if (data?.kind === "file") {
+    const f = data.file;
+    const ext = f.file_name.split(".").pop()?.toLowerCase() || "";
+    const isVideo = ["mp4", "webm", "mov", "mkv"].includes(ext) || f.mime_type?.startsWith?.("video/");
+    const isImage = ["jpg", "jpeg", "png", "gif", "webp", "svg"].includes(ext) || f.mime_type?.startsWith?.("image/");
+    const isPdf = ext === "pdf" || f.mime_type === "application/pdf";
+    return (
+      <div className="min-h-screen bg-background">
+        <Helmet><title>{f.file_name} — Veylodesk</title></Helmet>
+        <div className="max-w-4xl mx-auto p-6 space-y-4">
+          <div className="flex items-center gap-3">
+            {fileIcon(f.file_name)}
+            <div className="flex-1 min-w-0">
+              <h1 className="text-lg font-semibold truncate">{f.file_name}</h1>
+              <p className="text-xs text-muted-foreground">{formatBytes(f.file_size)} · Shared via Veylodesk</p>
+            </div>
+            <Badge variant="outline">{data?.link?.permission}</Badge>
+          </div>
+          <div className="bg-muted/30 rounded-lg flex items-center justify-center min-h-[300px] overflow-hidden">
+            {isImage && <img src={f.file_url} alt={f.file_name} className="max-h-[70vh] object-contain" />}
+            {isVideo && <video src={f.file_url} controls className="max-h-[70vh] w-full" />}
+            {isPdf && <iframe src={f.file_url} className="w-full h-[70vh]" title={f.file_name} />}
+            {!isImage && !isVideo && !isPdf && (
+              <div className="p-8 text-center text-muted-foreground text-sm">No inline preview available.</div>
+            )}
+          </div>
+          {canDownload && (
+            <div className="flex justify-end">
+              <Button onClick={() => handleDownload(f)}>
+                <Download className="w-4 h-4 mr-2" /> Download
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Helmet><title>{data?.folder?.name || "Shared folder"} — Veylodesk</title></Helmet>

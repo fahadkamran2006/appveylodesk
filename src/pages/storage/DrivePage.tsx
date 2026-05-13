@@ -43,14 +43,14 @@ export default function DrivePage() {
   const { user, userRole, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { addToQueue } = useUploadContext();
+  const { addToQueue, addDriveUpload } = useUploadContext();
   const { startDownload } = useDownloadContext();
 
   const [folderId, setFolderId] = useState<string | null>(null);
   const [view, setView] = useState<"grid" | "list">(() => (localStorage.getItem(VIEW_KEY) as any) || "grid");
   const [search, setSearch] = useState("");
   const [showNewFolder, setShowNewFolder] = useState(false);
-  const [shareTarget, setShareTarget] = useState<{ id: string; name: string } | null>(null);
+  const [shareTarget, setShareTarget] = useState<{ kind: "folder" | "file"; id: string; name: string } | null>(null);
   const [previewFile, setPreviewFile] = useState<DriveFile | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const dragCounter = useRef(0);
@@ -92,17 +92,11 @@ export default function DrivePage() {
     const arr = Array.from(selected);
     try {
       const { supabase } = await import("@/integrations/supabase/client");
-      const { data: f } = await supabase.from("drive_folders").select("kind, project_id").eq("id", folderId).maybeSingle();
+      const { data: f } = await supabase.from("drive_folders").select("kind, project_id, name").eq("id", folderId).maybeSingle();
       if (f?.kind === "project_root" && f.project_id) {
-        addToQueue(arr, f.project_id, undefined, "deliverable");
-        toast({ title: "Upload started", description: `${arr.length} file(s) added to queue` });
+        addToQueue(arr, f.project_id, f.name || undefined, "deliverable");
       } else {
-        toast({ title: "Uploading…", description: `${arr.length} file(s)` });
-        for (const file of arr) {
-          await uploadCustomFile(file, folderId);
-        }
-        toast({ title: "Upload complete" });
-        refetch();
+        await addDriveUpload(arr, folderId, f?.name);
       }
     } catch (e: any) {
       toast({ title: "Upload failed", description: e.message, variant: "destructive" });
@@ -178,7 +172,7 @@ export default function DrivePage() {
           {folderId && (
             <Button variant="outline" onClick={() => {
               const f = breadcrumb[breadcrumb.length - 1];
-              setShareTarget({ id: folderId, name: f?.name || "folder" });
+              setShareTarget({ kind: "folder", id: folderId, name: f?.name || "folder" });
             }}>
               <Share2 className="w-4 h-4 mr-2" />Share
             </Button>
