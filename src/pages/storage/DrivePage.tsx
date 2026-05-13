@@ -52,6 +52,8 @@ export default function DrivePage() {
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [shareTarget, setShareTarget] = useState<{ id: string; name: string } | null>(null);
   const [previewFile, setPreviewFile] = useState<DriveFile | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragCounter = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
