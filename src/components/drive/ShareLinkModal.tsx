@@ -97,9 +97,15 @@ export function ShareLinkModal({ open, onOpenChange, folderId, fileId, folderNam
                 <SelectItem value="view">View only</SelectItem>
                 <SelectItem value="download">View + download</SelectItem>
                 {!isFile && <SelectItem value="upload">Upload only (drop box)</SelectItem>}
+                {!isFile && <SelectItem value="edit">Edit (upload + create folders)</SelectItem>}
                 {!isFile && <SelectItem value="full">Full (view, download, upload)</SelectItem>}
               </SelectContent>
             </Select>
+            {permission === "edit" && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Recipients can upload files, create subfolders, and rename or delete items they added through this link.
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -113,7 +119,7 @@ export function ShareLinkModal({ open, onOpenChange, folderId, fileId, folderNam
             </div>
           </div>
 
-          {(permission === "upload" || permission === "full") && (
+          {(permission === "upload" || permission === "edit" || permission === "full") && (
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Max upload size (MB)</Label>
