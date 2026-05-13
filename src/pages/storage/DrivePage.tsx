@@ -280,7 +280,7 @@ export default function DrivePage() {
       if (!zone) return;
       const target = e.target as Node | null;
       if (target && !zone.contains(target)) return;
-      if (e.dataTransfer?.files?.length) handleFiles(e.dataTransfer.files);
+      if (e.dataTransfer) handleDrop(e.dataTransfer.items, e.dataTransfer.files, null);
     };
     window.addEventListener("dragenter", onEnter);
     window.addEventListener("dragover", onOver);
