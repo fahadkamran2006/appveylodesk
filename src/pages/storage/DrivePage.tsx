@@ -231,6 +231,17 @@ export default function DrivePage() {
             ))}
           </div>
         )}
+
+        {isDragging && (
+          <div className="pointer-events-none fixed inset-0 z-40 flex items-center justify-center bg-primary/10 backdrop-blur-sm">
+            <div className="border-2 border-dashed border-primary rounded-2xl px-10 py-8 bg-background/90 shadow-xl text-center">
+              <Upload className="w-10 h-10 mx-auto mb-2 text-primary" />
+              <p className="font-medium">
+                {folderId ? "Drop files to upload" : "Open a folder first to upload"}
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       <NewFolderModal
