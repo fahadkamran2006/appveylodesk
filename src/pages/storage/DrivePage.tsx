@@ -172,7 +172,7 @@ export default function DrivePage() {
           {folderId && (
             <Button variant="outline" onClick={() => {
               const f = breadcrumb[breadcrumb.length - 1];
-              setShareTarget({ id: folderId, name: f?.name || "folder" });
+              setShareTarget({ kind: "folder", id: folderId, name: f?.name || "folder" });
             }}>
               <Share2 className="w-4 h-4 mr-2" />Share
             </Button>
