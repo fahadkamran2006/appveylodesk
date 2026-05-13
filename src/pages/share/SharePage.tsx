@@ -5,8 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Folder, Download, Upload, Lock, Loader2, File as FileIcon, Film, Image as ImageIcon, FileText } from "lucide-react";
+import {
+  Folder, Download, Upload, Lock, Loader2, File as FileIcon, Film,
+  Image as ImageIcon, FileText, FolderPlus, ChevronRight, Home,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 function formatBytes(b: number) {
@@ -24,6 +30,8 @@ function fileIcon(name: string) {
   return <FileIcon className="w-5 h-5 text-muted-foreground" />;
 }
 
+interface Crumb { id: string; name: string }
+
 export default function SharePage() {
   const { token } = useParams<{ token: string }>();
   const { toast } = useToast();
@@ -36,18 +44,25 @@ export default function SharePage() {
   const [uploaderName, setUploaderName] = useState("");
   const [uploaderEmail, setUploaderEmail] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [crumbs, setCrumbs] = useState<Crumb[]>([]);
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [showNew, setShowNew] = useState(false);
+  const [newName, setNewName] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const load = async (pw?: string) => {
+  const load = async (pw?: string, subFolderId?: string | null) => {
     setLoading(true); setError(null);
     try {
       const { data: res, error: fErr } = await supabase.functions.invoke("drive-share-resolve", {
-        body: { token, password: pw },
+        body: { token, password: pw, subFolderId: subFolderId || undefined },
       });
       if (fErr) throw fErr;
       if (res?.requiresPassword) { setNeedPassword(true); setLoading(false); return; }
       if (res?.error) throw new Error(res.error);
       setData(res); setNeedPassword(false);
+      if (res?.kind === "folder") {
+        setCurrentFolderId(res.folder?.id || res.link?.folder_id || null);
+      }
     } catch (e: any) {
       setError(e.message || "Failed to load");
     } finally { setLoading(false); }
@@ -55,8 +70,27 @@ export default function SharePage() {
 
   useEffect(() => { if (token) load(); /* eslint-disable-next-line */ }, [token]);
 
-  const canDownload = data?.link?.permission && ["download", "full"].includes(data.link.permission);
-  const canUpload = data?.link?.permission && ["upload", "full"].includes(data.link.permission);
+  const enterFolder = async (f: { id: string; name: string }) => {
+    setCrumbs((prev) => [...prev, f]);
+    await load(password, f.id);
+  };
+
+  const goToCrumb = async (idx: number) => {
+    if (idx === -1) {
+      setCrumbs([]);
+      await load(password, null);
+      return;
+    }
+    const next = crumbs.slice(0, idx + 1);
+    const target = next[next.length - 1];
+    setCrumbs(next);
+    await load(password, target.id);
+  };
+
+  const permission = data?.link?.permission;
+  const canDownload = ["download", "full"].includes(permission || "");
+  const canUpload = ["upload", "edit", "full"].includes(permission || "");
+  const canCreateFolder = ["edit", "full"].includes(permission || "");
 
   const handleDownload = (f: any) => {
     const a = document.createElement("a");
@@ -76,6 +110,7 @@ export default function SharePage() {
         if (password) form.append("password", password);
         form.append("uploaderName", uploaderName || "Anonymous");
         if (uploaderEmail) form.append("uploaderEmail", uploaderEmail);
+        if (currentFolderId) form.append("folderId", currentFolderId);
         form.append("file", file);
 
         const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/drive-share-upload`;
@@ -88,12 +123,29 @@ export default function SharePage() {
         if (!r.ok || j.error) throw new Error(j.error || "Upload failed");
       }
       toast({ title: "Upload complete" });
-      load(password);
+      load(password, currentFolderId);
     } catch (e: any) {
       toast({ title: "Upload failed", description: e.message, variant: "destructive" });
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = "";
+    }
+  };
+
+  const handleCreateFolder = async () => {
+    const trimmed = newName.trim();
+    if (!trimmed) return;
+    try {
+      const { data: res, error: fErr } = await supabase.functions.invoke("drive-share-folder", {
+        body: { token, password, parentId: currentFolderId, name: trimmed, action: "create" },
+      });
+      if (fErr) throw fErr;
+      if (res?.error) throw new Error(res.error);
+      toast({ title: "Folder created" });
+      setNewName(""); setShowNew(false);
+      load(password, currentFolderId);
+    } catch (e: any) {
+      toast({ title: "Couldn't create folder", description: e.message, variant: "destructive" });
     }
   };
 
@@ -135,7 +187,7 @@ export default function SharePage() {
               <h1 className="text-lg font-semibold truncate">{f.file_name}</h1>
               <p className="text-xs text-muted-foreground">{formatBytes(f.file_size)} · Shared via Veylodesk</p>
             </div>
-            <Badge variant="outline">{data?.link?.permission}</Badge>
+            <Badge variant="outline">{permission}</Badge>
           </div>
           <div className="bg-muted/30 rounded-lg flex items-center justify-center min-h-[300px] overflow-hidden">
             {isImage && <img src={f.file_url} alt={f.file_name} className="max-h-[70vh] object-contain" />}
@@ -164,16 +216,29 @@ export default function SharePage() {
       <div className="max-w-5xl mx-auto p-6 space-y-6">
         <div className="flex items-center gap-3">
           <Folder className="w-7 h-7 text-primary" />
-          <div className="flex-1">
-            <h1 className="text-xl font-semibold">{data?.folder?.name || "Shared folder"}</h1>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl font-semibold truncate">{data?.folder?.name || "Shared folder"}</h1>
             <p className="text-xs text-muted-foreground">Shared via Veylodesk</p>
           </div>
-          <Badge variant="outline">{data?.link?.permission}</Badge>
+          <Badge variant="outline">{permission}</Badge>
+        </div>
+
+        {/* Breadcrumbs */}
+        <div className="flex items-center gap-1 text-sm text-muted-foreground flex-wrap">
+          <button onClick={() => goToCrumb(-1)} className="flex items-center gap-1 hover:text-foreground">
+            <Home className="w-3.5 h-3.5" /> Shared folder
+          </button>
+          {crumbs.map((c, i) => (
+            <div key={c.id} className="flex items-center gap-1">
+              <ChevronRight className="w-3.5 h-3.5" />
+              <button onClick={() => goToCrumb(i)} className="hover:text-foreground">{c.name}</button>
+            </div>
+          ))}
         </div>
 
         {canUpload && (
           <div className="border-2 border-dashed rounded-xl p-6 space-y-3">
-            <p className="font-medium flex items-center gap-2"><Upload className="w-4 h-4" />Upload files</p>
+            <p className="font-medium flex items-center gap-2"><Upload className="w-4 h-4" />Upload to "{crumbs.length ? crumbs[crumbs.length - 1].name : data?.folder?.name}"</p>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Your name</Label>
@@ -185,9 +250,16 @@ export default function SharePage() {
               </div>
             </div>
             <input ref={inputRef} type="file" multiple className="hidden" onChange={(e) => handleUpload(e.target.files)} />
-            <Button onClick={() => inputRef.current?.click()} disabled={uploading}>
-              {uploading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Uploading…</> : <><Upload className="w-4 h-4 mr-2" />Choose files</>}
-            </Button>
+            <div className="flex gap-2 flex-wrap">
+              <Button onClick={() => inputRef.current?.click()} disabled={uploading}>
+                {uploading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Uploading…</> : <><Upload className="w-4 h-4 mr-2" />Choose files</>}
+              </Button>
+              {canCreateFolder && (
+                <Button variant="outline" onClick={() => setShowNew(true)}>
+                  <FolderPlus className="w-4 h-4 mr-2" />New folder
+                </Button>
+              )}
+            </div>
             {data?.link?.max_upload_bytes && (
               <p className="text-xs text-muted-foreground">Limit: {formatBytes(data.link.max_upload_bytes)} total · used {formatBytes(data.link.used_bytes)}</p>
             )}
@@ -196,10 +268,15 @@ export default function SharePage() {
 
         <div className="border rounded-lg divide-y">
           {(data?.subfolders || []).map((f: any) => (
-            <div key={f.id} className="flex items-center gap-3 p-3">
+            <button
+              key={f.id}
+              onClick={() => enterFolder(f)}
+              className="w-full flex items-center gap-3 p-3 hover:bg-muted/30 text-left"
+            >
               <Folder className="w-5 h-5 text-primary" />
-              <span className="flex-1 text-sm font-medium">{f.name}</span>
-            </div>
+              <span className="flex-1 text-sm font-medium truncate">{f.name}</span>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </button>
           ))}
           {(data?.files || []).length === 0 && (data?.subfolders || []).length === 0 && (
             <div className="p-8 text-center text-sm text-muted-foreground">This folder is empty.</div>
@@ -220,6 +297,23 @@ export default function SharePage() {
           ))}
         </div>
       </div>
+
+      <Dialog open={showNew} onOpenChange={setShowNew}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>New folder</DialogTitle></DialogHeader>
+          <Input
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="Folder name"
+            onKeyDown={(e) => { if (e.key === "Enter") handleCreateFolder(); }}
+            autoFocus
+          />
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setShowNew(false)}>Cancel</Button>
+            <Button onClick={handleCreateFolder} disabled={!newName.trim()}>Create</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
