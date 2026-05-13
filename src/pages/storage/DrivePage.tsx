@@ -62,6 +62,7 @@ export default function DrivePage() {
   const [confirmPurge, setConfirmPurge] = useState<{ kind: "file" | "folder"; id: string; name: string } | null>(null);
   const dragCounter = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!loading && !user) navigate("/auth/login");
