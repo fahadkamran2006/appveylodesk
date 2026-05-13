@@ -848,6 +848,7 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
       isMinimized,
       setIsMinimized,
       addToQueue,
+      addDriveUpload,
       removeFromQueue,
       clearCompleted,
       reorderQueue,
