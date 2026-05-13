@@ -462,9 +462,9 @@ export default function DrivePage() {
 }
 
 
-function FolderCard({ folder, onOpen, onShare, onDelete, onDropFiles }: any) {
+function FolderCard({ folder, onOpen, onShare, onDelete, onDropData }: any) {
   const [over, setOver] = useState(false);
-  const dragHandlers = onDropFiles
+  const dragHandlers = onDropData
     ? {
         onDragEnter: (e: React.DragEvent) => {
           if (!e.dataTransfer?.types?.includes("Files")) return;
@@ -479,7 +479,7 @@ function FolderCard({ folder, onOpen, onShare, onDelete, onDropFiles }: any) {
         },
         onDrop: (e: React.DragEvent) => {
           e.preventDefault(); e.stopPropagation(); setOver(false);
-          if (e.dataTransfer?.files?.length) onDropFiles(e.dataTransfer.files);
+          if (e.dataTransfer) onDropData(e.dataTransfer);
         },
       }
     : {};
