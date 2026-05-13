@@ -384,3 +384,58 @@ function FileRow({ file, onPreview, onDownload, onShare, onDelete }: any) {
     </div>
   );
 }
+
+function timeLeft(deletedAt: string) {
+  const end = new Date(deletedAt).getTime() + 30 * 24 * 3600 * 1000;
+  const days = Math.max(0, Math.ceil((end - Date.now()) / (24 * 3600 * 1000)));
+  return `${days}d left`;
+}
+
+function TrashView({ data, isLoading, onRestoreFile, onRestoreFolder, onPurgeFile, onPurgeFolder }: any) {
+  if (isLoading) return <div className="text-muted-foreground">Loading trash…</div>;
+  const folders = data?.folders || [];
+  const files = data?.files || [];
+  if (!folders.length && !files.length) {
+    return (
+      <div className="text-center py-16 border-2 border-dashed rounded-xl text-muted-foreground">
+        <Trash className="w-12 h-12 mx-auto opacity-30 mb-3" />
+        <p>Trash is empty</p>
+        <p className="text-xs mt-1">Deleted items appear here for 30 days before being permanently removed.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="border rounded-lg divide-y">
+      {folders.map((f: any) => (
+        <div key={f.id} className="flex items-center gap-3 p-3 hover:bg-muted/30">
+          <Folder className="w-5 h-5 text-muted-foreground" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">{f.name}</p>
+            <p className="text-xs text-muted-foreground">Folder · {timeLeft(f.deleted_at)}</p>
+          </div>
+          <Button size="sm" variant="ghost" onClick={() => onRestoreFolder(f.id)}>
+            <RotateCcw className="w-4 h-4 mr-1" />Restore
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => onPurgeFolder(f.id, f.name)}>
+            <Trash2 className="w-4 h-4 text-destructive" />
+          </Button>
+        </div>
+      ))}
+      {files.map((f: any) => (
+        <div key={f.id} className="flex items-center gap-3 p-3 hover:bg-muted/30">
+          <FileIcon className="w-5 h-5 text-muted-foreground" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">{f.file_name}</p>
+            <p className="text-xs text-muted-foreground">{(f.file_size / 1024 / 1024).toFixed(1)} MB · {timeLeft(f.deleted_at)}</p>
+          </div>
+          <Button size="sm" variant="ghost" onClick={() => onRestoreFile(f.id)}>
+            <RotateCcw className="w-4 h-4 mr-1" />Restore
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => onPurgeFile(f.id, f.file_name)}>
+            <Trash2 className="w-4 h-4 text-destructive" />
+          </Button>
+        </div>
+      ))}
+    </div>
+  );
+}
