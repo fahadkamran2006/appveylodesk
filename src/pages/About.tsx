@@ -57,6 +57,18 @@ const About = () => {
       <Helmet>
         <title>About Us — Veylodesk | Built by Agency Owners</title>
         <meta name="description" content="Meet the founder of Veylodesk — Fahad Kamran, a video editing agency owner who built the tool he wished existed." />
+        <link rel="canonical" href="https://veylodesk.com/about" />
+        <meta property="og:title" content="About Us — Veylodesk" />
+        <meta property="og:description" content="Meet Fahad Kamran, the agency owner who built Veylodesk." />
+        <meta property="og:url" content="https://veylodesk.com/about" />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Person",
+          "name": "Fahad Kamran",
+          "jobTitle": "Founder",
+          "worksFor": { "@type": "Organization", "name": "Veylodesk", "url": "https://veylodesk.com" },
+          "url": "https://veylodesk.com/about"
+        })}</script>
       </Helmet>
 
       <Navbar />
