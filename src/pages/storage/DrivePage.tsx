@@ -117,8 +117,8 @@ export default function DrivePage() {
       const { data: f } = await supabase.from("drive_folders").select("kind, project_id, name").eq("id", target).maybeSingle();
       if (f?.kind === "project_root" && f.project_id) {
         addToQueue(arr, f.project_id, f.name || undefined, "deliverable");
-      } else if (f?.kind === "client_root") {
-        toast({ title: "Pick a project folder", description: "Open a project folder inside this client to upload.", variant: "destructive" });
+      } else if (f?.kind === "client_root" || f?.kind === "container_root") {
+        toast({ title: "Pick a video folder", description: "Open a video folder inside this project to upload.", variant: "destructive" });
       } else {
         await addDriveUpload(arr, target, f?.name);
       }
@@ -261,7 +261,7 @@ export default function DrivePage() {
             {filteredFolders.map((f) => (
               <FolderCard key={f.id} folder={f} onOpen={() => setFolderId(f.id)}
                 onShare={() => setShareTarget({ kind: "folder", id: f.id, name: f.name })}
-                onDropFiles={f.kind === "client_root" ? undefined : (files) => handleFiles(files, f.id)}
+                onDropFiles={(f.kind === "client_root" || f.kind === "container_root") ? undefined : (files) => handleFiles(files, f.id)}
                 onDelete={f.kind === "custom" ? () => deleteFolder(f.id).then(() => refetch()) : undefined} />
             ))}
             {filteredFiles.map((f) => (
@@ -275,7 +275,7 @@ export default function DrivePage() {
             {filteredFolders.map((f) => (
               <FolderRow key={f.id} folder={f} onOpen={() => setFolderId(f.id)}
                 onShare={() => setShareTarget({ kind: "folder", id: f.id, name: f.name })}
-                onDropFiles={f.kind === "client_root" ? undefined : (files) => handleFiles(files, f.id)}
+                onDropFiles={(f.kind === "client_root" || f.kind === "container_root") ? undefined : (files) => handleFiles(files, f.id)}
                 onDelete={f.kind === "custom" ? () => deleteFolder(f.id).then(() => refetch()) : undefined} />
             ))}
             {filteredFiles.map((f) => (
@@ -381,7 +381,7 @@ function FolderCard({ folder, onOpen, onShare, onDelete, onDropFiles }: any) {
         </div>
         <p className="text-sm font-medium truncate">{folder.name}</p>
         <p className="text-xs text-muted-foreground mt-0.5">
-          {folder.kind === "client_root" ? "Client" : folder.kind === "project_root" ? "Project folder" : "Folder"}
+          {folder.kind === "client_root" ? "Client" : folder.kind === "container_root" ? "Project" : folder.kind === "project_root" ? "Video folder" : "Folder"}
         </p>
       </button>
       <div className="absolute top-2 right-2">
@@ -468,6 +468,7 @@ function FolderRow({ folder, onOpen, onShare, onDelete, onDropFiles }: any) {
       <button onClick={onOpen} className="flex-1 text-left text-sm font-medium truncate">{folder.name}</button>
       {folder.kind === "project_root" && <Badge variant="outline" className="text-[10px]">Project</Badge>}
       {folder.kind === "client_root" && <Badge variant="outline" className="text-[10px]">Client</Badge>}
+      {folder.kind === "container_root" && <Badge variant="outline" className="text-[10px]">Project</Badge>}
       <Button size="sm" variant="ghost" onClick={onShare}><Share2 className="w-4 h-4" /></Button>
       {onDelete && <Button size="sm" variant="ghost" onClick={onDelete}><Trash2 className="w-4 h-4 text-destructive" /></Button>}
     </div>
