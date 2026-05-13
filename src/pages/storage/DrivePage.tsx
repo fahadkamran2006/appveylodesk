@@ -105,7 +105,126 @@ export default function DrivePage() {
 
   const handleUploadClick = () => fileInputRef.current?.click();
 
-  const handleFiles = async (selected: FileList | null, targetFolderId?: string | null) => {
+  const uploadIntoFolder = async (
+    files: File[],
+    targetId: string,
+    targetMeta?: { kind?: string; project_id?: string | null; name?: string | null },
+  ) => {
+    if (!files.length) return;
+    let meta = targetMeta;
+    if (!meta) {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data: f } = await supabase.from("drive_folders").select("kind, project_id, name").eq("id", targetId).maybeSingle();
+      meta = f || {};
+    }
+    if (meta?.kind === "client_root" || meta?.kind === "container_root") {
+      toast({ title: "Pick a video folder", description: "Open a video folder inside this project to upload.", variant: "destructive" });
+      return;
+    }
+    if (meta?.kind === "project_root" && meta.project_id) {
+      addToQueue(files, meta.project_id, meta.name || undefined, "deliverable");
+    } else {
+      await addDriveUpload(files, targetId, meta?.name || undefined);
+    }
+  };
+
+  // Walk a DataTransferItemList. Returns true if any directory entries were processed.
+  const handleDrop = async (
+    items: DataTransferItemList | null,
+    fallbackFiles: FileList | null,
+    targetFolderId?: string | null,
+    targetName?: string,
+  ) => {
+    const target = targetFolderId ?? folderId;
+    if (!target) {
+      toast({ title: "Open a folder first", description: "Pick a folder, then upload.", variant: "destructive" });
+      return;
+    }
+    // Snapshot entries synchronously (DataTransferItemList becomes invalid after await)
+    const entries: any[] = [];
+    if (items) {
+      for (let i = 0; i < items.length; i++) {
+        const it = items[i];
+        const entry = (it as any).webkitGetAsEntry?.();
+        if (entry) entries.push(entry);
+      }
+    }
+    const hasDirectory = entries.some((e) => e?.isDirectory);
+
+    const { supabase } = await import("@/integrations/supabase/client");
+    const { data: targetMeta } = await supabase
+      .from("drive_folders").select("kind, project_id, name").eq("id", target).maybeSingle();
+
+    const displayName = targetName || targetMeta?.name || "folder";
+
+    if (!hasDirectory) {
+      const arr = fallbackFiles ? Array.from(fallbackFiles) : [];
+      if (!arr.length) return;
+      toast({ title: `Uploading to “${displayName}”`, description: `${arr.length} file${arr.length > 1 ? "s" : ""}` });
+      await uploadIntoFolder(arr, target, targetMeta || undefined);
+      return;
+    }
+
+    if (targetMeta?.kind === "client_root" || targetMeta?.kind === "container_root") {
+      toast({ title: "Pick a video folder", description: "Open a video folder inside this project to upload.", variant: "destructive" });
+      return;
+    }
+
+    toast({ title: `Uploading folder to “${displayName}”`, description: "Recreating folder structure…" });
+
+    // Helpers: read entries (paged) + read file
+    const readDir = (dirReader: any): Promise<any[]> =>
+      new Promise((resolve, reject) => {
+        const all: any[] = [];
+        const readBatch = () => dirReader.readEntries((batch: any[]) => {
+          if (!batch.length) resolve(all);
+          else { all.push(...batch); readBatch(); }
+        }, reject);
+        readBatch();
+      });
+    const getFile = (entry: any): Promise<File> =>
+      new Promise((resolve, reject) => entry.file(resolve, reject));
+
+    const createSub = async (name: string, parentId: string): Promise<string> => {
+      const { data, error } = await supabase.functions.invoke("drive-ops", {
+        body: { action: "create_folder", name, parentId },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      return (data as any).folder.id as string;
+    };
+
+    // Walk entries; collect files-per-folder, creating folders on the fly
+    const filesByFolder = new Map<string, File[]>();
+    const walk = async (entry: any, parentFolderId: string) => {
+      if (entry.isFile) {
+        const file = await getFile(entry);
+        const arr = filesByFolder.get(parentFolderId) || [];
+        arr.push(file);
+        filesByFolder.set(parentFolderId, arr);
+        return;
+      }
+      if (entry.isDirectory) {
+        const newFolderId = await createSub(entry.name, parentFolderId);
+        const children = await readDir(entry.createReader());
+        for (const child of children) await walk(child, newFolderId);
+      }
+    };
+    try {
+      for (const e of entries) await walk(e, target);
+      // Refresh folder list
+      window.dispatchEvent(new Event("drive-files-changed"));
+      // Upload accumulated files per folder
+      for (const [fid, files] of filesByFolder) {
+        const meta = fid === target ? targetMeta || undefined : undefined;
+        await uploadIntoFolder(files, fid, meta);
+      }
+    } catch (e: any) {
+      toast({ title: "Folder upload failed", description: e.message, variant: "destructive" });
+    }
+  };
+
+  const handleFiles = async (selected: FileList | null, targetFolderId?: string | null, targetName?: string) => {
     const target = targetFolderId ?? folderId;
     if (!selected || !target) {
       toast({ title: "Open a folder first", description: "Pick a folder, then upload.", variant: "destructive" });
@@ -115,13 +234,11 @@ export default function DrivePage() {
     try {
       const { supabase } = await import("@/integrations/supabase/client");
       const { data: f } = await supabase.from("drive_folders").select("kind, project_id, name").eq("id", target).maybeSingle();
-      if (f?.kind === "project_root" && f.project_id) {
-        addToQueue(arr, f.project_id, f.name || undefined, "deliverable");
-      } else if (f?.kind === "client_root" || f?.kind === "container_root") {
-        toast({ title: "Pick a video folder", description: "Open a video folder inside this project to upload.", variant: "destructive" });
-      } else {
-        await addDriveUpload(arr, target, f?.name);
+      const displayName = targetName || f?.name || "folder";
+      if (targetFolderId) {
+        toast({ title: `Uploading to “${displayName}”`, description: `${arr.length} file${arr.length > 1 ? "s" : ""}` });
       }
+      await uploadIntoFolder(arr, target, f || undefined);
     } catch (e: any) {
       toast({ title: "Upload failed", description: e.message, variant: "destructive" });
     }
@@ -163,7 +280,7 @@ export default function DrivePage() {
       if (!zone) return;
       const target = e.target as Node | null;
       if (target && !zone.contains(target)) return;
-      if (e.dataTransfer?.files?.length) handleFiles(e.dataTransfer.files);
+      if (e.dataTransfer) handleDrop(e.dataTransfer.items, e.dataTransfer.files, null);
     };
     window.addEventListener("dragenter", onEnter);
     window.addEventListener("dragover", onOver);
@@ -261,7 +378,7 @@ export default function DrivePage() {
             {filteredFolders.map((f) => (
               <FolderCard key={f.id} folder={f} onOpen={() => setFolderId(f.id)}
                 onShare={() => setShareTarget({ kind: "folder", id: f.id, name: f.name })}
-                onDropFiles={(f.kind === "client_root" || f.kind === "container_root") ? undefined : (files) => handleFiles(files, f.id)}
+                onDropData={(f.kind === "client_root" || f.kind === "container_root") ? undefined : (dt: DataTransfer) => handleDrop(dt.items, dt.files, f.id, f.name)}
                 onDelete={f.kind === "custom" ? () => deleteFolder(f.id).then(() => refetch()) : undefined} />
             ))}
             {filteredFiles.map((f) => (
@@ -275,7 +392,7 @@ export default function DrivePage() {
             {filteredFolders.map((f) => (
               <FolderRow key={f.id} folder={f} onOpen={() => setFolderId(f.id)}
                 onShare={() => setShareTarget({ kind: "folder", id: f.id, name: f.name })}
-                onDropFiles={(f.kind === "client_root" || f.kind === "container_root") ? undefined : (files) => handleFiles(files, f.id)}
+                onDropData={(f.kind === "client_root" || f.kind === "container_root") ? undefined : (dt: DataTransfer) => handleDrop(dt.items, dt.files, f.id, f.name)}
                 onDelete={f.kind === "custom" ? () => deleteFolder(f.id).then(() => refetch()) : undefined} />
             ))}
             {filteredFiles.map((f) => (
@@ -345,9 +462,9 @@ export default function DrivePage() {
 }
 
 
-function FolderCard({ folder, onOpen, onShare, onDelete, onDropFiles }: any) {
+function FolderCard({ folder, onOpen, onShare, onDelete, onDropData }: any) {
   const [over, setOver] = useState(false);
-  const dragHandlers = onDropFiles
+  const dragHandlers = onDropData
     ? {
         onDragEnter: (e: React.DragEvent) => {
           if (!e.dataTransfer?.types?.includes("Files")) return;
@@ -362,7 +479,7 @@ function FolderCard({ folder, onOpen, onShare, onDelete, onDropFiles }: any) {
         },
         onDrop: (e: React.DragEvent) => {
           e.preventDefault(); e.stopPropagation(); setOver(false);
-          if (e.dataTransfer?.files?.length) onDropFiles(e.dataTransfer.files);
+          if (e.dataTransfer) onDropData(e.dataTransfer);
         },
       }
     : {};
@@ -434,9 +551,9 @@ function FileCard({ file, onPreview, onDownload, onShare, onDelete }: any) {
   );
 }
 
-function FolderRow({ folder, onOpen, onShare, onDelete, onDropFiles }: any) {
+function FolderRow({ folder, onOpen, onShare, onDelete, onDropData }: any) {
   const [over, setOver] = useState(false);
-  const dragHandlers = onDropFiles
+  const dragHandlers = onDropData
     ? {
         onDragEnter: (e: React.DragEvent) => {
           if (!e.dataTransfer?.types?.includes("Files")) return;
@@ -451,7 +568,7 @@ function FolderRow({ folder, onOpen, onShare, onDelete, onDropFiles }: any) {
         },
         onDrop: (e: React.DragEvent) => {
           e.preventDefault(); e.stopPropagation(); setOver(false);
-          if (e.dataTransfer?.files?.length) onDropFiles(e.dataTransfer.files);
+          if (e.dataTransfer) onDropData(e.dataTransfer);
         },
       }
     : {};
