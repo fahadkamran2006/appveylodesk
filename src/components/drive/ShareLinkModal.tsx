@@ -12,13 +12,17 @@ import { Copy, Trash2, Link as LinkIcon } from "lucide-react";
 interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  folderId: string;
-  folderName: string;
+  folderId?: string;
+  fileId?: string;
+  folderName?: string;
+  fileName?: string;
 }
 
-export function ShareLinkModal({ open, onOpenChange, folderId, folderName }: Props) {
+export function ShareLinkModal({ open, onOpenChange, folderId, fileId, folderName, fileName }: Props) {
   const { createShareLink, listShareLinks, revokeShareLink } = useDrive();
   const { toast } = useToast();
+  const isFile = !!fileId;
+  const targetName = isFile ? (fileName || "file") : (folderName || "folder");
 
   const [permission, setPermission] = useState<"view" | "download" | "upload" | "full">("download");
   const [password, setPassword] = useState("");
@@ -28,11 +32,15 @@ export function ShareLinkModal({ open, onOpenChange, folderId, folderName }: Pro
   const [links, setLinks] = useState<any[]>([]);
   const [busy, setBusy] = useState(false);
 
+  useEffect(() => {
+    if (isFile && (permission === "upload" || permission === "full")) setPermission("download");
+  }, [isFile, permission]);
+
   const refresh = async () => {
-    try { setLinks(await listShareLinks(folderId)); } catch {}
+    try { setLinks(await listShareLinks({ folderId, fileId })); } catch {}
   };
 
-  useEffect(() => { if (open) refresh(); /* eslint-disable-next-line */ }, [open, folderId]);
+  useEffect(() => { if (open) refresh(); /* eslint-disable-next-line */ }, [open, folderId, fileId]);
 
   const generate = async () => {
     setBusy(true);
@@ -40,6 +48,7 @@ export function ShareLinkModal({ open, onOpenChange, folderId, folderName }: Pro
       const expiresAt = expiresInDays ? new Date(Date.now() + parseInt(expiresInDays) * 86400000).toISOString() : null;
       const link = await createShareLink({
         folderId,
+        fileId,
         permission,
         password: password || undefined,
         expiresAt,
