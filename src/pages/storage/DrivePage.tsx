@@ -117,8 +117,8 @@ export default function DrivePage() {
       const { data: f } = await supabase.from("drive_folders").select("kind, project_id, name").eq("id", target).maybeSingle();
       if (f?.kind === "project_root" && f.project_id) {
         addToQueue(arr, f.project_id, f.name || undefined, "deliverable");
-      } else if (f?.kind === "client_root") {
-        toast({ title: "Pick a project folder", description: "Open a project folder inside this client to upload.", variant: "destructive" });
+      } else if (f?.kind === "client_root" || f?.kind === "container_root") {
+        toast({ title: "Pick a video folder", description: "Open a video folder inside this project to upload.", variant: "destructive" });
       } else {
         await addDriveUpload(arr, target, f?.name);
       }
