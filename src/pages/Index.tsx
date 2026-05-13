@@ -22,7 +22,10 @@ const Index = () => {
           name="keywords"
           content="video agency, project management, client portal, video production, agency OS"
         />
-        <link rel="canonical" href="https://veylodesk.com" />
+        <link rel="canonical" href="https://veylodesk.com/" />
+        <meta property="og:title" content="Veylodesk | The Command Center for Video Agencies" />
+        <meta property="og:description" content="Run your video agency from one command center. Manage clients, editors, and projects in one tab." />
+        <meta property="og:url" content="https://veylodesk.com/" />
       </Helmet>
 
       <div className="min-h-screen bg-background">
