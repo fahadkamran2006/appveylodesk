@@ -204,11 +204,12 @@ export default function DrivePage() {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
             {filteredFolders.map((f) => (
               <FolderCard key={f.id} folder={f} onOpen={() => setFolderId(f.id)}
-                onShare={() => setShareTarget({ id: f.id, name: f.name })}
+                onShare={() => setShareTarget({ kind: "folder", id: f.id, name: f.name })}
                 onDelete={f.kind === "custom" ? () => deleteFolder(f.id).then(() => refetch()) : undefined} />
             ))}
             {filteredFiles.map((f) => (
               <FileCard key={f.id} file={f} onPreview={() => setPreviewFile(f)} onDownload={() => handleDownload(f)}
+                onShare={() => setShareTarget({ kind: "file", id: f.id, name: f.file_name })}
                 onDelete={f.source === "user" || f.source === "public_link" ? () => deleteFile(f.id).then(() => refetch()) : undefined} />
             ))}
           </div>
@@ -216,11 +217,12 @@ export default function DrivePage() {
           <div className="border rounded-lg divide-y">
             {filteredFolders.map((f) => (
               <FolderRow key={f.id} folder={f} onOpen={() => setFolderId(f.id)}
-                onShare={() => setShareTarget({ id: f.id, name: f.name })}
+                onShare={() => setShareTarget({ kind: "folder", id: f.id, name: f.name })}
                 onDelete={f.kind === "custom" ? () => deleteFolder(f.id).then(() => refetch()) : undefined} />
             ))}
             {filteredFiles.map((f) => (
               <FileRow key={f.id} file={f} onPreview={() => setPreviewFile(f)} onDownload={() => handleDownload(f)}
+                onShare={() => setShareTarget({ kind: "file", id: f.id, name: f.file_name })}
                 onDelete={f.source === "user" || f.source === "public_link" ? () => deleteFile(f.id).then(() => refetch()) : undefined} />
             ))}
           </div>
