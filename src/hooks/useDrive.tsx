@@ -74,14 +74,38 @@ export function useDrive() {
   }, [invalidate, toast]);
 
   const deleteFolder = useCallback(async (folderId: string) => {
-    try { await call("delete_folder", { folderId }); invalidate(); toast({ title: "Folder deleted" }); }
+    try { await call("delete_folder", { folderId }); invalidate(); toast({ title: "Moved to Trash", description: "Folder will be permanently deleted in 30 days." }); }
     catch (e: any) { toast({ title: "Delete failed", description: e.message, variant: "destructive" }); }
   }, [invalidate, toast]);
 
   const deleteFile = useCallback(async (fileId: string) => {
-    try { await call("delete_file", { fileId }); invalidate(); toast({ title: "File deleted" }); }
+    try { await call("delete_file", { fileId }); invalidate(); toast({ title: "Moved to Trash", description: "File will be permanently deleted in 30 days." }); }
     catch (e: any) { toast({ title: "Delete failed", description: e.message, variant: "destructive" }); }
   }, [invalidate, toast]);
+
+  const restoreFile = useCallback(async (fileId: string) => {
+    try { await call("restore_file", { fileId }); invalidate(); toast({ title: "Restored" }); }
+    catch (e: any) { toast({ title: "Restore failed", description: e.message, variant: "destructive" }); }
+  }, [invalidate, toast]);
+
+  const restoreFolder = useCallback(async (folderId: string) => {
+    try { await call("restore_folder", { folderId }); invalidate(); toast({ title: "Restored" }); }
+    catch (e: any) { toast({ title: "Restore failed", description: e.message, variant: "destructive" }); }
+  }, [invalidate, toast]);
+
+  const permanentDeleteFile = useCallback(async (fileId: string) => {
+    try { await call("permanent_delete_file", { fileId }); invalidate(); toast({ title: "Permanently deleted" }); }
+    catch (e: any) { toast({ title: "Delete failed", description: e.message, variant: "destructive" }); }
+  }, [invalidate, toast]);
+
+  const permanentDeleteFolder = useCallback(async (folderId: string) => {
+    try { await call("permanent_delete_folder", { folderId }); invalidate(); toast({ title: "Permanently deleted" }); }
+    catch (e: any) { toast({ title: "Delete failed", description: e.message, variant: "destructive" }); }
+  }, [invalidate, toast]);
+
+  const cleanupOrphanBunny = useCallback(async (cdnUrl: string) => {
+    try { await call("cleanup_orphan", { cdnUrl }); } catch (e) { console.warn("cleanup_orphan", e); }
+  }, []);
 
   const registerFile = useCallback(async (params: {
     folderId: string; fileName: string; fileUrl: string; fileSize: number; mimeType?: string;
@@ -120,6 +144,20 @@ export function useDrive() {
   return {
     busy,
     createFolder, renameFolder, deleteFolder, deleteFile, registerFile,
+    restoreFile, restoreFolder, permanentDeleteFile, permanentDeleteFolder,
+    cleanupOrphanBunny,
     syncProjectFolders, createShareLink, listShareLinks, revokeShareLink,
   };
+}
+
+export function useDriveTrash(enabled: boolean) {
+  return useQuery({
+    queryKey: ["drive", "trash"],
+    enabled,
+    queryFn: async () => {
+      const data = await call("list_trash");
+      return data as { folders: (DriveFolder & { deleted_at: string })[]; files: (DriveFile & { deleted_at: string })[] };
+    },
+    staleTime: 30_000,
+  });
 }

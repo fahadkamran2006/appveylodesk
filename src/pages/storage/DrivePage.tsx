@@ -10,10 +10,15 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Folder, FolderPlus, Upload, Share2, ChevronRight, Grid3x3, List,
   Search, MoreVertical, Download, Trash2, Film, Image as ImageIcon, FileText, File as FileIcon, Home,
+  Trash, RotateCcw,
 } from "lucide-react";
-import { useDrive, useDriveFolder, type DriveFile } from "@/hooks/useDrive";
+import { useDrive, useDriveFolder, useDriveTrash, type DriveFile } from "@/hooks/useDrive";
 import { NewFolderModal } from "@/components/drive/NewFolderModal";
 import { ShareLinkModal } from "@/components/drive/ShareLinkModal";
 import { FilePreview } from "@/components/drive/FilePreview";
@@ -53,6 +58,8 @@ export default function DrivePage() {
   const [shareTarget, setShareTarget] = useState<{ kind: "folder" | "file"; id: string; name: string } | null>(null);
   const [previewFile, setPreviewFile] = useState<DriveFile | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [showTrash, setShowTrash] = useState(false);
+  const [confirmPurge, setConfirmPurge] = useState<{ kind: "file" | "folder"; id: string; name: string } | null>(null);
   const dragCounter = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -62,8 +69,12 @@ export default function DrivePage() {
 
   useEffect(() => { localStorage.setItem(VIEW_KEY, view); }, [view]);
 
-  const { syncProjectFolders, createFolder, deleteFolder, deleteFile, registerFile } = useDrive();
+  const {
+    syncProjectFolders, createFolder, deleteFolder, deleteFile, registerFile,
+    restoreFile, restoreFolder, permanentDeleteFile, permanentDeleteFolder,
+  } = useDrive();
   const { data, isLoading, refetch } = useDriveFolder(folderId);
+  const trashQ = useDriveTrash(showTrash);
 
   useEffect(() => {
     if (user && userRole) syncProjectFolders();
@@ -177,8 +188,23 @@ export default function DrivePage() {
               <Share2 className="w-4 h-4 mr-2" />Share
             </Button>
           )}
+          <Button variant={showTrash ? "secondary" : "outline"} onClick={() => setShowTrash((v) => !v)}>
+            <Trash className="w-4 h-4 mr-2" />{showTrash ? "Back to Drive" : "Trash"}
+          </Button>
           <input ref={fileInputRef} type="file" multiple className="hidden" onChange={(e) => handleFiles(e.target.files)} />
         </div>
+
+        {showTrash ? (
+          <TrashView
+            data={trashQ.data}
+            isLoading={trashQ.isLoading}
+            onRestoreFile={async (id) => { await restoreFile(id); trashQ.refetch(); refetch(); }}
+            onRestoreFolder={async (id) => { await restoreFolder(id); trashQ.refetch(); refetch(); }}
+            onPurgeFile={(id, name) => setConfirmPurge({ kind: "file", id, name })}
+            onPurgeFolder={(id, name) => setConfirmPurge({ kind: "folder", id, name })}
+          />
+        ) : (
+          <>
 
         <div className="flex items-center gap-1 text-sm text-muted-foreground">
           <button onClick={() => setFolderId(null)} className="flex items-center gap-1 hover:text-foreground">
@@ -227,8 +253,10 @@ export default function DrivePage() {
             ))}
           </div>
         )}
+          </>
+        )}
 
-        {isDragging && (
+        {isDragging && !showTrash && (
           <div className="pointer-events-none fixed inset-0 z-40 flex items-center justify-center bg-primary/10 backdrop-blur-sm">
             <div className="border-2 border-dashed border-primary rounded-2xl px-10 py-8 bg-background/90 shadow-xl text-center">
               <Upload className="w-10 h-10 mx-auto mb-2 text-primary" />
@@ -239,6 +267,30 @@ export default function DrivePage() {
           </div>
         )}
       </div>
+
+      <AlertDialog open={!!confirmPurge} onOpenChange={(v) => { if (!v) setConfirmPurge(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Permanently delete?</AlertDialogTitle>
+            <AlertDialogDescription>
+              "{confirmPurge?.name}" will be removed from Bunny storage and the database. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                if (!confirmPurge) return;
+                if (confirmPurge.kind === "file") await permanentDeleteFile(confirmPurge.id);
+                else await permanentDeleteFolder(confirmPurge.id);
+                setConfirmPurge(null);
+                trashQ.refetch();
+              }}
+            >Delete forever</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <NewFolderModal
         open={showNewFolder}
@@ -329,6 +381,61 @@ function FileRow({ file, onPreview, onDownload, onShare, onDelete }: any) {
       <Button size="sm" variant="ghost" onClick={onDownload}><Download className="w-4 h-4" /></Button>
       {onShare && <Button size="sm" variant="ghost" onClick={onShare}><Share2 className="w-4 h-4" /></Button>}
       {onDelete && <Button size="sm" variant="ghost" onClick={onDelete}><Trash2 className="w-4 h-4 text-destructive" /></Button>}
+    </div>
+  );
+}
+
+function timeLeft(deletedAt: string) {
+  const end = new Date(deletedAt).getTime() + 30 * 24 * 3600 * 1000;
+  const days = Math.max(0, Math.ceil((end - Date.now()) / (24 * 3600 * 1000)));
+  return `${days}d left`;
+}
+
+function TrashView({ data, isLoading, onRestoreFile, onRestoreFolder, onPurgeFile, onPurgeFolder }: any) {
+  if (isLoading) return <div className="text-muted-foreground">Loading trash…</div>;
+  const folders = data?.folders || [];
+  const files = data?.files || [];
+  if (!folders.length && !files.length) {
+    return (
+      <div className="text-center py-16 border-2 border-dashed rounded-xl text-muted-foreground">
+        <Trash className="w-12 h-12 mx-auto opacity-30 mb-3" />
+        <p>Trash is empty</p>
+        <p className="text-xs mt-1">Deleted items appear here for 30 days before being permanently removed.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="border rounded-lg divide-y">
+      {folders.map((f: any) => (
+        <div key={f.id} className="flex items-center gap-3 p-3 hover:bg-muted/30">
+          <Folder className="w-5 h-5 text-muted-foreground" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">{f.name}</p>
+            <p className="text-xs text-muted-foreground">Folder · {timeLeft(f.deleted_at)}</p>
+          </div>
+          <Button size="sm" variant="ghost" onClick={() => onRestoreFolder(f.id)}>
+            <RotateCcw className="w-4 h-4 mr-1" />Restore
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => onPurgeFolder(f.id, f.name)}>
+            <Trash2 className="w-4 h-4 text-destructive" />
+          </Button>
+        </div>
+      ))}
+      {files.map((f: any) => (
+        <div key={f.id} className="flex items-center gap-3 p-3 hover:bg-muted/30">
+          <FileIcon className="w-5 h-5 text-muted-foreground" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">{f.file_name}</p>
+            <p className="text-xs text-muted-foreground">{(f.file_size / 1024 / 1024).toFixed(1)} MB · {timeLeft(f.deleted_at)}</p>
+          </div>
+          <Button size="sm" variant="ghost" onClick={() => onRestoreFile(f.id)}>
+            <RotateCcw className="w-4 h-4 mr-1" />Restore
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => onPurgeFile(f.id, f.file_name)}>
+            <Trash2 className="w-4 h-4 text-destructive" />
+          </Button>
+        </div>
+      ))}
     </div>
   );
 }

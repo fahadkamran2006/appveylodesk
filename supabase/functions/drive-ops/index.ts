@@ -60,24 +60,26 @@ serve(async (req) => {
         // payload: { folderId?: string|null }
         const folderId = payload.folderId ?? null;
 
-        // Subfolders
+        // Subfolders (exclude trashed)
         const folderQ = admin
           .from("drive_folders")
           .select("*")
           .eq("agency_id", agencyId)
+          .is("deleted_at", null)
           .order("name");
         const { data: folders, error: fErr } = folderId
           ? await folderQ.eq("parent_id", folderId)
           : await folderQ.is("parent_id", null);
         if (fErr) throw fErr;
 
-        // Files in this folder
+        // Files in this folder (exclude trashed)
         let files: any[] = [];
         if (folderId) {
           const { data: dfiles } = await admin
             .from("drive_files")
             .select("*")
             .eq("folder_id", folderId)
+            .is("deleted_at", null)
             .order("created_at", { ascending: false });
           files = dfiles || [];
 
@@ -154,12 +156,28 @@ serve(async (req) => {
       }
 
       case "delete_folder": {
+        // Soft delete: move folder + descendants + their files to trash
         const { folderId } = payload;
-        const { data: f } = await admin.from("drive_folders").select("created_by, kind").eq("id", folderId).maybeSingle();
+        const { data: f } = await admin.from("drive_folders").select("created_by, kind, agency_id").eq("id", folderId).maybeSingle();
         if (!f) return json({ error: "Not found" }, 404);
         if (f.kind === "project_root") return json({ error: "Cannot delete project folder" }, 400);
+        if (f.agency_id !== agencyId) return json({ error: "Forbidden" }, 403);
         if (role !== "admin" && f.created_by !== user.id) return json({ error: "Forbidden" }, 403);
-        await admin.from("drive_folders").delete().eq("id", folderId);
+
+        // Walk subtree
+        const allIds: string[] = [folderId];
+        let frontier = [folderId];
+        while (frontier.length) {
+          const { data: kids } = await admin
+            .from("drive_folders").select("id").in("parent_id", frontier).is("deleted_at", null);
+          const kidIds = (kids || []).map((k: any) => k.id);
+          if (!kidIds.length) break;
+          allIds.push(...kidIds);
+          frontier = kidIds;
+        }
+        const now = new Date().toISOString();
+        await admin.from("drive_folders").update({ deleted_at: now, deleted_by: user.id }).in("id", allIds);
+        await admin.from("drive_files").update({ deleted_at: now, deleted_by: user.id }).in("folder_id", allIds).is("deleted_at", null);
         return json({ ok: true });
       }
 
@@ -190,9 +208,85 @@ serve(async (req) => {
       }
 
       case "delete_file": {
+        // Soft delete: move to trash
+        const { fileId } = payload;
+        const { data: f } = await admin.from("drive_files").select("agency_id, uploaded_by").eq("id", fileId).maybeSingle();
+        if (!f) return json({ error: "Not found" }, 404);
+        if (f.agency_id !== agencyId) return json({ error: "Forbidden" }, 403);
+        if (role !== "admin" && f.uploaded_by !== user.id) return json({ error: "Forbidden" }, 403);
+        await admin.from("drive_files")
+          .update({ deleted_at: new Date().toISOString(), deleted_by: user.id })
+          .eq("id", fileId);
+        return json({ ok: true });
+      }
+
+      // ---------- TRASH ----------
+      case "list_trash": {
+        // Items the caller can see in trash: ones they deleted/created/uploaded, or all if admin
+        const fileQ = admin.from("drive_files").select("*")
+          .eq("agency_id", agencyId).not("deleted_at", "is", null)
+          .order("deleted_at", { ascending: false });
+        const folderQ = admin.from("drive_folders").select("*")
+          .eq("agency_id", agencyId).not("deleted_at", "is", null)
+          .order("deleted_at", { ascending: false });
+        const [{ data: tFiles }, { data: tFolders }] = await Promise.all([
+          role === "admin" ? fileQ : fileQ.eq("uploaded_by", user.id),
+          role === "admin" ? folderQ : folderQ.eq("created_by", user.id),
+        ]);
+        return json({ ok: true, files: tFiles || [], folders: tFolders || [] });
+      }
+
+      case "restore_file": {
+        const { fileId } = payload;
+        const { data: f } = await admin.from("drive_files").select("agency_id, uploaded_by, folder_id").eq("id", fileId).maybeSingle();
+        if (!f) return json({ error: "Not found" }, 404);
+        if (f.agency_id !== agencyId) return json({ error: "Forbidden" }, 403);
+        if (role !== "admin" && f.uploaded_by !== user.id) return json({ error: "Forbidden" }, 403);
+        // If parent folder is trashed, restore to root (folder_id stays — it's hidden, so move to null is safer)
+        let restoreFolderId = f.folder_id;
+        if (restoreFolderId) {
+          const { data: parent } = await admin.from("drive_folders").select("deleted_at").eq("id", restoreFolderId).maybeSingle();
+          if (!parent || parent.deleted_at) restoreFolderId = null;
+        }
+        await admin.from("drive_files").update({
+          deleted_at: null, deleted_by: null, folder_id: restoreFolderId,
+        }).eq("id", fileId);
+        return json({ ok: true });
+      }
+
+      case "restore_folder": {
+        const { folderId } = payload;
+        const { data: f } = await admin.from("drive_folders").select("agency_id, created_by, parent_id").eq("id", folderId).maybeSingle();
+        if (!f) return json({ error: "Not found" }, 404);
+        if (f.agency_id !== agencyId) return json({ error: "Forbidden" }, 403);
+        if (role !== "admin" && f.created_by !== user.id) return json({ error: "Forbidden" }, 403);
+        let parentId = f.parent_id;
+        if (parentId) {
+          const { data: parent } = await admin.from("drive_folders").select("deleted_at").eq("id", parentId).maybeSingle();
+          if (!parent || parent.deleted_at) parentId = null;
+        }
+        // Restore folder + its (still-trashed) descendants and files
+        const allIds: string[] = [folderId];
+        let frontier = [folderId];
+        while (frontier.length) {
+          const { data: kids } = await admin
+            .from("drive_folders").select("id").in("parent_id", frontier).not("deleted_at", "is", null);
+          const kidIds = (kids || []).map((k: any) => k.id);
+          if (!kidIds.length) break;
+          allIds.push(...kidIds);
+          frontier = kidIds;
+        }
+        await admin.from("drive_folders").update({ deleted_at: null, deleted_by: null }).in("id", allIds);
+        await admin.from("drive_folders").update({ parent_id: parentId }).eq("id", folderId);
+        await admin.from("drive_files").update({ deleted_at: null, deleted_by: null }).in("folder_id", allIds).not("deleted_at", "is", null);
+        return json({ ok: true });
+      }
+
+      case "permanent_delete_file": {
         const { fileId } = payload;
         const { data: f } = await admin.from("drive_files").select("*").eq("id", fileId).maybeSingle();
         if (!f) return json({ error: "Not found" }, 404);
+        if (f.agency_id !== agencyId) return json({ error: "Forbidden" }, 403);
         if (role !== "admin" && f.uploaded_by !== user.id) return json({ error: "Forbidden" }, 403);
 
         // Best-effort Bunny delete
@@ -200,14 +294,69 @@ serve(async (req) => {
           if (f.file_url?.includes("b-cdn.net")) {
             const u = new URL(f.file_url);
             const path = u.pathname.replace(/^\//, "");
-            await fetch(`https://${BUNNY_STORAGE_HOSTNAME}/${BUNNY_STORAGE_ZONE}/${path}`, {
+            const r = await fetch(`https://${BUNNY_STORAGE_HOSTNAME}/${BUNNY_STORAGE_ZONE}/${path}`, {
               method: "DELETE",
               headers: { AccessKey: BUNNY_API_KEY },
             });
+            if (!r.ok && r.status !== 404) console.warn("Bunny delete non-OK", r.status);
           }
         } catch (e) { console.warn("Bunny delete failed", e); }
 
         await admin.from("drive_files").delete().eq("id", fileId);
+        return json({ ok: true });
+      }
+
+      case "permanent_delete_folder": {
+        const { folderId } = payload;
+        const { data: f } = await admin.from("drive_folders").select("agency_id, created_by, kind").eq("id", folderId).maybeSingle();
+        if (!f) return json({ error: "Not found" }, 404);
+        if (f.kind === "project_root") return json({ error: "Cannot delete project folder" }, 400);
+        if (f.agency_id !== agencyId) return json({ error: "Forbidden" }, 403);
+        if (role !== "admin" && f.created_by !== user.id) return json({ error: "Forbidden" }, 403);
+
+        // Walk full subtree (incl. already-trashed descendants)
+        const allIds: string[] = [folderId];
+        let frontier = [folderId];
+        while (frontier.length) {
+          const { data: kids } = await admin.from("drive_folders").select("id").in("parent_id", frontier);
+          const kidIds = (kids || []).map((k: any) => k.id);
+          if (!kidIds.length) break;
+          allIds.push(...kidIds);
+          frontier = kidIds;
+        }
+        const { data: filesIn } = await admin.from("drive_files").select("id, file_url").in("folder_id", allIds);
+        for (const file of filesIn || []) {
+          try {
+            if (file.file_url?.includes("b-cdn.net")) {
+              const u = new URL(file.file_url);
+              const path = u.pathname.replace(/^\//, "");
+              await fetch(`https://${BUNNY_STORAGE_HOSTNAME}/${BUNNY_STORAGE_ZONE}/${path}`, {
+                method: "DELETE",
+                headers: { AccessKey: BUNNY_API_KEY },
+              });
+            }
+          } catch (e) { console.warn("Bunny delete failed", e); }
+        }
+        if (filesIn?.length) await admin.from("drive_files").delete().in("id", filesIn.map((x: any) => x.id));
+        await admin.from("drive_folders").delete().in("id", allIds);
+        return json({ ok: true });
+      }
+
+      // ---------- BUNNY orphan cleanup (called by client when an upload is canceled) ----------
+      case "cleanup_orphan": {
+        const { cdnUrl } = payload;
+        if (!cdnUrl || typeof cdnUrl !== "string") return json({ error: "cdnUrl required" }, 400);
+        if (!cdnUrl.includes("b-cdn.net")) return json({ ok: true });
+        try {
+          const u = new URL(cdnUrl);
+          const path = u.pathname.replace(/^\//, "");
+          // Confine to this agency's prefix
+          if (!path.startsWith(`agency/${agencyId}/`)) return json({ error: "Forbidden" }, 403);
+          await fetch(`https://${BUNNY_STORAGE_HOSTNAME}/${BUNNY_STORAGE_ZONE}/${path}`, {
+            method: "DELETE",
+            headers: { AccessKey: BUNNY_API_KEY },
+          });
+        } catch (e) { console.warn("orphan cleanup failed", e); }
         return json({ ok: true });
       }
 
