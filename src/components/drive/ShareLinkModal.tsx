@@ -24,7 +24,7 @@ export function ShareLinkModal({ open, onOpenChange, folderId, fileId, folderNam
   const isFile = !!fileId;
   const targetName = isFile ? (fileName || "file") : (folderName || "folder");
 
-  const [permission, setPermission] = useState<"view" | "download" | "upload" | "full">("download");
+  const [permission, setPermission] = useState<"view" | "download" | "upload" | "edit" | "full">("download");
   const [password, setPassword] = useState("");
   const [expiresInDays, setExpiresInDays] = useState<string>("");
   const [maxMB, setMaxMB] = useState<string>("");
@@ -33,7 +33,7 @@ export function ShareLinkModal({ open, onOpenChange, folderId, fileId, folderNam
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (isFile && (permission === "upload" || permission === "full")) setPermission("download");
+    if (isFile && (permission === "upload" || permission === "edit" || permission === "full")) setPermission("download");
   }, [isFile, permission]);
 
   const refresh = async () => {
