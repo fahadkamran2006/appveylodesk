@@ -116,11 +116,11 @@ const Pricing = () => {
   return (
     <>
       <Helmet>
-        <title>Pricing | Veylodesk</title>
-        <meta name="description" content="Simple, transparent pricing for video agencies of all sizes. Subscribe today and start scaling." />
+        <title>Pricing | Video Agency Management Software — Veylodesk</title>
+        <meta name="description" content="Transparent pricing for Veylodesk — the video agency management software and production CRM. Plans for freelancers, growing agencies, and production houses." />
         <link rel="canonical" href="https://veylodesk.com/pricing" />
-        <meta property="og:title" content="Pricing | Veylodesk" />
-        <meta property="og:description" content="Simple, transparent pricing for video agencies of all sizes." />
+        <meta property="og:title" content="Pricing | Video Agency Management Software — Veylodesk" />
+        <meta property="og:description" content="Pricing for Veylodesk — video agency management software and video production CRM." />
         <meta property="og:url" content="https://veylodesk.com/pricing" />
         <script type="application/ld+json">{JSON.stringify({
           "@context": "https://schema.org",
