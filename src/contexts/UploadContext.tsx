@@ -569,20 +569,7 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
           });
           xhr.addEventListener('error', () => reject(new Error('Network error')));
           xhr.addEventListener('abort', () => {
-            // Cleanup partial object on Bunny via edge function (best effort)
-            try {
-              const cleanupUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/drive-ops`;
-              fetch(cleanupUrl, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${session.access_token}`,
-                  'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '',
-                },
-                body: JSON.stringify({ action: 'cleanup_orphan', cdnUrl: '' }),
-                keepalive: true,
-              }).catch(() => {});
-            } catch {}
+            // Server-side: drive-upload detects the broken stream and deletes the partial Bunny object.
             reject(new Error('Upload cancelled'));
           });
           if (abortControllerRef.current) {
