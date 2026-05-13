@@ -253,7 +253,7 @@ export default function DrivePage() {
             <p className="text-xs mt-1">Create a folder, upload files, or generate a share link.</p>
           </div>
         ) : view === "grid" ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {filteredFolders.map((f) => (
               <FolderCard key={f.id} folder={f} onOpen={() => setFolderId(f.id)}
                 onShare={() => setShareTarget({ kind: "folder", id: f.id, name: f.name })}
