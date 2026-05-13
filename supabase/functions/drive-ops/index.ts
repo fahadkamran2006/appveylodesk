@@ -310,7 +310,7 @@ serve(async (req) => {
         const { folderId } = payload;
         const { data: f } = await admin.from("drive_folders").select("agency_id, created_by, kind").eq("id", folderId).maybeSingle();
         if (!f) return json({ error: "Not found" }, 404);
-        if (f.kind === "project_root") return json({ error: "Cannot delete project folder" }, 400);
+        if (f.kind === "project_root" || f.kind === "client_root") return json({ error: "Cannot delete system folder" }, 400);
         if (f.agency_id !== agencyId) return json({ error: "Forbidden" }, 403);
         if (role !== "admin" && f.created_by !== user.id) return json({ error: "Forbidden" }, 403);
 
