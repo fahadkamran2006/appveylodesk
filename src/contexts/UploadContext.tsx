@@ -328,6 +328,26 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
     return newItems.map(item => item.id);
   }, [toast, user]);
 
+  const addDriveUpload = useCallback(async (files: File[], driveFolderId: string, driveFolderName?: string) => {
+    const newItems: QueuedUpload[] = files.map(file => ({
+      id: generateId(),
+      file,
+      projectId: `drive:${driveFolderId}`,
+      projectTitle: driveFolderName,
+      status: 'pending',
+      progress: 0,
+      speed: 0,
+      remainingTime: 0,
+      addedAt: Date.now(),
+      driveFolderId,
+      driveFolderName,
+    }));
+    setState(prev => ({ ...prev, queue: [...prev.queue, ...newItems] }));
+    setIsMinimized(false);
+    toast({ title: 'Files added to queue', description: `${files.length} file(s) queued` });
+    return newItems.map(i => i.id);
+  }, [toast]);
+
   // Cleanup orphaned Bunny Stream video when upload is cancelled/removed
   const cleanupOrphanedVideo = useCallback(async (videoId: string) => {
     try {
