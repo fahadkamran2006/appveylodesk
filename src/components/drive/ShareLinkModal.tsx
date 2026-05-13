@@ -96,8 +96,8 @@ export function ShareLinkModal({ open, onOpenChange, folderId, fileId, folderNam
               <SelectContent>
                 <SelectItem value="view">View only</SelectItem>
                 <SelectItem value="download">View + download</SelectItem>
-                <SelectItem value="upload">Upload only (drop box)</SelectItem>
-                <SelectItem value="full">Full (view, download, upload)</SelectItem>
+                {!isFile && <SelectItem value="upload">Upload only (drop box)</SelectItem>}
+                {!isFile && <SelectItem value="full">Full (view, download, upload)</SelectItem>}
               </SelectContent>
             </Select>
           </div>
