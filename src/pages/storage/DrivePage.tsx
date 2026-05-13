@@ -434,12 +434,40 @@ function FileCard({ file, onPreview, onDownload, onShare, onDelete }: any) {
   );
 }
 
-function FolderRow({ folder, onOpen, onShare, onDelete }: any) {
+function FolderRow({ folder, onOpen, onShare, onDelete, onDropFiles }: any) {
+  const [over, setOver] = useState(false);
+  const dragHandlers = onDropFiles
+    ? {
+        onDragEnter: (e: React.DragEvent) => {
+          if (!e.dataTransfer?.types?.includes("Files")) return;
+          e.preventDefault(); e.stopPropagation(); setOver(true);
+        },
+        onDragOver: (e: React.DragEvent) => {
+          if (!e.dataTransfer?.types?.includes("Files")) return;
+          e.preventDefault(); e.stopPropagation();
+        },
+        onDragLeave: (e: React.DragEvent) => {
+          e.preventDefault(); e.stopPropagation(); setOver(false);
+        },
+        onDrop: (e: React.DragEvent) => {
+          e.preventDefault(); e.stopPropagation(); setOver(false);
+          if (e.dataTransfer?.files?.length) onDropFiles(e.dataTransfer.files);
+        },
+      }
+    : {};
   return (
-    <div className="flex items-center gap-3 p-3 hover:bg-muted/30 cursor-pointer" onDoubleClick={onOpen}>
+    <div
+      {...dragHandlers}
+      className={cn(
+        "flex items-center gap-3 p-3 hover:bg-muted/30 cursor-pointer",
+        over && "bg-primary/10 ring-2 ring-primary/40 ring-inset"
+      )}
+      onDoubleClick={onOpen}
+    >
       <Folder className="w-5 h-5 text-primary" />
       <button onClick={onOpen} className="flex-1 text-left text-sm font-medium truncate">{folder.name}</button>
       {folder.kind === "project_root" && <Badge variant="outline" className="text-[10px]">Project</Badge>}
+      {folder.kind === "client_root" && <Badge variant="outline" className="text-[10px]">Client</Badge>}
       <Button size="sm" variant="ghost" onClick={onShare}><Share2 className="w-4 h-4" /></Button>
       {onDelete && <Button size="sm" variant="ghost" onClick={onDelete}><Trash2 className="w-4 h-4 text-destructive" /></Button>}
     </div>
