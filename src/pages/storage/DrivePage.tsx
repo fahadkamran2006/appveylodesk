@@ -114,11 +114,42 @@ export default function DrivePage() {
     startDownload(file.id, file.file_name, file.file_url, file.file_size);
   };
 
+  const onDragEnter = (e: React.DragEvent) => {
+    if (!e.dataTransfer?.types?.includes("Files")) return;
+    e.preventDefault();
+    dragCounter.current += 1;
+    setIsDragging(true);
+  };
+  const onDragOver = (e: React.DragEvent) => {
+    if (!e.dataTransfer?.types?.includes("Files")) return;
+    e.preventDefault();
+  };
+  const onDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounter.current -= 1;
+    if (dragCounter.current <= 0) {
+      dragCounter.current = 0;
+      setIsDragging(false);
+    }
+  };
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounter.current = 0;
+    setIsDragging(false);
+    if (e.dataTransfer?.files?.length) handleFiles(e.dataTransfer.files);
+  };
+
   return (
     <DashboardLayout role={(userRole as any) || "client"}>
       <Helmet><title>Drive — Veylodesk</title></Helmet>
 
-      <div className="space-y-4">
+      <div
+        className="space-y-4 relative"
+        onDragEnter={onDragEnter}
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
+      >
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="text-2xl font-semibold flex-1">My Drive</h1>
           <div className="relative">
