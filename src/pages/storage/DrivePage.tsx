@@ -50,7 +50,7 @@ export default function DrivePage() {
   const [view, setView] = useState<"grid" | "list">(() => (localStorage.getItem(VIEW_KEY) as any) || "grid");
   const [search, setSearch] = useState("");
   const [showNewFolder, setShowNewFolder] = useState(false);
-  const [shareTarget, setShareTarget] = useState<{ id: string; name: string } | null>(null);
+  const [shareTarget, setShareTarget] = useState<{ kind: "folder" | "file"; id: string; name: string } | null>(null);
   const [previewFile, setPreviewFile] = useState<DriveFile | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const dragCounter = useRef(0);
