@@ -34,12 +34,13 @@ function formatBytes(b: number) {
   return (b / Math.pow(k, i)).toFixed(1) + " " + units[i];
 }
 
-function fileIcon(name: string) {
+function fileIcon(name: string, big = false) {
+  const cls = big ? "w-8 h-8" : "w-5 h-5";
   const ext = name.split(".").pop()?.toLowerCase() || "";
-  if (["mp4", "mov", "webm", "mkv", "avi"].includes(ext)) return <Film className="w-5 h-5 text-primary" />;
-  if (["jpg", "jpeg", "png", "gif", "webp"].includes(ext)) return <ImageIcon className="w-5 h-5 text-accent" />;
-  if (["pdf", "doc", "docx", "txt"].includes(ext)) return <FileText className="w-5 h-5 text-destructive" />;
-  return <FileIcon className="w-5 h-5 text-muted-foreground" />;
+  if (["mp4", "mov", "webm", "mkv", "avi"].includes(ext)) return <Film className={`${cls} text-primary`} />;
+  if (["jpg", "jpeg", "png", "gif", "webp"].includes(ext)) return <ImageIcon className={`${cls} text-accent`} />;
+  if (["pdf", "doc", "docx", "txt"].includes(ext)) return <FileText className={`${cls} text-destructive`} />;
+  return <FileIcon className={`${cls} text-muted-foreground`} />;
 }
 
 const VIEW_KEY = "drive:viewMode";
@@ -62,6 +63,7 @@ export default function DrivePage() {
   const [confirmPurge, setConfirmPurge] = useState<{ kind: "file" | "folder"; id: string; name: string } | null>(null);
   const dragCounter = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!loading && !user) navigate("/auth/login");
@@ -127,41 +129,58 @@ export default function DrivePage() {
     startDownload(file.id, file.file_name, file.file_url, file.file_size);
   };
 
-  const onDragEnter = (e: React.DragEvent) => {
-    if (!e.dataTransfer?.types?.includes("Files")) return;
-    e.preventDefault();
-    dragCounter.current += 1;
-    setIsDragging(true);
-  };
-  const onDragOver = (e: React.DragEvent) => {
-    if (!e.dataTransfer?.types?.includes("Files")) return;
-    e.preventDefault();
-  };
-  const onDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    dragCounter.current -= 1;
-    if (dragCounter.current <= 0) {
+  // Window-level drag listeners so the entire content area is a drop zone
+  // (without overlaying the sidebar).
+  useEffect(() => {
+    if (showTrash) return;
+    const onEnter = (e: DragEvent) => {
+      if (!e.dataTransfer?.types?.includes("Files")) return;
+      e.preventDefault();
+      dragCounter.current += 1;
+      setIsDragging(true);
+    };
+    const onOver = (e: DragEvent) => {
+      if (!e.dataTransfer?.types?.includes("Files")) return;
+      e.preventDefault();
+    };
+    const onLeave = (e: DragEvent) => {
+      e.preventDefault();
+      dragCounter.current -= 1;
+      if (dragCounter.current <= 0) {
+        dragCounter.current = 0;
+        setIsDragging(false);
+      }
+    };
+    const onDrop = (e: DragEvent) => {
+      e.preventDefault();
       dragCounter.current = 0;
       setIsDragging(false);
-    }
-  };
-  const onDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    dragCounter.current = 0;
-    setIsDragging(false);
-    if (e.dataTransfer?.files?.length) handleFiles(e.dataTransfer.files);
-  };
+      // Only accept drops that land inside the drive content area
+      const zone = dropZoneRef.current;
+      if (!zone) return;
+      const target = e.target as Node | null;
+      if (target && !zone.contains(target)) return;
+      if (e.dataTransfer?.files?.length) handleFiles(e.dataTransfer.files);
+    };
+    window.addEventListener("dragenter", onEnter);
+    window.addEventListener("dragover", onOver);
+    window.addEventListener("dragleave", onLeave);
+    window.addEventListener("drop", onDrop);
+    return () => {
+      window.removeEventListener("dragenter", onEnter);
+      window.removeEventListener("dragover", onOver);
+      window.removeEventListener("dragleave", onLeave);
+      window.removeEventListener("drop", onDrop);
+    };
+  }, [showTrash, folderId]);
 
   return (
     <DashboardLayout role={(userRole as any) || "client"}>
       <Helmet><title>Drive — Veylodesk</title></Helmet>
 
       <div
-        className="space-y-4 relative"
-        onDragEnter={onDragEnter}
-        onDragOver={onDragOver}
-        onDragLeave={onDragLeave}
-        onDrop={onDrop}
+        ref={dropZoneRef}
+        className="space-y-4 relative min-h-[calc(100dvh-10rem)]"
       >
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="text-2xl font-semibold flex-1">My Drive</h1>
@@ -235,7 +254,7 @@ export default function DrivePage() {
             <p className="text-xs mt-1">Create a folder, upload files, or generate a share link.</p>
           </div>
         ) : view === "grid" ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {filteredFolders.map((f) => (
               <FolderCard key={f.id} folder={f} onOpen={() => setFolderId(f.id)}
                 onShare={() => setShareTarget({ kind: "folder", id: f.id, name: f.name })}
@@ -265,8 +284,8 @@ export default function DrivePage() {
         )}
 
         {isDragging && !showTrash && (
-          <div className="pointer-events-none fixed inset-0 z-40 flex items-center justify-center bg-primary/10 backdrop-blur-sm">
-            <div className="border-2 border-dashed border-primary rounded-2xl px-10 py-8 bg-background/90 shadow-xl text-center">
+          <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center rounded-2xl bg-primary/10 backdrop-blur-sm border-2 border-dashed border-primary/60">
+            <div className="rounded-2xl px-10 py-8 bg-background/90 shadow-xl text-center">
               <Upload className="w-10 h-10 mx-auto mb-2 text-primary" />
               <p className="font-medium">
                 {folderId ? "Drop files to upload" : "Open a folder first to upload"}
@@ -323,15 +342,26 @@ export default function DrivePage() {
 
 function FolderCard({ folder, onOpen, onShare, onDelete }: any) {
   return (
-    <div className="group relative border rounded-lg p-3 hover:bg-muted/30 cursor-pointer transition" onDoubleClick={onOpen}>
-      <div className="flex items-start justify-between">
-        <button onClick={onOpen} className="flex-1 text-left">
-          <Folder className="w-10 h-10 text-primary mb-2" />
-          <p className="text-sm font-medium truncate">{folder.name}</p>
-          {folder.kind === "project_root" && <Badge variant="outline" className="text-[10px] mt-1">Project</Badge>}
-        </button>
+    <div
+      className="group relative border border-border rounded-xl p-5 bg-card hover:bg-muted/40 hover:border-primary/40 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer transition-all duration-200"
+      onDoubleClick={onOpen}
+    >
+      <button onClick={onOpen} className="w-full text-left">
+        <div className="flex items-center justify-center h-20 mb-3 rounded-lg bg-primary/5 group-hover:bg-primary/10 transition-colors">
+          <Folder className="w-12 h-12 text-primary" />
+        </div>
+        <p className="text-sm font-medium truncate">{folder.name}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          {folder.kind === "project_root" ? "Project folder" : "Folder"}
+        </p>
+      </button>
+      <div className="absolute top-2 right-2">
         <DropdownMenu>
-          <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="opacity-0 group-hover:opacity-100"><MoreVertical className="w-4 h-4" /></Button></DropdownMenuTrigger>
+          <DropdownMenuTrigger asChild>
+            <Button size="icon" variant="ghost" className="h-8 w-8 opacity-0 group-hover:opacity-100">
+              <MoreVertical className="w-4 h-4" />
+            </Button>
+          </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={onOpen}>Open</DropdownMenuItem>
             <DropdownMenuItem onClick={onShare}><Share2 className="w-4 h-4 mr-2" />Share link</DropdownMenuItem>
@@ -345,15 +375,24 @@ function FolderCard({ folder, onOpen, onShare, onDelete }: any) {
 
 function FileCard({ file, onPreview, onDownload, onShare, onDelete }: any) {
   return (
-    <div className="group relative border rounded-lg p-3 hover:bg-muted/30 transition cursor-pointer" onDoubleClick={onPreview}>
-      <div className="flex items-start justify-between">
-        <button onClick={onPreview} className="flex-1 min-w-0 text-left">
-          {fileIcon(file.file_name)}
-          <p className="text-sm font-medium truncate mt-2">{file.file_name}</p>
-          <p className="text-xs text-muted-foreground">{formatBytes(file.file_size)}</p>
-        </button>
+    <div
+      className="group relative border border-border rounded-xl p-5 bg-card hover:bg-muted/40 hover:border-primary/40 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
+      onDoubleClick={onPreview}
+    >
+      <button onClick={onPreview} className="w-full min-w-0 text-left">
+        <div className="flex items-center justify-center h-20 mb-3 rounded-lg bg-muted/40 group-hover:bg-muted/60 transition-colors">
+          {fileIcon(file.file_name, true)}
+        </div>
+        <p className="text-sm font-medium truncate">{file.file_name}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{formatBytes(file.file_size)}</p>
+      </button>
+      <div className="absolute top-2 right-2">
         <DropdownMenu>
-          <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="opacity-0 group-hover:opacity-100"><MoreVertical className="w-4 h-4" /></Button></DropdownMenuTrigger>
+          <DropdownMenuTrigger asChild>
+            <Button size="icon" variant="ghost" className="h-8 w-8 opacity-0 group-hover:opacity-100">
+              <MoreVertical className="w-4 h-4" />
+            </Button>
+          </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={onPreview}>Preview</DropdownMenuItem>
             <DropdownMenuItem onClick={onDownload}><Download className="w-4 h-4 mr-2" />Download</DropdownMenuItem>
