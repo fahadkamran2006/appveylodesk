@@ -551,9 +551,9 @@ function FileCard({ file, onPreview, onDownload, onShare, onDelete }: any) {
   );
 }
 
-function FolderRow({ folder, onOpen, onShare, onDelete, onDropFiles }: any) {
+function FolderRow({ folder, onOpen, onShare, onDelete, onDropData }: any) {
   const [over, setOver] = useState(false);
-  const dragHandlers = onDropFiles
+  const dragHandlers = onDropData
     ? {
         onDragEnter: (e: React.DragEvent) => {
           if (!e.dataTransfer?.types?.includes("Files")) return;
@@ -568,7 +568,7 @@ function FolderRow({ folder, onOpen, onShare, onDelete, onDropFiles }: any) {
         },
         onDrop: (e: React.DragEvent) => {
           e.preventDefault(); e.stopPropagation(); setOver(false);
-          if (e.dataTransfer?.files?.length) onDropFiles(e.dataTransfer.files);
+          if (e.dataTransfer) onDropData(e.dataTransfer);
         },
       }
     : {};
