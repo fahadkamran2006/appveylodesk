@@ -46,7 +46,8 @@ function email2Html(firstName: string, unsubUrl: string) {
     <ul style="margin:0 0 18px;padding-left:20px;">
       <li>Lifetime pricing at 50% off. Locked forever.</li>
       <li>Direct access to me to shape the roadmap.</li>
-      <li>Private Founding Members Discord.</li>
+      <li>Private Founding Member Batch.</li>
+      <li>Private Founding Member Chat channel to connect with other editors and other Agency Owners.</li>
       <li>Priority support, always.</li>
     </ul>
     <p style="margin:0 0 22px;">When the 50th spot fills, the price doubles permanently.</p>
@@ -79,7 +80,8 @@ That's what Veylodesk does.
 We're onboarding our first 50 Founding Members:
 — Lifetime pricing at 50% off, locked forever
 — Direct access to me to shape the roadmap
-— Private Founding Members Discord
+— Private Founding Member Batch
+— Private Founding Member Chat channel to connect with other editors and other Agency Owners
 — Priority support, always
 
 When the 50th spot fills, the price doubles permanently.
