@@ -345,10 +345,34 @@ export default function DrivePage() {
 }
 
 
-function FolderCard({ folder, onOpen, onShare, onDelete }: any) {
+function FolderCard({ folder, onOpen, onShare, onDelete, onDropFiles }: any) {
+  const [over, setOver] = useState(false);
+  const dragHandlers = onDropFiles
+    ? {
+        onDragEnter: (e: React.DragEvent) => {
+          if (!e.dataTransfer?.types?.includes("Files")) return;
+          e.preventDefault(); e.stopPropagation(); setOver(true);
+        },
+        onDragOver: (e: React.DragEvent) => {
+          if (!e.dataTransfer?.types?.includes("Files")) return;
+          e.preventDefault(); e.stopPropagation();
+        },
+        onDragLeave: (e: React.DragEvent) => {
+          e.preventDefault(); e.stopPropagation(); setOver(false);
+        },
+        onDrop: (e: React.DragEvent) => {
+          e.preventDefault(); e.stopPropagation(); setOver(false);
+          if (e.dataTransfer?.files?.length) onDropFiles(e.dataTransfer.files);
+        },
+      }
+    : {};
   return (
     <div
-      className="group relative border border-border rounded-xl p-5 bg-card hover:bg-muted/40 hover:border-primary/40 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer transition-all duration-200"
+      {...dragHandlers}
+      className={cn(
+        "group relative border border-border rounded-xl p-5 bg-card hover:bg-muted/40 hover:border-primary/40 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer transition-all duration-200",
+        over && "border-primary bg-primary/10 ring-2 ring-primary/40"
+      )}
       onDoubleClick={onOpen}
     >
       <button onClick={onOpen} className="w-full text-left">
@@ -357,7 +381,7 @@ function FolderCard({ folder, onOpen, onShare, onDelete }: any) {
         </div>
         <p className="text-sm font-medium truncate">{folder.name}</p>
         <p className="text-xs text-muted-foreground mt-0.5">
-          {folder.kind === "project_root" ? "Project folder" : "Folder"}
+          {folder.kind === "client_root" ? "Client" : folder.kind === "project_root" ? "Project folder" : "Folder"}
         </p>
       </button>
       <div className="absolute top-2 right-2">
