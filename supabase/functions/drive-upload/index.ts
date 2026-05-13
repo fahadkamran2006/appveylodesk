@@ -3,7 +3,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-folder-id, x-file-name, x-file-size, x-mime",
+  "Access-Control-Allow-Methods": "POST, PUT, OPTIONS",
 };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -33,60 +35,71 @@ serve(async (req) => {
     if (!user) return json({ error: "Unauthorized" }, 401);
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
-    const form = await req.formData();
-    const folderId = form.get("folderId")?.toString();
-    const file = form.get("file");
-    if (!folderId) return json({ error: "folderId required" }, 400);
-    if (!(file instanceof File)) return json({ error: "file required" }, 400);
 
-    const { data: folder } = await admin
-      .from("drive_folders").select("agency_id, kind").eq("id", folderId).maybeSingle();
-    if (!folder) return json({ error: "Folder not found" }, 404);
+    // ---- Streaming PUT branch (no size cap, body piped straight to Bunny) ----
+    if (req.method === "PUT") {
+      const folderId = req.headers.get("x-folder-id");
+      const fileName = req.headers.get("x-file-name");
+      const fileSize = parseInt(req.headers.get("x-file-size") || "0", 10);
+      const mime = req.headers.get("x-mime") || "application/octet-stream";
+      if (!folderId || !fileName) return json({ error: "Missing headers" }, 400);
+      if (!req.body) return json({ error: "Empty body" }, 400);
 
-    const { data: roleRow } = await admin
-      .from("user_roles").select("agency_id").eq("user_id", user.id).maybeSingle();
-    if (!roleRow || roleRow.agency_id !== folder.agency_id) return json({ error: "Forbidden" }, 403);
+      const { data: folder } = await admin
+        .from("drive_folders").select("agency_id").eq("id", folderId).maybeSingle();
+      if (!folder) return json({ error: "Folder not found" }, 404);
 
-    const size = file.size;
-    const { data: agency } = await admin
-      .from("agencies").select("storage_used_bytes, storage_limit_bytes").eq("id", folder.agency_id).single();
-    if (agency.storage_used_bytes + size > agency.storage_limit_bytes) {
-      return json({ error: "Agency storage full" }, 403);
+      const { data: roleRow } = await admin
+        .from("user_roles").select("agency_id").eq("user_id", user.id).maybeSingle();
+      if (!roleRow || roleRow.agency_id !== folder.agency_id) return json({ error: "Forbidden" }, 403);
+
+      if (fileSize > 0) {
+        const { data: agency } = await admin
+          .from("agencies").select("storage_used_bytes, storage_limit_bytes").eq("id", folder.agency_id).single();
+        if (agency.storage_used_bytes + fileSize > agency.storage_limit_bytes) {
+          return json({ error: "Agency storage full" }, 403);
+        }
+      }
+
+      const safeName = sanitize(fileName);
+      const path = `agency/${folder.agency_id}/drive/${folderId}/${Date.now()}_${safeName}`;
+
+      // Stream body straight through to Bunny — no arrayBuffer, no cap
+      const up = await fetch(`https://${BUNNY_STORAGE_HOSTNAME}/${BUNNY_STORAGE_ZONE}/${path}`, {
+        method: "PUT",
+        headers: {
+          AccessKey: BUNNY_API_KEY,
+          "Content-Type": mime,
+        },
+        body: req.body,
+      });
+      if (!up.ok) {
+        const t = await up.text();
+        console.error("Bunny PUT failed", up.status, t);
+        return json({ error: "Storage upload failed" }, 502);
+      }
+      const cdnHost = BUNNY_CDN_URL || `${BUNNY_STORAGE_ZONE}.b-cdn.net`;
+      const cdnUrl = `https://${cdnHost.replace(/^https?:\/\//, "")}/${path}`;
+
+      const { data: dfile, error: insErr } = await admin
+        .from("drive_files")
+        .insert({
+          agency_id: folder.agency_id,
+          folder_id: folderId,
+          file_name: fileName,
+          file_url: cdnUrl,
+          file_size: fileSize,
+          mime_type: mime,
+          uploaded_by: user.id,
+          source: "user",
+        })
+        .select()
+        .single();
+      if (insErr) throw insErr;
+      return json({ ok: true, file: dfile });
     }
 
-    const safeName = sanitize(file.name);
-    const path = `agency/${folder.agency_id}/drive/${folderId}/${Date.now()}_${safeName}`;
-    const buf = new Uint8Array(await file.arrayBuffer());
-    const up = await fetch(`https://${BUNNY_STORAGE_HOSTNAME}/${BUNNY_STORAGE_ZONE}/${path}`, {
-      method: "PUT",
-      headers: { AccessKey: BUNNY_API_KEY, "Content-Type": "application/octet-stream" },
-      body: buf,
-    });
-    if (!up.ok) {
-      const t = await up.text();
-      console.error("Bunny PUT failed", up.status, t);
-      return json({ error: "Storage upload failed" }, 502);
-    }
-    const cdnHost = BUNNY_CDN_URL || `${BUNNY_STORAGE_ZONE}.b-cdn.net`;
-    const cdnUrl = `https://${cdnHost.replace(/^https?:\/\//, "")}/${path}`;
-
-    const { data: dfile, error: insErr } = await admin
-      .from("drive_files")
-      .insert({
-        agency_id: folder.agency_id,
-        folder_id: folderId,
-        file_name: file.name,
-        file_url: cdnUrl,
-        file_size: size,
-        mime_type: file.type || null,
-        uploaded_by: user.id,
-        source: "user",
-      })
-      .select()
-      .single();
-    if (insErr) throw insErr;
-
-    return json({ ok: true, file: dfile });
+    return json({ error: "Use PUT" }, 405);
   } catch (e: any) {
     console.error("drive-upload error", e);
     return json({ error: e.message || "Error" }, 500);
