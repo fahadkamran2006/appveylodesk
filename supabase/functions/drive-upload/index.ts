@@ -63,19 +63,32 @@ serve(async (req) => {
 
       const safeName = sanitize(fileName);
       const path = `agency/${folder.agency_id}/drive/${folderId}/${Date.now()}_${safeName}`;
+      const bunnyUrl = `https://${BUNNY_STORAGE_HOSTNAME}/${BUNNY_STORAGE_ZONE}/${path}`;
 
-      // Stream body straight through to Bunny — no arrayBuffer, no cap
-      const up = await fetch(`https://${BUNNY_STORAGE_HOSTNAME}/${BUNNY_STORAGE_ZONE}/${path}`, {
-        method: "PUT",
-        headers: {
-          AccessKey: BUNNY_API_KEY,
-          "Content-Type": mime,
-        },
-        body: req.body,
-      });
+      let up: Response;
+      try {
+        // Stream body straight through to Bunny — no arrayBuffer, no cap
+        up = await fetch(bunnyUrl, {
+          method: "PUT",
+          headers: { AccessKey: BUNNY_API_KEY, "Content-Type": mime },
+          body: req.body,
+        });
+      } catch (streamErr) {
+        // Client aborted mid-stream → clean up partial object on Bunny
+        console.warn("Bunny PUT stream error, cleaning up", streamErr);
+        try {
+          await fetch(bunnyUrl, { method: "DELETE", headers: { AccessKey: BUNNY_API_KEY } });
+        } catch {}
+        return json({ error: "Upload aborted" }, 499);
+      }
+
       if (!up.ok) {
         const t = await up.text();
         console.error("Bunny PUT failed", up.status, t);
+        // Best-effort: try to remove partial
+        try {
+          await fetch(bunnyUrl, { method: "DELETE", headers: { AccessKey: BUNNY_API_KEY } });
+        } catch {}
         return json({ error: "Storage upload failed" }, 502);
       }
       const cdnHost = BUNNY_CDN_URL || `${BUNNY_STORAGE_ZONE}.b-cdn.net`;
@@ -95,7 +108,11 @@ serve(async (req) => {
         })
         .select()
         .single();
-      if (insErr) throw insErr;
+      if (insErr) {
+        // DB insert failed → don't leave the file orphaned on Bunny
+        try { await fetch(bunnyUrl, { method: "DELETE", headers: { AccessKey: BUNNY_API_KEY } }); } catch {}
+        throw insErr;
+      }
       return json({ ok: true, file: dfile });
     }
 
