@@ -51,6 +51,7 @@ interface UploadContextValue {
   isMinimized: boolean;
   setIsMinimized: (minimized: boolean) => void;
   addToQueue: (files: File[], projectId: string, projectTitle?: string, fileType?: 'asset' | 'deliverable') => Promise<string[]>;
+  addDriveUpload: (files: File[], driveFolderId: string, driveFolderName?: string) => Promise<string[]>;
   removeFromQueue: (uploadId: string) => void;
   clearCompleted: () => void;
   reorderQueue: (fromIndex: number, toIndex: number) => void;
