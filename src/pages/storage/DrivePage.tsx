@@ -81,6 +81,7 @@ export default function DrivePage() {
     restoreFile, restoreFolder, permanentDeleteFile, permanentDeleteFolder,
   } = useDrive();
   const { data, isLoading, refetch } = useDriveFolder(folderId);
+  refetchRef.current = refetch;
   const trashQ = useDriveTrash(showTrash);
 
   useEffect(() => {
