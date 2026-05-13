@@ -147,11 +147,31 @@ serve(async (req) => {
 
       case "rename_folder": {
         const { folderId, name } = payload;
-        const { data: f } = await admin.from("drive_folders").select("created_by, kind").eq("id", folderId).maybeSingle();
+        const trimmed = (name || "").trim();
+        if (!trimmed) return json({ error: "Name required" }, 400);
+        const { data: f } = await admin
+          .from("drive_folders")
+          .select("created_by, kind, project_id, container_id, agency_id")
+          .eq("id", folderId)
+          .maybeSingle();
         if (!f) return json({ error: "Not found" }, 404);
-        if (f.kind === "project_root" || f.kind === "client_root" || f.kind === "container_root") return json({ error: "Cannot rename system folder" }, 400);
-        if (role !== "admin" && f.created_by !== user.id) return json({ error: "Forbidden" }, 403);
-        await admin.from("drive_folders").update({ name: name.trim() }).eq("id", folderId);
+        if (f.agency_id !== agencyId) return json({ error: "Forbidden" }, 403);
+        if (f.kind === "client_root") return json({ error: "Client folders are renamed by updating the client's profile" }, 400);
+        // Only admins can rename system folders (project_root, container_root)
+        const isSystem = f.kind === "project_root" || f.kind === "container_root";
+        if (isSystem && role !== "admin") return json({ error: "Only an admin can rename this folder" }, 403);
+        if (!isSystem && role !== "admin" && f.created_by !== user.id) return json({ error: "Forbidden" }, 403);
+
+        await admin.from("drive_folders").update({ name: trimmed }).eq("id", folderId);
+
+        // Sync downstream entities
+        if (f.kind === "project_root" && f.project_id) {
+          await admin.from("projects").update({ title: trimmed }).eq("id", f.project_id);
+          await admin.from("channels").update({ name: trimmed }).eq("project_id", f.project_id).eq("type", "project");
+        } else if (f.kind === "container_root" && f.container_id) {
+          await admin.from("project_containers").update({ title: trimmed }).eq("id", f.container_id);
+          await admin.from("channels").update({ name: trimmed }).eq("container_id", f.container_id).eq("type", "project");
+        }
         return json({ ok: true });
       }
 

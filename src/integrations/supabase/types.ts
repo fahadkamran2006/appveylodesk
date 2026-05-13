@@ -721,6 +721,7 @@ export type Database = {
           name: string
           parent_id: string | null
           project_id: string | null
+          share_link_id: string | null
           updated_at: string
         }
         Insert: {
@@ -736,6 +737,7 @@ export type Database = {
           name: string
           parent_id?: string | null
           project_id?: string | null
+          share_link_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -751,6 +753,7 @@ export type Database = {
           name?: string
           parent_id?: string | null
           project_id?: string | null
+          share_link_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -2140,7 +2143,7 @@ export type Database = {
         | "project_root"
         | "client_root"
         | "container_root"
-      drive_share_permission: "view" | "download" | "upload" | "full"
+      drive_share_permission: "view" | "download" | "upload" | "full" | "edit"
       employment_type: "freelance" | "salaried"
       invoice_status: "unpaid" | "paid" | "overdue" | "pending"
       notification_type:
@@ -2300,7 +2303,7 @@ export const Constants = {
         "client_root",
         "container_root",
       ],
-      drive_share_permission: ["view", "download", "upload", "full"],
+      drive_share_permission: ["view", "download", "upload", "full", "edit"],
       employment_type: ["freelance", "salaried"],
       invoice_status: ["unpaid", "paid", "overdue", "pending"],
       notification_type: [

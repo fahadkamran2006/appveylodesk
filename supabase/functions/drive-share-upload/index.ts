@@ -36,6 +36,7 @@ serve(async (req) => {
     const password = form.get("password")?.toString();
     const uploaderName = form.get("uploaderName")?.toString() || "Anonymous";
     const uploaderEmail = form.get("uploaderEmail")?.toString() || null;
+    const targetFolderId = form.get("folderId")?.toString() || null;
     const file = form.get("file");
 
     if (!token) return json({ error: "Token required" }, 400);
@@ -46,11 +47,26 @@ serve(async (req) => {
     if (!link) return json({ error: "Invalid link" }, 404);
     if (link.is_revoked) return json({ error: "Link revoked" }, 403);
     if (link.expires_at && new Date(link.expires_at).getTime() < Date.now()) return json({ error: "Link expired" }, 403);
-    if (!["upload", "full"].includes(link.permission)) return json({ error: "Upload not allowed" }, 403);
+    if (!["upload", "edit", "full"].includes(link.permission)) return json({ error: "Upload not allowed" }, 403);
 
     if (link.password_hash) {
       if (!password) return json({ error: "Password required" }, 401);
       if ((await hashPassword(password)) !== link.password_hash) return json({ error: "Wrong password" }, 401);
+    }
+
+    // Resolve folder for upload — must be within the share's subtree
+    let folderId = link.folder_id as string;
+    if (targetFolderId && targetFolderId !== link.folder_id) {
+      let cur: string | null = targetFolderId;
+      let ok = false;
+      for (let i = 0; i < 25 && cur; i++) {
+        const { data: f } = await admin.from("drive_folders").select("parent_id").eq("id", cur).maybeSingle();
+        if (!f) break;
+        if (f.parent_id === link.folder_id || cur === link.folder_id) { ok = true; break; }
+        cur = f.parent_id;
+      }
+      if (!ok) return json({ error: "Folder outside this share" }, 403);
+      folderId = targetFolderId;
     }
 
     // Per-link caps
@@ -70,7 +86,7 @@ serve(async (req) => {
 
     // Upload to Bunny
     const safeName = sanitize(file.name);
-    const path = `agency/${link.agency_id}/drive/${link.folder_id}/${Date.now()}_${safeName}`;
+    const path = `agency/${link.agency_id}/drive/${folderId}/${Date.now()}_${safeName}`;
     const buf = new Uint8Array(await file.arrayBuffer());
     const up = await fetch(`https://${BUNNY_STORAGE_HOSTNAME}/${BUNNY_STORAGE_ZONE}/${path}`, {
       method: "PUT",
@@ -91,7 +107,7 @@ serve(async (req) => {
       .from("drive_files")
       .insert({
         agency_id: link.agency_id,
-        folder_id: link.folder_id,
+        folder_id: folderId,
         file_name: file.name,
         file_url: cdnUrl,
         file_size: size,
