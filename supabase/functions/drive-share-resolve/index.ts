@@ -43,10 +43,30 @@ serve(async (req) => {
       if (h !== link.password_hash) return json({ error: "Wrong password" }, 401);
     }
 
-    // List contents of the link's folder (or a sub-folder under it if specified)
+    // ----- File-share short-circuit -----
+    if (link.file_id) {
+      const { data: file } = await admin
+        .from("drive_files")
+        .select("id, file_name, file_url, file_size, mime_type, created_at")
+        .eq("id", link.file_id)
+        .maybeSingle();
+      if (!file) return json({ error: "File no longer exists" }, 404);
+      return json({
+        ok: true,
+        kind: "file",
+        link: {
+          permission: link.permission,
+          expires_at: link.expires_at,
+          folder_id: null,
+          file_id: link.file_id,
+        },
+        file,
+      });
+    }
+
+    // ----- Folder share -----
     const folderId = subFolderId || link.folder_id;
 
-    // Verify subfolder is descendant of link.folder_id
     if (subFolderId && subFolderId !== link.folder_id) {
       let cur: string | null = subFolderId;
       let ok = false;
@@ -80,6 +100,7 @@ serve(async (req) => {
 
     return json({
       ok: true,
+      kind: "folder",
       link: {
         permission: link.permission,
         expires_at: link.expires_at,
