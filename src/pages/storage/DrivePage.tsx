@@ -10,10 +10,15 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Folder, FolderPlus, Upload, Share2, ChevronRight, Grid3x3, List,
   Search, MoreVertical, Download, Trash2, Film, Image as ImageIcon, FileText, File as FileIcon, Home,
+  Trash, RotateCcw,
 } from "lucide-react";
-import { useDrive, useDriveFolder, type DriveFile } from "@/hooks/useDrive";
+import { useDrive, useDriveFolder, useDriveTrash, type DriveFile } from "@/hooks/useDrive";
 import { NewFolderModal } from "@/components/drive/NewFolderModal";
 import { ShareLinkModal } from "@/components/drive/ShareLinkModal";
 import { FilePreview } from "@/components/drive/FilePreview";
