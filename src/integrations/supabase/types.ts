@@ -710,6 +710,7 @@ export type Database = {
       drive_folders: {
         Row: {
           agency_id: string
+          client_id: string | null
           created_at: string
           created_by: string
           deleted_at: string | null
@@ -723,6 +724,7 @@ export type Database = {
         }
         Insert: {
           agency_id: string
+          client_id?: string | null
           created_at?: string
           created_by: string
           deleted_at?: string | null
@@ -736,6 +738,7 @@ export type Database = {
         }
         Update: {
           agency_id?: string
+          client_id?: string | null
           created_at?: string
           created_by?: string
           deleted_at?: string | null
@@ -2129,7 +2132,7 @@ export type Database = {
     Enums: {
       app_role: "admin" | "client" | "editor"
       channel_type: "dm" | "project"
-      drive_folder_kind: "custom" | "project_root"
+      drive_folder_kind: "custom" | "project_root" | "client_root"
       drive_share_permission: "view" | "download" | "upload" | "full"
       employment_type: "freelance" | "salaried"
       invoice_status: "unpaid" | "paid" | "overdue" | "pending"
@@ -2284,7 +2287,7 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "client", "editor"],
       channel_type: ["dm", "project"],
-      drive_folder_kind: ["custom", "project_root"],
+      drive_folder_kind: ["custom", "project_root", "client_root"],
       drive_share_permission: ["view", "download", "upload", "full"],
       employment_type: ["freelance", "salaried"],
       invoice_status: ["unpaid", "paid", "overdue", "pending"],
