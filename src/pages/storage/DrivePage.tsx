@@ -188,8 +188,23 @@ export default function DrivePage() {
               <Share2 className="w-4 h-4 mr-2" />Share
             </Button>
           )}
+          <Button variant={showTrash ? "secondary" : "outline"} onClick={() => setShowTrash((v) => !v)}>
+            <Trash className="w-4 h-4 mr-2" />{showTrash ? "Back to Drive" : "Trash"}
+          </Button>
           <input ref={fileInputRef} type="file" multiple className="hidden" onChange={(e) => handleFiles(e.target.files)} />
         </div>
+
+        {showTrash ? (
+          <TrashView
+            data={trashQ.data}
+            isLoading={trashQ.isLoading}
+            onRestoreFile={async (id) => { await restoreFile(id); trashQ.refetch(); refetch(); }}
+            onRestoreFolder={async (id) => { await restoreFolder(id); trashQ.refetch(); refetch(); }}
+            onPurgeFile={(id, name) => setConfirmPurge({ kind: "file", id, name })}
+            onPurgeFolder={(id, name) => setConfirmPurge({ kind: "folder", id, name })}
+          />
+        ) : (
+          <>
 
         <div className="flex items-center gap-1 text-sm text-muted-foreground">
           <button onClick={() => setFolderId(null)} className="flex items-center gap-1 hover:text-foreground">
