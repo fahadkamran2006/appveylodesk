@@ -381,7 +381,7 @@ function FolderCard({ folder, onOpen, onShare, onDelete, onDropFiles }: any) {
         </div>
         <p className="text-sm font-medium truncate">{folder.name}</p>
         <p className="text-xs text-muted-foreground mt-0.5">
-          {folder.kind === "client_root" ? "Client" : folder.kind === "project_root" ? "Project folder" : "Folder"}
+          {folder.kind === "client_root" ? "Client" : folder.kind === "container_root" ? "Project" : folder.kind === "project_root" ? "Video folder" : "Folder"}
         </p>
       </button>
       <div className="absolute top-2 right-2">
