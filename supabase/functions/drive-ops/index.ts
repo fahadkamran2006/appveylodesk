@@ -149,7 +149,7 @@ serve(async (req) => {
         const { folderId, name } = payload;
         const { data: f } = await admin.from("drive_folders").select("created_by, kind").eq("id", folderId).maybeSingle();
         if (!f) return json({ error: "Not found" }, 404);
-        if (f.kind === "project_root") return json({ error: "Cannot rename project folder" }, 400);
+        if (f.kind === "project_root" || f.kind === "client_root") return json({ error: "Cannot rename system folder" }, 400);
         if (role !== "admin" && f.created_by !== user.id) return json({ error: "Forbidden" }, 403);
         await admin.from("drive_folders").update({ name: name.trim() }).eq("id", folderId);
         return json({ ok: true });
@@ -160,7 +160,7 @@ serve(async (req) => {
         const { folderId } = payload;
         const { data: f } = await admin.from("drive_folders").select("created_by, kind, agency_id").eq("id", folderId).maybeSingle();
         if (!f) return json({ error: "Not found" }, 404);
-        if (f.kind === "project_root") return json({ error: "Cannot delete project folder" }, 400);
+        if (f.kind === "project_root" || f.kind === "client_root") return json({ error: "Cannot delete system folder" }, 400);
         if (f.agency_id !== agencyId) return json({ error: "Forbidden" }, 403);
         if (role !== "admin" && f.created_by !== user.id) return json({ error: "Forbidden" }, 403);
 
@@ -310,7 +310,7 @@ serve(async (req) => {
         const { folderId } = payload;
         const { data: f } = await admin.from("drive_folders").select("agency_id, created_by, kind").eq("id", folderId).maybeSingle();
         if (!f) return json({ error: "Not found" }, 404);
-        if (f.kind === "project_root") return json({ error: "Cannot delete project folder" }, 400);
+        if (f.kind === "project_root" || f.kind === "client_root") return json({ error: "Cannot delete system folder" }, 400);
         if (f.agency_id !== agencyId) return json({ error: "Forbidden" }, 403);
         if (role !== "admin" && f.created_by !== user.id) return json({ error: "Forbidden" }, 403);
 
@@ -419,13 +419,90 @@ serve(async (req) => {
         return json({ ok: true });
       }
 
-      // ---------- BACKFILL: ensure project_root folders ----------
+      // ---------- BACKFILL: ensure client_root → project_root hierarchy ----------
       case "sync_project_folders": {
         const { data: projects } = await admin
           .from("projects")
-          .select("id, title")
+          .select("id, title, client_id")
           .eq("agency_id", agencyId);
+
+        // Group projects by client_id (skip projects without a client)
+        const byClient = new Map<string, { id: string; title: string }[]>();
         for (const p of projects || []) {
+          if (!p.client_id) continue;
+          if (!byClient.has(p.client_id)) byClient.set(p.client_id, []);
+          byClient.get(p.client_id)!.push({ id: p.id, title: p.title });
+        }
+
+        // Resolve client display names in one query
+        const clientIds = Array.from(byClient.keys());
+        let names = new Map<string, string>();
+        if (clientIds.length) {
+          const { data: profs } = await admin
+            .from("profiles")
+            .select("id, full_name, email")
+            .in("id", clientIds);
+          for (const p of profs || []) {
+            names.set(p.id, p.full_name || p.email || "Client");
+          }
+        }
+
+        for (const [clientId, projs] of byClient.entries()) {
+          // Ensure client_root folder
+          let { data: clientRoot } = await admin
+            .from("drive_folders")
+            .select("id")
+            .eq("agency_id", agencyId)
+            .eq("client_id", clientId)
+            .eq("kind", "client_root")
+            .maybeSingle();
+          if (!clientRoot) {
+            const { data: inserted } = await admin
+              .from("drive_folders")
+              .insert({
+                agency_id: agencyId,
+                parent_id: null,
+                name: names.get(clientId) || "Client",
+                kind: "client_root",
+                client_id: clientId,
+                created_by: user.id,
+              })
+              .select("id")
+              .single();
+            clientRoot = inserted;
+          }
+
+          // Ensure each project_root sits under its client_root
+          for (const p of projs) {
+            const { data: existing } = await admin
+              .from("drive_folders")
+              .select("id, parent_id, name")
+              .eq("agency_id", agencyId)
+              .eq("project_id", p.id)
+              .eq("kind", "project_root")
+              .maybeSingle();
+            if (!existing) {
+              await admin.from("drive_folders").insert({
+                agency_id: agencyId,
+                parent_id: clientRoot!.id,
+                name: p.title || "Untitled project",
+                kind: "project_root",
+                project_id: p.id,
+                created_by: user.id,
+              });
+            } else if (existing.parent_id !== clientRoot!.id) {
+              // Re-parent legacy flat project folders
+              await admin
+                .from("drive_folders")
+                .update({ parent_id: clientRoot!.id })
+                .eq("id", existing.id);
+            }
+          }
+        }
+
+        // Orphan projects (no client) — keep at root with project_root kind
+        for (const p of projects || []) {
+          if (p.client_id) continue;
           const { data: existing } = await admin
             .from("drive_folders")
             .select("id")
@@ -444,6 +521,7 @@ serve(async (req) => {
             });
           }
         }
+
         return json({ ok: true });
       }
 
