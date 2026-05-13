@@ -542,6 +542,47 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
     let streamVideoId: string | null = null;
 
     try {
+      // ---- Drive custom-folder branch (uses drive-upload edge fn) ----
+      if (item.driveFolderId) {
+        await new Promise<void>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          const startTime = Date.now();
+          let lastLoaded = 0; let lastTime = startTime;
+          xhr.upload.addEventListener('progress', (event) => {
+            if (!event.lengthComputable) return;
+            const now = Date.now();
+            const dt = (now - lastTime) / 1000;
+            const dL = event.loaded - lastLoaded;
+            const speed = dt > 0 ? dL / dt : 0;
+            const remaining = event.total - event.loaded;
+            const remainingTime = speed > 0 ? remaining / speed : 0;
+            const percentage = Math.round((event.loaded / event.total) * 100);
+            setState(prev => ({
+              ...prev,
+              queue: prev.queue.map(q => q.id === item.id ? { ...q, progress: percentage, speed, remainingTime } : q),
+            }));
+            lastLoaded = event.loaded; lastTime = now;
+          });
+          xhr.addEventListener('load', () => {
+            if (xhr.status >= 200 && xhr.status < 300) resolve();
+            else reject(new Error(xhr.responseText || `Upload failed (${xhr.status})`));
+          });
+          xhr.addEventListener('error', () => reject(new Error('Network error')));
+          xhr.addEventListener('abort', () => reject(new Error('Upload cancelled')));
+          if (abortControllerRef.current) {
+            abortControllerRef.current.signal.addEventListener('abort', () => xhr.abort());
+          }
+          const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/drive-upload`;
+          const fd = new FormData();
+          fd.append('folderId', item.driveFolderId!);
+          fd.append('file', item.file);
+          xhr.open('POST', url);
+          xhr.setRequestHeader('Authorization', `Bearer ${session.access_token}`);
+          xhr.send(fd);
+        });
+        return true;
+      }
+
       const shouldUseStream = isVideoFile(item.file.name);
 
       // Step 1: Get presigned upload credentials
