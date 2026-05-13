@@ -261,7 +261,7 @@ export default function DrivePage() {
             {filteredFolders.map((f) => (
               <FolderCard key={f.id} folder={f} onOpen={() => setFolderId(f.id)}
                 onShare={() => setShareTarget({ kind: "folder", id: f.id, name: f.name })}
-                onDropFiles={f.kind === "client_root" ? undefined : (files) => handleFiles(files, f.id)}
+                onDropFiles={(f.kind === "client_root" || f.kind === "container_root") ? undefined : (files) => handleFiles(files, f.id)}
                 onDelete={f.kind === "custom" ? () => deleteFolder(f.id).then(() => refetch()) : undefined} />
             ))}
             {filteredFiles.map((f) => (
@@ -275,7 +275,7 @@ export default function DrivePage() {
             {filteredFolders.map((f) => (
               <FolderRow key={f.id} folder={f} onOpen={() => setFolderId(f.id)}
                 onShare={() => setShareTarget({ kind: "folder", id: f.id, name: f.name })}
-                onDropFiles={f.kind === "client_root" ? undefined : (files) => handleFiles(files, f.id)}
+                onDropFiles={(f.kind === "client_root" || f.kind === "container_root") ? undefined : (files) => handleFiles(files, f.id)}
                 onDelete={f.kind === "custom" ? () => deleteFolder(f.id).then(() => refetch()) : undefined} />
             ))}
             {filteredFiles.map((f) => (
