@@ -83,9 +83,9 @@ const HeroSection = () => {
             style={{ willChange: "transform, opacity" }}
             className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mb-12 leading-relaxed"
           >
-            Veylodesk gives your agency a white-labeled client portal, frame-accurate
-            video approvals, and a pay-to-download system that makes chasing invoices
-            a thing of the past — all in one tab.
+            Veylodesk is the video agency management software and production CRM
+            that gives your studio a white-labeled client portal, frame-accurate
+            video approvals, and pay-to-download invoicing — all in one tab.
           </motion.p>
 
           {/* CTA row */}

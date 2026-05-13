@@ -13,18 +13,18 @@ const Index = () => {
   return (
     <>
       <Helmet>
-        <title>Veylodesk | The Command Center for Video Agencies</title>
+        <title>Video Agency Management Software & Production CRM | Veylodesk</title>
         <meta
           name="description"
-          content="Run your video agency from one command center. Manage clients, editors, and projects in one tab. Stop managing chaos. Start scaling."
+          content="Veylodesk is the video agency management software and video production CRM that replaces Trello, Frame.io, and invoice chasing — all in one tab."
         />
         <meta
           name="keywords"
-          content="video agency, project management, client portal, video production, agency OS"
+          content="video agency management software, video production CRM, agency management software, video production software, client portal"
         />
         <link rel="canonical" href="https://veylodesk.com/" />
-        <meta property="og:title" content="Veylodesk | The Command Center for Video Agencies" />
-        <meta property="og:description" content="Run your video agency from one command center. Manage clients, editors, and projects in one tab." />
+        <meta property="og:title" content="Video Agency Management Software & Production CRM | Veylodesk" />
+        <meta property="og:description" content="The video agency management software and video production CRM that runs your whole studio in one tab." />
         <meta property="og:url" content="https://veylodesk.com/" />
       </Helmet>
 
