@@ -92,17 +92,11 @@ export default function DrivePage() {
     const arr = Array.from(selected);
     try {
       const { supabase } = await import("@/integrations/supabase/client");
-      const { data: f } = await supabase.from("drive_folders").select("kind, project_id").eq("id", folderId).maybeSingle();
+      const { data: f } = await supabase.from("drive_folders").select("kind, project_id, name").eq("id", folderId).maybeSingle();
       if (f?.kind === "project_root" && f.project_id) {
-        addToQueue(arr, f.project_id, undefined, "deliverable");
-        toast({ title: "Upload started", description: `${arr.length} file(s) added to queue` });
+        addToQueue(arr, f.project_id, f.name || undefined, "deliverable");
       } else {
-        toast({ title: "Uploading…", description: `${arr.length} file(s)` });
-        for (const file of arr) {
-          await uploadCustomFile(file, folderId);
-        }
-        toast({ title: "Upload complete" });
-        refetch();
+        await addDriveUpload(arr, folderId, f?.name);
       }
     } catch (e: any) {
       toast({ title: "Upload failed", description: e.message, variant: "destructive" });
