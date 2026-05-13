@@ -249,8 +249,10 @@ export default function DrivePage() {
         <ShareLinkModal
           open={!!shareTarget}
           onOpenChange={(v) => { if (!v) setShareTarget(null); }}
-          folderId={shareTarget.id}
-          folderName={shareTarget.name}
+          folderId={shareTarget.kind === "folder" ? shareTarget.id : undefined}
+          fileId={shareTarget.kind === "file" ? shareTarget.id : undefined}
+          folderName={shareTarget.kind === "folder" ? shareTarget.name : undefined}
+          fileName={shareTarget.kind === "file" ? shareTarget.name : undefined}
         />
       )}
       <FilePreview open={!!previewFile} onOpenChange={(v) => { if (!v) setPreviewFile(null); }} file={previewFile} />
