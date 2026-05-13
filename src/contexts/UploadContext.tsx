@@ -542,7 +542,7 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
     let streamVideoId: string | null = null;
 
     try {
-      // ---- Drive custom-folder branch (uses drive-upload edge fn) ----
+      // ---- Drive custom-folder branch: stream PUT direct → edge → Bunny ----
       if (item.driveFolderId) {
         await new Promise<void>((resolve, reject) => {
           const xhr = new XMLHttpRequest();
@@ -573,12 +573,14 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
             abortControllerRef.current.signal.addEventListener('abort', () => xhr.abort());
           }
           const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/drive-upload`;
-          const fd = new FormData();
-          fd.append('folderId', item.driveFolderId!);
-          fd.append('file', item.file);
-          xhr.open('POST', url);
+          xhr.open('PUT', url);
           xhr.setRequestHeader('Authorization', `Bearer ${session.access_token}`);
-          xhr.send(fd);
+          xhr.setRequestHeader('apikey', import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '');
+          xhr.setRequestHeader('x-folder-id', item.driveFolderId!);
+          xhr.setRequestHeader('x-file-name', item.file.name);
+          xhr.setRequestHeader('x-file-size', String(item.file.size));
+          xhr.setRequestHeader('x-mime', item.file.type || 'application/octet-stream');
+          xhr.send(item.file);
         });
         return true;
       }
