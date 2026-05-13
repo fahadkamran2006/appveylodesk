@@ -253,8 +253,10 @@ export default function DrivePage() {
             ))}
           </div>
         )}
+          </>
+        )}
 
-        {isDragging && (
+        {isDragging && !showTrash && (
           <div className="pointer-events-none fixed inset-0 z-40 flex items-center justify-center bg-primary/10 backdrop-blur-sm">
             <div className="border-2 border-dashed border-primary rounded-2xl px-10 py-8 bg-background/90 shadow-xl text-center">
               <Upload className="w-10 h-10 mx-auto mb-2 text-primary" />
@@ -265,6 +267,30 @@ export default function DrivePage() {
           </div>
         )}
       </div>
+
+      <AlertDialog open={!!confirmPurge} onOpenChange={(v) => { if (!v) setConfirmPurge(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Permanently delete?</AlertDialogTitle>
+            <AlertDialogDescription>
+              "{confirmPurge?.name}" will be removed from Bunny storage and the database. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                if (!confirmPurge) return;
+                if (confirmPurge.kind === "file") await permanentDeleteFile(confirmPurge.id);
+                else await permanentDeleteFolder(confirmPurge.id);
+                setConfirmPurge(null);
+                trashQ.refetch();
+              }}
+            >Delete forever</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <NewFolderModal
         open={showNewFolder}
