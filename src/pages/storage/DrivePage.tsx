@@ -34,12 +34,13 @@ function formatBytes(b: number) {
   return (b / Math.pow(k, i)).toFixed(1) + " " + units[i];
 }
 
-function fileIcon(name: string) {
+function fileIcon(name: string, big = false) {
+  const cls = big ? "w-8 h-8" : "w-5 h-5";
   const ext = name.split(".").pop()?.toLowerCase() || "";
-  if (["mp4", "mov", "webm", "mkv", "avi"].includes(ext)) return <Film className="w-5 h-5 text-primary" />;
-  if (["jpg", "jpeg", "png", "gif", "webp"].includes(ext)) return <ImageIcon className="w-5 h-5 text-accent" />;
-  if (["pdf", "doc", "docx", "txt"].includes(ext)) return <FileText className="w-5 h-5 text-destructive" />;
-  return <FileIcon className="w-5 h-5 text-muted-foreground" />;
+  if (["mp4", "mov", "webm", "mkv", "avi"].includes(ext)) return <Film className={`${cls} text-primary`} />;
+  if (["jpg", "jpeg", "png", "gif", "webp"].includes(ext)) return <ImageIcon className={`${cls} text-accent`} />;
+  if (["pdf", "doc", "docx", "txt"].includes(ext)) return <FileText className={`${cls} text-destructive`} />;
+  return <FileIcon className={`${cls} text-muted-foreground`} />;
 }
 
 const VIEW_KEY = "drive:viewMode";
