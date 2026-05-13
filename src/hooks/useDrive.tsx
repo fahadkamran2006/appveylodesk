@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 export interface DriveFolder {
   id: string;
   name: string;
-  kind: "custom" | "project_root";
+  kind: "custom" | "project_root" | "client_root";
   parent_id: string | null;
   project_id: string | null;
   created_by: string;
