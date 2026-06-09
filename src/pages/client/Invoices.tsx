@@ -63,7 +63,8 @@ const ClientInvoices = () => {
           due_date,
           created_at,
           payment_proof_url,
-          project:projects(id, title)
+          project:projects(id, title),
+          container:project_containers(id, title)
         `)
         .eq('client_id', user.id)
         .order('created_at', { ascending: false });
