@@ -69,7 +69,7 @@ const SettingsPage = () => {
     }
   };
 
-  const getSidebarRole = (): 'admin' | 'client' | 'editor' => {
+  const getSidebarRole = (): 'admin' | 'client' | 'editor' | 'staff' => {
     switch (userRole) {
       case 'client':
         return 'client';
@@ -255,6 +255,25 @@ const SettingsPage = () => {
               )}
 
               {/* Legal & Compliance Settings - Admin Only */}
+              {/* Roles & Permissions - Admin Only */}
+              {userRole === 'admin' && (
+                <Card className="glass-card border-border/50">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+                      <User className="w-5 h-5" />
+                      Roles & Permissions
+                    </CardTitle>
+                    <CardDescription>
+                      Create staff roles (Manager, Accountant, HR, etc.) and control what they can see and do.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Button onClick={() => navigate('/admin/settings/roles')}>Manage Roles</Button>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Subscription Management - Admin Only */}
               {userRole === 'admin' && (
                 <LegalSettings />
               )}

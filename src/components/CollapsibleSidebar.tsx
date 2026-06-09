@@ -73,7 +73,7 @@ const editorNavItems: NavItem[] = [
 ];
 
 interface CollapsibleSidebarProps {
-  role?: 'admin' | 'client' | 'editor';
+  role?: 'admin' | 'client' | 'editor' | 'staff';
 }
 
 export function CollapsibleSidebar({ role = 'admin' }: CollapsibleSidebarProps) {

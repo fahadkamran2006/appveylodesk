@@ -90,6 +90,7 @@ export type Database = {
           full_name: string | null
           id: string
           invited_by: string
+          metadata: Json
           role: Database["public"]["Enums"]["app_role"]
         }
         Insert: {
@@ -101,6 +102,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           invited_by: string
+          metadata?: Json
           role: Database["public"]["Enums"]["app_role"]
         }
         Update: {
@@ -112,6 +114,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           invited_by?: string
+          metadata?: Json
           role?: Database["public"]["Enums"]["app_role"]
         }
         Relationships: [
@@ -1954,6 +1957,185 @@ export type Database = {
         }
         Relationships: []
       }
+      staff_client_assignments: {
+        Row: {
+          agency_id: string
+          client_user_id: string | null
+          created_at: string
+          id: string
+          managed_client_id: string | null
+          staff_user_id: string
+        }
+        Insert: {
+          agency_id: string
+          client_user_id?: string | null
+          created_at?: string
+          id?: string
+          managed_client_id?: string | null
+          staff_user_id: string
+        }
+        Update: {
+          agency_id?: string
+          client_user_id?: string | null
+          created_at?: string
+          id?: string
+          managed_client_id?: string | null
+          staff_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_client_assignments_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_client_assignments_managed_client_id_fkey"
+            columns: ["managed_client_id"]
+            isOneToOne: false
+            referencedRelation: "managed_clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_members: {
+        Row: {
+          agency_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          permission_overrides: Json
+          staff_role_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          agency_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          permission_overrides?: Json
+          staff_role_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          agency_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          permission_overrides?: Json
+          staff_role_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_members_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_members_staff_role_id_fkey"
+            columns: ["staff_role_id"]
+            isOneToOne: false
+            referencedRelation: "staff_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_project_assignments: {
+        Row: {
+          agency_id: string
+          created_at: string
+          id: string
+          project_id: string
+          staff_user_id: string
+        }
+        Insert: {
+          agency_id: string
+          created_at?: string
+          id?: string
+          project_id: string
+          staff_user_id: string
+        }
+        Update: {
+          agency_id?: string
+          created_at?: string
+          id?: string
+          project_id?: string
+          staff_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_project_assignments_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_project_assignments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_roles: {
+        Row: {
+          agency_id: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_system: boolean
+          name: string
+          permissions: Json
+          scope_clients: string
+          scope_projects: string
+          updated_at: string
+        }
+        Insert: {
+          agency_id: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_system?: boolean
+          name: string
+          permissions?: Json
+          scope_clients?: string
+          scope_projects?: string
+          updated_at?: string
+        }
+        Update: {
+          agency_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_system?: boolean
+          name?: string
+          permissions?: Json
+          scope_clients?: string
+          scope_projects?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_roles_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscription_cancellation_logs: {
         Row: {
           agency_id: string
@@ -2178,6 +2360,7 @@ export type Database = {
         Args: { _agency_id: string; _other_user_id: string }
         Returns: string
       }
+      get_staff_permissions: { Args: { _user_id: string }; Returns: Json }
       get_user_agency_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
@@ -2212,6 +2395,22 @@ export type Database = {
         Returns: boolean
       }
       recalculate_agency_storage: { Args: never; Returns: undefined }
+      staff_client_visible: {
+        Args: {
+          _client_user_id: string
+          _managed_client_id: string
+          _staff_user_id: string
+        }
+        Returns: boolean
+      }
+      staff_has_permission: {
+        Args: { _key: string; _user_id: string }
+        Returns: boolean
+      }
+      staff_project_visible: {
+        Args: { _project_id: string; _staff_user_id: string }
+        Returns: boolean
+      }
       user_belongs_to_agency: {
         Args: { _agency_id: string; _user_id: string }
         Returns: boolean
@@ -2233,7 +2432,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "client" | "editor"
+      app_role: "admin" | "client" | "editor" | "staff"
       channel_type: "dm" | "project"
       drive_folder_kind:
         | "custom"
@@ -2392,7 +2591,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "client", "editor"],
+      app_role: ["admin", "client", "editor", "staff"],
       channel_type: ["dm", "project"],
       drive_folder_kind: [
         "custom",

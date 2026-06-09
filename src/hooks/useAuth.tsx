@@ -3,7 +3,9 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 
-type UserRole = 'admin' | 'client' | 'editor';
+type UserRole = 'admin' | 'client' | 'editor' | 'staff';
+
+
 
 interface AuthContextType {
   user: User | null;
@@ -45,6 +47,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         break;
       case 'editor':
         navigate('/editor/dashboard');
+        break;
+      case 'staff':
+        navigate('/staff/dashboard');
         break;
       default:
         navigate('/onboarding');

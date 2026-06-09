@@ -70,6 +70,8 @@ import SuperAdminDashboard from "./pages/super-admin/SuperAdminDashboard";
 import FreeGuide from "./pages/FreeGuide";
 import Unsubscribe from "./pages/Unsubscribe";
 import AdminLeads from "./pages/admin/Leads";
+import RolesPermissions from "./pages/settings/RolesPermissions";
+import StaffDashboard from "./pages/staff/Dashboard";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -137,6 +139,11 @@ const App = () => (
                   <Route path="/admin/calendar" element={<CalendarPage />} />
                   <Route path="/admin/billing" element={<AdminOnlyGuard><AdminBilling /></AdminOnlyGuard>} />
                   <Route path="/admin/settings" element={<SettingsPage />} />
+                  <Route path="/admin/settings/roles" element={<AdminOnlyGuard><RolesPermissions /></AdminOnlyGuard>} />
+
+                  {/* Staff */}
+                  <Route path="/staff/dashboard" element={<StaffDashboard />} />
+                  <Route path="/staff/settings" element={<SettingsPage />} />
 
                   {/* Client */}
                   <Route path="/client/dashboard" element={<ClientDashboard />} />

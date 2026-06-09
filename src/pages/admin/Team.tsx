@@ -7,6 +7,7 @@ import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { Button } from '@/components/ui/button';
 import { PersonCard } from '@/components/PersonCard';
 import { InviteUserModal } from '@/components/InviteUserModal';
+import { InviteStaffModal } from '@/components/staff/InviteStaffModal';
 import { PendingInvitationCard } from '@/components/PendingInvitationCard';
 import { EditorLeaderboard } from '@/components/admin/EditorLeaderboard';
 import { TodayAttendance } from '@/components/admin/TodayAttendance';
@@ -49,6 +50,7 @@ const AdminTeam = () => {
   const [agencyId, setAgencyId] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteStaffOpen, setInviteStaffOpen] = useState(false);
   const [leaderboardPeriod, setLeaderboardPeriod] = useState<TimePeriod>('all');
   const [removeModalOpen, setRemoveModalOpen] = useState(false);
   const [memberToRemove, setMemberToRemove] = useState<TeamMember | null>(null);
@@ -177,13 +179,23 @@ const AdminTeam = () => {
                 Manage your editors and team members
               </p>
             </div>
-            <Button
-              onClick={() => setInviteOpen(true)}
-              className="bg-primary hover:bg-primary/90 w-full sm:w-auto"
-            >
-              <UserPlus className="w-4 h-4 mr-2" />
-              Invite Member
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <Button
+                variant="outline"
+                onClick={() => setInviteStaffOpen(true)}
+                className="w-full sm:w-auto"
+              >
+                <UserPlus className="w-4 h-4 mr-2" />
+                Invite Staff
+              </Button>
+              <Button
+                onClick={() => setInviteOpen(true)}
+                className="bg-primary hover:bg-primary/90 w-full sm:w-auto"
+              >
+                <UserPlus className="w-4 h-4 mr-2" />
+                Invite Member
+              </Button>
+            </div>
           </div>
 
           {/* Content */}
@@ -333,6 +345,12 @@ const AdminTeam = () => {
         open={inviteOpen}
         onOpenChange={setInviteOpen}
         lockedRole="editor"
+        onSuccess={fetchTeamData}
+      />
+
+      <InviteStaffModal
+        open={inviteStaffOpen}
+        onOpenChange={setInviteStaffOpen}
         onSuccess={fetchTeamData}
       />
 

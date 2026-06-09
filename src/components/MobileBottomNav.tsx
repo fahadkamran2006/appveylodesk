@@ -86,7 +86,7 @@ const editorAllNavItems: NavItem[] = [
 ];
 
 interface MobileBottomNavProps {
-  role?: 'admin' | 'client' | 'editor';
+  role?: 'admin' | 'client' | 'editor' | 'staff';
 }
 
 export function MobileBottomNav({ role = 'admin' }: MobileBottomNavProps) {

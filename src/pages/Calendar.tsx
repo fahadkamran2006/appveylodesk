@@ -248,7 +248,7 @@ export default function CalendarPage() {
         <meta name="description" content="View your activity calendar" />
       </Helmet>
 
-      <DashboardLayout role={(userRole as 'admin' | 'client' | 'editor') || 'editor'}>
+      <DashboardLayout role={(userRole as 'admin' | 'client' | 'editor' | 'staff') || 'editor'}>
         <div className="max-w-5xl mx-auto">
           <div className="flex items-center justify-between mb-6">
             <div>
