@@ -1680,28 +1680,31 @@ export type Database = {
       project_containers: {
         Row: {
           agency_id: string
-          client_id: string
+          client_id: string | null
           created_at: string
           description: string | null
           id: string
+          managed_client_id: string | null
           title: string
           updated_at: string
         }
         Insert: {
           agency_id: string
-          client_id: string
+          client_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
+          managed_client_id?: string | null
           title: string
           updated_at?: string
         }
         Update: {
           agency_id?: string
-          client_id?: string
+          client_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
+          managed_client_id?: string | null
           title?: string
           updated_at?: string
         }
@@ -1711,6 +1714,13 @@ export type Database = {
             columns: ["agency_id"]
             isOneToOne: false
             referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_containers_managed_client_id_fkey"
+            columns: ["managed_client_id"]
+            isOneToOne: false
+            referencedRelation: "managed_clients"
             referencedColumns: ["id"]
           },
         ]
