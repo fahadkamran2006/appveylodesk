@@ -217,32 +217,35 @@ const AdminClients = () => {
                 Manage your agency clients and their projects
               </p>
             </div>
-            {canAddClient() ? (
-              <Button
-                onClick={() => setInviteOpen(true)}
-                className="bg-primary hover:bg-primary/90"
-              >
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setAddManualOpen(true)}>
                 <UserPlus className="w-4 h-4 mr-2" />
-                Invite Client
+                Add Manually
               </Button>
-            ) : (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div>
-                    <Button
-                      disabled
-                      className="bg-primary/50 cursor-not-allowed"
-                    >
-                      <AlertCircle className="w-4 h-4 mr-2" />
-                      Limit Reached ({currentClients}/{maxClients})
-                    </Button>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="max-w-xs">
-                  <p>You've reached the client limit for your {planTier} plan. Upgrade to add more clients.</p>
-                </TooltipContent>
-              </Tooltip>
-            )}
+              {canAddClient() ? (
+                <Button
+                  onClick={() => setInviteOpen(true)}
+                  className="bg-primary hover:bg-primary/90"
+                >
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Invite Client
+                </Button>
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <Button disabled className="bg-primary/50 cursor-not-allowed">
+                        <AlertCircle className="w-4 h-4 mr-2" />
+                        Limit Reached ({currentClients}/{maxClients})
+                      </Button>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-xs">
+                    <p>You've reached the client limit for your {planTier} plan. Upgrade to add more clients.</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </div>
           </div>
 
           {/* Content */}
