@@ -87,15 +87,30 @@ export function PersonDetailSheet({
               <SheetTitle className="text-xl text-foreground">
                 {person.name || 'Unnamed User'}
               </SheetTitle>
-              <SheetDescription className="flex items-center gap-2">
+              <SheetDescription className="flex items-center gap-2 flex-wrap">
                 {person.role && (
                   <Badge variant="secondary" className="capitalize">
                     {person.role}
                   </Badge>
                 )}
+                {isManagedClient && (
+                  <Badge variant="outline" className="bg-primary/5 text-primary border-primary/30">
+                    Manual Client
+                  </Badge>
+                )}
               </SheetDescription>
             </div>
           </div>
+          {isManagedClient && onActivate && (
+            <Button
+              size="sm"
+              className="w-full bg-primary hover:bg-primary/90"
+              onClick={onActivate}
+            >
+              <KeyRound className="w-4 h-4 mr-2" />
+              Give Dashboard Access
+            </Button>
+          )}
         </SheetHeader>
 
         <div className="mt-6 space-y-6">
