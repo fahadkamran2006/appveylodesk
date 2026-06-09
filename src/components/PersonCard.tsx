@@ -2,7 +2,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { ChevronRight, DollarSign, FolderKanban, Zap, Trash2, Pencil, Briefcase } from 'lucide-react';
+import { ChevronRight, DollarSign, FolderKanban, Zap, Trash2, Pencil, Briefcase, KeyRound, LucideIcon } from 'lucide-react';
 
 interface PersonCardProps {
   id: string;
@@ -11,6 +11,13 @@ interface PersonCardProps {
   avatarUrl?: string | null;
   role?: 'client' | 'editor';
   employmentType?: 'freelance' | 'salaried';
+  badgeLabel?: string;
+  secondaryAction?: {
+    label: string;
+    icon?: LucideIcon;
+    onClick: (id: string) => void;
+    disabled?: boolean;
+  };
   stats?: {
     activeProjects?: number;
     totalSpent?: number;
