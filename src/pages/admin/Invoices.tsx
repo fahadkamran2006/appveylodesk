@@ -519,7 +519,7 @@ const AdminInvoices = () => {
           <DialogHeader>
             <DialogTitle>Review Payment Proof</DialogTitle>
             <DialogDescription>
-              {selectedInvoice?.invoice_number || selectedInvoice?.project?.title} - ${selectedInvoice?.amount.toLocaleString()}
+              {selectedInvoice?.invoice_number || selectedInvoice?.container?.title || selectedInvoice?.project?.title} - ${selectedInvoice?.amount.toLocaleString()}
             </DialogDescription>
           </DialogHeader>
           
