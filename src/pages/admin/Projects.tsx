@@ -197,21 +197,31 @@ const AdminProjects = () => {
           let editorName: string | undefined;
           let editorAvatar: string | null | undefined;
 
-          // Get client name
+          // Resolve client name (real or managed) + track workspace stats
+          const workspaceKey: string | null = video.client_id
+            ? video.client_id
+            : video.managed_client_id
+              ? `mc:${video.managed_client_id}`
+              : null;
+
           if (video.client_id) {
             const client = clientProfiles.find(c => c.id === video.client_id);
             clientName = client?.full_name || client?.email;
+          } else if (video.managed_client_id) {
+            const mc = managedClients.find((m: any) => m.id === video.managed_client_id);
+            clientName = mc ? `${mc.full_name || mc.email} (Manual)` : undefined;
+          }
 
-            // Track workspace stats
-            if (!clientStats[video.client_id]) {
-              clientStats[video.client_id] = { total: 0, active: 0, completed: 0 };
+          if (workspaceKey) {
+            if (!clientStats[workspaceKey]) {
+              clientStats[workspaceKey] = { total: 0, active: 0, completed: 0 };
             }
-            clientStats[video.client_id].total++;
+            clientStats[workspaceKey].total++;
             if (['in_progress', 'review', 'backlog'].includes(video.status)) {
-              clientStats[video.client_id].active++;
+              clientStats[workspaceKey].active++;
             }
             if (video.status === 'done') {
-              clientStats[video.client_id].completed++;
+              clientStats[workspaceKey].completed++;
             }
           }
 
@@ -253,6 +263,7 @@ const AdminProjects = () => {
             title: video.title,
             description: video.description,
             client_id: video.client_id,
+            managed_client_id: video.managed_client_id,
             client_name: clientName,
             container_id: video.container_id,
             editor_id: projectEditor?.editor_id,
@@ -266,7 +277,7 @@ const AdminProjects = () => {
 
       setProjects(videosWithDetails);
 
-      // Build workspaces from clients
+      // Build workspaces from real clients
       const workspaceList: ClientWorkspace[] = clientProfiles.map(client => ({
         id: client.id,
         name: client.full_name || client.email,
@@ -277,6 +288,20 @@ const AdminProjects = () => {
         completedCount: clientStats[client.id]?.completed || 0,
       }));
 
+      // Add manual clients as workspaces (mc: prefix)
+      for (const mc of managedClients as any[]) {
+        const key = `mc:${mc.id}`;
+        workspaceList.push({
+          id: key,
+          name: `${mc.full_name || mc.email} (Manual)`,
+          email: mc.email,
+          avatar: null,
+          projectCount: clientStats[key]?.total || 0,
+          activeCount: clientStats[key]?.active || 0,
+          completedCount: clientStats[key]?.completed || 0,
+        });
+      }
+
       setWorkspaces(workspaceList.sort((a, b) => b.projectCount - a.projectCount));
 
       // Build project containers list from the actual project_containers table
@@ -285,12 +310,14 @@ const AdminProjects = () => {
         title: container.title,
         description: container.description,
         client_id: container.client_id,
+        managed_client_id: (container as any).managed_client_id,
         videoCount: containerStats[container.id]?.total || 0,
         activeCount: containerStats[container.id]?.active || 0,
         completedCount: containerStats[container.id]?.completed || 0,
       }));
 
       setProjectContainers(containersList);
+
 
     } catch (error) {
       console.error('Error fetching projects:', error);
