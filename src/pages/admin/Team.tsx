@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { PersonCard } from '@/components/PersonCard';
 import { InviteUserModal } from '@/components/InviteUserModal';
 import { InviteStaffModal } from '@/components/staff/InviteStaffModal';
+import { StaffMembersList } from '@/components/staff/StaffMembersList';
 import { PendingInvitationCard } from '@/components/PendingInvitationCard';
 import { EditorLeaderboard } from '@/components/admin/EditorLeaderboard';
 import { TodayAttendance } from '@/components/admin/TodayAttendance';
