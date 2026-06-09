@@ -313,11 +313,12 @@ export function useDashboardStats() {
         projectsResult,
         invoicesResult,
         clientsResult,
+        managedClientsResult,
         editorsResult,
       ] = await Promise.all([
         supabase
           .from('projects')
-          .select('id, status, client_id')
+          .select('id, status, client_id, managed_client_id')
           .eq('agency_id', agencyId),
         supabase
           .from('invoices')
@@ -329,6 +330,10 @@ export function useDashboardStats() {
           .eq('agency_id', agencyId)
           .eq('role', 'client'),
         supabase
+          .from('managed_clients')
+          .select('id')
+          .eq('agency_id', agencyId),
+        supabase
           .from('user_roles')
           .select('user_id')
           .eq('agency_id', agencyId)
@@ -338,6 +343,7 @@ export function useDashboardStats() {
       const projects = projectsResult.data || [];
       const invoices = invoicesResult.data || [];
       const clients = clientsResult.data || [];
+      const managedClients = managedClientsResult.data || [];
       const editors = editorsResult.data || [];
 
       // Calculate stats
@@ -347,12 +353,12 @@ export function useDashboardStats() {
 
       const proposals = projects.filter(p => p.status === 'proposal').length;
 
-      // Active clients = unique clients with active projects
-      const activeClientIds = new Set(
+      // Active clients = unique clients (real OR managed) with active projects
+      const activeClientKeys = new Set(
         projects
           .filter(p => p.status === 'in_progress' || p.status === 'review')
-          .map(p => p.client_id)
-          .filter(Boolean)
+          .map(p => p.client_id ? `c:${p.client_id}` : p.managed_client_id ? `m:${p.managed_client_id}` : null)
+          .filter(Boolean) as string[]
       );
 
       // Calculate revenue and pending invoices
@@ -367,8 +373,8 @@ export function useDashboardStats() {
         activeProjects,
         pendingInvoices,
         pendingInvoiceCount: unpaidInvoices.length,
-        activeClients: activeClientIds.size,
-        totalClients: clients.length,
+        activeClients: activeClientKeys.size,
+        totalClients: clients.length + managedClients.length,
         totalEditors: editors.length,
         proposalsCount: proposals,
       });

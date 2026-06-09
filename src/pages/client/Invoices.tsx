@@ -26,6 +26,7 @@ interface Invoice {
   created_at: string;
   payment_proof_url: string | null;
   project: { id: string; title: string } | null;
+  container: { id: string; title: string } | null;
 }
 
 const ClientInvoices = () => {
@@ -62,7 +63,8 @@ const ClientInvoices = () => {
           due_date,
           created_at,
           payment_proof_url,
-          project:projects(id, title)
+          project:projects(id, title),
+          container:project_containers(id, title)
         `)
         .eq('client_id', user.id)
         .order('created_at', { ascending: false });
@@ -241,7 +243,7 @@ const ClientInvoices = () => {
                   >
                     <div>
                       <p className="font-medium text-foreground">
-                        {invoice.project?.title || 'Project'}
+                        {invoice.container?.title || invoice.project?.title || 'Project'}
                       </p>
                       <p className="text-sm text-muted-foreground">
                         {invoice.due_date 
@@ -295,7 +297,7 @@ const ClientInvoices = () => {
           <DialogHeader>
             <DialogTitle>Upload Payment Proof</DialogTitle>
             <DialogDescription>
-              Upload a screenshot or document showing your payment of ${selectedInvoice?.amount.toLocaleString()} for {selectedInvoice?.project?.title}.
+              Upload a screenshot or document showing your payment of ${selectedInvoice?.amount.toLocaleString()} for {selectedInvoice?.container?.title || selectedInvoice?.project?.title}.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleUploadProof} className="space-y-4">

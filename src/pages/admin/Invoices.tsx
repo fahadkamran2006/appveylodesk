@@ -37,10 +37,11 @@ interface Invoice {
   created_at: string;
   payment_proof_url: string | null;
   project: { id: string; title: string } | null;
+  container: { id: string; title: string } | null;
   client: { id: string; full_name: string | null; email: string } | null;
 }
 
-interface Project {
+interface Container {
   id: string;
   title: string;
   client_id: string | null;
@@ -54,7 +55,7 @@ const AdminInvoices = () => {
   const { toast } = useToast();
   
   const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [containers, setContainers] = useState<Container[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [proofModalOpen, setProofModalOpen] = useState(false);
@@ -88,7 +89,8 @@ const AdminInvoices = () => {
           payment_proof_url,
           client_id,
           managed_client_id,
-          project:projects(id, title)
+          project:projects(id, title),
+          container:project_containers(id, title)
         `)
         .order('created_at', { ascending: false });
 
@@ -122,42 +124,43 @@ const AdminInvoices = () => {
 
       setInvoices(mappedInvoices as Invoice[]);
 
-      // Fetch projects (real OR managed client) for create modal
-      const { data: projectsData, error: projectsError } = await supabase
-        .from('projects')
+      // Fetch project containers (real OR managed client) for create modal
+      const { data: containersData, error: containersError } = await supabase
+        .from('project_containers')
         .select('id, title, client_id, managed_client_id')
-        .or('client_id.not.is.null,managed_client_id.not.is.null');
+        .or('client_id.not.is.null,managed_client_id.not.is.null')
+        .order('created_at', { ascending: false });
 
-      if (projectsError) throw projectsError;
+      if (containersError) throw containersError;
 
-      const projRealIds = [...new Set(projectsData?.map((p: any) => p.client_id).filter(Boolean) || [])] as string[];
-      const projMcIds = [...new Set(projectsData?.map((p: any) => p.managed_client_id).filter(Boolean) || [])] as string[];
+      const cRealIds = [...new Set(containersData?.map((p: any) => p.client_id).filter(Boolean) || [])] as string[];
+      const cMcIds = [...new Set(containersData?.map((p: any) => p.managed_client_id).filter(Boolean) || [])] as string[];
 
-      const [{ data: projClientProfiles }, { data: projManaged }] = await Promise.all([
-        projRealIds.length
-          ? supabase.from('profiles').select('id, full_name, email').in('id', projRealIds)
+      const [{ data: cClientProfiles }, { data: cManaged }] = await Promise.all([
+        cRealIds.length
+          ? supabase.from('profiles').select('id, full_name, email').in('id', cRealIds)
           : Promise.resolve({ data: [] as any[] } as any),
-        projMcIds.length
-          ? supabase.from('managed_clients').select('id, full_name, email').in('id', projMcIds)
+        cMcIds.length
+          ? supabase.from('managed_clients').select('id, full_name, email').in('id', cMcIds)
           : Promise.resolve({ data: [] as any[] } as any),
       ]);
 
-      const projClientMap = new Map((projClientProfiles || []).map((c: any) => [c.id, c]));
-      const projMcMap = new Map((projManaged || []).map((c: any) => [c.id, c]));
+      const cClientMap = new Map((cClientProfiles || []).map((c: any) => [c.id, c]));
+      const cMcMap = new Map((cManaged || []).map((c: any) => [c.id, c]));
 
-      const mappedProjects = (projectsData || []).map((proj: any) => ({
-        ...proj,
-        client: proj.client_id
-          ? projClientMap.get(proj.client_id) || null
-          : proj.managed_client_id
+      const mappedContainers = (containersData || []).map((c: any) => ({
+        ...c,
+        client: c.client_id
+          ? cClientMap.get(c.client_id) || null
+          : c.managed_client_id
             ? (() => {
-                const m: any = projMcMap.get(proj.managed_client_id);
+                const m: any = cMcMap.get(c.managed_client_id);
                 return m ? { id: m.id, full_name: m.full_name, email: m.email, isManaged: true } : null;
               })()
             : null,
       }));
 
-      setProjects(mappedProjects as Project[]);
+      setContainers(mappedContainers as Container[]);
     } catch (error) {
       console.error('Error fetching data:', error);
       toast({
@@ -377,7 +380,7 @@ const AdminInvoices = () => {
                       <div className="flex items-start justify-between">
                         <div className="min-w-0 flex-1">
                           <p className="font-medium text-foreground truncate">
-                            {invoice.invoice_number || invoice.project?.title || 'Unknown Project'}
+                            {invoice.invoice_number || invoice.container?.title || invoice.project?.title || 'Unknown Project'}
                           </p>
                           <p className="text-sm text-muted-foreground truncate">
                             {invoice.client?.full_name || invoice.client?.email || 'Unknown'}
@@ -443,7 +446,7 @@ const AdminInvoices = () => {
                           {invoice.invoice_number || '-'}
                         </td>
                         <td className="p-4 text-muted-foreground">
-                          {invoice.project?.title || 'Unknown Project'}
+                          {invoice.container?.title || invoice.project?.title || 'Unknown Project'}
                         </td>
                         <td className="p-4 text-muted-foreground">
                           {invoice.client?.full_name || invoice.client?.email || 'Unknown'}
@@ -506,7 +509,7 @@ const AdminInvoices = () => {
       <CreateInvoiceModal
         open={createModalOpen}
         onOpenChange={setCreateModalOpen}
-        projects={projects}
+        containers={containers}
         onSuccess={fetchData}
       />
 
@@ -516,7 +519,7 @@ const AdminInvoices = () => {
           <DialogHeader>
             <DialogTitle>Review Payment Proof</DialogTitle>
             <DialogDescription>
-              {selectedInvoice?.invoice_number || selectedInvoice?.project?.title} - ${selectedInvoice?.amount.toLocaleString()}
+              {selectedInvoice?.invoice_number || selectedInvoice?.container?.title || selectedInvoice?.project?.title} - ${selectedInvoice?.amount.toLocaleString()}
             </DialogDescription>
           </DialogHeader>
           

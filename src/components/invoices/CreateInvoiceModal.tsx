@@ -25,7 +25,7 @@ import {
 import { Plus, Trash2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-interface Project {
+interface Container {
   id: string;
   title: string;
   client_id: string | null;
@@ -44,14 +44,14 @@ interface LineItem {
 interface CreateInvoiceModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  projects: Project[];
+  containers: Container[];
   onSuccess: () => void;
 }
 
 export const CreateInvoiceModal = ({
   open,
   onOpenChange,
-  projects,
+  containers,
   onSuccess,
 }: CreateInvoiceModalProps) => {
   const { user } = useAuth();
@@ -59,7 +59,7 @@ export const CreateInvoiceModal = ({
   const { methods: paymentMethods, loading: methodsLoading, getDefaultMethod } = usePaymentMethods();
   
   const [creating, setCreating] = useState(false);
-  const [selectedProject, setSelectedProject] = useState('');
+  const [selectedContainer, setSelectedContainer] = useState('');
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
   const [paymentLink, setPaymentLink] = useState('');
   const [dueDate, setDueDate] = useState('');
@@ -120,7 +120,7 @@ export const CreateInvoiceModal = ({
   const total = subtotal + taxAmount;
 
   const resetForm = () => {
-    setSelectedProject('');
+    setSelectedContainer('');
     setSelectedPaymentMethod('');
     setPaymentLink('');
     setDueDate('');
@@ -131,7 +131,7 @@ export const CreateInvoiceModal = ({
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !selectedProject || lineItems.every((item) => !item.description)) return;
+    if (!user || !selectedContainer || lineItems.every((item) => !item.description)) return;
 
     const validLineItems = lineItems.filter((item) => item.description && item.amount > 0);
     if (validLineItems.length === 0) {
@@ -145,11 +145,11 @@ export const CreateInvoiceModal = ({
 
     setCreating(true);
     try {
-      const project = projects.find((p) => p.id === selectedProject);
-      if (!project || (!project.client_id && !project.managed_client_id)) {
+      const container = containers.find((c) => c.id === selectedContainer);
+      if (!container || (!container.client_id && !container.managed_client_id)) {
         throw new Error('Project has no client assigned');
       }
-      const isManagedClient = !project.client_id && !!project.managed_client_id;
+      const isManagedClient = !container.client_id && !!container.managed_client_id;
 
       const { data: agencyId } = await supabase.rpc('get_user_agency_id', { _user_id: user.id });
 
@@ -166,14 +166,14 @@ export const CreateInvoiceModal = ({
         const { data: mc } = await supabase
           .from('managed_clients')
           .select('id, full_name, email')
-          .eq('id', project.managed_client_id!)
+          .eq('id', container.managed_client_id!)
           .single();
         if (mc) clientProfile = { id: mc.id, full_name: mc.full_name, email: mc.email };
       } else {
         const { data: cp } = await supabase
           .from('profiles')
           .select('id, full_name, email')
-          .eq('id', project.client_id!)
+          .eq('id', container.client_id!)
           .single();
         clientProfile = cp;
       }
@@ -198,9 +198,10 @@ export const CreateInvoiceModal = ({
       const { data: invoice, error: invoiceError } = await supabase
         .from('invoices')
         .insert({
-          project_id: selectedProject,
-          client_id: isManagedClient ? null : project.client_id,
-          managed_client_id: isManagedClient ? project.managed_client_id : null,
+          container_id: selectedContainer,
+          project_id: null,
+          client_id: isManagedClient ? null : container.client_id,
+          managed_client_id: isManagedClient ? container.managed_client_id : null,
           agency_id: agencyId,
           amount: total,
           subtotal: subtotal,
@@ -260,7 +261,7 @@ export const CreateInvoiceModal = ({
             full_name: clientProfile?.full_name || null,
             email: clientProfile?.email || '',
           },
-          project: { title: project.title },
+          project: { title: container.title },
           paymentMethod: paymentMethodData ? {
             name: paymentMethodData.name,
             details: paymentMethodData.details,
@@ -335,14 +336,14 @@ export const CreateInvoiceModal = ({
           {/* Project Selection */}
           <div>
             <Label>Project</Label>
-            <Select value={selectedProject} onValueChange={setSelectedProject}>
+            <Select value={selectedContainer} onValueChange={setSelectedContainer}>
               <SelectTrigger className="mt-2">
                 <SelectValue placeholder="Select a project" />
               </SelectTrigger>
               <SelectContent>
-                {projects.map((project) => (
-                  <SelectItem key={project.id} value={project.id}>
-                    {project.title} - {project.client?.full_name || project.client?.email}
+                {containers.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.title} - {c.client?.full_name || c.client?.email || 'Unassigned'}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -517,7 +518,7 @@ export const CreateInvoiceModal = ({
             </Button>
             <Button
               type="submit"
-              disabled={creating || !selectedProject || lineItems.every((i) => !i.description)}
+              disabled={creating || !selectedContainer || lineItems.every((i) => !i.description)}
             >
               {creating ? 'Creating...' : 'Create & Send Invoice'}
             </Button>

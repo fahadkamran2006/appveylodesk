@@ -983,6 +983,7 @@ export type Database = {
           agency_id: string
           amount: number
           client_id: string | null
+          container_id: string | null
           created_at: string
           due_date: string | null
           id: string
@@ -994,7 +995,7 @@ export type Database = {
           payment_method_id: string | null
           payment_proof_url: string | null
           pdf_url: string | null
-          project_id: string
+          project_id: string | null
           status: Database["public"]["Enums"]["invoice_status"]
           subtotal: number | null
           tax_amount: number | null
@@ -1005,6 +1006,7 @@ export type Database = {
           agency_id: string
           amount: number
           client_id?: string | null
+          container_id?: string | null
           created_at?: string
           due_date?: string | null
           id?: string
@@ -1016,7 +1018,7 @@ export type Database = {
           payment_method_id?: string | null
           payment_proof_url?: string | null
           pdf_url?: string | null
-          project_id: string
+          project_id?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal?: number | null
           tax_amount?: number | null
@@ -1027,6 +1029,7 @@ export type Database = {
           agency_id?: string
           amount?: number
           client_id?: string | null
+          container_id?: string | null
           created_at?: string
           due_date?: string | null
           id?: string
@@ -1038,7 +1041,7 @@ export type Database = {
           payment_method_id?: string | null
           payment_proof_url?: string | null
           pdf_url?: string | null
-          project_id?: string
+          project_id?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal?: number | null
           tax_amount?: number | null
@@ -1051,6 +1054,13 @@ export type Database = {
             columns: ["agency_id"]
             isOneToOne: false
             referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_container_id_fkey"
+            columns: ["container_id"]
+            isOneToOne: false
+            referencedRelation: "project_containers"
             referencedColumns: ["id"]
           },
           {

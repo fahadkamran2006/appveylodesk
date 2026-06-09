@@ -55,6 +55,7 @@ interface Invoice {
   payment_link: string | null;
   notes: string | null;
   project: { id: string; title: string } | null;
+  container: { id: string; title: string } | null;
   client: { id: string; full_name: string | null; email: string } | null;
   agency: { 
     id: string; 
@@ -111,7 +112,8 @@ const InvoiceDetailPage = () => {
           client_id,
           agency_id,
           payment_method_id,
-          project:projects(id, title)
+          project:projects(id, title),
+          container:project_containers(id, title)
         `)
         .eq('id', invoiceId)
         .single();
@@ -261,7 +263,7 @@ const InvoiceDetailPage = () => {
           full_name: invoice.client?.full_name || null,
           email: invoice.client?.email || '',
         },
-        project: invoice.project ? { title: invoice.project.title } : null,
+        project: { title: invoice.container?.title || invoice.project?.title || 'Project' },
         paymentMethod: invoice.payment_method ? {
           name: invoice.payment_method.name,
           details: invoice.payment_method.details,
@@ -354,7 +356,7 @@ const InvoiceDetailPage = () => {
                 <div>
                   <h1 className="text-xl font-bold text-foreground">{invoice.agency?.name}</h1>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {invoice.project?.title}
+                    {invoice.container?.title || invoice.project?.title}
                   </p>
                 </div>
               </div>
