@@ -380,7 +380,7 @@ const AdminInvoices = () => {
                       <div className="flex items-start justify-between">
                         <div className="min-w-0 flex-1">
                           <p className="font-medium text-foreground truncate">
-                            {invoice.invoice_number || invoice.project?.title || 'Unknown Project'}
+                            {invoice.invoice_number || invoice.container?.title || invoice.project?.title || 'Unknown Project'}
                           </p>
                           <p className="text-sm text-muted-foreground truncate">
                             {invoice.client?.full_name || invoice.client?.email || 'Unknown'}
