@@ -90,6 +90,7 @@ export type Database = {
           full_name: string | null
           id: string
           invited_by: string
+          metadata: Json
           role: Database["public"]["Enums"]["app_role"]
         }
         Insert: {
@@ -101,6 +102,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           invited_by: string
+          metadata?: Json
           role: Database["public"]["Enums"]["app_role"]
         }
         Update: {
@@ -112,6 +114,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           invited_by?: string
+          metadata?: Json
           role?: Database["public"]["Enums"]["app_role"]
         }
         Relationships: [
