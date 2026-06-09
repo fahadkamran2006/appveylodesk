@@ -348,6 +348,12 @@ const AdminTeam = () => {
         onSuccess={fetchTeamData}
       />
 
+      <InviteStaffModal
+        open={inviteStaffOpen}
+        onOpenChange={setInviteStaffOpen}
+        onSuccess={fetchTeamData}
+      />
+
 
       {/* Edit Editor Modal */}
       <EditEditorModal
