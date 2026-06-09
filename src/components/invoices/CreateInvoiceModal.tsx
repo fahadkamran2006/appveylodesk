@@ -261,7 +261,7 @@ export const CreateInvoiceModal = ({
             full_name: clientProfile?.full_name || null,
             email: clientProfile?.email || '',
           },
-          project: { title: project.title },
+          project: { title: container.title },
           paymentMethod: paymentMethodData ? {
             name: paymentMethodData.name,
             details: paymentMethodData.details,
