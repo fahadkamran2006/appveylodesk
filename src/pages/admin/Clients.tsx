@@ -253,7 +253,7 @@ const AdminClients = () => {
             <div className="flex items-center justify-center h-64">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
-          ) : clients.length === 0 && pendingInvitations.length === 0 ? (
+          ) : clients.length === 0 && pendingInvitations.length === 0 && managedClients.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 text-center">
               <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6">
                 <Users className="w-8 h-8 text-primary" />
@@ -337,6 +337,76 @@ const AdminClients = () => {
                           onExpand={handleExpandClient}
                           onRemove={handleRemoveClient}
                         />
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Manual (Managed) Clients */}
+              {managedClients.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <Users className="w-5 h-5 text-muted-foreground" />
+                    <h2 className="text-lg font-semibold text-foreground">
+                      Manual Clients ({managedClients.length})
+                    </h2>
+                    <Badge variant="outline" className="text-xs">No dashboard access</Badge>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {managedClients.map((mc) => {
+                      const initials = (mc.full_name || mc.email)
+                        .split(' ').map(s => s[0]).slice(0, 2).join('').toUpperCase();
+                      const invited = !!mc.invitation_id;
+                      return (
+                        <Card key={mc.id} className="p-5 glass-card border-border/50 hover:border-primary/40 transition">
+                          <div className="flex items-start gap-3 mb-3">
+                            <Avatar className="h-12 w-12">
+                              <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                                {initials}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-semibold text-foreground truncate">
+                                {mc.full_name || mc.email}
+                              </div>
+                              <div className="text-xs text-muted-foreground flex items-center gap-1 truncate">
+                                <Mail className="w-3 h-3 shrink-0" /> {mc.email}
+                              </div>
+                            </div>
+                            {invited && (
+                              <Badge variant="secondary" className="text-xs shrink-0">Invited</Badge>
+                            )}
+                          </div>
+                          {(mc.company || mc.phone) && (
+                            <div className="space-y-1 text-xs text-muted-foreground mb-3">
+                              {mc.company && <div className="flex items-center gap-1"><Building2 className="w-3 h-3" />{mc.company}</div>}
+                              {mc.phone && <div className="flex items-center gap-1"><Phone className="w-3 h-3" />{mc.phone}</div>}
+                            </div>
+                          )}
+                          {mc.notes && (
+                            <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{mc.notes}</p>
+                          )}
+                          <div className="flex gap-2 pt-2 border-t border-border/40">
+                            <Button
+                              size="sm"
+                              className="flex-1 bg-primary hover:bg-primary/90"
+                              onClick={() => setActivateClient(mc)}
+                              disabled={invited}
+                            >
+                              <KeyRound className="w-3.5 h-3.5 mr-1.5" />
+                              {invited ? 'Invite Sent' : 'Give Access'}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => setDeleteManaged(mc)}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        </Card>
                       );
                     })}
                   </div>
