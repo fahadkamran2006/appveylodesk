@@ -257,7 +257,19 @@ const AdminTeam = () => {
                 </section>
               )}
 
+              {/* Staff Members */}
+              {agencyId && (
+                <section>
+                  <div className="flex items-center gap-2 mb-4">
+                    <Shield className="w-5 h-5 text-muted-foreground" />
+                    <h2 className="text-lg font-semibold text-foreground">Staff Members</h2>
+                  </div>
+                  <StaffMembersList agencyId={agencyId} />
+                </section>
+              )}
+
               {/* Pending Invitations */}
+
               {pendingInvitations.length > 0 && (
                 <section>
                   <div className="flex items-center gap-2 mb-4">
