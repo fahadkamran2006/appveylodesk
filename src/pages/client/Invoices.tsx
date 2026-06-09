@@ -26,6 +26,7 @@ interface Invoice {
   created_at: string;
   payment_proof_url: string | null;
   project: { id: string; title: string } | null;
+  container: { id: string; title: string } | null;
 }
 
 const ClientInvoices = () => {
