@@ -297,7 +297,7 @@ const ClientInvoices = () => {
           <DialogHeader>
             <DialogTitle>Upload Payment Proof</DialogTitle>
             <DialogDescription>
-              Upload a screenshot or document showing your payment of ${selectedInvoice?.amount.toLocaleString()} for {selectedInvoice?.project?.title}.
+              Upload a screenshot or document showing your payment of ${selectedInvoice?.amount.toLocaleString()} for {selectedInvoice?.container?.title || selectedInvoice?.project?.title}.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleUploadProof} className="space-y-4">
