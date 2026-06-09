@@ -43,14 +43,22 @@ export function DashboardLayout({ role, children, className, hideHeader = false 
       </div>
 
       {/* Main Content */}
-      <main className={cn(
-        "flex-1 overflow-auto",
-        // Padding adjustments for mobile vs desktop
-        "p-4 md:p-8",
-        // Ensure content doesn't get cut off by bottom nav on mobile
-        "pb-20 md:pb-8",
-        className
-      )}>
+      <main
+        className={cn(
+          "flex-1 overflow-auto",
+          // Padding adjustments for mobile vs desktop
+          "p-4 md:p-8",
+          // Ensure content doesn't get cut off by bottom nav on mobile
+          "pb-20 md:pb-8",
+          className
+        )}
+        style={{
+          paddingTop: 'max(1rem, env(safe-area-inset-top))',
+          paddingLeft: 'max(1rem, env(safe-area-inset-left))',
+          paddingRight: 'max(1rem, env(safe-area-inset-right))',
+        }}
+      >
+
         {/* Dashboard Header with Greeting, Notification Bell, and Profile */}
         {!hideHeader && <DashboardHeader />}
         
