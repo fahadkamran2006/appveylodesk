@@ -69,17 +69,19 @@ const AdminClients = () => {
   const [activateClient, setActivateClient] = useState<ManagedClient | null>(null);
   const [deleteManaged, setDeleteManaged] = useState<ManagedClient | null>(null);
   const [selectedClient, setSelectedClient] = useState<ClientProfile | null>(null);
+  const [selectedManaged, setSelectedManaged] = useState<ManagedClient | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [removeModalOpen, setRemoveModalOpen] = useState(false);
   const [clientToRemove, setClientToRemove] = useState<ClientProfile | null>(null);
-  
-  
+
   // Get agency limits for client enforcement
   const { maxClients, currentClients, canAddClient, planTier, loading: limitsLoading } = useAgencyLimits();
 
   // Fetch real stats for all clients
   const clientIds = useMemo(() => clients.map(c => c.id), [clients]);
   const { stats: clientStats } = useClientStats(clientIds);
+  const managedIds = useMemo(() => managedClients.map(m => m.id), [managedClients]);
+  const { stats: managedStats } = useManagedClientStats(managedIds);
 
   useEffect(() => {
     if (!loading && !user) {
