@@ -85,7 +85,7 @@ const AdminClients = () => {
     if (!loading && !user) {
       navigate('/auth/login');
     }
-    if (!loading && userRole && userRole !== 'admin') {
+    if (!loading && userRole && userRole !== 'admin' && userRole !== 'staff') {
       navigate(userRole === 'client' ? '/client/dashboard' : '/editor/dashboard');
     }
   }, [user, userRole, loading, navigate]);
