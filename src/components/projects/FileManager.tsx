@@ -80,6 +80,16 @@ const isVideoFile = (fileName: string) => {
   return ['mp4', 'mov', 'avi', 'webm', 'mkv'].includes(ext || '');
 };
 
+const isImageFile = (fileName: string) => {
+  const ext = fileName.split('.').pop()?.toLowerCase();
+  return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'bmp'].includes(ext || '');
+};
+
+const isAudioFile = (fileName: string) => {
+  const ext = fileName.split('.').pop()?.toLowerCase();
+  return ['mp3', 'wav', 'aac', 'm4a', 'ogg', 'flac'].includes(ext || '');
+};
+
 export function FileManager({
   projectId,
   deliverables,
