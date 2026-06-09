@@ -44,6 +44,7 @@ interface Client {
   id: string;
   name: string;
   email: string;
+  isManaged?: boolean;
 }
 
 interface CreateProjectContainerModalProps {
@@ -102,21 +103,33 @@ export function CreateProjectContainerModal({
           .eq('agency_id', userRole.agency_id)
           .eq('role', 'client');
 
+        const realClients: Client[] = [];
         if (clientRoles && clientRoles.length > 0) {
           const clientIds = clientRoles.map((r) => r.user_id);
           const { data: clientProfiles } = await supabase
             .from('profiles')
             .select('id, full_name, email')
             .in('id', clientIds);
-
-          setClients(
-            (clientProfiles || []).map((p) => ({
-              id: p.id,
-              name: p.full_name || p.email,
-              email: p.email,
-            }))
-          );
+          for (const p of clientProfiles || []) {
+            realClients.push({ id: p.id, name: p.full_name || p.email, email: p.email });
+          }
         }
+
+        // Managed (non-activated) clients
+        const { data: managed } = await supabase
+          .from('managed_clients')
+          .select('id, full_name, email, activated_at')
+          .eq('agency_id', userRole.agency_id)
+          .is('activated_at', null);
+
+        const managedClients: Client[] = (managed || []).map((m) => ({
+          id: `mc:${m.id}`,
+          name: (m.full_name || m.email) + ' (Manual)',
+          email: m.email,
+          isManaged: true,
+        }));
+
+        setClients([...realClients, ...managedClients]);
       } catch (error) {
         console.error('Error fetching clients:', error);
       }
@@ -132,13 +145,16 @@ export function CreateProjectContainerModal({
 
     setIsSubmitting(true);
     try {
-      // Create project container in the new project_containers table
+      const isManaged = data.client_id.startsWith('mc:');
+      const realId = isManaged ? data.client_id.slice(3) : data.client_id;
+
       const { error } = await supabase
         .from('project_containers')
         .insert({
           title: data.title,
           description: data.description || null,
-          client_id: data.client_id,
+          client_id: isManaged ? null : realId,
+          managed_client_id: isManaged ? realId : null,
           agency_id: agencyId,
         });
 
