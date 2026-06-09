@@ -443,17 +443,17 @@ serve(async (req) => {
       case "sync_project_folders": {
         const { data: projects } = await admin
           .from("projects")
-          .select("id, title, client_id, container_id")
+          .select("id, title, client_id, managed_client_id, container_id")
           .eq("agency_id", agencyId);
 
         const { data: containers } = await admin
           .from("project_containers")
-          .select("id, title, client_id")
+          .select("id, title, client_id, managed_client_id")
           .eq("agency_id", agencyId);
-        const containerById = new Map<string, { id: string; title: string; client_id: string }>();
+        const containerById = new Map<string, { id: string; title: string; client_id: string | null; managed_client_id: string | null }>();
         for (const c of containers || []) containerById.set(c.id, c as any);
 
-        // Resolve client display names
+        // Resolve real client display names
         const clientIdSet = new Set<string>();
         for (const p of projects || []) if (p.client_id) clientIdSet.add(p.client_id);
         for (const c of containers || []) if (c.client_id) clientIdSet.add(c.client_id);
@@ -464,6 +464,19 @@ serve(async (req) => {
             .select("id, full_name, email")
             .in("id", Array.from(clientIdSet));
           for (const p of profs || []) names.set(p.id, p.full_name || p.email || "Client");
+        }
+
+        // Resolve managed client display names
+        const managedIdSet = new Set<string>();
+        for (const p of projects || []) if (p.managed_client_id) managedIdSet.add(p.managed_client_id);
+        for (const c of containers || []) if (c.managed_client_id) managedIdSet.add(c.managed_client_id);
+        const managedNames = new Map<string, string>();
+        if (managedIdSet.size) {
+          const { data: mcs } = await admin
+            .from("managed_clients")
+            .select("id, name, company")
+            .in("id", Array.from(managedIdSet));
+          for (const m of mcs || []) managedNames.set(m.id, m.name || m.company || "Client");
         }
 
         async function ensureClientRoot(clientId: string) {
@@ -483,6 +496,29 @@ serve(async (req) => {
               name: names.get(clientId) || "Client",
               kind: "client_root",
               client_id: clientId,
+              created_by: user.id,
+            })
+            .select("id").single();
+          return ins!.id as string;
+        }
+
+        async function ensureManagedClientRoot(managedId: string) {
+          const { data: existing } = await admin
+            .from("drive_folders")
+            .select("id")
+            .eq("agency_id", agencyId)
+            .eq("managed_client_id", managedId)
+            .eq("kind", "client_root")
+            .maybeSingle();
+          if (existing) return existing.id as string;
+          const { data: ins } = await admin
+            .from("drive_folders")
+            .insert({
+              agency_id: agencyId,
+              parent_id: null,
+              name: managedNames.get(managedId) || "Client",
+              kind: "client_root",
+              managed_client_id: managedId,
               created_by: user.id,
             })
             .select("id").single();
@@ -518,13 +554,20 @@ serve(async (req) => {
         }
 
         for (const p of projects || []) {
-          // Resolve target client (container.client_id wins, fall back to project.client_id)
+          // Resolve target client (container wins, fall back to project)
           const ctn = p.container_id ? containerById.get(p.container_id) : null;
           const clientId = ctn?.client_id || p.client_id;
+          const managedClientId = ctn?.managed_client_id || p.managed_client_id;
 
           let targetParentId: string | null = null;
           if (clientId) {
             const clientRootId = await ensureClientRoot(clientId);
+            targetParentId = clientRootId;
+            if (ctn) {
+              targetParentId = await ensureContainerRoot(ctn.id, clientRootId, ctn.title);
+            }
+          } else if (managedClientId) {
+            const clientRootId = await ensureManagedClientRoot(managedClientId);
             targetParentId = clientRootId;
             if (ctn) {
               targetParentId = await ensureContainerRoot(ctn.id, clientRootId, ctn.title);
@@ -555,6 +598,7 @@ serve(async (req) => {
 
         return json({ ok: true });
       }
+
 
       default:
         return json({ error: "Unknown action" }, 400);
