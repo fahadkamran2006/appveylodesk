@@ -398,7 +398,10 @@ const AdminProjects = () => {
   // Get project containers for a specific client (for ClientProjectsGrid)
   const clientProjectContainers = useMemo(() => {
     if (!selectedClientId || selectedClientId === 'all') return [];
-    
+    if (selectedClientId.startsWith('mc:')) {
+      const mid = selectedClientId.slice(3);
+      return projectContainers.filter(c => c.managed_client_id === mid);
+    }
     return projectContainers.filter(c => c.client_id === selectedClientId);
   }, [projectContainers, selectedClientId]);
 
