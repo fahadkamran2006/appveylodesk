@@ -137,6 +137,15 @@ const AdminProjects = () => {
         clientProfiles = data || [];
       }
 
+      // Fetch managed (manual, not-yet-activated) clients — treated as workspaces too
+      const { data: managedClientsData } = await supabase
+        .from('managed_clients')
+        .select('id, full_name, email')
+        .eq('agency_id', agencyId)
+        .is('converted_profile_id', null);
+      const managedClients = managedClientsData || [];
+
+
       // Fetch all editors in this agency
       const { data: editorRoles } = await supabase
         .from('user_roles')
