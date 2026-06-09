@@ -45,7 +45,8 @@ interface ProjectContainer {
   id: string;
   title: string;
   description?: string | null;
-  client_id: string;
+  client_id: string | null;
+  managed_client_id?: string | null;
   videoCount: number;
   activeCount: number;
   completedCount: number;
