@@ -21,10 +21,10 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
-import { useClientStats } from '@/hooks/usePersonStats';
+import { useClientStats, useManagedClientStats } from '@/hooks/usePersonStats';
 import { useAgencyLimits } from '@/hooks/useAgencyLimits';
 import { useToast } from '@/hooks/use-toast';
-import { Users, UserPlus, Loader2, Clock, AlertCircle, KeyRound, Trash2, Mail, Building2, Phone } from 'lucide-react';
+import { Users, UserPlus, Loader2, Clock, AlertCircle, KeyRound, Trash2 } from 'lucide-react';
 
 interface ClientProfile {
   id: string;
