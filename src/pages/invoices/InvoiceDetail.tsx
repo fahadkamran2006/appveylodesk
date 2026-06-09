@@ -112,7 +112,8 @@ const InvoiceDetailPage = () => {
           client_id,
           agency_id,
           payment_method_id,
-          project:projects(id, title)
+          project:projects(id, title),
+          container:project_containers(id, title)
         `)
         .eq('id', invoiceId)
         .single();
