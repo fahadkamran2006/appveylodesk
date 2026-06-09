@@ -198,9 +198,10 @@ export const CreateInvoiceModal = ({
       const { data: invoice, error: invoiceError } = await supabase
         .from('invoices')
         .insert({
-          project_id: selectedProject,
-          client_id: isManagedClient ? null : project.client_id,
-          managed_client_id: isManagedClient ? project.managed_client_id : null,
+          container_id: selectedContainer,
+          project_id: null,
+          client_id: isManagedClient ? null : container.client_id,
+          managed_client_id: isManagedClient ? container.managed_client_id : null,
           agency_id: agencyId,
           amount: total,
           subtotal: subtotal,
