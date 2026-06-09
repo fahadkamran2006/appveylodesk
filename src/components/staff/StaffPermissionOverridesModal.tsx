@@ -76,9 +76,9 @@ export function StaffPermissionOverridesModal({ open, onOpenChange, staffMember,
         ) : (
           <ScrollArea className="flex-1 pr-4">
             <div className="space-y-6">
-              {PERMISSION_GROUPS.map((group) => (
-                <div key={group.label}>
-                  <h3 className="font-semibold text-sm uppercase text-muted-foreground mb-2">{group.label}</h3>
+              {PERMISSION_CATALOG.map((group) => (
+                <div key={group.title}>
+                  <h3 className="font-semibold text-sm uppercase text-muted-foreground mb-2">{group.title}</h3>
                   <div className="space-y-2">
                     {group.permissions.map((p) => (
                       <div key={p.key} className="flex items-center gap-2">
