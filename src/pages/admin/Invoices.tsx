@@ -55,7 +55,7 @@ const AdminInvoices = () => {
   const { toast } = useToast();
   
   const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [containers, setContainers] = useState<Container[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [proofModalOpen, setProofModalOpen] = useState(false);
