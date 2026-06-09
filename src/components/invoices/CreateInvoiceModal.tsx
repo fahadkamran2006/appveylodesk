@@ -120,7 +120,7 @@ export const CreateInvoiceModal = ({
   const total = subtotal + taxAmount;
 
   const resetForm = () => {
-    setSelectedProject('');
+    setSelectedContainer('');
     setSelectedPaymentMethod('');
     setPaymentLink('');
     setDueDate('');
