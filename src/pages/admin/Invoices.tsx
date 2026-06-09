@@ -37,10 +37,11 @@ interface Invoice {
   created_at: string;
   payment_proof_url: string | null;
   project: { id: string; title: string } | null;
+  container: { id: string; title: string } | null;
   client: { id: string; full_name: string | null; email: string } | null;
 }
 
-interface Project {
+interface Container {
   id: string;
   title: string;
   client_id: string | null;
