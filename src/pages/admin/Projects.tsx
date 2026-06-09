@@ -345,14 +345,24 @@ const AdminProjects = () => {
     if (selectedProjectContainerId) {
       result = result.filter(p => p.container_id === selectedProjectContainerId);
     }
-    // Filter by client workspace (client projects view or global with client filter)
+    // Filter by client workspace (handles mc: managed prefix)
     else if (selectedClientId && selectedClientId !== 'all') {
-      result = result.filter(p => p.client_id === selectedClientId);
+      if (selectedClientId.startsWith('mc:')) {
+        const mid = selectedClientId.slice(3);
+        result = result.filter(p => p.managed_client_id === mid);
+      } else {
+        result = result.filter(p => p.client_id === selectedClientId);
+      }
     }
 
     // Additional filters for global view
     if (isGlobalView && clientFilter !== 'all') {
-      result = result.filter(p => p.client_id === clientFilter);
+      if (clientFilter.startsWith('mc:')) {
+        const mid = clientFilter.slice(3);
+        result = result.filter(p => p.managed_client_id === mid);
+      } else {
+        result = result.filter(p => p.client_id === clientFilter);
+      }
     }
 
     // Filter by status
