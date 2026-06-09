@@ -518,7 +518,7 @@ export const CreateInvoiceModal = ({
             </Button>
             <Button
               type="submit"
-              disabled={creating || !selectedProject || lineItems.every((i) => !i.description)}
+              disabled={creating || !selectedContainer || lineItems.every((i) => !i.description)}
             >
               {creating ? 'Creating...' : 'Create & Send Invoice'}
             </Button>
