@@ -194,6 +194,21 @@ export function PersonCard({
             <Pencil className="w-4 h-4" />
           </Button>
         )}
+        {secondaryAction && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0 text-muted-foreground hover:text-primary hover:bg-primary/10"
+            disabled={secondaryAction.disabled}
+            title={secondaryAction.label}
+            onClick={(e) => {
+              e.stopPropagation();
+              secondaryAction.onClick(id);
+            }}
+          >
+            {secondaryAction.icon ? <secondaryAction.icon className="w-4 h-4" /> : <KeyRound className="w-4 h-4" />}
+          </Button>
+        )}
         {onRemove && (
           <Button
             variant="ghost"
