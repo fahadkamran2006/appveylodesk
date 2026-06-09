@@ -509,7 +509,7 @@ const AdminInvoices = () => {
       <CreateInvoiceModal
         open={createModalOpen}
         onOpenChange={setCreateModalOpen}
-        projects={projects}
+        containers={containers}
         onSuccess={fetchData}
       />
 
