@@ -44,14 +44,14 @@ interface LineItem {
 interface CreateInvoiceModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  projects: Project[];
+  containers: Container[];
   onSuccess: () => void;
 }
 
 export const CreateInvoiceModal = ({
   open,
   onOpenChange,
-  projects,
+  containers,
   onSuccess,
 }: CreateInvoiceModalProps) => {
   const { user } = useAuth();
@@ -59,7 +59,7 @@ export const CreateInvoiceModal = ({
   const { methods: paymentMethods, loading: methodsLoading, getDefaultMethod } = usePaymentMethods();
   
   const [creating, setCreating] = useState(false);
-  const [selectedProject, setSelectedProject] = useState('');
+  const [selectedContainer, setSelectedContainer] = useState('');
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
   const [paymentLink, setPaymentLink] = useState('');
   const [dueDate, setDueDate] = useState('');
