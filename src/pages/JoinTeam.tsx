@@ -76,7 +76,7 @@ const JoinTeam = () => {
           return;
         }
 
-        if (invitation.role !== 'editor') {
+        if (invitation.role !== 'editor' && invitation.role !== 'staff') {
           setInviteError('This invitation is not for a team member role');
           setIsCheckingInvite(false);
           return;
@@ -126,7 +126,7 @@ const JoinTeam = () => {
         email: invitationData.email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/editor/dashboard`,
+          emailRedirectTo: `${window.location.origin}${invitationData.role === 'staff' ? '/staff/dashboard' : '/editor/dashboard'}`,
           data: {
             full_name: fullName,
           },
@@ -185,7 +185,7 @@ const JoinTeam = () => {
   };
 
   const handleGoToDashboard = () => {
-    navigate('/editor/dashboard');
+    navigate(invitationData?.role === 'staff' ? '/staff/dashboard' : '/editor/dashboard');
   };
 
   if (isCheckingInvite) {
