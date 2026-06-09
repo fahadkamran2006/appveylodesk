@@ -177,6 +177,7 @@ const AdminClients = () => {
   const handleExpandClient = (id: string) => {
     const client = clients.find((c) => c.id === id);
     if (client) {
+      setSelectedManaged(null);
       setSelectedClient(client);
       setDetailOpen(true);
     }
