@@ -78,10 +78,13 @@ export function PayrollPaymentModal({
 
       // Reset accumulated bonus after payment for salaried
       if (isSalaried && bonusAmount > 0) {
-        await supabase
-          .from('profiles')
-          .update({ accumulated_bonus: 0, updated_at: new Date().toISOString() })
-          .eq('id', editor.id);
+        await (supabase as any)
+          .from('employee_compensation')
+          .upsert({
+            user_id: editor.id,
+            accumulated_bonus: 0,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'user_id' });
       }
 
       toast({

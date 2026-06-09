@@ -114,10 +114,23 @@ const AdminPayroll = () => {
 
       const editorIds = editorRoles.map(r => r.user_id);
 
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, full_name, email, avatar_url, employment_type, monthly_salary, accumulated_bonus')
-        .in('id', editorIds);
+      const [{ data: profilesRaw }, { data: compsRaw }] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('id, full_name, email, avatar_url, employment_type')
+          .in('id', editorIds),
+        (supabase as any)
+          .from('employee_compensation')
+          .select('user_id, monthly_salary, accumulated_bonus')
+          .in('user_id', editorIds),
+      ]);
+      const compByUser = new Map<string, { monthly_salary: number | null; accumulated_bonus: number }>(
+        ((compsRaw as any[]) || []).map((c) => [c.user_id, { monthly_salary: c.monthly_salary, accumulated_bonus: c.accumulated_bonus ?? 0 }])
+      );
+      const profiles = ((profilesRaw as any[]) || []).map((p) => {
+        const c = compByUser.get(p.id);
+        return { ...p, monthly_salary: c?.monthly_salary ?? null, accumulated_bonus: c?.accumulated_bonus ?? 0 };
+      });
 
       const startOfMonth = new Date();
       startOfMonth.setDate(1);

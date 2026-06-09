@@ -103,11 +103,18 @@ const AdminTeam = () => {
       // Get profiles for editors
       if (editorRolesResult.data && editorRolesResult.data.length > 0) {
         const editorUserIds = editorRolesResult.data.map((r) => r.user_id);
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, full_name, email, avatar_url, created_at, employment_type, monthly_salary')
-          .in('id', editorUserIds);
-        setTeamMembers(profiles || []);
+        const [{ data: profiles }, { data: comps }] = await Promise.all([
+          supabase
+            .from('profiles')
+            .select('id, full_name, email, avatar_url, created_at, employment_type')
+            .in('id', editorUserIds),
+          (supabase as any)
+            .from('employee_compensation')
+            .select('user_id, monthly_salary')
+            .in('user_id', editorUserIds),
+        ]);
+        const compMap = new Map<string, number | null>(((comps as any[]) || []).map((c) => [c.user_id, c.monthly_salary]));
+        setTeamMembers(((profiles as any[]) || []).map((p) => ({ ...p, monthly_salary: compMap.get(p.id) ?? null })));
       } else {
         setTeamMembers([]);
       }

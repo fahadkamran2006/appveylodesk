@@ -72,14 +72,17 @@ const EditorEarnings = () => {
     if (!user) return;
     
     try {
-      // Fetch profile
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('employment_type, monthly_salary, accumulated_bonus')
-        .eq('id', user.id)
-        .maybeSingle();
+      // Fetch profile (employment_type) and compensation separately (RLS-protected)
+      const [{ data: profileBase }, { data: compRow }] = await Promise.all([
+        supabase.from('profiles').select('employment_type').eq('id', user.id).maybeSingle(),
+        (supabase as any).from('employee_compensation').select('monthly_salary, accumulated_bonus').eq('user_id', user.id).maybeSingle(),
+      ]);
 
-      setProfile(profileData as EditorProfile | null);
+      setProfile({
+        employment_type: (profileBase as any)?.employment_type ?? null,
+        monthly_salary: (compRow as any)?.monthly_salary ?? null,
+        accumulated_bonus: (compRow as any)?.accumulated_bonus ?? 0,
+      } as EditorProfile);
 
       // Fetch projects
       const { data: projectData, error } = await supabase

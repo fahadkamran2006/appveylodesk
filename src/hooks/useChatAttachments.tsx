@@ -64,14 +64,17 @@ export function useChatAttachments() {
 
       setUploadProgress(prev => ({ ...prev, progress: 80 }));
 
-      const { data: urlData } = supabase.storage
+      // Bucket is private; create a long-lived signed URL (1 year)
+      const { data: signed, error: signErr } = await supabase.storage
         .from('chat-attachments')
-        .getPublicUrl(data.path);
+        .createSignedUrl(data.path, 60 * 60 * 24 * 365);
+
+      if (signErr || !signed?.signedUrl) throw signErr ?? new Error('Failed to sign URL');
 
       setUploadProgress({ uploading: false, progress: 100, fileName: file.name });
 
       return {
-        url: urlData.publicUrl,
+        url: signed.signedUrl,
         type: getAttachmentType(file.type),
       };
     } catch (error: any) {
