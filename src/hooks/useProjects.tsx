@@ -313,11 +313,12 @@ export function useDashboardStats() {
         projectsResult,
         invoicesResult,
         clientsResult,
+        managedClientsResult,
         editorsResult,
       ] = await Promise.all([
         supabase
           .from('projects')
-          .select('id, status, client_id')
+          .select('id, status, client_id, managed_client_id')
           .eq('agency_id', agencyId),
         supabase
           .from('invoices')
@@ -328,6 +329,10 @@ export function useDashboardStats() {
           .select('user_id')
           .eq('agency_id', agencyId)
           .eq('role', 'client'),
+        supabase
+          .from('managed_clients')
+          .select('id')
+          .eq('agency_id', agencyId),
         supabase
           .from('user_roles')
           .select('user_id')
