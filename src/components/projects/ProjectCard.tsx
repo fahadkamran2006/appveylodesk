@@ -36,34 +36,38 @@ export function ProjectCard({
 
   return (
     <div
-      className={cn(
-        'glass-card rounded-lg p-4 cursor-pointer transition-all duration-200',
-        'hover:border-primary/30 hover:shadow-glow-sm',
-        'active:scale-[0.98]'
-      )}
       onClick={onClick}
+      className={cn(
+        'group relative rounded-2xl p-4 cursor-pointer overflow-hidden',
+        'bg-card/80 border border-border/60',
+        'transition-all duration-300',
+        'hover:border-primary/40 hover:-translate-y-0.5',
+        'hover:shadow-[0_12px_32px_-12px_rgba(75,75,225,0.35)]',
+        'active:scale-[0.99]'
+      )}
     >
-      {/* Title */}
-      <h4 className="font-medium text-foreground mb-2 line-clamp-2">{title}</h4>
-
-      {/* Client */}
+      {/* Client micro-label */}
       {clientName && (
-        <p className="text-sm text-muted-foreground mb-3 truncate">
+        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary/90 truncate mb-2">
           {clientName}
         </p>
       )}
 
-      {/* Footer */}
-      <div className="flex items-center justify-between">
-        {/* Due Date */}
+      {/* Title */}
+      <h4 className="font-semibold text-sm text-foreground leading-snug line-clamp-2 mb-4 group-hover:text-primary transition-colors">
+        {title}
+      </h4>
+
+      {/* Divider + Footer */}
+      <div className="flex items-center justify-between pt-3 border-t border-border/40">
         {dueDate ? (
           <div
             className={cn(
-              'flex items-center gap-1.5 text-xs',
+              'flex items-center gap-1.5 text-[11px] font-medium',
               isOverdue
                 ? 'text-destructive'
                 : isDueToday
-                ? 'text-warning'
+                ? 'text-amber-400'
                 : 'text-muted-foreground'
             )}
           >
@@ -72,7 +76,7 @@ export function ProjectCard({
             ) : (
               <Calendar className="w-3.5 h-3.5" />
             )}
-            <span className="font-medium">
+            <span>
               {isOverdue
                 ? 'Overdue'
                 : isDueToday
@@ -81,14 +85,13 @@ export function ProjectCard({
             </span>
           </div>
         ) : (
-          <span className="text-xs text-muted-foreground">No due date</span>
+          <span className="text-[11px] text-muted-foreground/70">No due date</span>
         )}
 
-        {/* Editor Avatar */}
         {editorName && (
-          <Avatar className="w-6 h-6 border border-border/50">
+          <Avatar className="w-6 h-6 ring-2 ring-card">
             <AvatarImage src={editorAvatar || undefined} alt={editorName} />
-            <AvatarFallback className="bg-primary/20 text-primary text-[10px] font-medium">
+            <AvatarFallback className="bg-primary/20 text-primary text-[10px] font-semibold">
               {editorInitials}
             </AvatarFallback>
           </Avatar>
