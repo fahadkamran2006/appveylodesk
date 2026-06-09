@@ -969,11 +969,12 @@ export type Database = {
         Row: {
           agency_id: string
           amount: number
-          client_id: string
+          client_id: string | null
           created_at: string
           due_date: string | null
           id: string
           invoice_number: string | null
+          managed_client_id: string | null
           notes: string | null
           paid_at: string | null
           payment_link: string | null
@@ -990,11 +991,12 @@ export type Database = {
         Insert: {
           agency_id: string
           amount: number
-          client_id: string
+          client_id?: string | null
           created_at?: string
           due_date?: string | null
           id?: string
           invoice_number?: string | null
+          managed_client_id?: string | null
           notes?: string | null
           paid_at?: string | null
           payment_link?: string | null
@@ -1011,11 +1013,12 @@ export type Database = {
         Update: {
           agency_id?: string
           amount?: number
-          client_id?: string
+          client_id?: string | null
           created_at?: string
           due_date?: string | null
           id?: string
           invoice_number?: string | null
+          managed_client_id?: string | null
           notes?: string | null
           paid_at?: string | null
           payment_link?: string | null
@@ -1035,6 +1038,13 @@ export type Database = {
             columns: ["agency_id"]
             isOneToOne: false
             referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_managed_client_id_fkey"
+            columns: ["managed_client_id"]
+            isOneToOne: false
+            referencedRelation: "managed_clients"
             referencedColumns: ["id"]
           },
           {
@@ -1213,6 +1223,69 @@ export type Database = {
             columns: ["editor_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      managed_clients: {
+        Row: {
+          activated_at: string | null
+          agency_id: string
+          company: string | null
+          converted_profile_id: string | null
+          created_at: string
+          created_by: string
+          email: string
+          full_name: string | null
+          id: string
+          invitation_id: string | null
+          notes: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          activated_at?: string | null
+          agency_id: string
+          company?: string | null
+          converted_profile_id?: string | null
+          created_at?: string
+          created_by: string
+          email: string
+          full_name?: string | null
+          id?: string
+          invitation_id?: string | null
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          activated_at?: string | null
+          agency_id?: string
+          company?: string | null
+          converted_profile_id?: string | null
+          created_at?: string
+          created_by?: string
+          email?: string
+          full_name?: string | null
+          id?: string
+          invitation_id?: string | null
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "managed_clients_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "managed_clients_invitation_id_fkey"
+            columns: ["invitation_id"]
+            isOneToOne: false
+            referencedRelation: "agency_invitations"
             referencedColumns: ["id"]
           },
         ]
@@ -1683,6 +1756,7 @@ export type Database = {
           due_date: string | null
           editor_rate: number | null
           id: string
+          managed_client_id: string | null
           reference_links: string | null
           status: Database["public"]["Enums"]["project_status"]
           title: string
@@ -1699,6 +1773,7 @@ export type Database = {
           due_date?: string | null
           editor_rate?: number | null
           id?: string
+          managed_client_id?: string | null
           reference_links?: string | null
           status?: Database["public"]["Enums"]["project_status"]
           title: string
@@ -1715,6 +1790,7 @@ export type Database = {
           due_date?: string | null
           editor_rate?: number | null
           id?: string
+          managed_client_id?: string | null
           reference_links?: string | null
           status?: Database["public"]["Enums"]["project_status"]
           title?: string
@@ -1733,6 +1809,13 @@ export type Database = {
             columns: ["agency_id"]
             isOneToOne: false
             referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_managed_client_id_fkey"
+            columns: ["managed_client_id"]
+            isOneToOne: false
+            referencedRelation: "managed_clients"
             referencedColumns: ["id"]
           },
         ]
@@ -1988,6 +2071,10 @@ export type Database = {
           out_agency_id: string
           out_role: Database["public"]["Enums"]["app_role"]
         }[]
+      }
+      activate_managed_client: {
+        Args: { _managed_id: string }
+        Returns: string
       }
       add_project_channel_participant: {
         Args: { _project_id: string; _user_id: string }
