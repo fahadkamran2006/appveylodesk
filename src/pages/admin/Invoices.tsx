@@ -446,7 +446,7 @@ const AdminInvoices = () => {
                           {invoice.invoice_number || '-'}
                         </td>
                         <td className="p-4 text-muted-foreground">
-                          {invoice.project?.title || 'Unknown Project'}
+                          {invoice.container?.title || invoice.project?.title || 'Unknown Project'}
                         </td>
                         <td className="p-4 text-muted-foreground">
                           {invoice.client?.full_name || invoice.client?.email || 'Unknown'}
