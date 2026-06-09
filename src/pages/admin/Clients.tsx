@@ -407,26 +407,62 @@ const AdminClients = () => {
       {/* Detail Sheet */}
       <PersonDetailSheet
         open={detailOpen}
-        onOpenChange={setDetailOpen}
+        onOpenChange={(o) => {
+          setDetailOpen(o);
+          if (!o) { setSelectedClient(null); setSelectedManaged(null); }
+        }}
         person={
-          selectedClient
+          selectedManaged
             ? {
-                id: selectedClient.id,
-                name: selectedClient.full_name || '',
-                email: selectedClient.email,
-                avatarUrl: selectedClient.avatar_url,
+                id: selectedManaged.id,
+                name: selectedManaged.full_name || '',
+                email: selectedManaged.email,
+                avatarUrl: null,
                 role: 'client',
-                createdAt: selectedClient.created_at,
+                createdAt: selectedManaged.created_at,
+                company: selectedManaged.company,
+                phone: selectedManaged.phone,
+                notes: selectedManaged.notes,
               }
-            : null
+            : selectedClient
+              ? {
+                  id: selectedClient.id,
+                  name: selectedClient.full_name || '',
+                  email: selectedClient.email,
+                  avatarUrl: selectedClient.avatar_url,
+                  role: 'client',
+                  createdAt: selectedClient.created_at,
+                }
+              : null
         }
         variant="client"
-        stats={selectedClient ? {
-          totalProjects: clientStats[selectedClient.id]?.projects.length ?? 0,
-          totalSpent: clientStats[selectedClient.id]?.totalSpent ?? 0,
+        isManagedClient={!!selectedManaged}
+        onActivate={selectedManaged ? () => {
+          setActivateClient(selectedManaged);
+          setDetailOpen(false);
         } : undefined}
-        projects={selectedClient ? clientStats[selectedClient.id]?.projects : undefined}
+        stats={
+          selectedManaged
+            ? {
+                totalProjects: managedStats[selectedManaged.id]?.projects.length ?? 0,
+                totalSpent: managedStats[selectedManaged.id]?.totalSpent ?? 0,
+              }
+            : selectedClient
+              ? {
+                  totalProjects: clientStats[selectedClient.id]?.projects.length ?? 0,
+                  totalSpent: clientStats[selectedClient.id]?.totalSpent ?? 0,
+                }
+              : undefined
+        }
+        projects={
+          selectedManaged
+            ? managedStats[selectedManaged.id]?.projects
+            : selectedClient
+              ? clientStats[selectedClient.id]?.projects
+              : undefined
+        }
       />
+
 
       {/* Remove Client Modal */}
       <RemoveMemberModal
