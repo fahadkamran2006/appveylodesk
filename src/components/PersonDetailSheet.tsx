@@ -11,7 +11,8 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AttendanceReport } from '@/components/admin/AttendanceReport';
 import { LeaveManagement } from '@/components/admin/LeaveManagement';
-import { Mail, Calendar, FolderKanban, DollarSign, CheckCircle } from 'lucide-react';
+import { Mail, Calendar, FolderKanban, DollarSign, CheckCircle, KeyRound, Building2, Phone } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface PersonDetailSheetProps {
   open: boolean;
@@ -25,8 +26,13 @@ interface PersonDetailSheetProps {
     createdAt?: string;
     employmentType?: 'salaried' | 'freelance';
     agencyId?: string;
+    company?: string | null;
+    phone?: string | null;
+    notes?: string | null;
   } | null;
   variant?: 'client' | 'team';
+  isManagedClient?: boolean;
+  onActivate?: () => void;
   stats?: {
     totalProjects?: number;
     totalSpent?: number;
