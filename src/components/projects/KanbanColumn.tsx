@@ -26,57 +26,17 @@ interface KanbanColumnProps {
   onProjectClick?: (project: Project) => void;
 }
 
-const columnStyles: Record<ProjectStatus, { bg: string; border: string; dot: string }> = {
-  request: {
-    bg: 'bg-warning/5',
-    border: 'border-warning/20',
-    dot: 'bg-warning',
-  },
-  proposal: {
-    bg: 'bg-purple-500/5',
-    border: 'border-purple-500/20',
-    dot: 'bg-purple-500',
-  },
-  backlog: {
-    bg: 'bg-muted/30',
-    border: 'border-muted-foreground/20',
-    dot: 'bg-muted-foreground',
-  },
-  in_progress: {
-    bg: 'bg-primary/5',
-    border: 'border-primary/20',
-    dot: 'bg-primary',
-  },
-  review: {
-    bg: 'bg-warning/5',
-    border: 'border-warning/20',
-    dot: 'bg-warning',
-  },
-  quality_check: {
-    bg: 'bg-indigo-500/5',
-    border: 'border-indigo-500/20',
-    dot: 'bg-indigo-500',
-  },
-  done: {
-    bg: 'bg-success/5',
-    border: 'border-success/20',
-    dot: 'bg-success',
-  },
-  paid: {
-    bg: 'bg-emerald-500/5',
-    border: 'border-emerald-500/20',
-    dot: 'bg-emerald-500',
-  },
-  archived: {
-    bg: 'bg-slate-500/5',
-    border: 'border-slate-500/20',
-    dot: 'bg-slate-500',
-  },
-  cancelled: {
-    bg: 'bg-destructive/5',
-    border: 'border-destructive/20',
-    dot: 'bg-destructive',
-  },
+const columnStyles: Record<ProjectStatus, { dot: string; chip: string; glow: string }> = {
+  request:       { dot: 'bg-amber-500',   chip: 'bg-amber-500/10 text-amber-400',     glow: 'shadow-[0_0_10px_rgba(245,158,11,0.45)]' },
+  proposal:      { dot: 'bg-purple-500',  chip: 'bg-purple-500/10 text-purple-300',   glow: 'shadow-[0_0_10px_rgba(168,85,247,0.45)]' },
+  backlog:       { dot: 'bg-slate-500',   chip: 'bg-white/5 text-muted-foreground',   glow: '' },
+  in_progress:   { dot: 'bg-primary',     chip: 'bg-primary/15 text-primary',         glow: 'shadow-[0_0_10px_rgba(75,75,225,0.45)]' },
+  review:        { dot: 'bg-amber-400',   chip: 'bg-amber-500/10 text-amber-400',     glow: 'shadow-[0_0_10px_rgba(251,191,36,0.45)]' },
+  quality_check: { dot: 'bg-cyan-400',    chip: 'bg-cyan-500/10 text-cyan-300',       glow: 'shadow-[0_0_10px_rgba(34,211,238,0.45)]' },
+  done:          { dot: 'bg-emerald-500', chip: 'bg-emerald-500/10 text-emerald-400', glow: '' },
+  paid:          { dot: 'bg-emerald-400', chip: 'bg-emerald-500/10 text-emerald-400', glow: '' },
+  archived:      { dot: 'bg-slate-500',   chip: 'bg-white/5 text-muted-foreground',   glow: '' },
+  cancelled:     { dot: 'bg-destructive', chip: 'bg-destructive/10 text-destructive', glow: '' },
 };
 
 export function KanbanColumn({
@@ -86,21 +46,19 @@ export function KanbanColumn({
   onProjectClick,
 }: KanbanColumnProps) {
   const styles = columnStyles[id];
+  const isEmpty = projects.length === 0;
 
   return (
-    <div className="flex flex-col w-80 shrink-0">
-      {/* Column Header */}
-      <div
-        className={cn(
-          'flex items-center gap-2 px-3 py-2 rounded-lg mb-3',
-          styles.bg,
-          'border',
-          styles.border
-        )}
-      >
-        <div className={cn('w-2 h-2 rounded-full', styles.dot)} />
-        <h3 className="font-medium text-foreground text-sm">{title}</h3>
-        <span className="text-xs text-muted-foreground ml-auto">
+    <div className="flex flex-col w-[280px] md:w-[320px] shrink-0 gap-3">
+      {/* Column Header — minimal, airy */}
+      <div className="flex items-center justify-between px-2 h-8">
+        <div className="flex items-center gap-2.5">
+          <div className={cn('w-2 h-2 rounded-full', styles.dot, styles.glow)} />
+          <h3 className="text-[11px] font-bold text-foreground/80 uppercase tracking-[0.14em]">
+            {title}
+          </h3>
+        </div>
+        <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-md', styles.chip)}>
           {projects.length}
         </span>
       </div>
@@ -112,12 +70,21 @@ export function KanbanColumn({
             ref={provided.innerRef}
             {...provided.droppableProps}
             className={cn(
-              'flex-1 min-h-[200px] p-2 rounded-lg transition-colors space-y-3',
+              'flex-1 min-h-[420px] p-3 rounded-2xl transition-all space-y-3',
               snapshot.isDraggingOver
-                ? 'bg-primary/10 border-2 border-dashed border-primary/30'
-                : 'bg-surface-elevated/30'
+                ? 'bg-primary/[0.06] border border-dashed border-primary/40'
+                : isEmpty
+                  ? 'bg-white/[0.015] border border-dashed border-white/[0.06]'
+                  : 'bg-white/[0.02] border border-white/[0.04]'
             )}
           >
+            {isEmpty && !snapshot.isDraggingOver && (
+              <div className="h-full min-h-[380px] flex items-center justify-center">
+                <p className="text-[11px] text-muted-foreground/60 font-medium italic">
+                  Drop projects here
+                </p>
+              </div>
+            )}
             {projects.map((project, index) => (
               <Draggable key={project.id} draggableId={project.id} index={index}>
                 {(provided, snapshot) => (
@@ -126,7 +93,8 @@ export function KanbanColumn({
                     {...provided.draggableProps}
                     {...provided.dragHandleProps}
                     className={cn(
-                      snapshot.isDragging && 'rotate-2 shadow-lg'
+                      'transition-transform',
+                      snapshot.isDragging && 'rotate-1 scale-[1.02]'
                     )}
                   >
                     <ProjectCard
