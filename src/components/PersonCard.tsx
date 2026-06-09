@@ -37,6 +37,8 @@ export function PersonCard({
   avatarUrl,
   role,
   employmentType,
+  badgeLabel,
+  secondaryAction,
   stats,
   onExpand,
   onRemove,
