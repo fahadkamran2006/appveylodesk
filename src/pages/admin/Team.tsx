@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { PersonCard } from '@/components/PersonCard';
 import { InviteUserModal } from '@/components/InviteUserModal';
 import { InviteStaffModal } from '@/components/staff/InviteStaffModal';
+import { StaffMembersList } from '@/components/staff/StaffMembersList';
 import { PendingInvitationCard } from '@/components/PendingInvitationCard';
 import { EditorLeaderboard } from '@/components/admin/EditorLeaderboard';
 import { TodayAttendance } from '@/components/admin/TodayAttendance';
@@ -15,7 +16,7 @@ import { RemoveMemberModal } from '@/components/RemoveMemberModal';
 import { EditEditorModal } from '@/components/admin/EditEditorModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useEditorStats, type TimePeriod } from '@/hooks/usePersonStats';
-import { UsersRound, UserPlus, Loader2, Clock, CalendarDays, Activity, FileBarChart } from 'lucide-react';
+import { UsersRound, UserPlus, Loader2, Clock, CalendarDays, Activity, FileBarChart, Shield } from 'lucide-react';
 import { SendAttendanceReport } from '@/components/admin/SendAttendanceReport';
 import { LeaveManagement } from '@/components/admin/LeaveManagement';
 import type { Database } from '@/integrations/supabase/types';
@@ -65,7 +66,7 @@ const AdminTeam = () => {
     if (!loading && !user) {
       navigate('/auth/login');
     }
-    if (!loading && userRole && userRole !== 'admin') {
+    if (!loading && userRole && userRole !== 'admin' && userRole !== 'staff') {
       navigate(userRole === 'client' ? '/client/dashboard' : '/editor/dashboard');
     }
   }, [user, userRole, loading, navigate]);
@@ -256,7 +257,19 @@ const AdminTeam = () => {
                 </section>
               )}
 
+              {/* Staff Members */}
+              {agencyId && (
+                <section>
+                  <div className="flex items-center gap-2 mb-4">
+                    <Shield className="w-5 h-5 text-muted-foreground" />
+                    <h2 className="text-lg font-semibold text-foreground">Staff Members</h2>
+                  </div>
+                  <StaffMembersList agencyId={agencyId} />
+                </section>
+              )}
+
               {/* Pending Invitations */}
+
               {pendingInvitations.length > 0 && (
                 <section>
                   <div className="flex items-center gap-2 mb-4">
