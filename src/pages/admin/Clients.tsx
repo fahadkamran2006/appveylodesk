@@ -5,16 +5,26 @@ import { useAuth } from '@/hooks/useAuth';
 import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { PersonCard } from '@/components/PersonCard';
 import { PersonDetailSheet } from '@/components/PersonDetailSheet';
 import { InviteUserModal } from '@/components/InviteUserModal';
+import { AddManualClientModal } from '@/components/clients/AddManualClientModal';
+import { ActivateClientModal } from '@/components/clients/ActivateClientModal';
 import { PendingInvitationCard } from '@/components/PendingInvitationCard';
 import { RemoveMemberModal } from '@/components/RemoveMemberModal';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useClientStats } from '@/hooks/usePersonStats';
 import { useAgencyLimits } from '@/hooks/useAgencyLimits';
-import { Users, UserPlus, Loader2, Clock, AlertCircle } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { Users, UserPlus, Loader2, Clock, AlertCircle, KeyRound, Trash2, Mail, Building2, Phone } from 'lucide-react';
 
 interface ClientProfile {
   id: string;
@@ -22,6 +32,18 @@ interface ClientProfile {
   email: string;
   avatar_url: string | null;
   created_at: string;
+}
+
+interface ManagedClient {
+  id: string;
+  full_name: string | null;
+  email: string;
+  company: string | null;
+  phone: string | null;
+  notes: string | null;
+  created_at: string;
+  invitation_id: string | null;
+  activated_at: string | null;
 }
 
 interface PendingInvitation {
@@ -36,15 +58,21 @@ interface PendingInvitation {
 const AdminClients = () => {
   const { user, userRole, loading } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [clients, setClients] = useState<ClientProfile[]>([]);
+  const [managedClients, setManagedClients] = useState<ManagedClient[]>([]);
   const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([]);
   const [agencyName, setAgencyName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [addManualOpen, setAddManualOpen] = useState(false);
+  const [activateClient, setActivateClient] = useState<ManagedClient | null>(null);
+  const [deleteManaged, setDeleteManaged] = useState<ManagedClient | null>(null);
   const [selectedClient, setSelectedClient] = useState<ClientProfile | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [removeModalOpen, setRemoveModalOpen] = useState(false);
   const [clientToRemove, setClientToRemove] = useState<ClientProfile | null>(null);
+  
   
   // Get agency limits for client enforcement
   const { maxClients, currentClients, canAddClient, planTier, loading: limitsLoading } = useAgencyLimits();
@@ -121,6 +149,16 @@ const AdminClients = () => {
         .order('created_at', { ascending: false });
 
       setPendingInvitations((invitations as PendingInvitation[]) || []);
+
+      // Get managed (manual, not-yet-activated) clients
+      const { data: managed } = await supabase
+        .from('managed_clients')
+        .select('id, full_name, email, company, phone, notes, created_at, invitation_id, activated_at')
+        .eq('agency_id', agencyId)
+        .is('converted_profile_id', null)
+        .order('created_at', { ascending: false });
+
+      setManagedClients((managed as ManagedClient[]) || []);
     } catch (error) {
       console.error('Error fetching clients:', error);
     } finally {
