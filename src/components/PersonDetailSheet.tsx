@@ -124,13 +124,28 @@ export function PersonDetailSheet({
                 <Mail className="w-4 h-4 text-muted-foreground" />
                 <span className="text-foreground">{person.email}</span>
               </div>
+              {person.phone && (
+                <div className="flex items-center gap-3 text-sm">
+                  <Phone className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-foreground">{person.phone}</span>
+                </div>
+              )}
+              {person.company && (
+                <div className="flex items-center gap-3 text-sm">
+                  <Building2 className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-foreground">{person.company}</span>
+                </div>
+              )}
               {person.createdAt && (
                 <div className="flex items-center gap-3 text-sm">
                   <Calendar className="w-4 h-4 text-muted-foreground" />
                   <span className="text-foreground">
-                    Joined {new Date(person.createdAt).toLocaleDateString()}
+                    {isManagedClient ? 'Added' : 'Joined'} {new Date(person.createdAt).toLocaleDateString()}
                   </span>
                 </div>
+              )}
+              {person.notes && (
+                <p className="text-sm text-muted-foreground mt-2 pl-7">{person.notes}</p>
               )}
             </div>
           </div>
