@@ -56,6 +56,8 @@ export function PersonDetailSheet({
   onOpenChange,
   person,
   variant = 'client',
+  isManagedClient = false,
+  onActivate,
   stats,
   projects = [],
 }: PersonDetailSheetProps) {
