@@ -463,6 +463,52 @@ const AdminClients = () => {
         onSuccess={fetchClients}
       />
       <MobileBottomNav role="admin" />
+
+      {/* Add Manual Client Modal */}
+      <AddManualClientModal
+        open={addManualOpen}
+        onOpenChange={setAddManualOpen}
+        onSuccess={fetchClients}
+      />
+
+      {/* Activate Managed Client */}
+      <ActivateClientModal
+        open={!!activateClient}
+        onOpenChange={(o) => !o && setActivateClient(null)}
+        client={activateClient}
+        onSuccess={fetchClients}
+      />
+
+      {/* Delete Managed Client confirm */}
+      <AlertDialog open={!!deleteManaged} onOpenChange={(o) => !o && setDeleteManaged(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete manual client?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes {deleteManaged?.full_name || deleteManaged?.email} from your client list. Their projects and invoices will be unlinked but kept. This can't be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                if (!deleteManaged) return;
+                const { error } = await supabase.from('managed_clients').delete().eq('id', deleteManaged.id);
+                if (error) {
+                  toast({ title: 'Error', description: error.message, variant: 'destructive' });
+                } else {
+                  toast({ title: 'Client deleted' });
+                  fetchClients();
+                }
+                setDeleteManaged(null);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };
