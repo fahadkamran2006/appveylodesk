@@ -474,9 +474,9 @@ serve(async (req) => {
         if (managedIdSet.size) {
           const { data: mcs } = await admin
             .from("managed_clients")
-            .select("id, name, company")
+            .select("id, full_name, company, email")
             .in("id", Array.from(managedIdSet));
-          for (const m of mcs || []) managedNames.set(m.id, m.name || m.company || "Client");
+          for (const m of mcs || []) managedNames.set(m.id, (m as any).full_name || (m as any).company || (m as any).email || "Client");
         }
 
         async function ensureClientRoot(clientId: string) {
