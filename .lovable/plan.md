@@ -1,135 +1,59 @@
 
-# Drive-style Storage Rebuild
+## Goal
 
-Turn the Storage page into a true Google-Drive-like file manager: browsable folders, custom user folders, previews, grid/list views, and public share links that let outsiders download from or upload into a folder without an account.
+Let admins create client profiles directly (no invite required), use them like real clients (projects, invoices, notes), email invoices to them, and later click **Give Dashboard Access** to convert them into a real account via the existing invite flow.
 
-## 1. Data model (new tables)
+## Why a new table
 
-```text
-drive_folders
-  id, agency_id, parent_id (nullable, self-FK), name,
-  created_by, owner_role, kind ('custom' | 'project_root'),
-  project_id (nullable — links to existing project for unification),
-  created_at, updated_at
-```
+`profiles.id` is a foreign key to `auth.users`, so we can't put a manual client there until they sign up. We'll add a separate `managed_clients` table for unactivated client records, and let `projects`/`invoices` reference either a real client profile **or** a managed client.
 
-- A virtual root per agency holds: each project as a `project_root` folder + any `custom` folders.
-- `project_root` folders are auto-synced from existing `projects` (read-only name/icon).
-- Custom folders can be nested.
+## Database changes
 
-```text
-drive_files            -- new files uploaded directly into Drive
-  id, agency_id, folder_id, file_name, file_url, file_size,
-  mime_type, uploaded_by (nullable for anon), uploader_label,
-  source ('user' | 'public_link'), share_link_id (nullable),
-  created_at
-```
+1. **New table `managed_clients`** with: `agency_id`, `email`, `full_name`, `company`, `phone`, `notes`, `created_by`, `activated_at`, `invitation_id` (link to the `agency_invitations` row once activation is triggered), `converted_profile_id` (set after the client accepts).
+   - RLS: admins of the same agency can do everything; service_role full access.
+   - Unique `(agency_id, lower(email))` so duplicates inside an agency are blocked.
+   - **Does NOT count** toward `agencies.max_clients`. The existing `check_client_limit` keeps counting only real `user_roles` rows.
 
-Existing project `deliverables` keep working as-is and surface inside their `project_root` folder via a UNION view `drive_items_v` (id, kind: 'folder'|'file', folder_id, name, size, mime, created_at, source_table).
+2. **Add nullable `managed_client_id` columns** to:
+   - `projects` (alongside existing `client_id`)
+   - `invoices` (alongside existing `client_id`)
+   - Add a CHECK that exactly one of `client_id` / `managed_client_id` is set.
 
-```text
-drive_share_links
-  id, agency_id, folder_id, created_by, token (uuid, indexed),
-  permission ('view' | 'download' | 'upload' | 'full'),
-  password_hash (nullable), expires_at (nullable),
-  max_upload_bytes (per-link cap), max_files (nullable),
-  used_bytes, used_files,
-  is_revoked, created_at
+3. **Conversion function `activate_managed_client(_managed_id)`** (SECURITY DEFINER, admin-only): creates a normal `agency_invitations` row, stores its id on the managed client, returns the invitation id. The frontend then calls the existing `send-invite-email` edge function.
 
-drive_share_uploads     -- audit of anon uploads
-  id, share_link_id, file_id, uploader_name, uploader_email (optional),
-  ip_hash, created_at
-```
+4. **Trigger on `accept_agency_invitation`** (extend the existing function): if the accepted invitation matches a `managed_clients.invitation_id`, rewrite `projects.client_id` and `invoices.client_id` from `managed_client_id` to the new auth user id, clear the `managed_client_id` columns, set `converted_profile_id`, and mark `activated_at`.
 
-RLS:
-- `drive_folders`/`drive_files`: agency members SELECT; admins ALL; editors/clients can INSERT/UPDATE/DELETE inside folders they created OR project folders they have access to.
-- `drive_share_links`: only admins + the editor who created it can manage; SELECT public is denied (resolved server-side via edge function).
+## Frontend changes
 
-## 2. Edge functions
+### Admin → Clients page (`src/pages/admin/Clients.tsx`)
+- Add a second primary button **"Add Client Manually"** next to the existing **Invite Client**.
+- Fetch and render managed clients in the same grid as real clients, with a small **"No dashboard access"** badge and a **Give Dashboard Access** button on the card.
+- Manual clients are NOT blocked by `canAddClient` (no plan-limit check).
 
-- `drive-share-resolve` (no JWT) — input: token + optional password. Returns folder metadata, file list (signed URLs), and capabilities. Validates expiry/revocation.
-- `drive-share-upload` (no JWT) — TUS/presigned init for anonymous uploads. Enforces:
-  - link permission includes `upload`
-  - per-link `max_upload_bytes` / `max_files` cap
-  - **agency quota** via `check_storage_limit(agency_id, file_size)` — reuses existing function
-  - Writes to Bunny under `agency/{agency_id}/drive/{folder_id}/...`, then inserts `drive_files` row with `source='public_link'`.
-- `drive-ops` — authenticated CRUD for folders, move, rename, delete (cascades to Bunny via existing `delete-asset` patterns), and signed-URL generation for previews.
+### New `AddManualClientModal.tsx`
+- Fields: Name, Email, Company, Phone, Notes (zod-validated, length-capped).
+- Inserts into `managed_clients`.
 
-Reuse existing `UploadContext` + TUS flow for in-app uploads; pass `folder_id` instead of (or alongside) `project_id`.
+### New `ActivateClientModal.tsx`
+- Confirmation dialog before sending the invite. Shows the email it will go to, lets admin edit it if needed, and warns the manual client will be converted on acceptance.
+- Calls `activate_managed_client` RPC, then `supabase.functions.invoke('send-invite-email', …)` using the returned invitation id (same flow as `InviteUserModal`).
+- Enforces `canAddClient` here (activation = real client = counts toward limit).
 
-## 3. Frontend
+### Project + invoice flows
+- `CreateProjectModal` / `CreateInvoiceModal`: the client picker lists both real clients and managed clients (managed ones shown with a "Manual" tag). Selected value writes to `client_id` or `managed_client_id` accordingly.
+- `ProjectCard`, `PersonDetailSheet`, invoice list, etc. resolve the display name from whichever column is set.
+- `send-invoice-email` edge function: accept `managed_client_id` and look the email/name up from `managed_clients` so admins can email invoices to manual clients regardless of activation state.
 
-### New `/storage` (all roles)
+### Hidden-from-client side
+- Manual clients can't log in, so client-side dashboards are unaffected. After activation + acceptance, projects/invoices already point at the new profile id, so the client sees their full history immediately.
 
-```text
-┌──────────────────────────────────────────────────┐
-│ Breadcrumb: My Drive / Clients / Acme / Raw      │
-│ [+ New ▾] [Upload] [Share]      [Grid|List] [⌕] │
-├──────────────┬───────────────────────────────────┤
-│ Sidebar      │  Folder grid / list               │
-│ • My Drive   │  ┌────┐ ┌────┐ ┌────┐             │
-│ • Shared     │  │📁  │ │📁  │ │🎬  │             │
-│ • Recent     │  └────┘ └────┘ └────┘             │
-│ • Trash      │                                   │
-│ • Storage    │                                   │
-└──────────────┴───────────────────────────────────┘
-```
+## Out of scope
 
-Components (new):
-- `src/pages/storage/DrivePage.tsx` — replaces current `StoragePage` body, route stays `/storage`.
-- `src/components/drive/DriveSidebar.tsx`, `DriveBreadcrumb.tsx`, `DriveToolbar.tsx`.
-- `src/components/drive/FolderGrid.tsx` + `FolderList.tsx` (shared item card/row).
-- `src/components/drive/NewFolderModal.tsx`, `ShareLinkModal.tsx` (permission, password, expiry, size cap), `SharedLinksManager.tsx`.
-- `src/components/drive/FilePreview.tsx` — extends existing `FilePreviewModal` with image/video/PDF/audio/text preview + next/prev navigation.
-- `src/hooks/useDrive.tsx` — list folder, create/rename/move/delete, share-link CRUD.
-- View mode persisted in `localStorage` (`drive:viewMode`).
+- No notifications/messages/channels are created for managed clients (those depend on a real user id). They start working the moment the client accepts the invite.
+- No bulk import — single-record modal only.
 
-### Public share page
+## Files touched
 
-- `src/pages/share/SharePage.tsx` at `/s/:token` (no auth).
-- Optional password gate.
-- Shows folder contents with the same grid/list UI in read-only mode.
-- If `permission` includes `upload`: dropzone + name/email prompt, uses TUS via `drive-share-upload`.
-- Brand-aware (uses `BrandingContext` agency logo).
-
-### Grid/List toggle everywhere
-
-Extract a reusable `<FileListView mode="grid|list" items=... />` and adopt it in:
-- `src/components/projects/FileManager.tsx` (project file lists)
-- `src/pages/review/InternalReview.tsx` & `PublicReview.tsx` asset rails
-- `DrivePage` and `SharePage`
-
-A small `useViewMode(key)` hook stores preference per surface.
-
-## 4. UX details
-
-- Drag-and-drop into any folder; multi-select with shift/ctrl.
-- Right-click / kebab menu: Open, Preview, Download, Share, Rename, Move, Delete.
-- "Share" on a folder opens `ShareLinkModal` → copies `https://app/s/<token>` and shows existing links list with revoke.
-- Upload progress reuses `GlobalUploadTray`.
-- Empty state encourages "New folder" / "Upload" / "Get share link".
-
-## 5. Quotas & safety
-
-- Anonymous uploads: enforce per-link cap **and** agency quota at the edge before issuing TUS URL; reject early with clear error.
-- Hash IP + rate-limit anon uploads per token (e.g., 50/hour).
-- `drive_share_links.password_hash` uses bcrypt in edge function.
-- Auto-expire links (cron via existing pg_cron pattern or check at resolve time).
-
-## 6. Migration / rollout
-
-1. Migration: create the four new tables, RLS policies, indexes, and a `drive_items_v` view that unions folders + `drive_files` + `deliverables` (mapped into their project's root folder).
-2. Backfill: for every project, create a `drive_folders` row with `kind='project_root'`, `project_id=projects.id`. Optionally group by client into a `Clients/<client>` folder tree.
-3. Ship edge functions, then frontend `DrivePage` behind the existing `/storage` route; old grouped view replaced in the same release.
-4. Add `/s/:token` public route to `App.tsx` router.
-5. Roll out grid/list view component to FileManager + review pages last (purely visual).
-
-## 7. Out of scope (for this pass)
-
-- Real "Trash" with restore (soft-delete possible later).
-- Folder-level granular per-member ACLs beyond agency role (admins/editors/clients see what they can today, plus their own custom folders).
-- Office-doc inline editing.
-
----
-
-**Net result:** one familiar Drive-like surface for admins, editors, and clients; outsiders can be invited via a single link to download files or drop files into a folder, with quotas enforced — no account required.
+- New migration: `managed_clients` table + columns on `projects`/`invoices` + `activate_managed_client` RPC + extension of `accept_agency_invitation`.
+- New: `src/components/clients/AddManualClientModal.tsx`, `src/components/clients/ActivateClientModal.tsx`.
+- Edited: `src/pages/admin/Clients.tsx`, `src/components/PersonCard.tsx` (badge + activate button), `src/components/projects/CreateProjectModal.tsx`, `src/components/invoices/CreateInvoiceModal.tsx`, project/invoice display components that show client name, and `supabase/functions/send-invoice-email/index.ts`.
