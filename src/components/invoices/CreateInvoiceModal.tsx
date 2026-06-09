@@ -131,7 +131,7 @@ export const CreateInvoiceModal = ({
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !selectedProject || lineItems.every((item) => !item.description)) return;
+    if (!user || !selectedContainer || lineItems.every((item) => !item.description)) return;
 
     const validLineItems = lineItems.filter((item) => item.description && item.amount > 0);
     if (validLineItems.length === 0) {
@@ -145,11 +145,11 @@ export const CreateInvoiceModal = ({
 
     setCreating(true);
     try {
-      const project = projects.find((p) => p.id === selectedProject);
-      if (!project || (!project.client_id && !project.managed_client_id)) {
+      const container = containers.find((c) => c.id === selectedContainer);
+      if (!container || (!container.client_id && !container.managed_client_id)) {
         throw new Error('Project has no client assigned');
       }
-      const isManagedClient = !project.client_id && !!project.managed_client_id;
+      const isManagedClient = !container.client_id && !!container.managed_client_id;
 
       const { data: agencyId } = await supabase.rpc('get_user_agency_id', { _user_id: user.id });
 
