@@ -166,7 +166,7 @@ export const CreateInvoiceModal = ({
         const { data: mc } = await supabase
           .from('managed_clients')
           .select('id, full_name, email')
-          .eq('id', project.managed_client_id!)
+          .eq('id', container.managed_client_id!)
           .single();
         if (mc) clientProfile = { id: mc.id, full_name: mc.full_name, email: mc.email };
       } else {
