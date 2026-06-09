@@ -29,7 +29,8 @@ interface Project {
   id: string;
   title: string;
   client_id: string | null;
-  client: { id: string; full_name: string | null; email: string } | null;
+  managed_client_id: string | null;
+  client: { id: string; full_name: string | null; email: string; isManaged?: boolean } | null;
 }
 
 interface LineItem {
@@ -145,9 +146,10 @@ export const CreateInvoiceModal = ({
     setCreating(true);
     try {
       const project = projects.find((p) => p.id === selectedProject);
-      if (!project || !project.client_id) {
+      if (!project || (!project.client_id && !project.managed_client_id)) {
         throw new Error('Project has no client assigned');
       }
+      const isManagedClient = !project.client_id && !!project.managed_client_id;
 
       const { data: agencyId } = await supabase.rpc('get_user_agency_id', { _user_id: user.id });
 
@@ -158,12 +160,23 @@ export const CreateInvoiceModal = ({
         .eq('id', agencyId)
         .single();
 
-      // Fetch client profile for PDF generation
-      const { data: clientProfile } = await supabase
-        .from('profiles')
-        .select('id, full_name, email')
-        .eq('id', project.client_id)
-        .single();
+      // Fetch client info (real profile OR managed client) for PDF generation
+      let clientProfile: { id: string; full_name: string | null; email: string } | null = null;
+      if (isManagedClient) {
+        const { data: mc } = await supabase
+          .from('managed_clients')
+          .select('id, full_name, email')
+          .eq('id', project.managed_client_id!)
+          .single();
+        if (mc) clientProfile = { id: mc.id, full_name: mc.full_name, email: mc.email };
+      } else {
+        const { data: cp } = await supabase
+          .from('profiles')
+          .select('id, full_name, email')
+          .eq('id', project.client_id!)
+          .single();
+        clientProfile = cp;
+      }
 
       // Fetch payment method details if selected
       let paymentMethodData = null;
@@ -186,7 +199,8 @@ export const CreateInvoiceModal = ({
         .from('invoices')
         .insert({
           project_id: selectedProject,
-          client_id: project.client_id,
+          client_id: isManagedClient ? null : project.client_id,
+          managed_client_id: isManagedClient ? project.managed_client_id : null,
           agency_id: agencyId,
           amount: total,
           subtotal: subtotal,

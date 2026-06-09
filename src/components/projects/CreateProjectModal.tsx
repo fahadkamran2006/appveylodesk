@@ -56,6 +56,7 @@ interface Person {
   id: string;
   name: string;
   email: string;
+  isManaged?: boolean;
 }
 
 interface Editor {
@@ -68,7 +69,8 @@ interface Editor {
 interface ProjectContainer {
   id: string;
   title: string;
-  client_id: string;
+  client_id: string | null;
+  managed_client_id: string | null;
 }
 
 interface SelectedFile {
@@ -119,10 +121,14 @@ export function CreateProjectModal({
   const selectedClientId = form.watch('client_id');
   const selectedEditorId = form.watch('editor_id');
 
-  // Filter containers by selected client
-  const filteredContainers = (containers || []).filter(
-    c => c.client_id === selectedClientId
-  );
+  // Filter containers by selected client (handles both real & managed)
+  const filteredContainers = (containers || []).filter((c) => {
+    if (!selectedClientId) return false;
+    if (selectedClientId.startsWith('mc:')) {
+      return c.managed_client_id === selectedClientId.slice(3);
+    }
+    return c.client_id === selectedClientId;
+  });
 
   // Check if selected editor is salaried
   const selectedEditor = editors.find(e => e.id === selectedEditorId);
@@ -161,28 +167,41 @@ export function CreateProjectModal({
         if (!userRole?.agency_id) return;
         setAgencyId(userRole.agency_id);
 
-        // Get clients
+        // Get real clients
         const { data: clientRoles } = await supabase
           .from('user_roles')
           .select('user_id')
           .eq('agency_id', userRole.agency_id)
           .eq('role', 'client');
 
+        const allClients: Person[] = [];
         if (clientRoles && clientRoles.length > 0) {
           const clientIds = clientRoles.map((r) => r.user_id);
           const { data: clientProfiles } = await supabase
             .from('profiles')
             .select('id, full_name, email')
             .in('id', clientIds);
-
-          setClients(
-            (clientProfiles || []).map((p) => ({
-              id: p.id,
-              name: p.full_name || p.email,
-              email: p.email,
-            }))
-          );
+          for (const p of clientProfiles || []) {
+            allClients.push({ id: p.id, name: p.full_name || p.email, email: p.email });
+          }
         }
+
+        // Get managed (non-activated) clients
+        const { data: managed } = await supabase
+          .from('managed_clients')
+          .select('id, full_name, email')
+          .eq('agency_id', userRole.agency_id)
+          .is('activated_at', null);
+
+        for (const m of managed || []) {
+          allClients.push({
+            id: `mc:${m.id}`,
+            name: (m.full_name || m.email) + ' (Manual)',
+            email: m.email,
+            isManaged: true,
+          });
+        }
+        setClients(allClients);
 
         // Get editors
         const { data: editorRoles } = await supabase
@@ -208,10 +227,10 @@ export function CreateProjectModal({
           );
         }
 
-        // Get project containers
+        // Get project containers (with both client links)
         const { data: containersData } = await supabase
           .from('project_containers')
-          .select('id, title, client_id')
+          .select('id, title, client_id, managed_client_id')
           .eq('agency_id', userRole.agency_id)
           .order('title', { ascending: true });
 
@@ -265,13 +284,19 @@ export function CreateProjectModal({
         ? parseFloat(data.editor_rate.replace(/[^0-9.]/g, ''))
         : null;
 
+      // Resolve client (real vs managed)
+      const isManaged = data.client_id.startsWith('mc:');
+      const realClientId = isManaged ? null : data.client_id;
+      const managedClientId = isManaged ? data.client_id.slice(3) : null;
+
       // Insert video (project) with container_id linking it to a project container
       const { data: project, error: projectError } = await supabase
         .from('projects')
         .insert({
           title: data.title,
           description: richDescription || data.description || null,
-          client_id: data.client_id,
+          client_id: realClientId,
+          managed_client_id: managedClientId,
           container_id: data.container_id,
           agency_id: agencyId,
           status: 'backlog',

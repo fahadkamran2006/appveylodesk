@@ -44,7 +44,8 @@ interface Project {
   id: string;
   title: string;
   client_id: string | null;
-  client: { id: string; full_name: string | null; email: string } | null;
+  managed_client_id: string | null;
+  client: { id: string; full_name: string | null; email: string; isManaged?: boolean } | null;
 }
 
 const AdminInvoices = () => {
@@ -86,48 +87,74 @@ const AdminInvoices = () => {
           created_at,
           payment_proof_url,
           client_id,
+          managed_client_id,
           project:projects(id, title)
         `)
         .order('created_at', { ascending: false });
 
       if (invoicesError) throw invoicesError;
 
-      // Fetch client profiles separately
-      const clientIds = [...new Set(invoicesData?.map(i => i.client_id).filter(Boolean) || [])];
-      const { data: clientProfiles } = await supabase
-        .from('profiles')
-        .select('id, full_name, email')
-        .in('id', clientIds);
+      // Fetch client profiles
+      const clientIds = [...new Set(invoicesData?.map((i: any) => i.client_id).filter(Boolean) || [])] as string[];
+      const { data: clientProfiles } = clientIds.length
+        ? await supabase.from('profiles').select('id, full_name, email').in('id', clientIds)
+        : { data: [] as any[] };
+      const clientMap = new Map((clientProfiles || []).map((c: any) => [c.id, c]));
 
-      const clientMap = new Map(clientProfiles?.map(c => [c.id, c]) || []);
-      
-      const mappedInvoices = (invoicesData || []).map(inv => ({
+      // Fetch managed clients
+      const mcIds = [...new Set(invoicesData?.map((i: any) => i.managed_client_id).filter(Boolean) || [])] as string[];
+      const { data: managedClients } = mcIds.length
+        ? await supabase.from('managed_clients').select('id, full_name, email').in('id', mcIds)
+        : { data: [] as any[] };
+      const mcMap = new Map((managedClients || []).map((c: any) => [c.id, c]));
+
+      const mappedInvoices = (invoicesData || []).map((inv: any) => ({
         ...inv,
-        client: clientMap.get(inv.client_id) || null
+        client: inv.client_id
+          ? clientMap.get(inv.client_id) || null
+          : inv.managed_client_id
+            ? (() => {
+                const m: any = mcMap.get(inv.managed_client_id);
+                return m ? { id: m.id, full_name: m.full_name, email: m.email } : null;
+              })()
+            : null,
       }));
 
       setInvoices(mappedInvoices as Invoice[]);
 
-      // Fetch projects with clients for create modal
+      // Fetch projects (real OR managed client) for create modal
       const { data: projectsData, error: projectsError } = await supabase
         .from('projects')
-        .select('id, title, client_id')
-        .not('client_id', 'is', null);
+        .select('id, title, client_id, managed_client_id')
+        .or('client_id.not.is.null,managed_client_id.not.is.null');
 
       if (projectsError) throw projectsError;
 
-      // Fetch client profiles for projects
-      const projectClientIds = [...new Set(projectsData?.map(p => p.client_id).filter(Boolean) || [])];
-      const { data: projectClientProfiles } = await supabase
-        .from('profiles')
-        .select('id, full_name, email')
-        .in('id', projectClientIds);
+      const projRealIds = [...new Set(projectsData?.map((p: any) => p.client_id).filter(Boolean) || [])] as string[];
+      const projMcIds = [...new Set(projectsData?.map((p: any) => p.managed_client_id).filter(Boolean) || [])] as string[];
 
-      const projectClientMap = new Map(projectClientProfiles?.map(c => [c.id, c]) || []);
-      
-      const mappedProjects = (projectsData || []).map(proj => ({
+      const [{ data: projClientProfiles }, { data: projManaged }] = await Promise.all([
+        projRealIds.length
+          ? supabase.from('profiles').select('id, full_name, email').in('id', projRealIds)
+          : Promise.resolve({ data: [] as any[] } as any),
+        projMcIds.length
+          ? supabase.from('managed_clients').select('id, full_name, email').in('id', projMcIds)
+          : Promise.resolve({ data: [] as any[] } as any),
+      ]);
+
+      const projClientMap = new Map((projClientProfiles || []).map((c: any) => [c.id, c]));
+      const projMcMap = new Map((projManaged || []).map((c: any) => [c.id, c]));
+
+      const mappedProjects = (projectsData || []).map((proj: any) => ({
         ...proj,
-        client: projectClientMap.get(proj.client_id!) || null
+        client: proj.client_id
+          ? projClientMap.get(proj.client_id) || null
+          : proj.managed_client_id
+            ? (() => {
+                const m: any = projMcMap.get(proj.managed_client_id);
+                return m ? { id: m.id, full_name: m.full_name, email: m.email, isManaged: true } : null;
+              })()
+            : null,
       }));
 
       setProjects(mappedProjects as Project[]);
