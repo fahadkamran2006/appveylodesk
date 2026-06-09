@@ -243,7 +243,7 @@ const ClientInvoices = () => {
                   >
                     <div>
                       <p className="font-medium text-foreground">
-                        {invoice.project?.title || 'Project'}
+                        {invoice.container?.title || invoice.project?.title || 'Project'}
                       </p>
                       <p className="text-sm text-muted-foreground">
                         {invoice.due_date 
