@@ -721,6 +721,7 @@ export type Database = {
           deleted_by: string | null
           id: string
           kind: Database["public"]["Enums"]["drive_folder_kind"]
+          managed_client_id: string | null
           name: string
           parent_id: string | null
           project_id: string | null
@@ -737,6 +738,7 @@ export type Database = {
           deleted_by?: string | null
           id?: string
           kind?: Database["public"]["Enums"]["drive_folder_kind"]
+          managed_client_id?: string | null
           name: string
           parent_id?: string | null
           project_id?: string | null
@@ -753,6 +755,7 @@ export type Database = {
           deleted_by?: string | null
           id?: string
           kind?: Database["public"]["Enums"]["drive_folder_kind"]
+          managed_client_id?: string | null
           name?: string
           parent_id?: string | null
           project_id?: string | null
@@ -760,6 +763,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "drive_folders_managed_client_id_fkey"
+            columns: ["managed_client_id"]
+            isOneToOne: false
+            referencedRelation: "managed_clients"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "drive_folders_parent_id_fkey"
             columns: ["parent_id"]

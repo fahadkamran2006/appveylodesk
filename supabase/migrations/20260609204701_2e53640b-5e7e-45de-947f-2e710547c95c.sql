@@ -1,0 +1,2 @@
+ALTER TABLE public.drive_folders ADD COLUMN IF NOT EXISTS managed_client_id uuid REFERENCES public.managed_clients(id) ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS drive_folders_managed_client_idx ON public.drive_folders(agency_id, managed_client_id) WHERE kind = 'client_root';
