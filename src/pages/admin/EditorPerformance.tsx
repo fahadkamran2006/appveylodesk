@@ -124,9 +124,18 @@ export default function EditorPerformancePage() {
       const [profileRes, logsRes, leavesRes, assignmentsRes, scheduleRes] = await Promise.all([
         supabase
           .from('profiles')
-          .select('id, full_name, email, avatar_url, employment_type, monthly_salary, created_at')
+          .select('id, full_name, email, avatar_url, employment_type, created_at')
           .eq('id', editorId)
-          .maybeSingle(),
+          .maybeSingle()
+          .then(async (res: any) => {
+            const { data: comp } = await (supabase as any)
+              .from('employee_compensation')
+              .select('monthly_salary')
+              .eq('user_id', editorId)
+              .maybeSingle();
+            if (res?.data) res.data.monthly_salary = (comp as any)?.monthly_salary ?? null;
+            return res;
+          }),
         supabase
           .from('daily_logs')
           .select('*')

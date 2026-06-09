@@ -73,13 +73,13 @@ export function AddBonusModal({
 
       const newTotal = (editor.accumulated_bonus || 0) + bonusAmount;
 
-      const { error } = await supabase
-        .from('profiles')
-        .update({
+      const { error } = await (supabase as any)
+        .from('employee_compensation')
+        .upsert({
+          user_id: editor.id,
           accumulated_bonus: newTotal,
           updated_at: new Date().toISOString(),
-        })
-        .eq('id', editor.id);
+        }, { onConflict: 'user_id' });
 
       if (error) throw error;
 

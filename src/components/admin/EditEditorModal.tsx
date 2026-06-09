@@ -99,7 +99,6 @@ export function EditEditorModal({
         .update({
           full_name: data.full_name,
           employment_type: data.employment_type as EmploymentType,
-          monthly_salary: salaryValue,
           updated_at: new Date().toISOString(),
         })
         .eq('id', editor.id)
@@ -110,6 +109,16 @@ export function EditEditorModal({
       if (!updatedRows || updatedRows.length === 0) {
         throw new Error('Update failed — you may not have permission to edit this profile.');
       }
+
+      // Upsert compensation in the separate (admin-only) table
+      const { error: compErr } = await (supabase as any)
+        .from('employee_compensation')
+        .upsert({
+          user_id: editor.id,
+          monthly_salary: salaryValue,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' });
+      if (compErr) throw compErr;
 
       toast({
         title: 'Editor updated',
