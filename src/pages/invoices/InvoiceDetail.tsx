@@ -356,7 +356,7 @@ const InvoiceDetailPage = () => {
                 <div>
                   <h1 className="text-xl font-bold text-foreground">{invoice.agency?.name}</h1>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {invoice.project?.title}
+                    {invoice.container?.title || invoice.project?.title}
                   </p>
                 </div>
               </div>
