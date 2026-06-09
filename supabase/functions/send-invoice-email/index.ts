@@ -66,6 +66,7 @@ const handler = async (req: Request): Promise<Response> => {
         payment_link,
         notes,
         client_id,
+        managed_client_id,
         agency_id,
         payment_method_id,
         project:projects(id, title)
@@ -81,12 +82,23 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Get client profile
-    const { data: client } = await supabase
-      .from("profiles")
-      .select("id, full_name, email")
-      .eq("id", invoice.client_id)
-      .single();
+    // Resolve recipient: real client profile OR managed client
+    let client: { id: string; full_name: string | null; email: string } | null = null;
+    if (invoice.client_id) {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, full_name, email")
+        .eq("id", invoice.client_id)
+        .single();
+      client = data as any;
+    } else if (invoice.managed_client_id) {
+      const { data } = await supabase
+        .from("managed_clients")
+        .select("id, full_name, email")
+        .eq("id", invoice.managed_client_id)
+        .single();
+      if (data) client = { id: data.id, full_name: data.full_name, email: data.email };
+    }
 
     if (!client?.email) {
       console.error("Client email not found");
