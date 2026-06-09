@@ -173,7 +173,7 @@ export const CreateInvoiceModal = ({
         const { data: cp } = await supabase
           .from('profiles')
           .select('id, full_name, email')
-          .eq('id', project.client_id!)
+          .eq('id', container.client_id!)
           .single();
         clientProfile = cp;
       }
