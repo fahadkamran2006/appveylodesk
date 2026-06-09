@@ -55,6 +55,7 @@ interface Invoice {
   payment_link: string | null;
   notes: string | null;
   project: { id: string; title: string } | null;
+  container: { id: string; title: string } | null;
   client: { id: string; full_name: string | null; email: string } | null;
   agency: { 
     id: string; 
