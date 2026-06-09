@@ -89,7 +89,8 @@ const AdminInvoices = () => {
           payment_proof_url,
           client_id,
           managed_client_id,
-          project:projects(id, title)
+          project:projects(id, title),
+          container:project_containers(id, title)
         `)
         .order('created_at', { ascending: false });
 
