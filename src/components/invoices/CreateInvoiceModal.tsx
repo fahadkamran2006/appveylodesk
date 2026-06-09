@@ -336,14 +336,14 @@ export const CreateInvoiceModal = ({
           {/* Project Selection */}
           <div>
             <Label>Project</Label>
-            <Select value={selectedProject} onValueChange={setSelectedProject}>
+            <Select value={selectedContainer} onValueChange={setSelectedContainer}>
               <SelectTrigger className="mt-2">
                 <SelectValue placeholder="Select a project" />
               </SelectTrigger>
               <SelectContent>
-                {projects.map((project) => (
-                  <SelectItem key={project.id} value={project.id}>
-                    {project.title} - {project.client?.full_name || project.client?.email}
+                {containers.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.title} - {c.client?.full_name || c.client?.email || 'Unassigned'}
                   </SelectItem>
                 ))}
               </SelectContent>
