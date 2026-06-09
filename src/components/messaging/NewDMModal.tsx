@@ -20,7 +20,7 @@ interface User {
   full_name: string | null;
   email: string;
   avatar_url: string | null;
-  role: 'admin' | 'client' | 'editor';
+  role: 'admin' | 'client' | 'editor' | 'staff';
 }
 
 interface NewDMModalProps {

@@ -10,7 +10,7 @@ import { usePushNotificationListener } from '@/hooks/usePushNotifications';
 import { cn } from '@/lib/utils';
 
 interface DashboardLayoutProps {
-  role: 'admin' | 'client' | 'editor';
+  role: 'admin' | 'client' | 'editor' | 'staff';
   children: ReactNode;
   className?: string;
   hideHeader?: boolean;

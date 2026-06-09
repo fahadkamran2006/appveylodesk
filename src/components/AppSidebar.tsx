@@ -63,7 +63,7 @@ const editorNavItems: NavItem[] = [
 ];
 
 interface AppSidebarProps {
-  role?: 'admin' | 'client' | 'editor';
+  role?: 'admin' | 'client' | 'editor' | 'staff';
 }
 
 export function AppSidebar({ role = 'admin' }: AppSidebarProps) {

@@ -69,7 +69,7 @@ const SettingsPage = () => {
     }
   };
 
-  const getSidebarRole = (): 'admin' | 'client' | 'editor' => {
+  const getSidebarRole = (): 'admin' | 'client' | 'editor' | 'staff' => {
     switch (userRole) {
       case 'client':
         return 'client';
