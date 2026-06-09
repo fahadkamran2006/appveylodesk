@@ -72,9 +72,16 @@ export function PersonCard({
         </Avatar>
 
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-foreground truncate">
-            {name || 'Unnamed'}
-          </h3>
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold text-foreground truncate">
+              {name || 'Unnamed'}
+            </h3>
+            {badgeLabel && (
+              <Badge variant="outline" className="text-[10px] py-0 h-5 shrink-0 bg-primary/5 text-primary border-primary/30">
+                {badgeLabel}
+              </Badge>
+            )}
+          </div>
           <p className="text-sm text-muted-foreground truncate">{email}</p>
         </div>
 
