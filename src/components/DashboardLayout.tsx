@@ -1,6 +1,7 @@
 import { ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
+import { StaffSidebar } from '@/components/StaffSidebar';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { SubscriptionGuard } from '@/components/SubscriptionGuard';
 import { DashboardHeader } from '@/components/notifications/DashboardHeader';
@@ -38,7 +39,7 @@ export function DashboardLayout({ role, children, className, hideHeader = false 
     <div className="min-h-screen bg-background flex flex-col md:flex-row">
       {/* Desktop Sidebar - Hidden on mobile */}
       <div className="hidden md:block">
-        <CollapsibleSidebar role={role} />
+        {role === 'staff' ? <StaffSidebar /> : <CollapsibleSidebar role={role} />}
       </div>
 
       {/* Main Content */}
