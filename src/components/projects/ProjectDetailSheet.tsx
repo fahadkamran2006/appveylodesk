@@ -169,7 +169,7 @@ export function ProjectDetailSheet({
 
       if (error) throw error;
 
-      // Get client name
+      // Get client name (supports both real and managed clients)
       let clientName: string | undefined;
       if (projectData.client_id) {
         const { data: clientProfile } = await supabase
@@ -178,6 +178,13 @@ export function ProjectDetailSheet({
           .eq('id', projectData.client_id)
           .maybeSingle();
         clientName = clientProfile?.full_name || clientProfile?.email;
+      } else if ((projectData as any).managed_client_id) {
+        const { data: mc } = await supabase
+          .from('managed_clients')
+          .select('full_name, email')
+          .eq('id', (projectData as any).managed_client_id)
+          .maybeSingle();
+        if (mc) clientName = `${mc.full_name || mc.email} (Manual)`;
       }
 
       // Get editor name

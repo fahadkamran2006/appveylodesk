@@ -45,7 +45,8 @@ interface ProjectContainer {
   id: string;
   title: string;
   description?: string | null;
-  client_id: string;
+  client_id: string | null;
+  managed_client_id?: string | null;
   videoCount: number;
   activeCount: number;
   completedCount: number;
@@ -136,6 +137,15 @@ const AdminProjects = () => {
         clientProfiles = data || [];
       }
 
+      // Fetch managed (manual, not-yet-activated) clients — treated as workspaces too
+      const { data: managedClientsData } = await supabase
+        .from('managed_clients')
+        .select('id, full_name, email')
+        .eq('agency_id', agencyId)
+        .is('converted_profile_id', null);
+      const managedClients = managedClientsData || [];
+
+
       // Fetch all editors in this agency
       const { data: editorRoles } = await supabase
         .from('user_roles')
@@ -187,21 +197,31 @@ const AdminProjects = () => {
           let editorName: string | undefined;
           let editorAvatar: string | null | undefined;
 
-          // Get client name
+          // Resolve client name (real or managed) + track workspace stats
+          const workspaceKey: string | null = video.client_id
+            ? video.client_id
+            : video.managed_client_id
+              ? `mc:${video.managed_client_id}`
+              : null;
+
           if (video.client_id) {
             const client = clientProfiles.find(c => c.id === video.client_id);
             clientName = client?.full_name || client?.email;
+          } else if (video.managed_client_id) {
+            const mc = managedClients.find((m: any) => m.id === video.managed_client_id);
+            clientName = mc ? `${mc.full_name || mc.email} (Manual)` : undefined;
+          }
 
-            // Track workspace stats
-            if (!clientStats[video.client_id]) {
-              clientStats[video.client_id] = { total: 0, active: 0, completed: 0 };
+          if (workspaceKey) {
+            if (!clientStats[workspaceKey]) {
+              clientStats[workspaceKey] = { total: 0, active: 0, completed: 0 };
             }
-            clientStats[video.client_id].total++;
+            clientStats[workspaceKey].total++;
             if (['in_progress', 'review', 'backlog'].includes(video.status)) {
-              clientStats[video.client_id].active++;
+              clientStats[workspaceKey].active++;
             }
             if (video.status === 'done') {
-              clientStats[video.client_id].completed++;
+              clientStats[workspaceKey].completed++;
             }
           }
 
@@ -243,6 +263,7 @@ const AdminProjects = () => {
             title: video.title,
             description: video.description,
             client_id: video.client_id,
+            managed_client_id: video.managed_client_id,
             client_name: clientName,
             container_id: video.container_id,
             editor_id: projectEditor?.editor_id,
@@ -256,7 +277,7 @@ const AdminProjects = () => {
 
       setProjects(videosWithDetails);
 
-      // Build workspaces from clients
+      // Build workspaces from real clients
       const workspaceList: ClientWorkspace[] = clientProfiles.map(client => ({
         id: client.id,
         name: client.full_name || client.email,
@@ -267,6 +288,20 @@ const AdminProjects = () => {
         completedCount: clientStats[client.id]?.completed || 0,
       }));
 
+      // Add manual clients as workspaces (mc: prefix)
+      for (const mc of managedClients as any[]) {
+        const key = `mc:${mc.id}`;
+        workspaceList.push({
+          id: key,
+          name: `${mc.full_name || mc.email} (Manual)`,
+          email: mc.email,
+          avatar: null,
+          projectCount: clientStats[key]?.total || 0,
+          activeCount: clientStats[key]?.active || 0,
+          completedCount: clientStats[key]?.completed || 0,
+        });
+      }
+
       setWorkspaces(workspaceList.sort((a, b) => b.projectCount - a.projectCount));
 
       // Build project containers list from the actual project_containers table
@@ -275,12 +310,14 @@ const AdminProjects = () => {
         title: container.title,
         description: container.description,
         client_id: container.client_id,
+        managed_client_id: (container as any).managed_client_id,
         videoCount: containerStats[container.id]?.total || 0,
         activeCount: containerStats[container.id]?.active || 0,
         completedCount: containerStats[container.id]?.completed || 0,
       }));
 
       setProjectContainers(containersList);
+
 
     } catch (error) {
       console.error('Error fetching projects:', error);
@@ -308,14 +345,24 @@ const AdminProjects = () => {
     if (selectedProjectContainerId) {
       result = result.filter(p => p.container_id === selectedProjectContainerId);
     }
-    // Filter by client workspace (client projects view or global with client filter)
+    // Filter by client workspace (handles mc: managed prefix)
     else if (selectedClientId && selectedClientId !== 'all') {
-      result = result.filter(p => p.client_id === selectedClientId);
+      if (selectedClientId.startsWith('mc:')) {
+        const mid = selectedClientId.slice(3);
+        result = result.filter(p => p.managed_client_id === mid);
+      } else {
+        result = result.filter(p => p.client_id === selectedClientId);
+      }
     }
 
     // Additional filters for global view
     if (isGlobalView && clientFilter !== 'all') {
-      result = result.filter(p => p.client_id === clientFilter);
+      if (clientFilter.startsWith('mc:')) {
+        const mid = clientFilter.slice(3);
+        result = result.filter(p => p.managed_client_id === mid);
+      } else {
+        result = result.filter(p => p.client_id === clientFilter);
+      }
     }
 
     // Filter by status
@@ -351,7 +398,10 @@ const AdminProjects = () => {
   // Get project containers for a specific client (for ClientProjectsGrid)
   const clientProjectContainers = useMemo(() => {
     if (!selectedClientId || selectedClientId === 'all') return [];
-    
+    if (selectedClientId.startsWith('mc:')) {
+      const mid = selectedClientId.slice(3);
+      return projectContainers.filter(c => c.managed_client_id === mid);
+    }
     return projectContainers.filter(c => c.client_id === selectedClientId);
   }, [projectContainers, selectedClientId]);
 

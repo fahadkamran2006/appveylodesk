@@ -2,7 +2,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { ChevronRight, DollarSign, FolderKanban, Zap, Trash2, Pencil, Briefcase } from 'lucide-react';
+import { ChevronRight, DollarSign, FolderKanban, Zap, Trash2, Pencil, Briefcase, KeyRound, LucideIcon } from 'lucide-react';
 
 interface PersonCardProps {
   id: string;
@@ -11,6 +11,13 @@ interface PersonCardProps {
   avatarUrl?: string | null;
   role?: 'client' | 'editor';
   employmentType?: 'freelance' | 'salaried';
+  badgeLabel?: string;
+  secondaryAction?: {
+    label: string;
+    icon?: LucideIcon;
+    onClick: (id: string) => void;
+    disabled?: boolean;
+  };
   stats?: {
     activeProjects?: number;
     totalSpent?: number;
@@ -30,6 +37,8 @@ export function PersonCard({
   avatarUrl,
   role,
   employmentType,
+  badgeLabel,
+  secondaryAction,
   stats,
   onExpand,
   onRemove,
@@ -63,9 +72,16 @@ export function PersonCard({
         </Avatar>
 
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-foreground truncate">
-            {name || 'Unnamed'}
-          </h3>
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold text-foreground truncate">
+              {name || 'Unnamed'}
+            </h3>
+            {badgeLabel && (
+              <Badge variant="outline" className="text-[10px] py-0 h-5 shrink-0 bg-primary/5 text-primary border-primary/30">
+                {badgeLabel}
+              </Badge>
+            )}
+          </div>
           <p className="text-sm text-muted-foreground truncate">{email}</p>
         </div>
 
@@ -176,6 +192,21 @@ export function PersonCard({
             }}
           >
             <Pencil className="w-4 h-4" />
+          </Button>
+        )}
+        {secondaryAction && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0 text-muted-foreground hover:text-primary hover:bg-primary/10"
+            disabled={secondaryAction.disabled}
+            title={secondaryAction.label}
+            onClick={(e) => {
+              e.stopPropagation();
+              secondaryAction.onClick(id);
+            }}
+          >
+            {secondaryAction.icon ? <secondaryAction.icon className="w-4 h-4" /> : <KeyRound className="w-4 h-4" />}
           </Button>
         )}
         {onRemove && (

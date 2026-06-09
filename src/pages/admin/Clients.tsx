@@ -21,10 +21,10 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
-import { useClientStats } from '@/hooks/usePersonStats';
+import { useClientStats, useManagedClientStats } from '@/hooks/usePersonStats';
 import { useAgencyLimits } from '@/hooks/useAgencyLimits';
 import { useToast } from '@/hooks/use-toast';
-import { Users, UserPlus, Loader2, Clock, AlertCircle, KeyRound, Trash2, Mail, Building2, Phone } from 'lucide-react';
+import { Users, UserPlus, Loader2, Clock, AlertCircle, KeyRound, Trash2 } from 'lucide-react';
 
 interface ClientProfile {
   id: string;
@@ -69,17 +69,19 @@ const AdminClients = () => {
   const [activateClient, setActivateClient] = useState<ManagedClient | null>(null);
   const [deleteManaged, setDeleteManaged] = useState<ManagedClient | null>(null);
   const [selectedClient, setSelectedClient] = useState<ClientProfile | null>(null);
+  const [selectedManaged, setSelectedManaged] = useState<ManagedClient | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [removeModalOpen, setRemoveModalOpen] = useState(false);
   const [clientToRemove, setClientToRemove] = useState<ClientProfile | null>(null);
-  
-  
+
   // Get agency limits for client enforcement
   const { maxClients, currentClients, canAddClient, planTier, loading: limitsLoading } = useAgencyLimits();
 
   // Fetch real stats for all clients
   const clientIds = useMemo(() => clients.map(c => c.id), [clients]);
   const { stats: clientStats } = useClientStats(clientIds);
+  const managedIds = useMemo(() => managedClients.map(m => m.id), [managedClients]);
+  const { stats: managedStats } = useManagedClientStats(managedIds);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -175,6 +177,7 @@ const AdminClients = () => {
   const handleExpandClient = (id: string) => {
     const client = clients.find((c) => c.id === id);
     if (client) {
+      setSelectedManaged(null);
       setSelectedClient(client);
       setDetailOpen(true);
     }
@@ -355,58 +358,33 @@ const AdminClients = () => {
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {managedClients.map((mc) => {
-                      const initials = (mc.full_name || mc.email)
-                        .split(' ').map(s => s[0]).slice(0, 2).join('').toUpperCase();
+                      const stats = managedStats[mc.id];
                       const invited = !!mc.invitation_id;
                       return (
-                        <Card key={mc.id} className="p-5 glass-card border-border/50 hover:border-primary/40 transition">
-                          <div className="flex items-start gap-3 mb-3">
-                            <Avatar className="h-12 w-12">
-                              <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                                {initials}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0">
-                              <div className="font-semibold text-foreground truncate">
-                                {mc.full_name || mc.email}
-                              </div>
-                              <div className="text-xs text-muted-foreground flex items-center gap-1 truncate">
-                                <Mail className="w-3 h-3 shrink-0" /> {mc.email}
-                              </div>
-                            </div>
-                            {invited && (
-                              <Badge variant="secondary" className="text-xs shrink-0">Invited</Badge>
-                            )}
-                          </div>
-                          {(mc.company || mc.phone) && (
-                            <div className="space-y-1 text-xs text-muted-foreground mb-3">
-                              {mc.company && <div className="flex items-center gap-1"><Building2 className="w-3 h-3" />{mc.company}</div>}
-                              {mc.phone && <div className="flex items-center gap-1"><Phone className="w-3 h-3" />{mc.phone}</div>}
-                            </div>
-                          )}
-                          {mc.notes && (
-                            <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{mc.notes}</p>
-                          )}
-                          <div className="flex gap-2 pt-2 border-t border-border/40">
-                            <Button
-                              size="sm"
-                              className="flex-1 bg-primary hover:bg-primary/90"
-                              onClick={() => setActivateClient(mc)}
-                              disabled={invited}
-                            >
-                              <KeyRound className="w-3.5 h-3.5 mr-1.5" />
-                              {invited ? 'Invite Sent' : 'Give Access'}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                              onClick={() => setDeleteManaged(mc)}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </Button>
-                          </div>
-                        </Card>
+                        <PersonCard
+                          key={mc.id}
+                          id={mc.id}
+                          name={mc.full_name || ''}
+                          email={mc.email}
+                          variant="client"
+                          badgeLabel={invited ? 'Invited' : 'Manual'}
+                          stats={{
+                            activeProjects: stats?.activeProjects ?? 0,
+                            totalSpent: stats?.totalSpent ?? 0,
+                          }}
+                          onExpand={() => {
+                            setSelectedManaged(mc);
+                            setSelectedClient(null);
+                            setDetailOpen(true);
+                          }}
+                          secondaryAction={{
+                            label: invited ? 'Invite Sent' : 'Give Dashboard Access',
+                            icon: KeyRound,
+                            disabled: invited,
+                            onClick: () => setActivateClient(mc),
+                          }}
+                          onRemove={() => setDeleteManaged(mc)}
+                        />
                       );
                     })}
                   </div>
@@ -416,6 +394,7 @@ const AdminClients = () => {
           )}
         </main>
       </div>
+
 
       {/* Invite Modal */}
       <InviteUserModal
@@ -428,26 +407,62 @@ const AdminClients = () => {
       {/* Detail Sheet */}
       <PersonDetailSheet
         open={detailOpen}
-        onOpenChange={setDetailOpen}
+        onOpenChange={(o) => {
+          setDetailOpen(o);
+          if (!o) { setSelectedClient(null); setSelectedManaged(null); }
+        }}
         person={
-          selectedClient
+          selectedManaged
             ? {
-                id: selectedClient.id,
-                name: selectedClient.full_name || '',
-                email: selectedClient.email,
-                avatarUrl: selectedClient.avatar_url,
+                id: selectedManaged.id,
+                name: selectedManaged.full_name || '',
+                email: selectedManaged.email,
+                avatarUrl: null,
                 role: 'client',
-                createdAt: selectedClient.created_at,
+                createdAt: selectedManaged.created_at,
+                company: selectedManaged.company,
+                phone: selectedManaged.phone,
+                notes: selectedManaged.notes,
               }
-            : null
+            : selectedClient
+              ? {
+                  id: selectedClient.id,
+                  name: selectedClient.full_name || '',
+                  email: selectedClient.email,
+                  avatarUrl: selectedClient.avatar_url,
+                  role: 'client',
+                  createdAt: selectedClient.created_at,
+                }
+              : null
         }
         variant="client"
-        stats={selectedClient ? {
-          totalProjects: clientStats[selectedClient.id]?.projects.length ?? 0,
-          totalSpent: clientStats[selectedClient.id]?.totalSpent ?? 0,
+        isManagedClient={!!selectedManaged}
+        onActivate={selectedManaged ? () => {
+          setActivateClient(selectedManaged);
+          setDetailOpen(false);
         } : undefined}
-        projects={selectedClient ? clientStats[selectedClient.id]?.projects : undefined}
+        stats={
+          selectedManaged
+            ? {
+                totalProjects: managedStats[selectedManaged.id]?.projects.length ?? 0,
+                totalSpent: managedStats[selectedManaged.id]?.totalSpent ?? 0,
+              }
+            : selectedClient
+              ? {
+                  totalProjects: clientStats[selectedClient.id]?.projects.length ?? 0,
+                  totalSpent: clientStats[selectedClient.id]?.totalSpent ?? 0,
+                }
+              : undefined
+        }
+        projects={
+          selectedManaged
+            ? managedStats[selectedManaged.id]?.projects
+            : selectedClient
+              ? clientStats[selectedClient.id]?.projects
+              : undefined
+        }
       />
+
 
       {/* Remove Client Modal */}
       <RemoveMemberModal

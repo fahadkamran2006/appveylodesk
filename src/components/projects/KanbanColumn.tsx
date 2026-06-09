@@ -9,6 +9,7 @@ export interface Project {
   title: string;
   description?: string | null;
   client_id?: string | null;
+  managed_client_id?: string | null;
   client_name?: string;
   container_id?: string | null;
   editor_id?: string | null;

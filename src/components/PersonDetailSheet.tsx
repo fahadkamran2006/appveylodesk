@@ -11,7 +11,8 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AttendanceReport } from '@/components/admin/AttendanceReport';
 import { LeaveManagement } from '@/components/admin/LeaveManagement';
-import { Mail, Calendar, FolderKanban, DollarSign, CheckCircle } from 'lucide-react';
+import { Mail, Calendar, FolderKanban, DollarSign, CheckCircle, KeyRound, Building2, Phone } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface PersonDetailSheetProps {
   open: boolean;
@@ -25,8 +26,13 @@ interface PersonDetailSheetProps {
     createdAt?: string;
     employmentType?: 'salaried' | 'freelance';
     agencyId?: string;
+    company?: string | null;
+    phone?: string | null;
+    notes?: string | null;
   } | null;
   variant?: 'client' | 'team';
+  isManagedClient?: boolean;
+  onActivate?: () => void;
   stats?: {
     totalProjects?: number;
     totalSpent?: number;
@@ -50,6 +56,8 @@ export function PersonDetailSheet({
   onOpenChange,
   person,
   variant = 'client',
+  isManagedClient = false,
+  onActivate,
   stats,
   projects = [],
 }: PersonDetailSheetProps) {
@@ -79,15 +87,30 @@ export function PersonDetailSheet({
               <SheetTitle className="text-xl text-foreground">
                 {person.name || 'Unnamed User'}
               </SheetTitle>
-              <SheetDescription className="flex items-center gap-2">
+              <SheetDescription className="flex items-center gap-2 flex-wrap">
                 {person.role && (
                   <Badge variant="secondary" className="capitalize">
                     {person.role}
                   </Badge>
                 )}
+                {isManagedClient && (
+                  <Badge variant="outline" className="bg-primary/5 text-primary border-primary/30">
+                    Manual Client
+                  </Badge>
+                )}
               </SheetDescription>
             </div>
           </div>
+          {isManagedClient && onActivate && (
+            <Button
+              size="sm"
+              className="w-full bg-primary hover:bg-primary/90"
+              onClick={onActivate}
+            >
+              <KeyRound className="w-4 h-4 mr-2" />
+              Give Dashboard Access
+            </Button>
+          )}
         </SheetHeader>
 
         <div className="mt-6 space-y-6">
@@ -101,13 +124,28 @@ export function PersonDetailSheet({
                 <Mail className="w-4 h-4 text-muted-foreground" />
                 <span className="text-foreground">{person.email}</span>
               </div>
+              {person.phone && (
+                <div className="flex items-center gap-3 text-sm">
+                  <Phone className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-foreground">{person.phone}</span>
+                </div>
+              )}
+              {person.company && (
+                <div className="flex items-center gap-3 text-sm">
+                  <Building2 className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-foreground">{person.company}</span>
+                </div>
+              )}
               {person.createdAt && (
                 <div className="flex items-center gap-3 text-sm">
                   <Calendar className="w-4 h-4 text-muted-foreground" />
                   <span className="text-foreground">
-                    Joined {new Date(person.createdAt).toLocaleDateString()}
+                    {isManagedClient ? 'Added' : 'Joined'} {new Date(person.createdAt).toLocaleDateString()}
                   </span>
                 </div>
+              )}
+              {person.notes && (
+                <p className="text-sm text-muted-foreground mt-2 pl-7">{person.notes}</p>
               )}
             </div>
           </div>
