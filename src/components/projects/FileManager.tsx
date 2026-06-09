@@ -301,8 +301,18 @@ export function FileManager({
                     </Button>
                   )}
                 </div>
+                </div>
+                {showAudioPreview && (
+                  <audio
+                    controls
+                    preload="none"
+                    src={deliverable.file_url}
+                    className="w-full h-9"
+                  />
+                )}
               </div>
-            ))
+              );
+            })
           )}
         </div>
       </ScrollArea>
