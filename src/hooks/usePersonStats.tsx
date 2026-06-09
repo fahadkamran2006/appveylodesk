@@ -66,6 +66,65 @@ export async function fetchClientStats(clientId: string): Promise<ClientStats> {
   };
 }
 
+export async function fetchManagedClientStats(managedId: string): Promise<ClientStats> {
+  const { data: activeProjectsData } = await supabase
+    .from('projects')
+    .select('id', { count: 'exact' })
+    .eq('managed_client_id', managedId)
+    .not('status', 'in', '("done","cancelled")');
+
+  const { data: invoicesData } = await supabase
+    .from('invoices')
+    .select('amount')
+    .eq('managed_client_id', managedId)
+    .eq('status', 'paid');
+
+  const totalSpent = invoicesData?.reduce((sum, inv) => sum + (inv.amount || 0), 0) || 0;
+
+  const { data: projectsData } = await supabase
+    .from('projects')
+    .select('id, title, status')
+    .eq('managed_client_id', managedId)
+    .order('updated_at', { ascending: false })
+    .limit(10);
+
+  return {
+    activeProjects: activeProjectsData?.length || 0,
+    totalSpent,
+    projects: projectsData?.map(p => ({
+      id: p.id,
+      name: p.title,
+      status: p.status,
+    })) || [],
+  };
+}
+
+export function useManagedClientStats(managedIds: string[]) {
+  const [stats, setStats] = useState<Record<string, ClientStats>>({});
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (managedIds.length === 0) {
+      setStats({});
+      return;
+    }
+    const fetchAll = async () => {
+      setLoading(true);
+      const results: Record<string, ClientStats> = {};
+      await Promise.all(
+        managedIds.map(async (id) => {
+          results[id] = await fetchManagedClientStats(id);
+        })
+      );
+      setStats(results);
+      setLoading(false);
+    };
+    fetchAll();
+  }, [managedIds.join(',')]);
+
+  return { stats, loading };
+}
+
 export async function fetchEditorStats(editorId: string, period: TimePeriod = 'all'): Promise<EditorStats> {
   const dateStart = getDateRangeStart(period);
   
