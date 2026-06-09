@@ -263,7 +263,7 @@ const InvoiceDetailPage = () => {
           full_name: invoice.client?.full_name || null,
           email: invoice.client?.email || '',
         },
-        project: invoice.project ? { title: invoice.project.title } : null,
+        project: { title: invoice.container?.title || invoice.project?.title || 'Project' },
         paymentMethod: invoice.payment_method ? {
           name: invoice.payment_method.name,
           details: invoice.payment_method.details,
