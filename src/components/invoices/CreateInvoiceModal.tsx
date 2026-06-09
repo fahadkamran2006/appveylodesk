@@ -25,7 +25,7 @@ import {
 import { Plus, Trash2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-interface Project {
+interface Container {
   id: string;
   title: string;
   client_id: string | null;
