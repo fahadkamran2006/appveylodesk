@@ -80,6 +80,16 @@ const isVideoFile = (fileName: string) => {
   return ['mp4', 'mov', 'avi', 'webm', 'mkv'].includes(ext || '');
 };
 
+const isImageFile = (fileName: string) => {
+  const ext = fileName.split('.').pop()?.toLowerCase();
+  return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'bmp'].includes(ext || '');
+};
+
+const isAudioFile = (fileName: string) => {
+  const ext = fileName.split('.').pop()?.toLowerCase();
+  return ['mp3', 'wav', 'aac', 'm4a', 'ogg', 'flac'].includes(ext || '');
+};
+
 export function FileManager({
   projectId,
   deliverables,
@@ -191,14 +201,27 @@ export function FileManager({
           ) : deliverables.length === 0 && remoteUploads.length > 0 ? (
             null // Just show the remote uploads above
           ) : (
-            deliverables.map(deliverable => (
+            deliverables.map(deliverable => {
+              const showImagePreview = isImageFile(deliverable.file_name);
+              const showAudioPreview = isAudioFile(deliverable.file_name);
+              return (
               <div
                 key={deliverable.id}
-                className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card hover:bg-muted/30 transition-colors"
+                className="flex flex-col gap-2 p-3 rounded-lg border border-border bg-card hover:bg-muted/30 transition-colors"
               >
-                {/* Icon */}
+                <div className="flex items-center gap-3">
+                {/* Icon or thumbnail */}
                 <div className="shrink-0">
-                  {getFileIcon(deliverable.file_name)}
+                  {showImagePreview ? (
+                    <img
+                      src={deliverable.file_url}
+                      alt={deliverable.file_name}
+                      loading="lazy"
+                      className="w-12 h-12 rounded object-cover border border-border"
+                    />
+                  ) : (
+                    getFileIcon(deliverable.file_name)
+                  )}
                 </div>
 
                 {/* Info */}
@@ -278,8 +301,18 @@ export function FileManager({
                     </Button>
                   )}
                 </div>
+                </div>
+                {showAudioPreview && (
+                  <audio
+                    controls
+                    preload="none"
+                    src={deliverable.file_url}
+                    className="w-full h-9"
+                  />
+                )}
               </div>
-            ))
+              );
+            })
           )}
         </div>
       </ScrollArea>

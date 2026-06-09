@@ -474,9 +474,9 @@ serve(async (req) => {
         if (managedIdSet.size) {
           const { data: mcs } = await admin
             .from("managed_clients")
-            .select("id, name, company")
+            .select("id, full_name, company, email")
             .in("id", Array.from(managedIdSet));
-          for (const m of mcs || []) managedNames.set(m.id, m.name || m.company || "Client");
+          for (const m of mcs || []) managedNames.set(m.id, (m as any).full_name || (m as any).company || (m as any).email || "Client");
         }
 
         async function ensureClientRoot(clientId: string) {
@@ -503,20 +503,26 @@ serve(async (req) => {
         }
 
         async function ensureManagedClientRoot(managedId: string) {
+          const desiredName = managedNames.get(managedId) || "Client";
           const { data: existing } = await admin
             .from("drive_folders")
-            .select("id")
+            .select("id, name")
             .eq("agency_id", agencyId)
             .eq("managed_client_id", managedId)
             .eq("kind", "client_root")
             .maybeSingle();
-          if (existing) return existing.id as string;
+          if (existing) {
+            if (existing.name !== desiredName) {
+              await admin.from("drive_folders").update({ name: desiredName }).eq("id", existing.id);
+            }
+            return existing.id as string;
+          }
           const { data: ins } = await admin
             .from("drive_folders")
             .insert({
               agency_id: agencyId,
               parent_id: null,
-              name: managedNames.get(managedId) || "Client",
+              name: desiredName,
               kind: "client_root",
               managed_client_id: managedId,
               created_by: user.id,
