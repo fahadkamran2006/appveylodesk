@@ -1,4 +1,5 @@
 import { Droppable, Draggable } from '@hello-pangea/dnd';
+import { motion } from 'framer-motion';
 import { ProjectCard } from './ProjectCard';
 import { cn } from '@/lib/utils';
 
@@ -70,9 +71,10 @@ export function KanbanColumn({
             ref={provided.innerRef}
             {...provided.droppableProps}
             className={cn(
-              'flex-1 min-h-[420px] p-3 rounded-2xl transition-all space-y-3',
+              'flex-1 min-h-[420px] p-3 rounded-2xl space-y-3',
+              'transition-[background-color,border-color,box-shadow] duration-200 ease-out',
               snapshot.isDraggingOver
-                ? 'bg-primary/[0.06] border border-dashed border-primary/40'
+                ? 'bg-primary/[0.06] border border-dashed border-primary/40 shadow-[inset_0_0_0_1px_rgba(75,75,225,0.15)]'
                 : isEmpty
                   ? 'bg-white/[0.015] border border-dashed border-white/[0.06]'
                   : 'bg-white/[0.02] border border-white/[0.04]'
@@ -87,25 +89,43 @@ export function KanbanColumn({
             )}
             {projects.map((project, index) => (
               <Draggable key={project.id} draggableId={project.id} index={index}>
-                {(provided, snapshot) => (
+                {(dragProvided, dragSnapshot) => (
                   <div
-                    ref={provided.innerRef}
-                    {...provided.draggableProps}
-                    {...provided.dragHandleProps}
+                    ref={dragProvided.innerRef}
+                    {...dragProvided.draggableProps}
+                    {...dragProvided.dragHandleProps}
+                    style={{
+                      ...dragProvided.draggableProps.style,
+                      // Smoother release: longer cubic-bezier when dropping
+                      transition: dragSnapshot.isDropAnimating
+                        ? 'all 0.22s cubic-bezier(0.2, 0.8, 0.2, 1)'
+                        : dragProvided.draggableProps.style?.transition,
+                    }}
                     className={cn(
-                      'transition-transform',
-                      snapshot.isDragging && 'rotate-1 scale-[1.02]'
+                      'will-change-transform',
+                      dragSnapshot.isDragging &&
+                        'rotate-[0.6deg] scale-[1.015] shadow-[0_18px_40px_-12px_rgba(0,0,0,0.5)]'
                     )}
                   >
-                    <ProjectCard
-                      id={project.id}
-                      title={project.title}
-                      clientName={project.client_name}
-                      editorName={project.editor_name}
-                      editorAvatar={project.editor_avatar}
-                      dueDate={project.due_date}
-                      onClick={() => onProjectClick?.(project)}
-                    />
+                    <motion.div
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{
+                        duration: 0.18,
+                        delay: Math.min(index * 0.02, 0.12),
+                        ease: [0.4, 0, 0.2, 1],
+                      }}
+                    >
+                      <ProjectCard
+                        id={project.id}
+                        title={project.title}
+                        clientName={project.client_name}
+                        editorName={project.editor_name}
+                        editorAvatar={project.editor_avatar}
+                        dueDate={project.due_date}
+                        onClick={() => onProjectClick?.(project)}
+                      />
+                    </motion.div>
                   </div>
                 )}
               </Draggable>

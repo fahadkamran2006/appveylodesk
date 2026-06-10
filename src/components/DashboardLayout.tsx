@@ -8,6 +8,7 @@ import { DashboardHeader } from '@/components/notifications/DashboardHeader';
 import { RestrictionBanner } from '@/components/RestrictionBanner';
 import { PaymentStatusBanner } from '@/components/PaymentStatusBanner';
 import { usePushNotificationListener } from '@/hooks/usePushNotifications';
+import { PageTransition } from '@/components/PageTransition';
 import { cn } from '@/lib/utils';
 
 interface DashboardLayoutProps {
@@ -63,7 +64,7 @@ export function DashboardLayout({ role, children, className, hideHeader = false 
         <PaymentStatusBanner />
 
         <SubscriptionGuard bypass={shouldBypassGuard}>
-          {children}
+          <PageTransition>{children}</PageTransition>
         </SubscriptionGuard>
       </main>
 

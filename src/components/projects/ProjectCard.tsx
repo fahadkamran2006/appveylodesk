@@ -40,10 +40,10 @@ export function ProjectCard({
       className={cn(
         'group relative rounded-2xl p-4 cursor-pointer overflow-hidden',
         'bg-card/80 border border-border/60',
-        'transition-all duration-300',
-        'hover:border-primary/40 hover:-translate-y-0.5',
-        'hover:shadow-[0_12px_32px_-12px_rgba(75,75,225,0.35)]',
-        'active:scale-[0.99]'
+        'transition-[transform,border-color,box-shadow,background-color] duration-150 ease-[cubic-bezier(0.4,0,0.2,1)]',
+        'hover:border-primary/40 hover:-translate-y-[1px]',
+        'hover:shadow-[0_10px_28px_-14px_rgba(75,75,225,0.4)]',
+        'active:scale-[0.99] active:duration-75'
       )}
     >
       {/* Client micro-label */}
