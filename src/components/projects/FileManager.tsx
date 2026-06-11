@@ -25,7 +25,8 @@ import {
   Download,
   Eye,
   Loader2,
-  Lock
+  Lock,
+  Pencil
 } from 'lucide-react';
 import { Deliverable, useStorage } from '@/hooks/useStorage';
 import { useToast } from '@/hooks/use-toast';
@@ -105,7 +106,7 @@ export function FileManager({
   uploadLabel = 'Click to upload files',
   userRole,
 }: FileManagerProps) {
-  const { deleteDeliverable, formatBytes, loading } = useStorage();
+  const { deleteDeliverable, formatBytes, loading, renameDeliverable } = useStorage();
   const { toast } = useToast();
   const { addToQueue } = useUploadContext();
   const { startDownload } = useDownloadContext();
@@ -287,6 +288,21 @@ export function FileManager({
                       title="Download"
                     >
                       <Download className="w-4 h-4" />
+                    </Button>
+                  )}
+                  {(userRole === 'admin' || userRole === 'editor') && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Rename"
+                      onClick={async () => {
+                        const newName = window.prompt('Rename file', deliverable.file_name);
+                        if (!newName || newName.trim() === deliverable.file_name) return;
+                        const ok = await renameDeliverable(deliverable.id, newName.trim());
+                        if (ok) onFileUploaded();
+                      }}
+                    >
+                      <Pencil className="w-4 h-4" />
                     </Button>
                   )}
                   {canDelete && (

@@ -46,6 +46,112 @@ async function notifyAdmins(supabaseAdmin: any, agencyId: string, title: string,
   }
 }
 
+const BUNNY_STREAM_LIBRARY_ID = Deno.env.get('BUNNY_STREAM_LIBRARY_ID') || '';
+const BUNNY_STREAM_STORAGE_KEY = Deno.env.get('BUNNY_STREAM_STORAGE_KEY') || '';
+const BUNNY_STREAM_API_KEY = Deno.env.get('BUNNY_STREAM_API_KEY') || '';
+const BUNNY_STORAGE_HOSTNAME = Deno.env.get('BUNNY_STORAGE_HOSTNAME') || 'storage.bunnycdn.com';
+const BUNNY_STORAGE_ZONE = Deno.env.get('BUNNY_STORAGE_ZONE') || '';
+const BUNNY_API_KEY = Deno.env.get('BUNNY_API_KEY') || '';
+
+function extractStreamVideoId(url: string): string | null {
+  const guidRe = /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i;
+  const m = url.match(guidRe);
+  return m ? m[1] : null;
+}
+
+function sanitizeDownloadName(name: string, ext: string): string {
+  let safe = (name || 'file').replace(/[/\\:*?"<>|]/g, '_');
+  if (!safe.toLowerCase().endsWith(`.${ext.toLowerCase()}`)) {
+    safe = safe.replace(/\.[^.]+$/, '') + `.${ext}`;
+  }
+  return safe;
+}
+
+async function proxyDownload(deliverable: any): Promise<Response> {
+  const fileUrl: string = deliverable.file_url || '';
+  const fileName: string = deliverable.file_name || 'file';
+
+  // Bunny Stream video — fetch via Storage API
+  const isStream =
+    /vz-[a-z0-9]+\.b-cdn\.net.*\/playlist\.m3u8/i.test(fileUrl) ||
+    fileUrl.includes('iframe.mediadelivery.net') ||
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(fileUrl);
+
+  if (isStream) {
+    const videoId = extractStreamVideoId(fileUrl);
+    if (!videoId || !BUNNY_STREAM_STORAGE_KEY || !BUNNY_STREAM_LIBRARY_ID) {
+      return new Response(JSON.stringify({ error: 'Stream download not configured' }), {
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const libShort = `vz-${BUNNY_STREAM_LIBRARY_ID.slice(0, 8)}`;
+    const urls = [
+      `https://storage.bunnycdn.com/${libShort}/${videoId}/original`,
+      `https://storage.bunnycdn.com/${libShort}/${videoId}/play_1080p.mp4`,
+      `https://storage.bunnycdn.com/${libShort}/${videoId}/play_720p.mp4`,
+      `https://storage.bunnycdn.com/${libShort}/${videoId}/play_480p.mp4`,
+      `https://storage.bunnycdn.com/${libShort}/${videoId}/play_360p.mp4`,
+    ];
+    for (const u of urls) {
+      const res = await fetch(u, { headers: { AccessKey: BUNNY_STREAM_STORAGE_KEY } });
+      if (res.ok && res.body) {
+        const downloadName = sanitizeDownloadName(fileName, 'mp4');
+        return new Response(res.body, {
+          status: 200,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'video/mp4',
+            'Content-Disposition': `attachment; filename="${downloadName}"`,
+            'Content-Length': res.headers.get('Content-Length') || '',
+          },
+        });
+      }
+    }
+    return new Response(JSON.stringify({ error: 'Video not available for download' }), {
+      status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
+  // Bunny CDN storage file (non-stream) — fetch via Bunny Storage API to bypass pull zone
+  if (fileUrl.includes('b-cdn.net') || fileUrl.includes('bunnycdn')) {
+    if (!BUNNY_STORAGE_ZONE || !BUNNY_API_KEY) {
+      return new Response(JSON.stringify({ error: 'Storage not configured' }), {
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    try {
+      const u = new URL(fileUrl);
+      const path = u.pathname.replace(/^\/+/, '');
+      const storageUrl = `https://${BUNNY_STORAGE_HOSTNAME}/${BUNNY_STORAGE_ZONE}/${path}`;
+      const res = await fetch(storageUrl, { headers: { AccessKey: BUNNY_API_KEY } });
+      if (!res.ok || !res.body) {
+        return new Response(JSON.stringify({ error: `Storage error ${res.status}` }), {
+          status: res.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const ext = (fileName.split('.').pop() || 'bin').toLowerCase();
+      return new Response(res.body, {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': res.headers.get('Content-Type') || 'application/octet-stream',
+          'Content-Disposition': `attachment; filename="${sanitizeDownloadName(fileName, ext)}"`,
+          'Content-Length': res.headers.get('Content-Length') || '',
+        },
+      });
+    } catch (e) {
+      return new Response(JSON.stringify({ error: 'Invalid file URL' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+  }
+
+  // Fallback: Supabase storage signed URL redirect
+  return new Response(JSON.stringify({ error: 'Unsupported file source' }), {
+    status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -57,7 +163,29 @@ Deno.serve(async (req) => {
   );
 
   try {
-    const { action, token, reviewer_name, content, timestamp_seconds, approval_action } = await req.json();
+    const body = await req.json();
+    const { action, token, reviewer_name, content, timestamp_seconds, approval_action } = body;
+
+    if (action === 'download') {
+      const { data: link } = await supabaseAdmin
+        .from('public_review_links')
+        .select('id, deliverable_id, allow_download, expires_at, is_active, deliverables(id, file_name, file_url)')
+        .eq('token', token)
+        .eq('is_active', true)
+        .single();
+
+      if (!link || !link.allow_download) {
+        return new Response(JSON.stringify({ error: 'Download not allowed' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      if (link.expires_at && new Date(link.expires_at) < new Date()) {
+        return new Response(JSON.stringify({ error: 'Link expired' }), {
+          status: 410, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      return await proxyDownload(link.deliverables);
+    }
 
     if (action === 'get_review') {
       const { data: link, error: linkError } = await supabaseAdmin

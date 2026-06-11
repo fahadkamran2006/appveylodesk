@@ -187,17 +187,38 @@ export default function PublicReview() {
     }
   };
 
-  const handleDownload = () => {
-    const url = reviewData?.deliverable?.file_url;
-    if (!url) return;
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = reviewData?.deliverable?.file_name || 'video';
-    a.target = '_blank';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+  const handleDownload = async () => {
+    if (!token) return;
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const res = await fetch(`${supabaseUrl}/functions/v1/public-review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': anonKey, 'Authorization': `Bearer ${anonKey}` },
+        body: JSON.stringify({ action: 'download', token }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || `Download failed (${res.status})`);
+      }
+      const disp = res.headers.get('Content-Disposition') || '';
+      const match = disp.match(/filename="([^"]+)"/);
+      const name = match ? match[1] : (reviewData?.deliverable?.file_name || 'download');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      console.error('Download error:', e);
+      alert(e.message || 'Download failed. Please try again or contact support.');
+    }
   };
+
 
   const formatTimestamp = (seconds: number) => {
     const m = Math.floor(seconds / 60);
