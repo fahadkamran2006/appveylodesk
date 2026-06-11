@@ -227,6 +227,18 @@ serve(async (req) => {
         return json({ ok: true, file: data });
       }
 
+      case "rename_file": {
+        const { fileId, newName } = payload;
+        const trimmed = String(newName || "").trim();
+        if (!trimmed) return json({ error: "Name required" }, 400);
+        const { data: f } = await admin.from("drive_files").select("agency_id, uploaded_by").eq("id", fileId).maybeSingle();
+        if (!f) return json({ error: "Not found" }, 404);
+        if (f.agency_id !== agencyId) return json({ error: "Forbidden" }, 403);
+        if (role !== "admin" && f.uploaded_by !== user.id) return json({ error: "Forbidden" }, 403);
+        await admin.from("drive_files").update({ file_name: trimmed }).eq("id", fileId);
+        return json({ ok: true });
+      }
+
       case "delete_file": {
         // Soft delete: move to trash
         const { fileId } = payload;
