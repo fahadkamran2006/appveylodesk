@@ -631,23 +631,24 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
   // Bunny Stream iframe embed
   if (useIframeEmbed && streamVideoId) {
     return (
-      <div ref={containerRef} className={cn('w-full h-full relative', className)}>
-        <iframe
-          ref={iframeRef}
-          src={playbackUrl}
-          className="w-full h-full rounded-lg"
-          loading="lazy"
-          allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
-          allowFullScreen
-          title="Video Player"
-          onLoad={handleIframeLoad}
-        />
-        {/* Comment markers overlay */}
-        {renderCommentMarkers()}
-        {/* Current time display for debugging/visibility */}
-        <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
-          {formatTime(currentTime)} / {formatTime(duration || 0)}
+      <div ref={containerRef} className={cn('w-full h-full flex flex-col', className)}>
+        <div className="relative flex-1 min-h-0">
+          <iframe
+            ref={iframeRef}
+            src={playbackUrl}
+            className="w-full h-full rounded-lg"
+            loading="lazy"
+            allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
+            allowFullScreen
+            title="Video Player"
+            onLoad={handleIframeLoad}
+          />
+          {renderCommentMarkers()}
+          <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+            {formatTime(currentTime)} / {formatTime(duration || 0)}
+          </div>
         </div>
+        {renderRevisionStrip()}
       </div>
     );
   }
