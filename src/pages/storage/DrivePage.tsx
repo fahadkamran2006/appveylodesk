@@ -16,7 +16,7 @@ import {
 import {
   Folder, FolderPlus, Upload, Share2, ChevronRight, Grid3x3, List,
   Search, MoreVertical, Download, Trash2, Film, Image as ImageIcon, FileText, File as FileIcon, Home,
-  Trash, RotateCcw,
+  Trash, RotateCcw, Pencil,
 } from "lucide-react";
 import { useDrive, useDriveFolder, useDriveTrash, type DriveFile } from "@/hooks/useDrive";
 import { NewFolderModal } from "@/components/drive/NewFolderModal";
