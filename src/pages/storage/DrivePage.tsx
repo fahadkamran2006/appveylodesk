@@ -544,7 +544,7 @@ function FolderCard({ folder, onOpen, onShare, onDelete, onDropData }: any) {
   );
 }
 
-function FileCard({ file, onPreview, onDownload, onShare, onDelete }: any) {
+function FileCard({ file, onPreview, onDownload, onShare, onRename, onDelete }: any) {
   return (
     <div
       className="group relative border border-border rounded-xl p-5 bg-card hover:bg-muted/40 hover:border-primary/40 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
@@ -567,6 +567,7 @@ function FileCard({ file, onPreview, onDownload, onShare, onDelete }: any) {
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={onPreview}>Preview</DropdownMenuItem>
             <DropdownMenuItem onClick={onDownload}><Download className="w-4 h-4 mr-2" />Download</DropdownMenuItem>
+            {onRename && <DropdownMenuItem onClick={onRename}>Rename</DropdownMenuItem>}
             {onShare && <DropdownMenuItem onClick={onShare}><Share2 className="w-4 h-4 mr-2" />Share link</DropdownMenuItem>}
             {onDelete && <DropdownMenuItem onClick={onDelete} className="text-destructive"><Trash2 className="w-4 h-4 mr-2" />Delete</DropdownMenuItem>}
           </DropdownMenuContent>
