@@ -288,6 +288,7 @@ Deno.serve(async (req) => {
           reviewer_name: c.reviewer_name,
           content: c.content,
           timestamp_seconds: Number(c.timestamp_seconds),
+          is_resolved: !!c.is_resolved,
           created_at: c.created_at,
           source: 'public',
         })),
@@ -451,6 +452,52 @@ Deno.serve(async (req) => {
       }
 
       return new Response(JSON.stringify({ ok: true, new_status: newStatus }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (action === 'resolve_comment') {
+      const { comment_id, resolved } = body as { comment_id: string; resolved: boolean };
+      // Verify comment belongs to this token's review link
+      const { data: link } = await supabaseAdmin
+        .from('public_review_links')
+        .select('id, is_active, expires_at')
+        .eq('token', token)
+        .eq('is_active', true)
+        .single();
+      if (!link) {
+        return new Response(JSON.stringify({ error: 'Invalid review link' }), {
+          status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      if (link.expires_at && new Date(link.expires_at) < new Date()) {
+        return new Response(JSON.stringify({ error: 'Link expired' }), {
+          status: 410, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const { data: comment } = await supabaseAdmin
+        .from('public_review_comments')
+        .select('id, review_link_id')
+        .eq('id', comment_id)
+        .single();
+      if (!comment || comment.review_link_id !== link.id) {
+        return new Response(JSON.stringify({ error: 'Comment not found' }), {
+          status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const { error } = await supabaseAdmin
+        .from('public_review_comments')
+        .update({
+          is_resolved: !!resolved,
+          resolved_at: resolved ? new Date().toISOString() : null,
+        } as any)
+        .eq('id', comment_id);
+      if (error) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      return new Response(JSON.stringify({ ok: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }

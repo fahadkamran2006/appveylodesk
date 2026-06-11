@@ -219,6 +219,18 @@ export default function PublicReview() {
     }
   };
 
+  const handleToggleResolve = async (comment: ReviewComment) => {
+    const resolved = !comment.is_resolved;
+    setComments(prev => prev.map(c => c.id === comment.id ? { ...c, is_resolved: resolved } : c));
+    try {
+      const data = await invoke({ action: 'resolve_comment', token, comment_id: comment.id, resolved });
+      if (!data?.ok) throw new Error(data?.error || 'Failed');
+    } catch {
+      // revert
+      setComments(prev => prev.map(c => c.id === comment.id ? { ...c, is_resolved: !resolved } : c));
+    }
+  };
+
 
   const formatTimestamp = (seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -360,19 +372,31 @@ export default function PublicReview() {
       </header>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0">
         {/* Video player */}
-        <div className="w-full lg:flex-1 bg-black flex items-center" style={{ minHeight: '300px', maxHeight: '70vh' }}>
+        <div className="w-full lg:flex-1 bg-black flex items-center min-h-[300px]">
           {deliverable?.file_url && (
             <VideoPlayer
               ref={videoPlayerRef}
               src={deliverable.file_url}
-              comments={[]}
+              comments={comments.map(c => ({
+                id: c.id,
+                deliverable_id: deliverable.id,
+                user_id: '',
+                content: c.content,
+                timestamp_seconds: c.timestamp_seconds,
+                is_resolved: !!c.is_resolved,
+                resolved_by: null,
+                resolved_at: null,
+                created_at: c.created_at,
+                updated_at: c.created_at,
+              })) as any}
               onTimeUpdate={(t) => setCurrentTime(t)}
               className="w-full h-full"
             />
           )}
         </div>
+
 
         {/* Side panel */}
         <div className="w-full lg:w-[380px] border-t lg:border-t-0 lg:border-l border-zinc-800 bg-[#0f0f18] flex flex-col">
@@ -542,9 +566,23 @@ export default function PublicReview() {
                         <p className={`text-sm ${comment.is_resolved ? 'line-through text-zinc-600' : 'text-zinc-300'}`}>
                           {comment.content}
                         </p>
-                        <p className="text-[10px] text-zinc-600 mt-1">
-                          {new Date(comment.created_at).toLocaleString()}
-                        </p>
+                        <div className="flex items-center justify-between gap-2 mt-1">
+                          <p className="text-[10px] text-zinc-600">
+                            {new Date(comment.created_at).toLocaleString()}
+                          </p>
+                          {comment.source === 'public' && (
+                            <button
+                              onClick={() => handleToggleResolve(comment)}
+                              className={`text-[10px] px-2 py-0.5 rounded transition-colors ${
+                                comment.is_resolved
+                                  ? 'text-zinc-500 hover:text-zinc-300 bg-zinc-800/50'
+                                  : 'text-emerald-400 hover:text-emerald-300 bg-emerald-500/10'
+                              }`}
+                            >
+                              {comment.is_resolved ? 'Reopen' : 'Mark resolved'}
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>

@@ -76,9 +76,12 @@ const getFileIcon = (fileName: string) => {
   return <File className="w-5 h-5 text-muted-foreground" />;
 };
 
-const isVideoFile = (fileName: string) => {
+const isVideoFile = (fileName: string, fileUrl?: string) => {
   const ext = fileName.split('.').pop()?.toLowerCase();
-  return ['mp4', 'mov', 'avi', 'webm', 'mkv'].includes(ext || '');
+  if (['mp4', 'mov', 'avi', 'webm', 'mkv'].includes(ext || '')) return true;
+  if (fileUrl && isDefinitelyBunnyStreamUrl(fileUrl)) return true;
+  if (fileUrl && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(fileUrl)) return true;
+  return false;
 };
 
 const isImageFile = (fileName: string) => {
@@ -90,6 +93,13 @@ const isAudioFile = (fileName: string) => {
   const ext = fileName.split('.').pop()?.toLowerCase();
   return ['mp3', 'wav', 'aac', 'm4a', 'ogg', 'flac'].includes(ext || '');
 };
+
+const BUNNY_STREAM_LIBRARY_ID = '582147';
+function extractBunnyGuid(s: string): string | null {
+  if (!s) return null;
+  const m = s.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
+  return m ? m[1] : null;
+}
 
 export function FileManager({
   projectId,
@@ -113,6 +123,7 @@ export function FileManager({
   const remoteUploads = useRemoteUploads(projectId);
   const [deleteTarget, setDeleteTarget] = useState<Deliverable | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState<Record<string, boolean>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -205,6 +216,9 @@ export function FileManager({
             deliverables.map(deliverable => {
               const showImagePreview = isImageFile(deliverable.file_name);
               const showAudioPreview = isAudioFile(deliverable.file_name);
+              const isVideo = isVideoFile(deliverable.file_name, deliverable.file_url);
+              const bunnyGuid = isVideo ? extractBunnyGuid(deliverable.file_url) : null;
+              const isOpen = !!previewOpen[deliverable.id];
               return (
               <div
                 key={deliverable.id}
@@ -254,15 +268,25 @@ export function FileManager({
 
                 {/* Actions */}
                 <div className="flex items-center gap-1 shrink-0">
-                  {isVideoFile(deliverable.file_name) && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => onViewVideo(deliverable)}
-                      title="Review video"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </Button>
+                  {isVideo && (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setPreviewOpen(p => ({ ...p, [deliverable.id]: !p[deliverable.id] }))}
+                        title={isOpen ? 'Hide preview' : 'Show preview'}
+                      >
+                        <Video className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onViewVideo(deliverable)}
+                        title="Open review"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                    </>
                   )}
                   {deliverable.is_locked && userRole === 'client' ? (
                     <Button
@@ -325,6 +349,27 @@ export function FileManager({
                     src={deliverable.file_url}
                     className="w-full h-9"
                   />
+                )}
+                {isVideo && isOpen && (
+                  <div className="w-full aspect-video rounded-md overflow-hidden bg-black border border-border">
+                    {bunnyGuid ? (
+                      <iframe
+                        src={`https://iframe.mediadelivery.net/embed/${BUNNY_STREAM_LIBRARY_ID}/${bunnyGuid}?autoplay=false&preload=true&responsive=true`}
+                        className="w-full h-full"
+                        loading="lazy"
+                        allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
+                        allowFullScreen
+                        title={deliverable.file_name}
+                      />
+                    ) : (
+                      <video
+                        controls
+                        preload="metadata"
+                        src={deliverable.file_url}
+                        className="w-full h-full"
+                      />
+                    )}
+                  </div>
                 )}
               </div>
               );
