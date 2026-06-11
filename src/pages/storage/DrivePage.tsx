@@ -384,6 +384,14 @@ export default function DrivePage() {
             {filteredFiles.map((f) => (
               <FileCard key={f.id} file={f} onPreview={() => setPreviewFile(f)} onDownload={() => handleDownload(f)}
                 onShare={() => setShareTarget({ kind: "file", id: f.id, name: f.file_name })}
+                onRename={async () => {
+                  const dot = f.file_name.lastIndexOf(".");
+                  const base = dot > 0 ? f.file_name.slice(0, dot) : f.file_name;
+                  const v = window.prompt("Rename file", base);
+                  if (v == null) return;
+                  const ok = await renameFile(f, v);
+                  if (ok) refetch();
+                }}
                 onDelete={f.source === "user" || f.source === "public_link" ? () => deleteFile(f.id).then(() => refetch()) : undefined} />
             ))}
           </div>
