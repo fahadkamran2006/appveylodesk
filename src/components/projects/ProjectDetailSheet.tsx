@@ -643,23 +643,28 @@ export function ProjectDetailSheet({
 
                 <TabsContent value="review" className="flex-1 overflow-hidden m-0">
                   <div className="p-6">
-                    {deliverableFiles.filter(d => {
-                      const ext = d.file_name.split('.').pop()?.toLowerCase();
-                      return ['mp4', 'mov', 'avi', 'webm', 'mkv'].includes(ext || '');
-                    }).length === 0 ? (
-                      <div className="text-center py-12 text-muted-foreground">
-                        <Video className="w-10 h-10 mx-auto mb-3 opacity-50" />
-                        <p className="text-sm font-medium">No videos to review</p>
-                        <p className="text-xs">Upload a video deliverable to start reviewing</p>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-2 gap-4">
-                        {deliverableFiles
-                          .filter(d => {
-                            const ext = d.file_name.split('.').pop()?.toLowerCase();
-                            return ['mp4', 'mov', 'avi', 'webm', 'mkv'].includes(ext || '');
-                          })
-                          .map(video => (
+                    {(() => {
+                      const isVideoDeliverable = (d: any) => {
+                        const ext = (d.file_name || '').split('.').pop()?.toLowerCase();
+                        if (['mp4', 'mov', 'avi', 'webm', 'mkv'].includes(ext || '')) return true;
+                        const url: string = d.file_url || '';
+                        if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(url)) return true;
+                        if (/vz-[a-z0-9]+\.b-cdn\.net/i.test(url) || url.includes('iframe.mediadelivery.net')) return true;
+                        return false;
+                      };
+                      const videos = deliverableFiles.filter(isVideoDeliverable);
+                      if (videos.length === 0) {
+                        return (
+                          <div className="text-center py-12 text-muted-foreground">
+                            <Video className="w-10 h-10 mx-auto mb-3 opacity-50" />
+                            <p className="text-sm font-medium">No videos to review</p>
+                            <p className="text-xs">Upload a video deliverable to start reviewing</p>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div className="grid grid-cols-2 gap-4">
+                          {videos.map(video => (
                             <button
                               key={video.id}
                               onClick={() => handleViewVideo(video)}
@@ -672,10 +677,12 @@ export function ProjectDetailSheet({
                               </p>
                             </button>
                           ))}
-                      </div>
-                    )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </TabsContent>
+
 
                 <TabsContent value="activity" className="flex-1 overflow-hidden m-0">
                   <ReviewActivityTab projectId={project.id} />
