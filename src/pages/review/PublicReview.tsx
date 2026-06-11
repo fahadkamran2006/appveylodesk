@@ -554,9 +554,23 @@ export default function PublicReview() {
                         <p className={`text-sm ${comment.is_resolved ? 'line-through text-zinc-600' : 'text-zinc-300'}`}>
                           {comment.content}
                         </p>
-                        <p className="text-[10px] text-zinc-600 mt-1">
-                          {new Date(comment.created_at).toLocaleString()}
-                        </p>
+                        <div className="flex items-center justify-between gap-2 mt-1">
+                          <p className="text-[10px] text-zinc-600">
+                            {new Date(comment.created_at).toLocaleString()}
+                          </p>
+                          {comment.source === 'public' && (
+                            <button
+                              onClick={() => handleToggleResolve(comment)}
+                              className={`text-[10px] px-2 py-0.5 rounded transition-colors ${
+                                comment.is_resolved
+                                  ? 'text-zinc-500 hover:text-zinc-300 bg-zinc-800/50'
+                                  : 'text-emerald-400 hover:text-emerald-300 bg-emerald-500/10'
+                              }`}
+                            >
+                              {comment.is_resolved ? 'Reopen' : 'Mark resolved'}
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
