@@ -268,15 +268,25 @@ export function FileManager({
 
                 {/* Actions */}
                 <div className="flex items-center gap-1 shrink-0">
-                  {isVideoFile(deliverable.file_name) && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => onViewVideo(deliverable)}
-                      title="Review video"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </Button>
+                  {isVideo && (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setPreviewOpen(p => ({ ...p, [deliverable.id]: !p[deliverable.id] }))}
+                        title={isOpen ? 'Hide preview' : 'Show preview'}
+                      >
+                        <Video className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onViewVideo(deliverable)}
+                        title="Open review"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                    </>
                   )}
                   {deliverable.is_locked && userRole === 'client' ? (
                     <Button
