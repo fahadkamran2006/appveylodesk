@@ -456,7 +456,16 @@ export default function DrivePage() {
           fileName={shareTarget.kind === "file" ? shareTarget.name : undefined}
         />
       )}
-      <FilePreview open={!!previewFile} onOpenChange={(v) => { if (!v) setPreviewFile(null); }} file={previewFile} />
+      <FilePreview
+        open={!!previewFile}
+        onOpenChange={(v) => { if (!v) setPreviewFile(null); }}
+        file={previewFile}
+        onRename={previewFile ? async (newBase) => {
+          const ok = await renameFile(previewFile, newBase);
+          if (ok) refetch();
+          return ok;
+        } : undefined}
+      />
     </DashboardLayout>
   );
 }
