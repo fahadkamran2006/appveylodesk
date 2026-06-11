@@ -179,7 +179,7 @@ export function useDrive() {
 
   return {
     busy,
-    createFolder, renameFolder, deleteFolder, deleteFile, registerFile,
+    createFolder, renameFolder, deleteFolder, deleteFile, renameFile, registerFile,
     restoreFile, restoreFolder, permanentDeleteFile, permanentDeleteFolder,
     cleanupOrphanBunny,
     syncProjectFolders, createShareLink, listShareLinks, revokeShareLink,
