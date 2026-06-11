@@ -76,9 +76,12 @@ const getFileIcon = (fileName: string) => {
   return <File className="w-5 h-5 text-muted-foreground" />;
 };
 
-const isVideoFile = (fileName: string) => {
+const isVideoFile = (fileName: string, fileUrl?: string) => {
   const ext = fileName.split('.').pop()?.toLowerCase();
-  return ['mp4', 'mov', 'avi', 'webm', 'mkv'].includes(ext || '');
+  if (['mp4', 'mov', 'avi', 'webm', 'mkv'].includes(ext || '')) return true;
+  if (fileUrl && isDefinitelyBunnyStreamUrl(fileUrl)) return true;
+  if (fileUrl && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(fileUrl)) return true;
+  return false;
 };
 
 const isImageFile = (fileName: string) => {
@@ -90,6 +93,13 @@ const isAudioFile = (fileName: string) => {
   const ext = fileName.split('.').pop()?.toLowerCase();
   return ['mp3', 'wav', 'aac', 'm4a', 'ogg', 'flac'].includes(ext || '');
 };
+
+const BUNNY_STREAM_LIBRARY_ID = '582147';
+function extractBunnyGuid(s: string): string | null {
+  if (!s) return null;
+  const m = s.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
+  return m ? m[1] : null;
+}
 
 export function FileManager({
   projectId,
