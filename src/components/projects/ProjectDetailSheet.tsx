@@ -57,6 +57,7 @@ import { MoveVideoModal } from './MoveVideoModal';
 import { VideoApprovalActions } from './VideoApprovalActions';
 import { GenerateReviewLinkModal } from './GenerateReviewLinkModal';
 import { ReviewActivityTab } from './ReviewActivityTab';
+import { ProjectReviewQueue } from './ProjectReviewQueue';
 
 interface ProjectDetailSheetProps {
   projectId: string | null;
@@ -641,8 +642,8 @@ export function ProjectDetailSheet({
                   />
                 </TabsContent>
 
-                <TabsContent value="review" className="flex-1 overflow-hidden m-0">
-                  <div className="p-6">
+                <TabsContent value="review" className="flex-1 overflow-auto m-0">
+                  <div className="p-6 space-y-6">
                     {(() => {
                       const isVideoDeliverable = (d: any) => {
                         const ext = (d.file_name || '').split('.').pop()?.toLowerCase();
@@ -663,21 +664,31 @@ export function ProjectDetailSheet({
                         );
                       }
                       return (
-                        <div className="grid grid-cols-2 gap-4">
-                          {videos.map(video => (
-                            <button
-                              key={video.id}
-                              onClick={() => handleViewVideo(video)}
-                              className="p-4 rounded-lg border border-border bg-card hover:bg-muted/30 transition-colors text-left"
-                            >
-                              <Video className="w-8 h-8 text-primary mb-2" />
-                              <p className="font-medium text-sm truncate">{video.file_name}</p>
-                              <p className="text-xs text-muted-foreground">
-                                Version {video.version} • {video.uploader_name}
-                              </p>
-                            </button>
-                          ))}
-                        </div>
+                        <>
+                          <div>
+                            <h4 className="text-sm font-semibold mb-3">Videos</h4>
+                            <div className="grid grid-cols-2 gap-4">
+                              {videos.map(video => (
+                                <button
+                                  key={video.id}
+                                  onClick={() => handleViewVideo(video)}
+                                  className="p-4 rounded-lg border border-border bg-card hover:bg-muted/30 transition-colors text-left"
+                                >
+                                  <Video className="w-8 h-8 text-primary mb-2" />
+                                  <p className="font-medium text-sm truncate">{video.file_name}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    Version {video.version} • {video.uploader_name}
+                                  </p>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <ProjectReviewQueue
+                            projectId={project.id}
+                            videoDeliverables={videos}
+                            onOpenVideo={handleViewVideo}
+                          />
+                        </>
                       );
                     })()}
                   </div>

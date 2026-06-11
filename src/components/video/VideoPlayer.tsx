@@ -507,40 +507,74 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
     onSeekToComment?.(timestamp);
   };
 
-  // Render comment markers on timeline
+  // Render comment markers on timeline (overlay on video)
   const renderCommentMarkers = () => {
     if (!showCommentMarkers || !comments || comments.length === 0 || duration <= 0) {
       return null;
     }
-
-    // Get unique timestamps (dedupe comments at same second)
     const uniqueTimestamps = [...new Set(comments.map(c => Math.floor(c.timestamp_seconds)))];
-
     return (
-      <div className="absolute bottom-0 left-0 right-0 h-8 pointer-events-none z-10">
+      <div className="absolute bottom-0 left-0 right-0 h-10 pointer-events-none z-10">
         {uniqueTimestamps.map((timestamp) => {
           const position = (timestamp / duration) * 100;
           const commentsAtTime = comments.filter(c => Math.floor(c.timestamp_seconds) === timestamp);
           const hasUnresolved = commentsAtTime.some(c => !c.is_resolved);
-          
           return (
             <button
               key={timestamp}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleMarkerClick(timestamp);
-              }}
+              onClick={(e) => { e.stopPropagation(); handleMarkerClick(timestamp); }}
               className={cn(
-                "absolute bottom-1 w-3 h-3 rounded-full transform -translate-x-1/2 pointer-events-auto transition-all hover:scale-150 z-20",
-                hasUnresolved 
-                  ? "bg-primary shadow-lg shadow-primary/50" 
-                  : "bg-muted-foreground/50"
+                "absolute bottom-0 w-1 h-6 rounded-sm transform -translate-x-1/2 pointer-events-auto transition-all hover:h-8 hover:w-1.5 z-20 ring-2 ring-background/60",
+                hasUnresolved
+                  ? "bg-amber-400 shadow-lg shadow-amber-400/60"
+                  : "bg-emerald-500 shadow-lg shadow-emerald-500/40"
               )}
               style={{ left: `${position}%` }}
-              title={`${commentsAtTime.length} comment${commentsAtTime.length > 1 ? 's' : ''} at ${formatTime(timestamp)}`}
+              title={`${commentsAtTime.length} revision${commentsAtTime.length > 1 ? 's' : ''} at ${formatTime(timestamp)} — ${hasUnresolved ? 'unresolved' : 'resolved'}`}
             />
           );
         })}
+      </div>
+    );
+  };
+
+  // Visible revision strip rendered below the player — always shown when comments exist
+  const renderRevisionStrip = () => {
+    if (!comments || comments.length === 0 || duration <= 0) return null;
+    const uniqueTimestamps = [...new Set(comments.map(c => Math.floor(c.timestamp_seconds)))].sort((a, b) => a - b);
+    const unresolvedCount = comments.filter(c => !c.is_resolved).length;
+    const resolvedCount = comments.length - unresolvedCount;
+    return (
+      <div className="w-full bg-card border-t border-border px-3 py-2">
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Revisions Timeline</span>
+          <div className="flex items-center gap-3 text-[11px]">
+            <span className="flex items-center gap-1 text-amber-500"><span className="w-2 h-2 rounded-full bg-amber-400" />{unresolvedCount} open</span>
+            <span className="flex items-center gap-1 text-emerald-500"><span className="w-2 h-2 rounded-full bg-emerald-500" />{resolvedCount} resolved</span>
+          </div>
+        </div>
+        <div className="relative h-5 bg-muted/40 rounded-full">
+          {uniqueTimestamps.map(timestamp => {
+            const position = (timestamp / duration) * 100;
+            const at = comments.filter(c => Math.floor(c.timestamp_seconds) === timestamp);
+            const hasUnresolved = at.some(c => !c.is_resolved);
+            return (
+              <button
+                key={timestamp}
+                onClick={() => handleMarkerClick(timestamp)}
+                className={cn(
+                  "absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-2.5 h-5 rounded-sm transition-all hover:scale-125 hover:z-10",
+                  hasUnresolved ? "bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)]" : "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]"
+                )}
+                style={{ left: `${position}%` }}
+                title={`${at.length} revision${at.length > 1 ? 's' : ''} at ${formatTime(timestamp)} — ${hasUnresolved ? 'unresolved' : 'resolved'}`}
+              />
+            );
+          })}
+        </div>
+        <div className="flex justify-between mt-1 text-[10px] text-muted-foreground tabular-nums">
+          <span>00:00</span><span>{formatTime(duration)}</span>
+        </div>
       </div>
     );
   };
@@ -597,23 +631,24 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
   // Bunny Stream iframe embed
   if (useIframeEmbed && streamVideoId) {
     return (
-      <div ref={containerRef} className={cn('w-full h-full relative', className)}>
-        <iframe
-          ref={iframeRef}
-          src={playbackUrl}
-          className="w-full h-full rounded-lg"
-          loading="lazy"
-          allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
-          allowFullScreen
-          title="Video Player"
-          onLoad={handleIframeLoad}
-        />
-        {/* Comment markers overlay */}
-        {renderCommentMarkers()}
-        {/* Current time display for debugging/visibility */}
-        <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
-          {formatTime(currentTime)} / {formatTime(duration || 0)}
+      <div ref={containerRef} className={cn('w-full h-full flex flex-col', className)}>
+        <div className="relative flex-1 min-h-0">
+          <iframe
+            ref={iframeRef}
+            src={playbackUrl}
+            className="w-full h-full rounded-lg"
+            loading="lazy"
+            allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
+            allowFullScreen
+            title="Video Player"
+            onLoad={handleIframeLoad}
+          />
+          {renderCommentMarkers()}
+          <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+            {formatTime(currentTime)} / {formatTime(duration || 0)}
+          </div>
         </div>
+        {renderRevisionStrip()}
       </div>
     );
   }
@@ -622,28 +657,30 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
 
   // Native video player
   return (
-    <div ref={containerRef} className={cn('w-full h-full relative', className)}>
-      <video
-        ref={videoRef}
-        className="w-full h-full object-contain rounded-lg"
-        controls
-        playsInline
-        preload="metadata"
-        onTimeUpdate={handleTimeUpdate}
-        onLoadedMetadata={handleLoadedMetadata}
-        onPause={handlePause}
-        onPlay={handlePlay}
-        onError={() => {
-          if (!isHls) {
-            setError('Failed to play this video. Please try downloading it.');
-          }
-        }}
-      >
-        {!isHls && <source src={playbackUrl} type={mimeType} />}
-        Your browser does not support video playback.
-      </video>
-      {/* Comment markers overlay for native video */}
-      {renderCommentMarkers()}
+    <div ref={containerRef} className={cn('w-full h-full flex flex-col', className)}>
+      <div className="relative flex-1 min-h-0">
+        <video
+          ref={videoRef}
+          className="w-full h-full object-contain rounded-lg"
+          controls
+          playsInline
+          preload="metadata"
+          onTimeUpdate={handleTimeUpdate}
+          onLoadedMetadata={handleLoadedMetadata}
+          onPause={handlePause}
+          onPlay={handlePlay}
+          onError={() => {
+            if (!isHls) {
+              setError('Failed to play this video. Please try downloading it.');
+            }
+          }}
+        >
+          {!isHls && <source src={playbackUrl} type={mimeType} />}
+          Your browser does not support video playback.
+        </video>
+        {renderCommentMarkers()}
+      </div>
+      {renderRevisionStrip()}
     </div>
   );
 });
