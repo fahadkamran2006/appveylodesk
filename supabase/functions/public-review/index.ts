@@ -288,6 +288,7 @@ Deno.serve(async (req) => {
           reviewer_name: c.reviewer_name,
           content: c.content,
           timestamp_seconds: Number(c.timestamp_seconds),
+          is_resolved: !!c.is_resolved,
           created_at: c.created_at,
           source: 'public',
         })),
