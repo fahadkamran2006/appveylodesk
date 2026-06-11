@@ -79,7 +79,7 @@ export default function DrivePage() {
   const refetchRef = useRef<(() => void) | null>(null);
 
   const {
-    syncProjectFolders, createFolder, deleteFolder, deleteFile, registerFile,
+    syncProjectFolders, createFolder, deleteFolder, deleteFile, renameFile, registerFile,
     restoreFile, restoreFolder, permanentDeleteFile, permanentDeleteFolder,
   } = useDrive();
   const { data, isLoading, refetch } = useDriveFolder(folderId);
