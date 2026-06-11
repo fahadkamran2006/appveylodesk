@@ -1,12 +1,21 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Download, ExternalLink, ChevronLeft, ChevronRight, Loader2, RotateCcw, Maximize2, Minimize2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Download, ExternalLink, ChevronLeft, ChevronRight, Loader2, RotateCcw, Maximize2, Minimize2, Pencil, Check, X } from "lucide-react";
 import { useDownloadContext } from "@/contexts/DownloadContext";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 import { cn } from "@/lib/utils";
+import {
+  isDefinitelyBunnyStreamUrl,
+  extractBunnyStreamVideoId,
+  buildBunnyStreamEmbedUrl,
+  inferLibraryIdFromStreamUrl,
+} from "@/lib/bunnyStream";
+
+const BUNNY_STREAM_LIBRARY_ID = "582147";
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -17,9 +26,11 @@ interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   file: { id: string; file_name: string; file_url: string; file_size: number; mime_type?: string | null } | null;
+  onRename?: (newBaseName: string) => Promise<boolean | void>;
 }
 
-function kindOf(name: string, mime?: string | null): "image" | "video" | "audio" | "pdf" | "text" | "other" {
+function kindOf(name: string, mime?: string | null, url?: string): "image" | "video" | "audio" | "pdf" | "text" | "bunny_stream" | "other" {
+  if (url && isDefinitelyBunnyStreamUrl(url)) return "bunny_stream";
   const ext = name.split(".").pop()?.toLowerCase() || "";
   if (mime?.startsWith("image/") || ["jpg", "jpeg", "png", "gif", "webp", "svg"].includes(ext)) return "image";
   if (mime?.startsWith("video/") || ["mp4", "webm", "mov", "mkv"].includes(ext)) return "video";
