@@ -350,6 +350,27 @@ export function FileManager({
                     className="w-full h-9"
                   />
                 )}
+                {isVideo && isOpen && (
+                  <div className="w-full aspect-video rounded-md overflow-hidden bg-black border border-border">
+                    {bunnyGuid ? (
+                      <iframe
+                        src={`https://iframe.mediadelivery.net/embed/${BUNNY_STREAM_LIBRARY_ID}/${bunnyGuid}?autoplay=false&preload=true&responsive=true`}
+                        className="w-full h-full"
+                        loading="lazy"
+                        allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
+                        allowFullScreen
+                        title={deliverable.file_name}
+                      />
+                    ) : (
+                      <video
+                        controls
+                        preload="metadata"
+                        src={deliverable.file_url}
+                        className="w-full h-full"
+                      />
+                    )}
+                  </div>
+                )}
               </div>
               );
             })
