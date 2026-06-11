@@ -57,6 +57,7 @@ import { MoveVideoModal } from './MoveVideoModal';
 import { VideoApprovalActions } from './VideoApprovalActions';
 import { GenerateReviewLinkModal } from './GenerateReviewLinkModal';
 import { ReviewActivityTab } from './ReviewActivityTab';
+import { ProjectReviewQueue } from './ProjectReviewQueue';
 
 interface ProjectDetailSheetProps {
   projectId: string | null;
