@@ -618,7 +618,7 @@ function FolderRow({ folder, onOpen, onShare, onDelete, onDropData }: any) {
   );
 }
 
-function FileRow({ file, onPreview, onDownload, onShare, onDelete }: any) {
+function FileRow({ file, onPreview, onDownload, onShare, onRename, onDelete }: any) {
   return (
     <div className="flex items-center gap-3 p-3 hover:bg-muted/30">
       {fileIcon(file.file_name)}
@@ -627,6 +627,7 @@ function FileRow({ file, onPreview, onDownload, onShare, onDelete }: any) {
         <p className="text-xs text-muted-foreground">{formatBytes(file.file_size)}</p>
       </button>
       <Button size="sm" variant="ghost" onClick={onDownload}><Download className="w-4 h-4" /></Button>
+      {onRename && <Button size="sm" variant="ghost" onClick={onRename} title="Rename"><Pencil className="w-4 h-4" /></Button>}
       {onShare && <Button size="sm" variant="ghost" onClick={onShare}><Share2 className="w-4 h-4" /></Button>}
       {onDelete && <Button size="sm" variant="ghost" onClick={onDelete}><Trash2 className="w-4 h-4 text-destructive" /></Button>}
     </div>
