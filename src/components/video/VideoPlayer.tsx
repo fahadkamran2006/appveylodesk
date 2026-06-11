@@ -657,28 +657,30 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({
 
   // Native video player
   return (
-    <div ref={containerRef} className={cn('w-full h-full relative', className)}>
-      <video
-        ref={videoRef}
-        className="w-full h-full object-contain rounded-lg"
-        controls
-        playsInline
-        preload="metadata"
-        onTimeUpdate={handleTimeUpdate}
-        onLoadedMetadata={handleLoadedMetadata}
-        onPause={handlePause}
-        onPlay={handlePlay}
-        onError={() => {
-          if (!isHls) {
-            setError('Failed to play this video. Please try downloading it.');
-          }
-        }}
-      >
-        {!isHls && <source src={playbackUrl} type={mimeType} />}
-        Your browser does not support video playback.
-      </video>
-      {/* Comment markers overlay for native video */}
-      {renderCommentMarkers()}
+    <div ref={containerRef} className={cn('w-full h-full flex flex-col', className)}>
+      <div className="relative flex-1 min-h-0">
+        <video
+          ref={videoRef}
+          className="w-full h-full object-contain rounded-lg"
+          controls
+          playsInline
+          preload="metadata"
+          onTimeUpdate={handleTimeUpdate}
+          onLoadedMetadata={handleLoadedMetadata}
+          onPause={handlePause}
+          onPlay={handlePlay}
+          onError={() => {
+            if (!isHls) {
+              setError('Failed to play this video. Please try downloading it.');
+            }
+          }}
+        >
+          {!isHls && <source src={playbackUrl} type={mimeType} />}
+          Your browser does not support video playback.
+        </video>
+        {renderCommentMarkers()}
+      </div>
+      {renderRevisionStrip()}
     </div>
   );
 });
