@@ -106,7 +106,7 @@ export function FileManager({
   uploadLabel = 'Click to upload files',
   userRole,
 }: FileManagerProps) {
-  const { deleteDeliverable, formatBytes, loading } = useStorage();
+  const { deleteDeliverable, formatBytes, loading, renameDeliverable } = useStorage();
   const { toast } = useToast();
   const { addToQueue } = useUploadContext();
   const { startDownload } = useDownloadContext();
