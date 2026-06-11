@@ -290,6 +290,21 @@ export function FileManager({
                       <Download className="w-4 h-4" />
                     </Button>
                   )}
+                  {(userRole === 'admin' || userRole === 'editor') && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Rename"
+                      onClick={async () => {
+                        const newName = window.prompt('Rename file', deliverable.file_name);
+                        if (!newName || newName.trim() === deliverable.file_name) return;
+                        const ok = await renameDeliverable(deliverable.id, newName.trim());
+                        if (ok) onFileUploaded();
+                      }}
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                  )}
                   {canDelete && (
                     <Button
                       variant="ghost"
