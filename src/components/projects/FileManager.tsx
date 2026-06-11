@@ -216,6 +216,9 @@ export function FileManager({
             deliverables.map(deliverable => {
               const showImagePreview = isImageFile(deliverable.file_name);
               const showAudioPreview = isAudioFile(deliverable.file_name);
+              const isVideo = isVideoFile(deliverable.file_name, deliverable.file_url);
+              const bunnyGuid = isVideo ? extractBunnyGuid(deliverable.file_url) : null;
+              const isOpen = !!previewOpen[deliverable.id];
               return (
               <div
                 key={deliverable.id}
