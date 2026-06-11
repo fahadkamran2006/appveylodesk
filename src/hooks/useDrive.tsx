@@ -83,6 +83,42 @@ export function useDrive() {
     catch (e: any) { toast({ title: "Delete failed", description: e.message, variant: "destructive" }); }
   }, [invalidate, toast]);
 
+  // Rename a drive file or a deliverable surfaced via drive listing (id "dlv:<uuid>").
+  // The extension is preserved automatically; callers pass the desired BASE name only.
+  const renameFile = useCallback(async (file: DriveFile, newBaseName: string) => {
+    const base = newBaseName.trim();
+    if (!base) {
+      toast({ title: "Name required", variant: "destructive" });
+      return false;
+    }
+    const dotIdx = file.file_name.lastIndexOf(".");
+    const ext = dotIdx > 0 ? file.file_name.slice(dotIdx) : "";
+    // Sanitize: strip any extension the user typed so file type can't change.
+    const baseDotIdx = base.lastIndexOf(".");
+    const cleanBase = baseDotIdx > 0 ? base.slice(0, baseDotIdx) : base;
+    const newName = cleanBase + ext;
+    if (newName === file.file_name) return true;
+
+    try {
+      if (file.id.startsWith("dlv:")) {
+        const deliverableId = file.id.slice(4);
+        const { data, error } = await supabase.functions.invoke("deliverables-ops", {
+          body: { action: "rename", deliverableId, newName },
+        });
+        if (error) throw error;
+        if ((data as any)?.error) throw new Error((data as any).error);
+      } else {
+        await call("rename_file", { fileId: file.id, newName });
+      }
+      invalidate();
+      toast({ title: "Renamed", description: newName });
+      return true;
+    } catch (e: any) {
+      toast({ title: "Rename failed", description: e.message, variant: "destructive" });
+      return false;
+    }
+  }, [invalidate, toast]);
+
   const restoreFile = useCallback(async (fileId: string) => {
     try { await call("restore_file", { fileId }); invalidate(); toast({ title: "Restored" }); }
     catch (e: any) { toast({ title: "Restore failed", description: e.message, variant: "destructive" }); }
@@ -143,7 +179,7 @@ export function useDrive() {
 
   return {
     busy,
-    createFolder, renameFolder, deleteFolder, deleteFile, registerFile,
+    createFolder, renameFolder, deleteFolder, deleteFile, renameFile, registerFile,
     restoreFile, restoreFolder, permanentDeleteFile, permanentDeleteFolder,
     cleanupOrphanBunny,
     syncProjectFolders, createShareLink, listShareLinks, revokeShareLink,

@@ -1,12 +1,21 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Download, ExternalLink, ChevronLeft, ChevronRight, Loader2, RotateCcw, Maximize2, Minimize2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Download, ExternalLink, ChevronLeft, ChevronRight, Loader2, RotateCcw, Maximize2, Minimize2, Pencil, Check, X } from "lucide-react";
 import { useDownloadContext } from "@/contexts/DownloadContext";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 import { cn } from "@/lib/utils";
+import {
+  isDefinitelyBunnyStreamUrl,
+  extractBunnyStreamVideoId,
+  buildBunnyStreamEmbedUrl,
+  inferLibraryIdFromStreamUrl,
+} from "@/lib/bunnyStream";
+
+const BUNNY_STREAM_LIBRARY_ID = "582147";
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -17,9 +26,11 @@ interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   file: { id: string; file_name: string; file_url: string; file_size: number; mime_type?: string | null } | null;
+  onRename?: (newBaseName: string) => Promise<boolean | void>;
 }
 
-function kindOf(name: string, mime?: string | null): "image" | "video" | "audio" | "pdf" | "text" | "other" {
+function kindOf(name: string, mime?: string | null, url?: string): "image" | "video" | "audio" | "pdf" | "text" | "bunny_stream" | "other" {
+  if (url && isDefinitelyBunnyStreamUrl(url)) return "bunny_stream";
   const ext = name.split(".").pop()?.toLowerCase() || "";
   if (mime?.startsWith("image/") || ["jpg", "jpeg", "png", "gif", "webp", "svg"].includes(ext)) return "image";
   if (mime?.startsWith("video/") || ["mp4", "webm", "mov", "mkv"].includes(ext)) return "video";
@@ -219,11 +230,22 @@ function VideoViewer({ fileId, url, fullscreen }: { fileId: string; url: string;
   );
 }
 
-export function FilePreview({ open, onOpenChange, file }: Props) {
+export function FilePreview({ open, onOpenChange, file, onRename }: Props) {
   const { startDownload } = useDownloadContext();
   const [fullscreen, setFullscreen] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const [renaming, setRenaming] = useState(false);
 
-  useEffect(() => { if (!open) setFullscreen(false); }, [open]);
+  useEffect(() => { if (!open) { setFullscreen(false); setEditingName(false); } }, [open]);
+
+  // Reset draft when the previewed file changes
+  useEffect(() => {
+    if (!file) return;
+    const dot = file.file_name.lastIndexOf(".");
+    setNameDraft(dot > 0 ? file.file_name.slice(0, dot) : file.file_name);
+    setEditingName(false);
+  }, [file?.id, file?.file_name]);
 
   useEffect(() => {
     if (!open) return;
@@ -239,8 +261,25 @@ export function FilePreview({ open, onOpenChange, file }: Props) {
   }, [open]);
 
   if (!file) return null;
-  const k = kindOf(file.file_name, file.mime_type);
-  const canFullscreen = k === "pdf" || k === "video" || k === "image";
+  const k = kindOf(file.file_name, file.mime_type, file.file_url);
+  const canFullscreen = k === "pdf" || k === "video" || k === "image" || k === "bunny_stream";
+
+  const dotIdx = file.file_name.lastIndexOf(".");
+  const ext = dotIdx > 0 ? file.file_name.slice(dotIdx) : "";
+
+  const streamVideoId = k === "bunny_stream" ? extractBunnyStreamVideoId(file.file_url) : null;
+  const streamLibraryId = inferLibraryIdFromStreamUrl(file.file_url) || BUNNY_STREAM_LIBRARY_ID;
+  const streamEmbedUrl = streamVideoId ? buildBunnyStreamEmbedUrl(streamLibraryId, streamVideoId) : null;
+
+  const commitRename = async () => {
+    if (!onRename) return;
+    const trimmed = nameDraft.trim();
+    if (!trimmed) return;
+    setRenaming(true);
+    const ok = await onRename(trimmed);
+    setRenaming(false);
+    if (ok !== false) setEditingName(false);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -253,8 +292,46 @@ export function FilePreview({ open, onOpenChange, file }: Props) {
       >
         <DialogHeader>
           <div className="flex items-center justify-between gap-2 pr-8">
-            <DialogTitle className="truncate">{file.file_name}</DialogTitle>
-            {canFullscreen && (
+            {editingName ? (
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <Input
+                  autoFocus
+                  value={nameDraft}
+                  onChange={(e) => setNameDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") { e.preventDefault(); commitRename(); }
+                    if (e.key === "Escape") { setEditingName(false); }
+                  }}
+                  disabled={renaming}
+                  className="h-9"
+                />
+                {ext && (
+                  <span className="text-sm text-muted-foreground shrink-0">{ext}</span>
+                )}
+                <Button size="icon" variant="ghost" onClick={commitRename} disabled={renaming} className="shrink-0">
+                  {renaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                </Button>
+                <Button size="icon" variant="ghost" onClick={() => setEditingName(false)} disabled={renaming} className="shrink-0">
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <DialogTitle className="truncate flex items-center gap-2 min-w-0">
+                <span className="truncate">{file.file_name}</span>
+                {onRename && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0 h-7 w-7"
+                    onClick={() => setEditingName(true)}
+                    title="Rename"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+              </DialogTitle>
+            )}
+            {canFullscreen && !editingName && (
               <Button
                 variant="ghost"
                 size="icon"
@@ -277,6 +354,16 @@ export function FilePreview({ open, onOpenChange, file }: Props) {
             />
           )}
           {k === "video" && <VideoViewer fileId={file.id} url={file.file_url} fullscreen={fullscreen} />}
+          {k === "bunny_stream" && streamEmbedUrl && (
+            <iframe
+              src={streamEmbedUrl}
+              className={cn("w-full rounded-md", fullscreen ? "h-[calc(100vh-160px)]" : "h-[65vh]")}
+              loading="lazy"
+              allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
+              allowFullScreen
+              title={file.file_name}
+            />
+          )}
           {k === "audio" && <audio src={file.file_url} controls className="w-full px-6" />}
           {k === "pdf" && <div className="w-full p-2"><PdfViewer url={file.file_url} fullscreen={fullscreen} /></div>}
           {k === "text" && <iframe src={file.file_url} className={cn("w-full bg-background", fullscreen ? "h-[calc(100vh-140px)]" : "h-[70vh]")} title={file.file_name} />}
@@ -288,11 +375,13 @@ export function FilePreview({ open, onOpenChange, file }: Props) {
         </div>
 
         <div className="flex justify-end gap-2">
-          <Button variant="outline" asChild>
-            <a href={file.file_url} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="w-4 h-4 mr-2" />Open in new tab
-            </a>
-          </Button>
+          {k !== "bunny_stream" && (
+            <Button variant="outline" asChild>
+              <a href={file.file_url} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="w-4 h-4 mr-2" />Open in new tab
+              </a>
+            </Button>
+          )}
           <Button onClick={() => startDownload(file.id, file.file_name, file.file_url, file.file_size)}>
             <Download className="w-4 h-4 mr-2" />Download
           </Button>

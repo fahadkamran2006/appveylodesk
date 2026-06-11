@@ -16,7 +16,7 @@ import {
 import {
   Folder, FolderPlus, Upload, Share2, ChevronRight, Grid3x3, List,
   Search, MoreVertical, Download, Trash2, Film, Image as ImageIcon, FileText, File as FileIcon, Home,
-  Trash, RotateCcw,
+  Trash, RotateCcw, Pencil,
 } from "lucide-react";
 import { useDrive, useDriveFolder, useDriveTrash, type DriveFile } from "@/hooks/useDrive";
 import { NewFolderModal } from "@/components/drive/NewFolderModal";
@@ -79,7 +79,7 @@ export default function DrivePage() {
   const refetchRef = useRef<(() => void) | null>(null);
 
   const {
-    syncProjectFolders, createFolder, deleteFolder, deleteFile, registerFile,
+    syncProjectFolders, createFolder, deleteFolder, deleteFile, renameFile, registerFile,
     restoreFile, restoreFolder, permanentDeleteFile, permanentDeleteFolder,
   } = useDrive();
   const { data, isLoading, refetch } = useDriveFolder(folderId);
@@ -384,6 +384,14 @@ export default function DrivePage() {
             {filteredFiles.map((f) => (
               <FileCard key={f.id} file={f} onPreview={() => setPreviewFile(f)} onDownload={() => handleDownload(f)}
                 onShare={() => setShareTarget({ kind: "file", id: f.id, name: f.file_name })}
+                onRename={async () => {
+                  const dot = f.file_name.lastIndexOf(".");
+                  const base = dot > 0 ? f.file_name.slice(0, dot) : f.file_name;
+                  const v = window.prompt("Rename file", base);
+                  if (v == null) return;
+                  const ok = await renameFile(f, v);
+                  if (ok) refetch();
+                }}
                 onDelete={f.source === "user" || f.source === "public_link" ? () => deleteFile(f.id).then(() => refetch()) : undefined} />
             ))}
           </div>
@@ -398,6 +406,14 @@ export default function DrivePage() {
             {filteredFiles.map((f) => (
               <FileRow key={f.id} file={f} onPreview={() => setPreviewFile(f)} onDownload={() => handleDownload(f)}
                 onShare={() => setShareTarget({ kind: "file", id: f.id, name: f.file_name })}
+                onRename={async () => {
+                  const dot = f.file_name.lastIndexOf(".");
+                  const base = dot > 0 ? f.file_name.slice(0, dot) : f.file_name;
+                  const v = window.prompt("Rename file", base);
+                  if (v == null) return;
+                  const ok = await renameFile(f, v);
+                  if (ok) refetch();
+                }}
                 onDelete={f.source === "user" || f.source === "public_link" ? () => deleteFile(f.id).then(() => refetch()) : undefined} />
             ))}
           </div>
@@ -456,7 +472,16 @@ export default function DrivePage() {
           fileName={shareTarget.kind === "file" ? shareTarget.name : undefined}
         />
       )}
-      <FilePreview open={!!previewFile} onOpenChange={(v) => { if (!v) setPreviewFile(null); }} file={previewFile} />
+      <FilePreview
+        open={!!previewFile}
+        onOpenChange={(v) => { if (!v) setPreviewFile(null); }}
+        file={previewFile}
+        onRename={previewFile ? async (newBase) => {
+          const ok = await renameFile(previewFile, newBase);
+          if (ok) refetch();
+          return ok;
+        } : undefined}
+      />
     </DashboardLayout>
   );
 }
@@ -519,7 +544,7 @@ function FolderCard({ folder, onOpen, onShare, onDelete, onDropData }: any) {
   );
 }
 
-function FileCard({ file, onPreview, onDownload, onShare, onDelete }: any) {
+function FileCard({ file, onPreview, onDownload, onShare, onRename, onDelete }: any) {
   return (
     <div
       className="group relative border border-border rounded-xl p-5 bg-card hover:bg-muted/40 hover:border-primary/40 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
@@ -542,6 +567,7 @@ function FileCard({ file, onPreview, onDownload, onShare, onDelete }: any) {
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={onPreview}>Preview</DropdownMenuItem>
             <DropdownMenuItem onClick={onDownload}><Download className="w-4 h-4 mr-2" />Download</DropdownMenuItem>
+            {onRename && <DropdownMenuItem onClick={onRename}>Rename</DropdownMenuItem>}
             {onShare && <DropdownMenuItem onClick={onShare}><Share2 className="w-4 h-4 mr-2" />Share link</DropdownMenuItem>}
             {onDelete && <DropdownMenuItem onClick={onDelete} className="text-destructive"><Trash2 className="w-4 h-4 mr-2" />Delete</DropdownMenuItem>}
           </DropdownMenuContent>
@@ -592,7 +618,7 @@ function FolderRow({ folder, onOpen, onShare, onDelete, onDropData }: any) {
   );
 }
 
-function FileRow({ file, onPreview, onDownload, onShare, onDelete }: any) {
+function FileRow({ file, onPreview, onDownload, onShare, onRename, onDelete }: any) {
   return (
     <div className="flex items-center gap-3 p-3 hover:bg-muted/30">
       {fileIcon(file.file_name)}
@@ -601,6 +627,7 @@ function FileRow({ file, onPreview, onDownload, onShare, onDelete }: any) {
         <p className="text-xs text-muted-foreground">{formatBytes(file.file_size)}</p>
       </button>
       <Button size="sm" variant="ghost" onClick={onDownload}><Download className="w-4 h-4" /></Button>
+      {onRename && <Button size="sm" variant="ghost" onClick={onRename} title="Rename"><Pencil className="w-4 h-4" /></Button>}
       {onShare && <Button size="sm" variant="ghost" onClick={onShare}><Share2 className="w-4 h-4" /></Button>}
       {onDelete && <Button size="sm" variant="ghost" onClick={onDelete}><Trash2 className="w-4 h-4 text-destructive" /></Button>}
     </div>
