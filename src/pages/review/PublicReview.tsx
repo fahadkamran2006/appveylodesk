@@ -360,19 +360,31 @@ export default function PublicReview() {
       </header>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0">
         {/* Video player */}
-        <div className="w-full lg:flex-1 bg-black flex items-center" style={{ minHeight: '300px', maxHeight: '70vh' }}>
+        <div className="w-full lg:flex-1 bg-black flex items-center min-h-[300px]">
           {deliverable?.file_url && (
             <VideoPlayer
               ref={videoPlayerRef}
               src={deliverable.file_url}
-              comments={[]}
+              comments={comments.map(c => ({
+                id: c.id,
+                deliverable_id: deliverable.id,
+                user_id: '',
+                content: c.content,
+                timestamp_seconds: c.timestamp_seconds,
+                is_resolved: !!c.is_resolved,
+                resolved_by: null,
+                resolved_at: null,
+                created_at: c.created_at,
+                updated_at: c.created_at,
+              })) as any}
               onTimeUpdate={(t) => setCurrentTime(t)}
               className="w-full h-full"
             />
           )}
         </div>
+
 
         {/* Side panel */}
         <div className="w-full lg:w-[380px] border-t lg:border-t-0 lg:border-l border-zinc-800 bg-[#0f0f18] flex flex-col">
