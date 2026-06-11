@@ -25,7 +25,8 @@ import {
   Download,
   Eye,
   Loader2,
-  Lock
+  Lock,
+  Pencil
 } from 'lucide-react';
 import { Deliverable, useStorage } from '@/hooks/useStorage';
 import { useToast } from '@/hooks/use-toast';
