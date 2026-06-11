@@ -219,6 +219,18 @@ export default function PublicReview() {
     }
   };
 
+  const handleToggleResolve = async (comment: ReviewComment) => {
+    const resolved = !comment.is_resolved;
+    setComments(prev => prev.map(c => c.id === comment.id ? { ...c, is_resolved: resolved } : c));
+    try {
+      const data = await invoke({ action: 'resolve_comment', token, comment_id: comment.id, resolved });
+      if (!data?.ok) throw new Error(data?.error || 'Failed');
+    } catch {
+      // revert
+      setComments(prev => prev.map(c => c.id === comment.id ? { ...c, is_resolved: !resolved } : c));
+    }
+  };
+
 
   const formatTimestamp = (seconds: number) => {
     const m = Math.floor(seconds / 60);
