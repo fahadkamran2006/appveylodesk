@@ -123,6 +123,7 @@ export function FileManager({
   const remoteUploads = useRemoteUploads(projectId);
   const [deleteTarget, setDeleteTarget] = useState<Deliverable | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState<Record<string, boolean>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
