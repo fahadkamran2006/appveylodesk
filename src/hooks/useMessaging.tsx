@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { getCache, setCache } from '@/lib/sessionCache';
 import type { Database } from '@/integrations/supabase/types';
 
 type Channel = Database['public']['Tables']['channels']['Row'];
@@ -76,8 +77,10 @@ async function fetchProfilesWithRetry(
 export function useMessaging() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [channels, setChannels] = useState<ChannelWithDetails[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cacheKey = user ? `messaging:channels:${user.id}` : null;
+  const cached = cacheKey ? getCache<ChannelWithDetails[]>(cacheKey) : undefined;
+  const [channels, setChannels] = useState<ChannelWithDetails[]>(cached || []);
+  const [loading, setLoading] = useState(!cached);
   const [agencyId, setAgencyId] = useState<string | null>(null);
 
   // Fetch agency ID
@@ -107,7 +110,9 @@ export function useMessaging() {
     if (!session) return;
 
     try {
-      setLoading(true);
+      // Only show full-page skeleton when we have nothing to display.
+      // Otherwise refresh silently in the background (stale-while-revalidate).
+      setLoading((prev) => (channels.length === 0 ? true : prev));
 
       // Get channels user participates in
       const { data: participations, error: partError } = await supabase
@@ -118,8 +123,10 @@ export function useMessaging() {
       if (partError) throw partError;
       if (!participations?.length) {
         setChannels([]);
+        if (cacheKey) setCache(cacheKey, []);
         return;
       }
+
 
       const channelIds = participations.map(p => p.channel_id);
 
@@ -190,6 +197,7 @@ export function useMessaging() {
       });
 
       setChannels(channelsWithDetails);
+      if (cacheKey) setCache(cacheKey, channelsWithDetails);
     } catch (error: any) {
       console.error('Error fetching channels:', error);
       toast({
@@ -308,17 +316,33 @@ export function useMessaging() {
 export function useChannelMessages(channelId: string | null) {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [messages, setMessages] = useState<MessageWithSender[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [channel, setChannel] = useState<ChannelWithDetails | null>(null);
+  const msgCacheKey = channelId ? `messaging:messages:${channelId}` : null;
+  const chCacheKey = channelId ? `messaging:channel:${channelId}` : null;
+  const cachedMessages = msgCacheKey ? getCache<MessageWithSender[]>(msgCacheKey) : undefined;
+  const cachedChannel = chCacheKey ? getCache<ChannelWithDetails>(chCacheKey) : undefined;
+  const [messages, setMessages] = useState<MessageWithSender[]>(cachedMessages || []);
+  const [loading, setLoading] = useState(!cachedMessages);
+  const [channel, setChannel] = useState<ChannelWithDetails | null>(cachedChannel || null);
+
+  // When channel changes, seed instantly from cache to avoid flashing skeleton.
+  useEffect(() => {
+    if (!channelId) {
+      setChannel(null);
+      setMessages([]);
+      setLoading(false);
+      return;
+    }
+    const cMsgs = getCache<MessageWithSender[]>(`messaging:messages:${channelId}`);
+    const cChan = getCache<ChannelWithDetails>(`messaging:channel:${channelId}`);
+    setMessages(cMsgs || []);
+    setChannel(cChan || null);
+    setLoading(!cMsgs);
+  }, [channelId]);
 
   // Fetch channel details
   useEffect(() => {
     const fetchChannel = async () => {
-      if (!channelId) {
-        setChannel(null);
-        return;
-      }
+      if (!channelId) return;
 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
@@ -351,7 +375,7 @@ export function useChannelMessages(channelId: string | null) {
         const userIds = participants?.map(p => p.user_id) || [];
         const profiles = await fetchProfilesWithRetry(userIds);
 
-        setChannel({
+        const next: ChannelWithDetails = {
           ...data,
           participants: participants?.map(p => ({
             user_id: p.user_id,
@@ -364,7 +388,9 @@ export function useChannelMessages(channelId: string | null) {
           })) || [],
           container: container,
           project: null,
-        });
+        };
+        setChannel(next);
+        setCache(`messaging:channel:${channelId}`, next);
       }
     };
 
@@ -386,7 +412,9 @@ export function useChannelMessages(channelId: string | null) {
     }
 
     try {
-      setLoading(true);
+      // Silent refresh when we already have cached messages.
+      const existing = getCache<MessageWithSender[]>(`messaging:messages:${channelId}`);
+      if (!existing) setLoading(true);
 
       const { data: messagesData, error } = await supabase
         .from('messages')
@@ -410,6 +438,7 @@ export function useChannelMessages(channelId: string | null) {
       }));
 
       setMessages(messagesWithSenders);
+      setCache(`messaging:messages:${channelId}`, messagesWithSenders);
     } catch (error) {
       console.error('Error fetching messages:', error);
     } finally {
@@ -420,6 +449,7 @@ export function useChannelMessages(channelId: string | null) {
   useEffect(() => {
     fetchMessages();
   }, [fetchMessages]);
+
 
   // Real-time subscription for messages (INSERT, UPDATE, DELETE)
   useEffect(() => {
@@ -450,7 +480,9 @@ export function useChannelMessages(channelId: string | null) {
 
         setMessages(prev => {
           if (prev.some(m => m.id === newMessage.id)) return prev;
-          return [...prev, newMessage];
+          const next = [...prev, newMessage];
+          setCache(`messaging:messages:${channelId}`, next);
+          return next;
         });
       })
       .on('postgres_changes', {
@@ -460,9 +492,11 @@ export function useChannelMessages(channelId: string | null) {
         filter: `channel_id=eq.${channelId}`,
       }, (payload) => {
         const updated = payload.new as Message;
-        setMessages(prev => prev.map(m => 
-          m.id === updated.id ? { ...m, content: updated.content } : m
-        ));
+        setMessages(prev => {
+          const next = prev.map(m => m.id === updated.id ? { ...m, content: updated.content } : m);
+          setCache(`messaging:messages:${channelId}`, next);
+          return next;
+        });
       })
       .on('postgres_changes', {
         event: 'DELETE',
@@ -471,7 +505,11 @@ export function useChannelMessages(channelId: string | null) {
       }, (payload) => {
         const deletedId = (payload.old as any).id;
         if (deletedId) {
-          setMessages(prev => prev.filter(m => m.id !== deletedId));
+          setMessages(prev => {
+            const next = prev.filter(m => m.id !== deletedId);
+            setCache(`messaging:messages:${channelId}`, next);
+            return next;
+          });
         }
       })
       .subscribe();

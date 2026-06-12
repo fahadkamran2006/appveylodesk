@@ -34,10 +34,26 @@ export function StaffMembersList({ agencyId }: Props) {
     setLoading(true);
     const { data, error } = await (supabase as any)
       .from('staff_members')
-      .select('id, user_id, agency_id, staff_role_id, permission_overrides, staff_roles(name), profiles!staff_members_user_id_fkey(full_name,email,avatar_url)')
+      .select('id, user_id, agency_id, staff_role_id, permission_overrides, staff_roles(name)')
       .eq('agency_id', agencyId);
-    if (error) toast.error(error.message);
-    setRows((data as StaffRow[]) || []);
+    if (error) {
+      toast.error(error.message);
+      setRows([]);
+      setLoading(false);
+      return;
+    }
+    const list = (data as any[]) || [];
+    const userIds = [...new Set(list.map(r => r.user_id).filter(Boolean))];
+    let profilesMap: Record<string, { full_name: string | null; email: string; avatar_url: string | null }> = {};
+    if (userIds.length > 0) {
+      const { data: profs } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, avatar_url')
+        .in('id', userIds);
+      (profs || []).forEach((p: any) => { profilesMap[p.id] = p; });
+    }
+    const merged = list.map(r => ({ ...r, profiles: profilesMap[r.user_id] || null })) as StaffRow[];
+    setRows(merged);
     setLoading(false);
   }, [agencyId]);
 

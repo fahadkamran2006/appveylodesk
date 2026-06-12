@@ -9,6 +9,7 @@ import { AddBonusModal } from '@/components/admin/AddBonusModal';
 import { PayrollPaymentModal } from '@/components/admin/PayrollPaymentModal';
 import { AddBalanceModal } from '@/components/admin/AddBalanceModal';
 import { supabase } from '@/integrations/supabase/client';
+import { getCache, setCache } from '@/lib/sessionCache';
 import { 
   DollarSign, 
   Users, 
@@ -62,14 +63,18 @@ interface PaymentHistoryRecord {
 const AdminPayroll = () => {
   const { user, userRole, loading } = useAuth();
   const navigate = useNavigate();
-  const [editors, setEditors] = useState<EditorPayroll[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [agencyId, setAgencyId] = useState<string>('');
+  const payrollCacheKey = user ? `payroll:admin:${user.id}` : null;
+  const cachedPayroll = payrollCacheKey
+    ? getCache<{ editors: EditorPayroll[]; paymentHistory: PaymentHistoryRecord[]; agencyId: string }>(payrollCacheKey)
+    : undefined;
+  const [editors, setEditors] = useState<EditorPayroll[]>(cachedPayroll?.editors || []);
+  const [isLoading, setIsLoading] = useState(!cachedPayroll);
+  const [agencyId, setAgencyId] = useState<string>(cachedPayroll?.agencyId || '');
   const [bonusModalOpen, setBonusModalOpen] = useState(false);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [balanceModalOpen, setBalanceModalOpen] = useState(false);
   const [selectedEditor, setSelectedEditor] = useState<EditorPayroll | null>(null);
-  const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryRecord[]>([]);
+  const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryRecord[]>(cachedPayroll?.paymentHistory || []);
   const [expandedEditor, setExpandedEditor] = useState<string | null>(null);
 
   useEffect(() => {
@@ -84,7 +89,7 @@ const AdminPayroll = () => {
   const fetchPayrollData = async () => {
     if (!user) return;
 
-    setIsLoading(true);
+    if (!getCache(`payroll:admin:${user.id}`)) setIsLoading(true);
     try {
       const { data: userRoleData } = await supabase
         .from('user_roles')
@@ -241,6 +246,11 @@ const AdminPayroll = () => {
       });
 
       setEditors(payrollData);
+      setCache(`payroll:admin:${user.id}`, {
+        editors: payrollData,
+        paymentHistory: (allPaymentsRes.data || []) as PaymentHistoryRecord[],
+        agencyId: aid,
+      });
     } catch (error) {
       console.error('Error fetching payroll data:', error);
     } finally {

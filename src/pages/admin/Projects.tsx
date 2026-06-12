@@ -17,6 +17,7 @@ import { ProjectDetailSheet } from '@/components/projects/ProjectDetailSheet';
 import { DeliverVideoModal } from '@/components/projects/DeliverVideoModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { getCache, setCache } from '@/lib/sessionCache';
 import { Plus, Loader2, ArrowLeft, LayoutGrid, Video } from 'lucide-react';
 
 const COLUMNS: { id: ProjectStatus; title: string }[] = [
@@ -64,11 +65,18 @@ const AdminProjects = () => {
   const { toast } = useToast();
   
   // View state
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [projectContainers, setProjectContainers] = useState<ProjectContainer[]>([]);
-  const [workspaces, setWorkspaces] = useState<ClientWorkspace[]>([]);
-  const [editors, setEditors] = useState<EditorInfo[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const projectsCacheKey = user ? `projects:admin:${user.id}` : null;
+  const cachedProjects = projectsCacheKey ? getCache<{
+    projects: Project[];
+    projectContainers: ProjectContainer[];
+    workspaces: ClientWorkspace[];
+    editors: EditorInfo[];
+  }>(projectsCacheKey) : undefined;
+  const [projects, setProjects] = useState<Project[]>(cachedProjects?.projects || []);
+  const [projectContainers, setProjectContainers] = useState<ProjectContainer[]>(cachedProjects?.projectContainers || []);
+  const [workspaces, setWorkspaces] = useState<ClientWorkspace[]>(cachedProjects?.workspaces || []);
+  const [editors, setEditors] = useState<EditorInfo[]>(cachedProjects?.editors || []);
+  const [isLoading, setIsLoading] = useState(!cachedProjects);
   const [createVideoModalOpen, setCreateVideoModalOpen] = useState(false);
   const [createProjectModalOpen, setCreateProjectModalOpen] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
@@ -102,7 +110,8 @@ const AdminProjects = () => {
   const fetchData = useCallback(async () => {
     if (!user) return;
 
-    setIsLoading(true);
+    // Only show full loader when there is no cached data yet.
+    if (!getCache(`projects:admin:${user.id}`)) setIsLoading(true);
     try {
       // Get agency_id
       const { data: userRoleData } = await supabase
@@ -317,6 +326,21 @@ const AdminProjects = () => {
       }));
 
       setProjectContainers(containersList);
+
+      // Persist a snapshot for instant rendering on next mount.
+      setCache(`projects:admin:${user.id}`, {
+        projects: videosWithDetails,
+        projectContainers: containersList,
+        workspaces: workspaceList.sort((a, b) => b.projectCount - a.projectCount),
+        editors: editorProfiles.map(e => ({
+          id: e.id,
+          full_name: e.full_name,
+          email: e.email,
+          avatar_url: e.avatar_url,
+        })),
+      });
+
+
 
 
     } catch (error) {
