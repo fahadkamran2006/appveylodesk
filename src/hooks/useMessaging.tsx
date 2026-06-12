@@ -324,13 +324,25 @@ export function useChannelMessages(channelId: string | null) {
   const [loading, setLoading] = useState(!cachedMessages);
   const [channel, setChannel] = useState<ChannelWithDetails | null>(cachedChannel || null);
 
+  // When channel changes, seed instantly from cache to avoid flashing skeleton.
+  useEffect(() => {
+    if (!channelId) {
+      setChannel(null);
+      setMessages([]);
+      setLoading(false);
+      return;
+    }
+    const cMsgs = getCache<MessageWithSender[]>(`messaging:messages:${channelId}`);
+    const cChan = getCache<ChannelWithDetails>(`messaging:channel:${channelId}`);
+    setMessages(cMsgs || []);
+    setChannel(cChan || null);
+    setLoading(!cMsgs);
+  }, [channelId]);
+
   // Fetch channel details
   useEffect(() => {
     const fetchChannel = async () => {
-      if (!channelId) {
-        setChannel(null);
-        return;
-      }
+      if (!channelId) return;
 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
@@ -363,7 +375,7 @@ export function useChannelMessages(channelId: string | null) {
         const userIds = participants?.map(p => p.user_id) || [];
         const profiles = await fetchProfilesWithRetry(userIds);
 
-        setChannel({
+        const next: ChannelWithDetails = {
           ...data,
           participants: participants?.map(p => ({
             user_id: p.user_id,
@@ -376,7 +388,9 @@ export function useChannelMessages(channelId: string | null) {
           })) || [],
           container: container,
           project: null,
-        });
+        };
+        setChannel(next);
+        setCache(`messaging:channel:${channelId}`, next);
       }
     };
 
@@ -398,7 +412,9 @@ export function useChannelMessages(channelId: string | null) {
     }
 
     try {
-      setLoading(true);
+      // Silent refresh when we already have cached messages.
+      const existing = getCache<MessageWithSender[]>(`messaging:messages:${channelId}`);
+      if (!existing) setLoading(true);
 
       const { data: messagesData, error } = await supabase
         .from('messages')
@@ -422,6 +438,7 @@ export function useChannelMessages(channelId: string | null) {
       }));
 
       setMessages(messagesWithSenders);
+      setCache(`messaging:messages:${channelId}`, messagesWithSenders);
     } catch (error) {
       console.error('Error fetching messages:', error);
     } finally {
@@ -432,6 +449,7 @@ export function useChannelMessages(channelId: string | null) {
   useEffect(() => {
     fetchMessages();
   }, [fetchMessages]);
+
 
   // Real-time subscription for messages (INSERT, UPDATE, DELETE)
   useEffect(() => {
