@@ -608,6 +608,12 @@ const InvoiceDetailPage = () => {
                     <span className="text-warning font-medium">Payment under review</span>
                   </>
                 )}
+                {invoice.status === 'draft' && (
+                  <>
+                    <FileText className="w-5 h-5 text-muted-foreground" />
+                    <span className="text-muted-foreground font-medium">Draft — not yet sent to client</span>
+                  </>
+                )}
               </div>
 
               {/* Actions */}
