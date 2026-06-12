@@ -64,11 +64,18 @@ const AdminProjects = () => {
   const { toast } = useToast();
   
   // View state
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [projectContainers, setProjectContainers] = useState<ProjectContainer[]>([]);
-  const [workspaces, setWorkspaces] = useState<ClientWorkspace[]>([]);
-  const [editors, setEditors] = useState<EditorInfo[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const projectsCacheKey = user ? `projects:admin:${user.id}` : null;
+  const cachedProjects = projectsCacheKey ? getCache<{
+    projects: Project[];
+    projectContainers: ProjectContainer[];
+    workspaces: ClientWorkspace[];
+    editors: EditorInfo[];
+  }>(projectsCacheKey) : undefined;
+  const [projects, setProjects] = useState<Project[]>(cachedProjects?.projects || []);
+  const [projectContainers, setProjectContainers] = useState<ProjectContainer[]>(cachedProjects?.projectContainers || []);
+  const [workspaces, setWorkspaces] = useState<ClientWorkspace[]>(cachedProjects?.workspaces || []);
+  const [editors, setEditors] = useState<EditorInfo[]>(cachedProjects?.editors || []);
+  const [isLoading, setIsLoading] = useState(!cachedProjects);
   const [createVideoModalOpen, setCreateVideoModalOpen] = useState(false);
   const [createProjectModalOpen, setCreateProjectModalOpen] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
