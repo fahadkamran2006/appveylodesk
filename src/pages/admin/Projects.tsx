@@ -110,7 +110,8 @@ const AdminProjects = () => {
   const fetchData = useCallback(async () => {
     if (!user) return;
 
-    setIsLoading(true);
+    // Only show full loader when there is no cached data yet.
+    if (!getCache(`projects:admin:${user.id}`)) setIsLoading(true);
     try {
       // Get agency_id
       const { data: userRoleData } = await supabase
