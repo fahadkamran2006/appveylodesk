@@ -50,7 +50,7 @@ export function VoiceNotePlayer({ messageId, attachmentUrl, durationSeconds, isO
     const audio = new Audio();
     audio.preload = 'none';
     audio.src = attachmentUrl;
-    audio.crossOrigin = 'anonymous';
+    // Don't set crossOrigin — Bunny CDN may not return CORS headers for HEAD
     audioRef.current = audio;
 
     const onLoaded = () => setLoaded(true);
