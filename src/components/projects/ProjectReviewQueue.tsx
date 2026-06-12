@@ -14,6 +14,8 @@ interface ReviewItem {
   deliverable_id: string;
   deliverable_name: string;
   version: number | null;
+  uploaded_by: string | null;
+  uploader_name: string;
   content: string;
   timestamp_seconds: number;
   is_resolved: boolean;
