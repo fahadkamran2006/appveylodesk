@@ -77,8 +77,10 @@ async function fetchProfilesWithRetry(
 export function useMessaging() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [channels, setChannels] = useState<ChannelWithDetails[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cacheKey = user ? `messaging:channels:${user.id}` : null;
+  const cached = cacheKey ? getCache<ChannelWithDetails[]>(cacheKey) : undefined;
+  const [channels, setChannels] = useState<ChannelWithDetails[]>(cached || []);
+  const [loading, setLoading] = useState(!cached);
   const [agencyId, setAgencyId] = useState<string | null>(null);
 
   // Fetch agency ID
