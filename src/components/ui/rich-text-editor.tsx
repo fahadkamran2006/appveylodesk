@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
@@ -36,6 +37,22 @@ export function RichTextEditor({
       onChange(editor.getHTML());
     },
   });
+
+  // Sync editor when external `content` changes (e.g. switching between projects).
+  // Without this, tiptap keeps the initial content forever and edits leak across records.
+  useEffect(() => {
+    if (!editor) return;
+    const current = editor.getHTML();
+    const next = content || '';
+    // tiptap renders empty doc as "<p></p>"
+    if (current === next || (current === '<p></p>' && next === '')) return;
+    editor.commands.setContent(next, false);
+  }, [content, editor]);
+
+  useEffect(() => {
+    if (!editor) return;
+    if (editor.isEditable !== editable) editor.setEditable(editable);
+  }, [editable, editor]);
 
   if (!editor) {
     return null;
