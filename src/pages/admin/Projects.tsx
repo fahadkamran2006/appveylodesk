@@ -17,6 +17,7 @@ import { ProjectDetailSheet } from '@/components/projects/ProjectDetailSheet';
 import { DeliverVideoModal } from '@/components/projects/DeliverVideoModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { getCache, setCache } from '@/lib/sessionCache';
 import { Plus, Loader2, ArrowLeft, LayoutGrid, Video } from 'lucide-react';
 
 const COLUMNS: { id: ProjectStatus; title: string }[] = [
