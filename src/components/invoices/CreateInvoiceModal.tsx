@@ -515,15 +515,23 @@ export const CreateInvoiceModal = ({
           </div>
 
           {/* Actions */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-border">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-border">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={(e) => handleCreate(e as any, 'draft')}
+              disabled={creating || !selectedContainer || lineItems.every((i) => !i.description)}
+            >
+              {creating && saveMode === 'draft' ? 'Saving...' : 'Save as Draft'}
             </Button>
             <Button
               type="submit"
               disabled={creating || !selectedContainer || lineItems.every((i) => !i.description)}
             >
-              {creating ? 'Creating...' : 'Create & Send Invoice'}
+              {creating && saveMode === 'send' ? 'Sending...' : 'Create & Send Invoice'}
             </Button>
           </div>
         </form>
