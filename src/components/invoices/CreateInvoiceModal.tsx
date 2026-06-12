@@ -130,9 +130,10 @@ export const CreateInvoiceModal = ({
     setLineItems([{ id: crypto.randomUUID(), description: '', quantity: 1, rate: 0, amount: 0 }]);
   };
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent, mode: 'draft' | 'send' = 'send') => {
     e.preventDefault();
     if (!user || !selectedContainer || lineItems.every((item) => !item.description)) return;
+    setSaveMode(mode);
 
     const validLineItems = lineItems.filter((item) => item.description && item.amount > 0);
     if (validLineItems.length === 0) {
