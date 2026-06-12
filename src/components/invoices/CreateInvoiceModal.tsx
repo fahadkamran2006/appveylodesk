@@ -59,6 +59,7 @@ export const CreateInvoiceModal = ({
   const { methods: paymentMethods, loading: methodsLoading, getDefaultMethod } = usePaymentMethods();
   
   const [creating, setCreating] = useState(false);
+  const [saveMode, setSaveMode] = useState<'draft' | 'send' | null>(null);
   const [selectedContainer, setSelectedContainer] = useState('');
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
   const [paymentLink, setPaymentLink] = useState('');
@@ -129,9 +130,10 @@ export const CreateInvoiceModal = ({
     setLineItems([{ id: crypto.randomUUID(), description: '', quantity: 1, rate: 0, amount: 0 }]);
   };
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent, mode: 'draft' | 'send' = 'send') => {
     e.preventDefault();
     if (!user || !selectedContainer || lineItems.every((item) => !item.description)) return;
+    setSaveMode(mode);
 
     const validLineItems = lineItems.filter((item) => item.description && item.amount > 0);
     if (validLineItems.length === 0) {
@@ -212,7 +214,7 @@ export const CreateInvoiceModal = ({
           due_date: dueDate || null,
           notes: notes || null,
           invoice_number: invoiceNumber,
-          status: 'unpaid',
+          status: mode === 'draft' ? 'draft' : 'unpaid',
         })
         .select('id, created_at')
         .single();
@@ -235,77 +237,77 @@ export const CreateInvoiceModal = ({
 
       if (lineItemsError) throw lineItemsError;
 
-      // Generate PDF for email attachment
-      let pdfBase64: string | undefined;
-      try {
-        const pdfBlob = await generateInvoicePDF({
-          invoice: {
-            invoice_number: invoiceNumber,
-            amount: total,
-            subtotal: subtotal,
-            tax_rate: Number(taxRate),
-            tax_amount: taxAmount,
-            due_date: dueDate || null,
-            created_at: invoice.created_at,
-            notes: notes || null,
-          },
-          agency: {
-            name: agencyData?.name || 'Agency',
-            logo_url: agencyData?.logo_url || null,
-            business_name: agencyData?.business_name || null,
-            business_address: agencyData?.business_address || null,
-            tax_id: agencyData?.tax_id || null,
-            invoice_footer: agencyData?.invoice_footer || null,
-          },
-          client: {
-            full_name: clientProfile?.full_name || null,
-            email: clientProfile?.email || '',
-          },
-          project: { title: container.title },
-          paymentMethod: paymentMethodData ? {
-            name: paymentMethodData.name,
-            details: paymentMethodData.details,
-          } : null,
-          lineItems: validLineItems.map(item => ({
-            description: item.description,
-            quantity: item.quantity,
-            rate: item.rate,
-            amount: item.amount,
-          })),
-        });
+      if (mode === 'send') {
+        // Generate PDF for email attachment
+        let pdfBase64: string | undefined;
+        try {
+          const pdfBlob = await generateInvoicePDF({
+            invoice: {
+              invoice_number: invoiceNumber,
+              amount: total,
+              subtotal: subtotal,
+              tax_rate: Number(taxRate),
+              tax_amount: taxAmount,
+              due_date: dueDate || null,
+              created_at: invoice.created_at,
+              notes: notes || null,
+            },
+            agency: {
+              name: agencyData?.name || 'Agency',
+              logo_url: agencyData?.logo_url || null,
+              business_name: agencyData?.business_name || null,
+              business_address: agencyData?.business_address || null,
+              tax_id: agencyData?.tax_id || null,
+              invoice_footer: agencyData?.invoice_footer || null,
+            },
+            client: {
+              full_name: clientProfile?.full_name || null,
+              email: clientProfile?.email || '',
+            },
+            project: { title: container.title },
+            paymentMethod: paymentMethodData ? {
+              name: paymentMethodData.name,
+              details: paymentMethodData.details,
+            } : null,
+            lineItems: validLineItems.map(item => ({
+              description: item.description,
+              quantity: item.quantity,
+              rate: item.rate,
+              amount: item.amount,
+            })),
+          });
 
-        // Convert blob to base64
-        const reader = new FileReader();
-        pdfBase64 = await new Promise<string>((resolve, reject) => {
-          reader.onloadend = () => {
-            const base64 = (reader.result as string).split(',')[1];
-            resolve(base64);
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(pdfBlob);
+          const reader = new FileReader();
+          pdfBase64 = await new Promise<string>((resolve, reject) => {
+            reader.onloadend = () => {
+              const base64 = (reader.result as string).split(',')[1];
+              resolve(base64);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(pdfBlob);
+          });
+        } catch (pdfError) {
+          console.error('Failed to generate PDF:', pdfError);
+        }
+
+        try {
+          await supabase.functions.invoke('send-invoice-email', {
+            body: { invoice_id: invoice.id, pdf_base64: pdfBase64 },
+          });
+        } catch (emailError) {
+          console.error('Failed to send invoice email:', emailError);
+        }
+
+        toast({
+          title: 'Invoice sent',
+          description: `Invoice ${invoiceNumber} has been sent to the client.`,
         });
-      } catch (pdfError) {
-        console.error('Failed to generate PDF:', pdfError);
-        // Continue without PDF attachment
+      } else {
+        toast({
+          title: 'Draft saved',
+          description: `Invoice ${invoiceNumber} saved as a draft. You can send it later.`,
+        });
       }
-
-      // Send invoice email notification with PDF attachment
-      try {
-        await supabase.functions.invoke('send-invoice-email', {
-          body: { 
-            invoice_id: invoice.id,
-            pdf_base64: pdfBase64,
-          },
-        });
-      } catch (emailError) {
-        console.error('Failed to send invoice email:', emailError);
-        // Don't fail the entire operation if email fails
-      }
-
-      toast({
-        title: 'Invoice created',
-        description: `Invoice ${invoiceNumber} has been sent to the client.`,
-      });
 
       onOpenChange(false);
       resetForm();
@@ -319,6 +321,7 @@ export const CreateInvoiceModal = ({
       });
     } finally {
       setCreating(false);
+      setSaveMode(null);
     }
   };
 
@@ -332,7 +335,7 @@ export const CreateInvoiceModal = ({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleCreate} className="space-y-6">
+        <form onSubmit={(e) => handleCreate(e, 'send')} className="space-y-6">
           {/* Project Selection */}
           <div>
             <Label>Project</Label>
@@ -512,15 +515,23 @@ export const CreateInvoiceModal = ({
           </div>
 
           {/* Actions */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-border">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-border">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={(e) => handleCreate(e as any, 'draft')}
+              disabled={creating || !selectedContainer || lineItems.every((i) => !i.description)}
+            >
+              {creating && saveMode === 'draft' ? 'Saving...' : 'Save as Draft'}
             </Button>
             <Button
               type="submit"
               disabled={creating || !selectedContainer || lineItems.every((i) => !i.description)}
             >
-              {creating ? 'Creating...' : 'Create & Send Invoice'}
+              {creating && saveMode === 'send' ? 'Sending...' : 'Create & Send Invoice'}
             </Button>
           </div>
         </form>
