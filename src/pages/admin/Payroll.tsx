@@ -63,9 +63,13 @@ interface PaymentHistoryRecord {
 const AdminPayroll = () => {
   const { user, userRole, loading } = useAuth();
   const navigate = useNavigate();
-  const [editors, setEditors] = useState<EditorPayroll[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [agencyId, setAgencyId] = useState<string>('');
+  const payrollCacheKey = user ? `payroll:admin:${user.id}` : null;
+  const cachedPayroll = payrollCacheKey
+    ? getCache<{ editors: EditorPayroll[]; paymentHistory: PaymentHistoryRecord[]; agencyId: string }>(payrollCacheKey)
+    : undefined;
+  const [editors, setEditors] = useState<EditorPayroll[]>(cachedPayroll?.editors || []);
+  const [isLoading, setIsLoading] = useState(!cachedPayroll);
+  const [agencyId, setAgencyId] = useState<string>(cachedPayroll?.agencyId || '');
   const [bonusModalOpen, setBonusModalOpen] = useState(false);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [balanceModalOpen, setBalanceModalOpen] = useState(false);
