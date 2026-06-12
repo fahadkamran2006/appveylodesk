@@ -95,25 +95,33 @@ export function ProjectReviewQueue({ projectId, videoDeliverables, onOpenVideo }
       const delMap = new Map(videoDeliverables.map(d => [d.id, d]));
 
       const combined: ReviewItem[] = [
-        ...internal.map(c => ({
-          comment_id: c.id,
-          deliverable_id: c.deliverable_id,
-          deliverable_name: delMap.get(c.deliverable_id)?.file_name || 'Video',
-          version: delMap.get(c.deliverable_id)?.version ?? null,
-          content: c.content,
-          timestamp_seconds: Number(c.timestamp_seconds),
-          is_resolved: c.is_resolved,
-          reviewer_name: profileMap.get(c.user_id) || 'Reviewer',
-          created_at: c.created_at,
-          source: 'internal' as const,
-        })),
+        ...internal.map(c => {
+          const del = delMap.get(c.deliverable_id);
+          return {
+            comment_id: c.id,
+            deliverable_id: c.deliverable_id,
+            deliverable_name: del?.file_name || 'Video',
+            version: del?.version ?? null,
+            uploaded_by: del?.uploaded_by ?? null,
+            uploader_name: del?.uploader_name || 'Unknown',
+            content: c.content,
+            timestamp_seconds: Number(c.timestamp_seconds),
+            is_resolved: c.is_resolved,
+            reviewer_name: profileMap.get(c.user_id) || 'Reviewer',
+            created_at: c.created_at,
+            source: 'internal' as const,
+          };
+        }),
         ...publicComments.map(c => {
           const delId = linkMap.get(c.review_link_id) || '';
+          const del = delMap.get(delId);
           return {
             comment_id: c.id,
             deliverable_id: delId,
-            deliverable_name: delMap.get(delId)?.file_name || 'Video',
-            version: delMap.get(delId)?.version ?? null,
+            deliverable_name: del?.file_name || 'Video',
+            version: del?.version ?? null,
+            uploaded_by: del?.uploaded_by ?? null,
+            uploader_name: del?.uploader_name || 'Unknown',
             content: c.content,
             timestamp_seconds: Number(c.timestamp_seconds),
             is_resolved: !!c.is_resolved,
