@@ -74,7 +74,7 @@ const AdminPayroll = () => {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [balanceModalOpen, setBalanceModalOpen] = useState(false);
   const [selectedEditor, setSelectedEditor] = useState<EditorPayroll | null>(null);
-  const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryRecord[]>([]);
+  const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryRecord[]>(cachedPayroll?.paymentHistory || []);
   const [expandedEditor, setExpandedEditor] = useState<string | null>(null);
 
   useEffect(() => {
