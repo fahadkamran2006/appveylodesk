@@ -86,6 +86,8 @@ const InvoiceDetailPage = () => {
   const [uploading, setUploading] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
+
+  useEffect(() => {
     if (!authLoading && !user) {
       navigate('/auth/login');
     }
