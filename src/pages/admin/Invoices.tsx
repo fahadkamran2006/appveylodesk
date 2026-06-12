@@ -402,9 +402,10 @@ const AdminInvoices = () => {
                           "px-2 py-1 rounded-full text-xs font-medium shrink-0 ml-2",
                           invoice.status === 'paid' && "bg-success/10 text-success border border-success/20",
                           invoice.status === 'pending' && "bg-warning/10 text-warning border border-warning/20",
-                          invoice.status === 'unpaid' && "bg-destructive/10 text-destructive border border-destructive/20"
+                          invoice.status === 'unpaid' && "bg-destructive/10 text-destructive border border-destructive/20",
+                          invoice.status === 'draft' && "bg-muted text-muted-foreground border border-border"
                         )}>
-                          {invoice.status === 'paid' ? 'Paid' : invoice.status === 'pending' ? 'Review' : 'Unpaid'}
+                          {invoice.status === 'paid' ? 'Paid' : invoice.status === 'pending' ? 'Review' : invoice.status === 'draft' ? 'Draft' : 'Unpaid'}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
