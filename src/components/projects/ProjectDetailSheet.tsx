@@ -498,6 +498,17 @@ export function ProjectDetailSheet({
                     )}
                   </div>
 
+                  {/* Description (Trello-like) */}
+                  {project.description && project.description.trim() && (
+                    <div className="mt-4 p-3 rounded-lg bg-muted/30 border border-border">
+                      <div className="flex items-center gap-2 text-sm font-medium mb-2">
+                        <Edit3 className="w-4 h-4" />
+                        Description
+                      </div>
+                      <RichTextDisplay content={project.description} />
+                    </div>
+                  )}
+
                   {/* Reference Links */}
                   {referenceLinks.length > 0 && (
                     <div className="mt-4 p-3 rounded-lg bg-muted/30 border border-border">
