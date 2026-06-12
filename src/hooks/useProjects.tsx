@@ -278,9 +278,13 @@ export function useProjects(role: 'admin' | 'editor' | 'client') {
   };
 }
 
+// Module-level cache so the dashboard renders instantly on revisit
+const statsCache = new Map<string, DashboardStats>();
+
 export function useDashboardStats() {
   const { user } = useAuth();
-  const [stats, setStats] = useState<DashboardStats>({
+  const cachedStats = user ? statsCache.get(user.id) : undefined;
+  const [stats, setStats] = useState<DashboardStats>(cachedStats || {
     totalRevenue: 0,
     activeProjects: 0,
     pendingInvoices: 0,
@@ -290,7 +294,7 @@ export function useDashboardStats() {
     totalEditors: 0,
     proposalsCount: 0,
   });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!cachedStats);
 
   const fetchStats = useCallback(async () => {
     if (!user) return;
@@ -367,7 +371,7 @@ export function useDashboardStats() {
       const totalRevenue = paidInvoices.reduce((sum, inv) => sum + Number(inv.amount), 0);
       const pendingInvoices = unpaidInvoices.reduce((sum, inv) => sum + Number(inv.amount), 0);
 
-      setStats({
+      const newStats: DashboardStats = {
         totalRevenue,
         activeProjects,
         pendingInvoices,
@@ -376,7 +380,9 @@ export function useDashboardStats() {
         totalClients: clients.length + managedClients.length,
         totalEditors: editors.length,
         proposalsCount: proposals,
-      });
+      };
+      setStats(newStats);
+      statsCache.set(user.id, newStats);
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
     } finally {
