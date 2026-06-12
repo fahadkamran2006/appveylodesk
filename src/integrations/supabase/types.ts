@@ -2455,7 +2455,7 @@ export type Database = {
         | "container_root"
       drive_share_permission: "view" | "download" | "upload" | "full" | "edit"
       employment_type: "freelance" | "salaried"
-      invoice_status: "unpaid" | "paid" | "overdue" | "pending"
+      invoice_status: "unpaid" | "paid" | "overdue" | "pending" | "draft"
       notification_type:
         | "task_assignment"
         | "new_message"
@@ -2615,7 +2615,7 @@ export const Constants = {
       ],
       drive_share_permission: ["view", "download", "upload", "full", "edit"],
       employment_type: ["freelance", "salaried"],
-      invoice_status: ["unpaid", "paid", "overdue", "pending"],
+      invoice_status: ["unpaid", "paid", "overdue", "pending", "draft"],
       notification_type: [
         "task_assignment",
         "new_message",
