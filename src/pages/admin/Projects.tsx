@@ -327,6 +327,21 @@ const AdminProjects = () => {
 
       setProjectContainers(containersList);
 
+      // Persist a snapshot for instant rendering on next mount.
+      setCache(`projects:admin:${user.id}`, {
+        projects: videosWithDetails,
+        projectContainers: containersList,
+        workspaces: workspaceList.sort((a, b) => b.projectCount - a.projectCount),
+        editors: editorProfiles.map(e => ({
+          id: e.id,
+          full_name: e.full_name,
+          email: e.email,
+          avatar_url: e.avatar_url,
+        })),
+      });
+
+
+
 
     } catch (error) {
       console.error('Error fetching projects:', error);
