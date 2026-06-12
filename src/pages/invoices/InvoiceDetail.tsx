@@ -459,13 +459,16 @@ const InvoiceDetailPage = () => {
                       'w-2 h-2 rounded-full',
                       invoice.status === 'paid' && 'bg-success',
                       invoice.status === 'pending' && 'bg-warning',
-                      invoice.status === 'unpaid' && 'bg-destructive'
+                      invoice.status === 'unpaid' && 'bg-destructive',
+                      invoice.status === 'draft' && 'bg-muted-foreground'
                     )}
                   />
                   {invoice.status === 'paid'
                     ? 'Paid'
                     : invoice.status === 'pending'
                     ? 'Pending Review'
+                    : invoice.status === 'draft'
+                    ? 'Draft'
                     : 'Unpaid'}
                 </div>
                 <p className="text-2xl font-bold text-foreground mt-3">
