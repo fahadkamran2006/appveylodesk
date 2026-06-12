@@ -636,6 +636,32 @@ const InvoiceDetailPage = () => {
                     </>
                   )}
                 </Button>
+
+                {!isClient && invoice.status === 'draft' && (
+                  <>
+                    <Button variant="outline" onClick={handleCopyShareLink}>
+                      <Link2 className="w-4 h-4 mr-2" />
+                      Copy Share Link
+                    </Button>
+                    <Button variant="hero" onClick={handleSendEmail} disabled={sendingEmail}>
+                      {sendingEmail ? (
+                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Sending...</>
+                      ) : (
+                        <><Mail className="w-4 h-4 mr-2" /> Send via Email</>
+                      )}
+                    </Button>
+                  </>
+                )}
+
+                {!isClient && invoice.status === 'unpaid' && (
+                  <Button variant="outline" onClick={handleSendEmail} disabled={sendingEmail}>
+                    {sendingEmail ? (
+                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Sending...</>
+                    ) : (
+                      <><Mail className="w-4 h-4 mr-2" /> Resend Email</>
+                    )}
+                  </Button>
+                )}
                 
                 {paymentLink && invoice.status === 'unpaid' && (
                   <Button
