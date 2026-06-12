@@ -169,9 +169,22 @@ export function ProjectReviewQueue({ projectId, videoDeliverables, onOpenVideo }
     );
   }
 
-  const unresolved = items.filter(i => !i.is_resolved);
-  const resolved = items.filter(i => i.is_resolved);
-  const visible = showResolved ? items : unresolved;
+  // Build list of editors who have uploaded any video in this project
+  const editorOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    items.forEach(i => {
+      if (i.uploaded_by) map.set(i.uploaded_by, i.uploader_name);
+    });
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [items]);
+
+  const filteredByEditor = editorFilter === 'all'
+    ? items
+    : items.filter(i => i.uploaded_by === editorFilter);
+
+  const unresolved = filteredByEditor.filter(i => !i.is_resolved);
+  const resolved = filteredByEditor.filter(i => i.is_resolved);
+  const visible = showResolved ? filteredByEditor : unresolved;
 
   // Group by deliverable for cleaner display
   const grouped = visible.reduce<Record<string, ReviewItem[]>>((acc, item) => {
@@ -181,8 +194,8 @@ export function ProjectReviewQueue({ projectId, videoDeliverables, onOpenVideo }
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
           <h4 className="text-sm font-semibold">Review Queue</h4>
           <Badge variant={unresolved.length > 0 ? 'default' : 'secondary'} className="text-xs">
             {unresolved.length} unresolved
@@ -191,12 +204,31 @@ export function ProjectReviewQueue({ projectId, videoDeliverables, onOpenVideo }
             <Badge variant="outline" className="text-xs">{resolved.length} resolved</Badge>
           )}
         </div>
-        {resolved.length > 0 && (
-          <Button variant="ghost" size="sm" onClick={() => setShowResolved(v => !v)}>
-            {showResolved ? 'Hide resolved' : 'Show resolved'}
+        <div className="flex items-center gap-2 flex-wrap">
+          {editorOptions.length > 0 && (
+            <Select value={editorFilter} onValueChange={setEditorFilter}>
+              <SelectTrigger className="h-8 text-xs w-[180px]">
+                <Filter className="w-3 h-3 mr-1" />
+                <SelectValue placeholder="Filter editor" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All editors</SelectItem>
+                {editorOptions.map(e => (
+                  <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <Button
+            variant={showResolved ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => setShowResolved(v => !v)}
+          >
+            {showResolved ? 'Showing all' : 'Unresolved only'}
           </Button>
-        )}
+        </div>
       </div>
+
 
       {visible.length === 0 ? (
         <div className="text-center py-10 text-muted-foreground border border-dashed border-border rounded-lg">
