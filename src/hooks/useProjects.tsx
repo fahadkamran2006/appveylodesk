@@ -40,19 +40,24 @@ export interface DashboardStats {
   proposalsCount: number;
 }
 
+// Module-level cache so navigating away/back shows data instantly
+const projectsCache = new Map<string, { projects: Project[]; agencyId: string | null }>();
+
 export function useProjects(role: 'admin' | 'editor' | 'client') {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [agencyId, setAgencyId] = useState<string | null>(null);
+  const cacheKey = user ? `${role}:${user.id}` : '';
+  const cached = cacheKey ? projectsCache.get(cacheKey) : undefined;
+  const [projects, setProjects] = useState<Project[]>(cached?.projects || []);
+  const [loading, setLoading] = useState(!cached);
+  const [agencyId, setAgencyId] = useState<string | null>(cached?.agencyId ?? null);
 
   const fetchProjects = useCallback(async () => {
     if (!user) return;
 
-    setLoading(true);
+    // Only show full loading state on first load; otherwise refresh silently in background
+    if (!projectsCache.has(`${role}:${user.id}`)) setLoading(true);
     try {
-      // Get user's agency
       const { data: userRoleData } = await supabase
         .from('user_roles')
         .select('agency_id')
@@ -63,7 +68,7 @@ export function useProjects(role: 'admin' | 'editor' | 'client') {
         setLoading(false);
         return;
       }
-      
+
       setAgencyId(userRoleData.agency_id);
 
       let projectsQuery = supabase
@@ -72,13 +77,10 @@ export function useProjects(role: 'admin' | 'editor' | 'client') {
         .order('created_at', { ascending: false });
 
       if (role === 'admin') {
-        // Admin sees all agency projects
         projectsQuery = projectsQuery.eq('agency_id', userRoleData.agency_id);
       } else if (role === 'client') {
-        // Client sees only their projects
         projectsQuery = projectsQuery.eq('client_id', user.id);
       } else if (role === 'editor') {
-        // Editor sees assigned projects via project_editors
         const { data: assignments } = await supabase
           .from('project_editors')
           .select('project_id')
@@ -87,6 +89,7 @@ export function useProjects(role: 'admin' | 'editor' | 'client') {
         const projectIds = assignments?.map(a => a.project_id) || [];
         if (projectIds.length === 0) {
           setProjects([]);
+          projectsCache.set(`${role}:${user.id}`, { projects: [], agencyId: userRoleData.agency_id });
           setLoading(false);
           return;
         }
@@ -96,64 +99,60 @@ export function useProjects(role: 'admin' | 'editor' | 'client') {
       const { data: projectsData, error } = await projectsQuery;
       if (error) throw error;
 
-      // Enrich with client names and editor info
-      const enrichedProjects: Project[] = await Promise.all(
-        (projectsData || []).map(async (project) => {
-          let clientName: string | undefined;
-          const editors: ProjectEditor[] = [];
+      const projectList = projectsData || [];
+      const projectIds = projectList.map(p => p.id);
+      const clientIds = [...new Set(projectList.map(p => p.client_id).filter(Boolean) as string[])];
 
-          // Get client name
-          if (project.client_id) {
-            const { data: clientProfile } = await supabase
-              .from('profiles')
-              .select('full_name, email')
-              .eq('id', project.client_id)
-              .maybeSingle();
-            clientName = clientProfile?.full_name || clientProfile?.email;
-          }
+      // BATCHED enrichment: 3 queries total instead of N*3
+      const [clientsRes, projectEditorsRes] = await Promise.all([
+        clientIds.length
+          ? supabase.from('profiles').select('id, full_name, email').in('id', clientIds)
+          : Promise.resolve({ data: [] as any[] }),
+        projectIds.length
+          ? supabase.from('project_editors').select('project_id, editor_id').in('project_id', projectIds)
+          : Promise.resolve({ data: [] as any[] }),
+      ]);
 
-          // Get all editors for this project
-          const { data: projectEditors } = await supabase
-            .from('project_editors')
-            .select('editor_id')
-            .eq('project_id', project.id);
+      const clientMap = new Map<string, { full_name: string | null; email: string | null }>();
+      (clientsRes.data || []).forEach((c: any) => clientMap.set(c.id, c));
 
-          if (projectEditors && projectEditors.length > 0) {
-            const editorIds = projectEditors.map(pe => pe.editor_id);
-            const { data: editorProfiles } = await supabase
-              .from('profiles')
-              .select('id, full_name, email, avatar_url')
-              .in('id', editorIds);
+      const editorIds = [...new Set((projectEditorsRes.data || []).map((pe: any) => pe.editor_id))];
+      const editorProfilesRes = editorIds.length
+        ? await supabase.from('profiles').select('id, full_name, email, avatar_url').in('id', editorIds)
+        : { data: [] as any[] };
+      const editorProfileMap = new Map<string, any>();
+      (editorProfilesRes.data || []).forEach((p: any) => editorProfileMap.set(p.id, p));
 
-            if (editorProfiles) {
-              editors.push(...editorProfiles.map(ep => ({
-                id: ep.id,
-                full_name: ep.full_name,
-                email: ep.email,
-                avatar_url: ep.avatar_url,
-              })));
-            }
-          }
+      const editorsByProject = new Map<string, ProjectEditor[]>();
+      (projectEditorsRes.data || []).forEach((pe: any) => {
+        const prof = editorProfileMap.get(pe.editor_id);
+        if (!prof) return;
+        const list = editorsByProject.get(pe.project_id) || [];
+        list.push({ id: prof.id, full_name: prof.full_name, email: prof.email, avatar_url: prof.avatar_url });
+        editorsByProject.set(pe.project_id, list);
+      });
 
-          return {
-            id: project.id,
-            title: project.title,
-            description: project.description,
-            client_id: project.client_id,
-            client_name: clientName,
-            agency_id: project.agency_id,
-            status: project.status as ProjectStatus,
-            due_date: project.due_date,
-            budget: project.budget,
-            editor_rate: project.editor_rate,
-            editors,
-            created_at: project.created_at,
-            updated_at: project.updated_at,
-          };
-        })
-      );
+      const enrichedProjects: Project[] = projectList.map((project) => {
+        const client = project.client_id ? clientMap.get(project.client_id) : undefined;
+        return {
+          id: project.id,
+          title: project.title,
+          description: project.description,
+          client_id: project.client_id,
+          client_name: client?.full_name || client?.email || undefined,
+          agency_id: project.agency_id,
+          status: project.status as ProjectStatus,
+          due_date: project.due_date,
+          budget: project.budget,
+          editor_rate: project.editor_rate,
+          editors: editorsByProject.get(project.id) || [],
+          created_at: project.created_at,
+          updated_at: project.updated_at,
+        };
+      });
 
       setProjects(enrichedProjects);
+      projectsCache.set(`${role}:${user.id}`, { projects: enrichedProjects, agencyId: userRoleData.agency_id });
     } catch (error) {
       console.error('Error fetching projects:', error);
       toast({
