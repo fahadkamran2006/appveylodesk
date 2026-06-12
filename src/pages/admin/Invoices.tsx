@@ -68,7 +68,7 @@ const AdminInvoices = () => {
   const [proofModalOpen, setProofModalOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [proofUrl, setProofUrl] = useState<string | null>(null);
-  const [filter, setFilter] = useState<'all' | 'unpaid' | 'pending' | 'paid'>('all');
+  const [filter, setFilter] = useState<'all' | 'draft' | 'unpaid' | 'pending' | 'paid'>('all');
 
   useEffect(() => {
     if (!loading && !user) {
