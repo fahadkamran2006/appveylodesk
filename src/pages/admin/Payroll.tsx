@@ -89,7 +89,7 @@ const AdminPayroll = () => {
   const fetchPayrollData = async () => {
     if (!user) return;
 
-    setIsLoading(true);
+    if (!getCache(`payroll:admin:${user.id}`)) setIsLoading(true);
     try {
       const { data: userRoleData } = await supabase
         .from('user_roles')
