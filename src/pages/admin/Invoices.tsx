@@ -475,9 +475,10 @@ const AdminInvoices = () => {
                             "px-3 py-1 rounded-full text-xs font-medium",
                             invoice.status === 'paid' && "bg-success/10 text-success border border-success/20",
                             invoice.status === 'pending' && "bg-warning/10 text-warning border border-warning/20",
-                            invoice.status === 'unpaid' && "bg-destructive/10 text-destructive border border-destructive/20"
+                            invoice.status === 'unpaid' && "bg-destructive/10 text-destructive border border-destructive/20",
+                            invoice.status === 'draft' && "bg-muted text-muted-foreground border border-border"
                           )}>
-                            {invoice.status === 'paid' ? 'Paid' : invoice.status === 'pending' ? 'Pending Review' : 'Unpaid'}
+                            {invoice.status === 'paid' ? 'Paid' : invoice.status === 'pending' ? 'Pending Review' : invoice.status === 'draft' ? 'Draft' : 'Unpaid'}
                           </span>
                         </td>
                         <td className="p-4">
