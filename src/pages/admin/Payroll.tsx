@@ -246,6 +246,11 @@ const AdminPayroll = () => {
       });
 
       setEditors(payrollData);
+      setCache(`payroll:admin:${user.id}`, {
+        editors: payrollData,
+        paymentHistory: (allPaymentsRes.data || []) as PaymentHistoryRecord[],
+        agencyId: aid,
+      });
     } catch (error) {
       console.error('Error fetching payroll data:', error);
     } finally {
