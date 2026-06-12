@@ -42,6 +42,7 @@ export function ProjectReviewQueue({ projectId, videoDeliverables, onOpenVideo }
   const [loading, setLoading] = useState(true);
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [showResolved, setShowResolved] = useState(false);
+  const [editorFilter, setEditorFilter] = useState<string>('all');
 
   const canResolve = userRole === 'admin' || userRole === 'editor';
 
