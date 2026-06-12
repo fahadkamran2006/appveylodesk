@@ -214,7 +214,7 @@ export const CreateInvoiceModal = ({
           due_date: dueDate || null,
           notes: notes || null,
           invoice_number: invoiceNumber,
-          status: 'unpaid',
+          status: mode === 'draft' ? 'draft' : 'unpaid',
         })
         .select('id, created_at')
         .single();
