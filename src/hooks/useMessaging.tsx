@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { getCache, setCache } from '@/lib/sessionCache';
 import type { Database } from '@/integrations/supabase/types';
 
 type Channel = Database['public']['Tables']['channels']['Row'];
