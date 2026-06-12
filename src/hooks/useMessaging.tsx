@@ -480,7 +480,9 @@ export function useChannelMessages(channelId: string | null) {
 
         setMessages(prev => {
           if (prev.some(m => m.id === newMessage.id)) return prev;
-          return [...prev, newMessage];
+          const next = [...prev, newMessage];
+          setCache(`messaging:messages:${channelId}`, next);
+          return next;
         });
       })
       .on('postgres_changes', {
@@ -490,9 +492,11 @@ export function useChannelMessages(channelId: string | null) {
         filter: `channel_id=eq.${channelId}`,
       }, (payload) => {
         const updated = payload.new as Message;
-        setMessages(prev => prev.map(m => 
-          m.id === updated.id ? { ...m, content: updated.content } : m
-        ));
+        setMessages(prev => {
+          const next = prev.map(m => m.id === updated.id ? { ...m, content: updated.content } : m);
+          setCache(`messaging:messages:${channelId}`, next);
+          return next;
+        });
       })
       .on('postgres_changes', {
         event: 'DELETE',
@@ -501,7 +505,11 @@ export function useChannelMessages(channelId: string | null) {
       }, (payload) => {
         const deletedId = (payload.old as any).id;
         if (deletedId) {
-          setMessages(prev => prev.filter(m => m.id !== deletedId));
+          setMessages(prev => {
+            const next = prev.filter(m => m.id !== deletedId);
+            setCache(`messaging:messages:${channelId}`, next);
+            return next;
+          });
         }
       })
       .subscribe();
