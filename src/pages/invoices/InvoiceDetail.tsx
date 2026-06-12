@@ -27,7 +27,10 @@ import {
   Calendar,
   Receipt,
   Loader2,
-  FileDown
+  FileDown,
+  Mail,
+  Link2,
+  FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
