@@ -237,77 +237,77 @@ export const CreateInvoiceModal = ({
 
       if (lineItemsError) throw lineItemsError;
 
-      // Generate PDF for email attachment
-      let pdfBase64: string | undefined;
-      try {
-        const pdfBlob = await generateInvoicePDF({
-          invoice: {
-            invoice_number: invoiceNumber,
-            amount: total,
-            subtotal: subtotal,
-            tax_rate: Number(taxRate),
-            tax_amount: taxAmount,
-            due_date: dueDate || null,
-            created_at: invoice.created_at,
-            notes: notes || null,
-          },
-          agency: {
-            name: agencyData?.name || 'Agency',
-            logo_url: agencyData?.logo_url || null,
-            business_name: agencyData?.business_name || null,
-            business_address: agencyData?.business_address || null,
-            tax_id: agencyData?.tax_id || null,
-            invoice_footer: agencyData?.invoice_footer || null,
-          },
-          client: {
-            full_name: clientProfile?.full_name || null,
-            email: clientProfile?.email || '',
-          },
-          project: { title: container.title },
-          paymentMethod: paymentMethodData ? {
-            name: paymentMethodData.name,
-            details: paymentMethodData.details,
-          } : null,
-          lineItems: validLineItems.map(item => ({
-            description: item.description,
-            quantity: item.quantity,
-            rate: item.rate,
-            amount: item.amount,
-          })),
-        });
+      if (mode === 'send') {
+        // Generate PDF for email attachment
+        let pdfBase64: string | undefined;
+        try {
+          const pdfBlob = await generateInvoicePDF({
+            invoice: {
+              invoice_number: invoiceNumber,
+              amount: total,
+              subtotal: subtotal,
+              tax_rate: Number(taxRate),
+              tax_amount: taxAmount,
+              due_date: dueDate || null,
+              created_at: invoice.created_at,
+              notes: notes || null,
+            },
+            agency: {
+              name: agencyData?.name || 'Agency',
+              logo_url: agencyData?.logo_url || null,
+              business_name: agencyData?.business_name || null,
+              business_address: agencyData?.business_address || null,
+              tax_id: agencyData?.tax_id || null,
+              invoice_footer: agencyData?.invoice_footer || null,
+            },
+            client: {
+              full_name: clientProfile?.full_name || null,
+              email: clientProfile?.email || '',
+            },
+            project: { title: container.title },
+            paymentMethod: paymentMethodData ? {
+              name: paymentMethodData.name,
+              details: paymentMethodData.details,
+            } : null,
+            lineItems: validLineItems.map(item => ({
+              description: item.description,
+              quantity: item.quantity,
+              rate: item.rate,
+              amount: item.amount,
+            })),
+          });
 
-        // Convert blob to base64
-        const reader = new FileReader();
-        pdfBase64 = await new Promise<string>((resolve, reject) => {
-          reader.onloadend = () => {
-            const base64 = (reader.result as string).split(',')[1];
-            resolve(base64);
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(pdfBlob);
+          const reader = new FileReader();
+          pdfBase64 = await new Promise<string>((resolve, reject) => {
+            reader.onloadend = () => {
+              const base64 = (reader.result as string).split(',')[1];
+              resolve(base64);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(pdfBlob);
+          });
+        } catch (pdfError) {
+          console.error('Failed to generate PDF:', pdfError);
+        }
+
+        try {
+          await supabase.functions.invoke('send-invoice-email', {
+            body: { invoice_id: invoice.id, pdf_base64: pdfBase64 },
+          });
+        } catch (emailError) {
+          console.error('Failed to send invoice email:', emailError);
+        }
+
+        toast({
+          title: 'Invoice sent',
+          description: `Invoice ${invoiceNumber} has been sent to the client.`,
         });
-      } catch (pdfError) {
-        console.error('Failed to generate PDF:', pdfError);
-        // Continue without PDF attachment
+      } else {
+        toast({
+          title: 'Draft saved',
+          description: `Invoice ${invoiceNumber} saved as a draft. You can send it later.`,
+        });
       }
-
-      // Send invoice email notification with PDF attachment
-      try {
-        await supabase.functions.invoke('send-invoice-email', {
-          body: { 
-            invoice_id: invoice.id,
-            pdf_base64: pdfBase64,
-          },
-        });
-      } catch (emailError) {
-        console.error('Failed to send invoice email:', emailError);
-        // Don't fail the entire operation if email fails
-      }
-
-      toast({
-        title: 'Invoice created',
-        description: `Invoice ${invoiceNumber} has been sent to the client.`,
-      });
 
       onOpenChange(false);
       resetForm();
@@ -321,6 +321,7 @@ export const CreateInvoiceModal = ({
       });
     } finally {
       setCreating(false);
+      setSaveMode(null);
     }
   };
 
