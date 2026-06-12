@@ -59,6 +59,7 @@ export const CreateInvoiceModal = ({
   const { methods: paymentMethods, loading: methodsLoading, getDefaultMethod } = usePaymentMethods();
   
   const [creating, setCreating] = useState(false);
+  const [saveMode, setSaveMode] = useState<'draft' | 'send' | null>(null);
   const [selectedContainer, setSelectedContainer] = useState('');
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
   const [paymentLink, setPaymentLink] = useState('');
