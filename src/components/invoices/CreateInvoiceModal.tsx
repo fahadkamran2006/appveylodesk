@@ -335,7 +335,7 @@ export const CreateInvoiceModal = ({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleCreate} className="space-y-6">
+        <form onSubmit={(e) => handleCreate(e, 'send')} className="space-y-6">
           {/* Project Selection */}
           <div>
             <Label>Project</Label>
