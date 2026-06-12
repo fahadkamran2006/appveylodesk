@@ -9,6 +9,7 @@ import { AddBonusModal } from '@/components/admin/AddBonusModal';
 import { PayrollPaymentModal } from '@/components/admin/PayrollPaymentModal';
 import { AddBalanceModal } from '@/components/admin/AddBalanceModal';
 import { supabase } from '@/integrations/supabase/client';
+import { getCache, setCache } from '@/lib/sessionCache';
 import { 
   DollarSign, 
   Users, 
