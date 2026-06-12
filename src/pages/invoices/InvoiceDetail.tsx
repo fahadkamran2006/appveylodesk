@@ -299,6 +299,91 @@ const InvoiceDetailPage = () => {
     }
   };
 
+  const handleSendEmail = async () => {
+    if (!invoice) return;
+    setSendingEmail(true);
+    try {
+      let pdfBase64: string | undefined;
+      try {
+        const pdfBlob = await generateInvoicePDF({
+          invoice: {
+            invoice_number: invoice.invoice_number,
+            amount: invoice.amount,
+            subtotal: invoice.subtotal,
+            tax_rate: invoice.tax_rate,
+            tax_amount: invoice.tax_amount,
+            due_date: invoice.due_date,
+            created_at: invoice.created_at,
+            notes: invoice.notes,
+          },
+          agency: {
+            name: invoice.agency?.name || 'Agency',
+            logo_url: invoice.agency?.logo_url || null,
+            business_name: invoice.agency?.business_name || null,
+            business_address: invoice.agency?.business_address || null,
+            tax_id: invoice.agency?.tax_id || null,
+            invoice_footer: invoice.agency?.invoice_footer || null,
+          },
+          client: {
+            full_name: invoice.client?.full_name || null,
+            email: invoice.client?.email || '',
+          },
+          project: { title: invoice.container?.title || invoice.project?.title || 'Project' },
+          paymentMethod: invoice.payment_method ? {
+            name: invoice.payment_method.name,
+            details: invoice.payment_method.details,
+          } : null,
+          lineItems: lineItems.map(item => ({
+            description: item.description,
+            quantity: item.quantity,
+            rate: item.rate,
+            amount: item.amount,
+          })),
+        });
+        const reader = new FileReader();
+        pdfBase64 = await new Promise<string>((resolve, reject) => {
+          reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(pdfBlob);
+        });
+      } catch (err) {
+        console.error('PDF generation failed:', err);
+      }
+
+      const { error: emailError } = await supabase.functions.invoke('send-invoice-email', {
+        body: { invoice_id: invoice.id, pdf_base64: pdfBase64 },
+      });
+      if (emailError) throw emailError;
+
+      if (invoice.status === 'draft') {
+        await supabase.from('invoices').update({ status: 'unpaid' }).eq('id', invoice.id);
+      }
+
+      toast({ title: 'Invoice sent', description: 'Email delivered to the client.' });
+      fetchInvoice();
+    } catch (error: any) {
+      console.error('Error sending invoice email:', error);
+      toast({ title: 'Failed to send', description: error.message || 'Please try again.', variant: 'destructive' });
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
+  const handleCopyShareLink = async () => {
+    if (!invoice) return;
+    const url = `${window.location.origin}/invoices/${invoice.id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast({ title: 'Link copied', description: 'Share this link with your client.' });
+      if (invoice.status === 'draft') {
+        await supabase.from('invoices').update({ status: 'unpaid' }).eq('id', invoice.id);
+        fetchInvoice();
+      }
+    } catch {
+      toast({ title: 'Copy failed', description: url, variant: 'destructive' });
+    }
+  };
+
   const paymentLink = invoice?.payment_link || invoice?.payment_method?.payment_link;
 
   if (authLoading || loading) {
