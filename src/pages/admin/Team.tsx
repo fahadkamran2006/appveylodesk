@@ -15,6 +15,7 @@ import { TodayAttendance } from '@/components/admin/TodayAttendance';
 import { RemoveMemberModal } from '@/components/RemoveMemberModal';
 import { EditEditorModal } from '@/components/admin/EditEditorModal';
 import { supabase } from '@/integrations/supabase/client';
+import { getCache, setCache } from '@/lib/sessionCache';
 import { useEditorStats, type TimePeriod } from '@/hooks/usePersonStats';
 import { UsersRound, UserPlus, Loader2, Clock, CalendarDays, Activity, FileBarChart, Shield } from 'lucide-react';
 import { SendAttendanceReport } from '@/components/admin/SendAttendanceReport';
@@ -42,14 +43,22 @@ interface PendingInvitation {
   agency_id: string;
 }
 
+interface TeamCache {
+  teamMembers: TeamMember[];
+  pendingInvitations: PendingInvitation[];
+  agencyName: string;
+  agencyId: string;
+}
+
 const AdminTeam = () => {
   const { user, userRole, loading } = useAuth();
   const navigate = useNavigate();
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
-  const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([]);
-  const [agencyName, setAgencyName] = useState('');
-  const [agencyId, setAgencyId] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
+  const cachedTeam = user ? getCache<TeamCache>(`team:${user.id}`) : undefined;
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>(cachedTeam?.teamMembers || []);
+  const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>(cachedTeam?.pendingInvitations || []);
+  const [agencyName, setAgencyName] = useState(cachedTeam?.agencyName || '');
+  const [agencyId, setAgencyId] = useState(cachedTeam?.agencyId || '');
+  const [isLoading, setIsLoading] = useState(!cachedTeam);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteStaffOpen, setInviteStaffOpen] = useState(false);
   const [leaderboardPeriod, setLeaderboardPeriod] = useState<TimePeriod>('all');
@@ -74,7 +83,9 @@ const AdminTeam = () => {
   const fetchTeamData = async () => {
     if (!user) return;
 
-    setIsLoading(true);
+    const cacheKey = `team:${user.id}`;
+    // Only show the loading state on the very first load; refresh silently afterwards
+    if (!getCache(cacheKey)) setIsLoading(true);
     try {
       // Get user's agency_id
       const { data: userRoleData } = await supabase
@@ -97,10 +108,13 @@ const AdminTeam = () => {
         supabase.from('agency_invitations').select('*').eq('agency_id', agencyIdVal).eq('role', 'editor').is('accepted_at', null),
       ]);
 
-      setAgencyName(agencyResult.data?.name || '');
-      setPendingInvitations((invitationsResult.data as PendingInvitation[]) || []);
+      const agencyNameVal = agencyResult.data?.name || '';
+      const invitationsVal = (invitationsResult.data as PendingInvitation[]) || [];
+      setAgencyName(agencyNameVal);
+      setPendingInvitations(invitationsVal);
 
       // Get profiles for editors
+      let members: TeamMember[] = [];
       if (editorRolesResult.data && editorRolesResult.data.length > 0) {
         const editorUserIds = editorRolesResult.data.map((r) => r.user_id);
         const [{ data: profiles }, { data: comps }] = await Promise.all([
@@ -114,10 +128,15 @@ const AdminTeam = () => {
             .in('user_id', editorUserIds),
         ]);
         const compMap = new Map<string, number | null>(((comps as any[]) || []).map((c) => [c.user_id, c.monthly_salary]));
-        setTeamMembers(((profiles as any[]) || []).map((p) => ({ ...p, monthly_salary: compMap.get(p.id) ?? null })));
-      } else {
-        setTeamMembers([]);
+        members = ((profiles as any[]) || []).map((p) => ({ ...p, monthly_salary: compMap.get(p.id) ?? null }));
       }
+      setTeamMembers(members);
+      setCache(cacheKey, {
+        teamMembers: members,
+        pendingInvitations: invitationsVal,
+        agencyName: agencyNameVal,
+        agencyId: agencyIdVal,
+      } satisfies TeamCache);
     } catch (error) {
       console.error('Error fetching team data:', error);
     } finally {
