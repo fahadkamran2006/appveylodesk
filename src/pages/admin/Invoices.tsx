@@ -270,7 +270,7 @@ const AdminInvoices = () => {
   });
 
   const stats = {
-    total: invoices.reduce((sum, inv) => sum + inv.amount, 0),
+    total: invoices.filter(i => i.status !== 'draft').reduce((sum, inv) => sum + inv.amount, 0),
     unpaid: invoices.filter(i => i.status === 'unpaid').reduce((sum, inv) => sum + inv.amount, 0),
     pending: invoices.filter(i => i.status === 'pending').length,
     paid: invoices.filter(i => i.status === 'paid').reduce((sum, inv) => sum + inv.amount, 0),
