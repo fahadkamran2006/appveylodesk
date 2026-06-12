@@ -110,7 +110,9 @@ export function useMessaging() {
     if (!session) return;
 
     try {
-      setLoading(true);
+      // Only show full-page skeleton when we have nothing to display.
+      // Otherwise refresh silently in the background (stale-while-revalidate).
+      setLoading((prev) => (channels.length === 0 ? true : prev));
 
       // Get channels user participates in
       const { data: participations, error: partError } = await supabase
@@ -121,8 +123,10 @@ export function useMessaging() {
       if (partError) throw partError;
       if (!participations?.length) {
         setChannels([]);
+        if (cacheKey) setCache(cacheKey, []);
         return;
       }
+
 
       const channelIds = participations.map(p => p.channel_id);
 
