@@ -197,6 +197,7 @@ export function useMessaging() {
       });
 
       setChannels(channelsWithDetails);
+      if (cacheKey) setCache(cacheKey, channelsWithDetails);
     } catch (error: any) {
       console.error('Error fetching channels:', error);
       toast({
