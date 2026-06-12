@@ -316,9 +316,13 @@ export function useMessaging() {
 export function useChannelMessages(channelId: string | null) {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [messages, setMessages] = useState<MessageWithSender[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [channel, setChannel] = useState<ChannelWithDetails | null>(null);
+  const msgCacheKey = channelId ? `messaging:messages:${channelId}` : null;
+  const chCacheKey = channelId ? `messaging:channel:${channelId}` : null;
+  const cachedMessages = msgCacheKey ? getCache<MessageWithSender[]>(msgCacheKey) : undefined;
+  const cachedChannel = chCacheKey ? getCache<ChannelWithDetails>(chCacheKey) : undefined;
+  const [messages, setMessages] = useState<MessageWithSender[]>(cachedMessages || []);
+  const [loading, setLoading] = useState(!cachedMessages);
+  const [channel, setChannel] = useState<ChannelWithDetails | null>(cachedChannel || null);
 
   // Fetch channel details
   useEffect(() => {
