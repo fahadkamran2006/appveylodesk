@@ -48,12 +48,12 @@ export function VoiceNotePlayer({ messageId, attachmentUrl, durationSeconds, isO
 
   useEffect(() => {
     const audio = new Audio();
-    audio.preload = 'metadata';
+    audio.preload = 'none';
     audio.src = attachmentUrl;
+    audio.crossOrigin = 'anonymous';
     audioRef.current = audio;
 
     const onLoaded = () => setLoaded(true);
-    const onError = () => setError(true);
     const onEnded = () => {
       setPlaying(false);
       setProgress(0);
@@ -63,14 +63,12 @@ export function VoiceNotePlayer({ messageId, attachmentUrl, durationSeconds, isO
 
     audio.addEventListener('canplaythrough', onLoaded);
     audio.addEventListener('loadedmetadata', onLoaded);
-    audio.addEventListener('error', onError);
     audio.addEventListener('ended', onEnded);
 
     return () => {
       audio.pause();
       audio.removeEventListener('canplaythrough', onLoaded);
       audio.removeEventListener('loadedmetadata', onLoaded);
-      audio.removeEventListener('error', onError);
       audio.removeEventListener('ended', onEnded);
       cancelAnimationFrame(animRef.current);
       audioRef.current = null;
