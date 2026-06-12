@@ -21,6 +21,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
+import { getCache, setCache } from '@/lib/sessionCache';
 import { useClientStats, useManagedClientStats } from '@/hooks/usePersonStats';
 import { useAgencyLimits } from '@/hooks/useAgencyLimits';
 import { useToast } from '@/hooks/use-toast';
@@ -55,15 +56,23 @@ interface PendingInvitation {
   agency_id: string;
 }
 
+interface ClientsCache {
+  clients: ClientProfile[];
+  managedClients: ManagedClient[];
+  pendingInvitations: PendingInvitation[];
+  agencyName: string;
+}
+
 const AdminClients = () => {
   const { user, userRole, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [clients, setClients] = useState<ClientProfile[]>([]);
-  const [managedClients, setManagedClients] = useState<ManagedClient[]>([]);
-  const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([]);
-  const [agencyName, setAgencyName] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
+  const cachedClients = user ? getCache<ClientsCache>(`clients:${user.id}`) : undefined;
+  const [clients, setClients] = useState<ClientProfile[]>(cachedClients?.clients || []);
+  const [managedClients, setManagedClients] = useState<ManagedClient[]>(cachedClients?.managedClients || []);
+  const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>(cachedClients?.pendingInvitations || []);
+  const [agencyName, setAgencyName] = useState(cachedClients?.agencyName || '');
+  const [isLoading, setIsLoading] = useState(!cachedClients);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [addManualOpen, setAddManualOpen] = useState(false);
   const [activateClient, setActivateClient] = useState<ManagedClient | null>(null);
@@ -95,7 +104,9 @@ const AdminClients = () => {
   const fetchClients = async () => {
     if (!user) return;
 
-    setIsLoading(true);
+    const cacheKey = `clients:${user.id}`;
+    // Only show the loading state on the very first load; refresh silently afterwards
+    if (!getCache(cacheKey)) setIsLoading(true);
     try {
       // Get user's agency_id
       const { data: userRoleData } = await supabase
@@ -111,56 +122,53 @@ const AdminClients = () => {
 
       const agencyId = userRoleData.agency_id;
 
-      // Get agency name
-      const { data: agency } = await supabase
-        .from('agencies')
-        .select('name')
-        .eq('id', agencyId)
-        .single();
-      
-      setAgencyName(agency?.name || '');
+      // Fetch agency name, client roles, pending invitations, and managed clients in parallel
+      const [agencyRes, clientRolesRes, invitationsRes, managedRes] = await Promise.all([
+        supabase.from('agencies').select('name').eq('id', agencyId).single(),
+        supabase.from('user_roles').select('user_id').eq('agency_id', agencyId).eq('role', 'client'),
+        supabase
+          .from('agency_invitations')
+          .select('id, email, full_name, role, created_at, agency_id')
+          .eq('agency_id', agencyId)
+          .eq('role', 'client')
+          .is('accepted_at', null)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('managed_clients')
+          .select('id, full_name, email, company, phone, notes, created_at, invitation_id, activated_at')
+          .eq('agency_id', agencyId)
+          .is('converted_profile_id', null)
+          .order('created_at', { ascending: false }),
+      ]);
 
-      // Get all client user_ids in this agency
-      const { data: clientRoles } = await supabase
-        .from('user_roles')
-        .select('user_id')
-        .eq('agency_id', agencyId)
-        .eq('role', 'client');
+      const agencyNameVal = agencyRes.data?.name || '';
+      setAgencyName(agencyNameVal);
 
-      const clientUserIds = clientRoles?.map((r) => r.user_id) || [];
+      const clientUserIds = clientRolesRes.data?.map((r) => r.user_id) || [];
 
       // Get profiles for these users
+      let clientProfiles: ClientProfile[] = [];
       if (clientUserIds.length > 0) {
         const { data: profiles } = await supabase
           .from('profiles')
           .select('id, full_name, email, avatar_url, created_at')
           .in('id', clientUserIds);
-
-        setClients(profiles || []);
-      } else {
-        setClients([]);
+        clientProfiles = profiles || [];
       }
+      setClients(clientProfiles);
 
-      // Get pending client invitations
-      const { data: invitations } = await supabase
-        .from('agency_invitations')
-        .select('id, email, full_name, role, created_at, agency_id')
-        .eq('agency_id', agencyId)
-        .eq('role', 'client')
-        .is('accepted_at', null)
-        .order('created_at', { ascending: false });
+      const invitationsVal = (invitationsRes.data as PendingInvitation[]) || [];
+      setPendingInvitations(invitationsVal);
 
-      setPendingInvitations((invitations as PendingInvitation[]) || []);
+      const managedVal = (managedRes.data as ManagedClient[]) || [];
+      setManagedClients(managedVal);
 
-      // Get managed (manual, not-yet-activated) clients
-      const { data: managed } = await supabase
-        .from('managed_clients')
-        .select('id, full_name, email, company, phone, notes, created_at, invitation_id, activated_at')
-        .eq('agency_id', agencyId)
-        .is('converted_profile_id', null)
-        .order('created_at', { ascending: false });
-
-      setManagedClients((managed as ManagedClient[]) || []);
+      setCache(cacheKey, {
+        clients: clientProfiles,
+        managedClients: managedVal,
+        pendingInvitations: invitationsVal,
+        agencyName: agencyNameVal,
+      } satisfies ClientsCache);
     } catch (error) {
       console.error('Error fetching clients:', error);
     } finally {

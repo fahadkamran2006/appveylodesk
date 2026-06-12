@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { getCache, setCache } from '@/lib/sessionCache';
 import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { Button } from '@/components/ui/button';
@@ -49,14 +50,20 @@ interface Container {
   client: { id: string; full_name: string | null; email: string; isManaged?: boolean } | null;
 }
 
+interface InvoicesCache {
+  invoices: Invoice[];
+  containers: Container[];
+}
+
 const AdminInvoices = () => {
   const { user, userRole, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [containers, setContainers] = useState<Container[]>([]);
-  const [loadingData, setLoadingData] = useState(true);
+  const cachedInvoices = user ? getCache<InvoicesCache>(`invoices:${user.id}`) : undefined;
+  const [invoices, setInvoices] = useState<Invoice[]>(cachedInvoices?.invoices || []);
+  const [containers, setContainers] = useState<Container[]>(cachedInvoices?.containers || []);
+  const [loadingData, setLoadingData] = useState(!cachedInvoices);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [proofModalOpen, setProofModalOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
@@ -161,6 +168,11 @@ const AdminInvoices = () => {
       }));
 
       setContainers(mappedContainers as Container[]);
+
+      setCache(`invoices:${user.id}`, {
+        invoices: mappedInvoices as Invoice[],
+        containers: mappedContainers as Container[],
+      } satisfies InvoicesCache);
     } catch (error) {
       console.error('Error fetching data:', error);
       toast({
