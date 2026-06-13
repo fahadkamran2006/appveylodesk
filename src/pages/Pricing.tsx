@@ -34,6 +34,22 @@ const Pricing = () => {
 
   const plans: Plan[] = [
     {
+      name: "Free",
+      key: "free",
+      monthlyPrice: 0,
+      yearlyPrice: 0,
+      description: "For Solo Creators",
+      features: [
+        { text: "Unlimited Editors", highlight: true },
+        { text: "1 Active Client", highlight: false },
+        { text: "1 Active Project", highlight: false },
+        { text: "2GB Storage", highlight: false },
+        { text: "Powered by Veylodesk branding", highlight: false },
+      ],
+      popular: false,
+      isFree: true,
+    },
+    {
       name: "Starter",
       key: "starter",
       monthlyPrice: 29,
