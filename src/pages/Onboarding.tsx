@@ -252,25 +252,24 @@ const Onboarding = () => {
       toast.success('Welcome to Veylodesk!');
 
       // Check for pre-selected plan from signup flow
-      const selectedPlan = localStorage.getItem('selected_plan') as 'starter' | 'growth' | 'scale' | null;
+      const selectedPlan = localStorage.getItem('selected_plan') as 'free' | 'starter' | 'growth' | 'scale' | null;
       const selectedInterval = (localStorage.getItem('selected_interval') as 'monthly' | 'yearly') || 'yearly';
-      
+
       // Clear stored plan values
       localStorage.removeItem('selected_plan');
       localStorage.removeItem('selected_interval');
-      
-      // Navigate to dashboard first, then open checkout overlay
+
+      // Navigate to dashboard first
       navigate('/admin/dashboard');
-      
-      // Small delay to let the page render before opening overlay
-      setTimeout(() => {
-        if (selectedPlan && ['starter', 'growth', 'scale'].includes(selectedPlan)) {
-          openPaddleCheckout(selectedPlan as 'starter' | 'growth' | 'scale', selectedInterval as 'monthly' | 'yearly', profile.agency_id, user?.email);
-        } else {
-          // Default to Growth yearly if no plan was pre-selected
-          openPaddleCheckout('growth', 'yearly', profile.agency_id, user?.email);
-        }
-      }, 500);
+
+      // Only open Paddle checkout if a paid plan was explicitly selected.
+      // Free plan (or no selection) stays on the Free tier — no auto-checkout.
+      if (selectedPlan && ['starter', 'growth', 'scale'].includes(selectedPlan)) {
+        setTimeout(() => {
+          openPaddleCheckout(selectedPlan as 'starter' | 'growth' | 'scale', selectedInterval, profile.agency_id, user?.email);
+        }, 500);
+      }
+
     } catch (error: any) {
       toast.error(error.message || 'Failed to complete onboarding');
     } finally {
