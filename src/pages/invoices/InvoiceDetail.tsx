@@ -685,6 +685,11 @@ const InvoiceDetailPage = () => {
             </div>
           </div>
         </div>
+        {invoice.agency?.plan_tier === 'free' && (
+          <div className="mt-6 flex justify-center">
+            <PoweredByVeylodesk variant="footer" />
+          </div>
+        )}
       </div>
 
       {/* Upload Payment Proof Modal */}
