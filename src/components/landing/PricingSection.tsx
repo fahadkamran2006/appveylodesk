@@ -106,8 +106,32 @@ const PricingSection = () => {
     };
   };
 
+  const getDisplayPrice = (plan: Plan) => {
+    if (plan.isFree) {
+      return { main: '$0', period: '/mo', subtext: 'Free forever' };
+    }
+    if (isYearly) {
+      const monthlyEquivalent = Math.round(plan.yearlyPrice / 12);
+      return {
+        main: `$${monthlyEquivalent}`,
+        period: "/mo",
+        subtext: `Billed $${plan.yearlyPrice}/year`,
+      };
+    }
+    return {
+      main: `$${plan.monthlyPrice}`,
+      period: "/mo",
+      subtext: "Billed monthly",
+    };
+  };
+
   const handleSelectPlan = (plan: Plan) => {
     const interval = isYearly ? 'yearly' : 'monthly';
+    if (plan.key === 'free') {
+      if (!user) navigate(`/auth/signup?plan=free`);
+      else navigate(agencyId ? '/admin/dashboard' : '/onboarding');
+      return;
+    }
     // If not logged in, redirect to signup with plan param
     if (!user) {
       navigate(`/auth/signup?plan=${plan.key}&interval=${interval}`);
@@ -121,7 +145,7 @@ const PricingSection = () => {
     }
 
     setLoadingPlan(plan.key);
-    openPaddleCheckout(plan.key, interval, agencyId);
+    openPaddleCheckout(plan.key as 'starter' | 'growth' | 'scale', interval, agencyId);
     setTimeout(() => setLoadingPlan(null), 2000);
   };
 
