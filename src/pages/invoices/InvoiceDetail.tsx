@@ -341,6 +341,7 @@ const InvoiceDetailPage = () => {
             rate: item.rate,
             amount: item.amount,
           })),
+          isFreePlan: invoice.agency?.plan_tier === 'free',
         });
         const reader = new FileReader();
         pdfBase64 = await new Promise<string>((resolve, reject) => {
