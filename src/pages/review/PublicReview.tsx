@@ -34,6 +34,7 @@ import {
   Undo2,
 } from 'lucide-react';
 import { VideoPlayer, VideoPlayerHandle } from '@/components/video/VideoPlayer';
+import { PoweredByVeylodesk } from '@/components/PoweredByVeylodesk';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
