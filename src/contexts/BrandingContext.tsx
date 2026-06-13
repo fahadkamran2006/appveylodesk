@@ -13,6 +13,7 @@ interface BrandingContextType {
   branding: AgencyBranding | null;
   canWhiteLabel: boolean;
   isCustomBrandingActive: boolean;
+  isFree: boolean;
   loading: boolean;
   refetch: () => void;
 }
@@ -21,6 +22,7 @@ const BrandingContext = createContext<BrandingContextType>({
   branding: null,
   canWhiteLabel: false,
   isCustomBrandingActive: false,
+  isFree: false,
   loading: true,
   refetch: () => {},
 });
@@ -29,6 +31,7 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [branding, setBranding] = useState<AgencyBranding | null>(null);
   const [canWhiteLabel, setCanWhiteLabel] = useState(false);
+  const [isFree, setIsFree] = useState(false);
   const [loading, setLoading] = useState(true);
   const [fetchKey, setFetchKey] = useState(0);
 
@@ -61,7 +64,9 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
 
         if (agency) {
           const tier = agency.plan_tier as string;
+          const free = tier === 'free';
           const whiteLabel = tier === 'growth' || tier === 'scale';
+          setIsFree(free);
           setCanWhiteLabel(whiteLabel);
 
           if (whiteLabel && agency.branding) {
@@ -71,6 +76,7 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
               agency_name: b.agency_name || agency.name || '',
             });
           } else {
+            // Free and Starter — force Veylodesk defaults
             setBranding(null);
           }
         }
@@ -84,10 +90,11 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
     fetchBranding();
   }, [user, fetchKey]);
 
-  const isCustomBrandingActive = canWhiteLabel && branding?.enabled === true && Boolean(branding?.agency_name || branding?.logo_url);
+  const isCustomBrandingActive =
+    canWhiteLabel && branding?.enabled === true && Boolean(branding?.agency_name || branding?.logo_url);
 
   return (
-    <BrandingContext.Provider value={{ branding, canWhiteLabel, isCustomBrandingActive, loading, refetch }}>
+    <BrandingContext.Provider value={{ branding, canWhiteLabel, isCustomBrandingActive, isFree, loading, refetch }}>
       {children}
     </BrandingContext.Provider>
   );

@@ -130,7 +130,18 @@ export function RequestVideoModal({
           container_id: data.container_id,
         });
 
-      if (projectError) throw projectError;
+      if (projectError) {
+        if (projectError.message?.includes('FREE_PLAN_PROJECT_LIMIT')) {
+          toast({
+            title: 'Project limit reached',
+            description: 'Your agency is on the Free plan and already has an active project. Ask your admin to upgrade or finish the current one.',
+            variant: 'destructive',
+          });
+          setIsSubmitting(false);
+          return;
+        }
+        throw projectError;
+      }
 
       toast({
         title: 'Video requested',

@@ -30,6 +30,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Loader2, UserPlus } from 'lucide-react';
+import { UpgradeRequiredModal } from '@/components/UpgradeRequiredModal';
 
 const inviteSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -53,6 +54,7 @@ export function InviteUserModal({
   onSuccess,
 }: InviteUserModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -91,11 +93,7 @@ export function InviteUserModal({
         if (limitError) {
           console.error('Error checking client limit:', limitError);
         } else if (canAdd === false) {
-          toast({
-            title: 'Client limit reached',
-            description: 'Upgrade to Growth or Scale to invite more clients.',
-            variant: 'destructive',
-          });
+          setShowUpgrade(true);
           setIsSubmitting(false);
           return;
         }
@@ -149,11 +147,15 @@ export function InviteUserModal({
       onOpenChange(false);
       onSuccess?.();
     } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to send invitation',
-        variant: 'destructive',
-      });
+      if (error.message?.includes('CLIENT_LIMIT_REACHED')) {
+        setShowUpgrade(true);
+      } else {
+        toast({
+          title: 'Error',
+          description: error.message || 'Failed to send invitation',
+          variant: 'destructive',
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -266,6 +268,7 @@ export function InviteUserModal({
           </form>
         </Form>
       </DialogContent>
+      <UpgradeRequiredModal open={showUpgrade} onOpenChange={setShowUpgrade} limitType="client" />
     </Dialog>
   );
 }

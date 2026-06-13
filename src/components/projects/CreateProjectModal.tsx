@@ -37,6 +37,8 @@ import { Loader2, CalendarIcon, FolderPlus, Upload, X, Link as LinkIcon, DollarS
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { UpgradeRequiredModal } from '@/components/UpgradeRequiredModal';
+import { useAgencyLimits } from '@/hooks/useAgencyLimits';
 
 const videoSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -93,6 +95,7 @@ export function CreateProjectModal({
   preselectedContainerId,
 }: CreateProjectModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const [clients, setClients] = useState<Person[]>([]);
   const [editors, setEditors] = useState<Editor[]>([]);
   const [containers, setContainers] = useState<ProjectContainer[]>();
@@ -103,6 +106,7 @@ export function CreateProjectModal({
   const { user } = useAuth();
   const { toast } = useToast();
   const { addToQueue } = useUploadContext();
+  const { isFree, canCreateProject, refetch: refetchLimits } = useAgencyLimits();
 
   const form = useForm<VideoFormData>({
     resolver: zodResolver(videoSchema),
@@ -274,6 +278,12 @@ export function CreateProjectModal({
   const onSubmit = async (data: VideoFormData) => {
     if (!user || !agencyId) return;
 
+    // Front-end gate: free plan = max 1 active project
+    if (isFree && !canCreateProject()) {
+      setShowUpgrade(true);
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       // Parse budget values
@@ -308,7 +318,14 @@ export function CreateProjectModal({
         .select()
         .single();
 
-      if (projectError) throw projectError;
+      if (projectError) {
+        if (projectError.message?.includes('FREE_PLAN_PROJECT_LIMIT')) {
+          setShowUpgrade(true);
+          setIsSubmitting(false);
+          return;
+        }
+        throw projectError;
+      }
 
       // If editor is assigned, add to project_editors
       if (data.editor_id && project) {
@@ -341,7 +358,12 @@ export function CreateProjectModal({
       setSelectedFiles([]);
       onOpenChange(false);
       onSuccess?.();
+      refetchLimits();
     } catch (error: any) {
+      if (error.message?.includes('FREE_PLAN_PROJECT_LIMIT')) {
+        setShowUpgrade(true);
+        return;
+      }
       toast({
         title: 'Error',
         description: error.message || 'Failed to create project',
@@ -729,6 +751,7 @@ export function CreateProjectModal({
           </form>
         </Form>
       </DialogContent>
+      <UpgradeRequiredModal open={showUpgrade} onOpenChange={setShowUpgrade} limitType="project" />
     </Dialog>
   );
 }
