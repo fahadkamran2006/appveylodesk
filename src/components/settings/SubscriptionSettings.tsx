@@ -305,6 +305,12 @@ export const SubscriptionSettings = ({ className }: SubscriptionSettingsProps) =
           </>
         )}
       </CardContent>
+
+      <ChangePlanModal
+        open={changePlanOpen}
+        onOpenChange={setChangePlanOpen}
+        currentPlan={(planTier as 'starter' | 'growth' | 'scale' | null) ?? null}
+      />
     </Card>
   );
 };
