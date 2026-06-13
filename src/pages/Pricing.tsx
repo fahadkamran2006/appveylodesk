@@ -94,6 +94,9 @@ const Pricing = () => {
   ];
 
   const getDisplayPrice = (plan: Plan) => {
+    if (plan.isFree) {
+      return { main: '$0', period: '/mo', subtext: 'Free forever' };
+    }
     if (isYearly) {
       const monthlyEquivalent = Math.round(plan.yearlyPrice / 12);
       return {
