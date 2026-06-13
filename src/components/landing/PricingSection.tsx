@@ -186,7 +186,7 @@ const PricingSection = () => {
                 key={plan.name}
                 className={`relative glass-card rounded-2xl p-8 flex flex-col ${
                   plan.popular
-                    ? "border-primary/50 shadow-glow scale-105 md:scale-110 z-10"
+                    ? "border-primary/50 shadow-glow lg:scale-105 z-10"
                     : "border-border/30"
                 }`}
               >
