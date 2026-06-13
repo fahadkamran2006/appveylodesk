@@ -465,10 +465,41 @@ const BillingPage = () => {
   }, [pendingChange, fetchPreview]);
 
   const confirmPlanChange = async () => {
+    if (!pendingChange) return;
+    const target = pendingChange;
     setPendingChange(null);
-    toast.info('Opening customer portal to complete your plan change…');
-    await openCustomerPortal();
+    const loadingToast = toast.loading(`Switching to ${PLANS[target].name}…`);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session?.session?.access_token) {
+        toast.dismiss(loadingToast);
+        toast.error('Please log in first');
+        return;
+      }
+      const { data, error } = await supabase.functions.invoke('paddle-change-plan', {
+        headers: { Authorization: `Bearer ${session.session.access_token}` },
+        body: { plan: target, interval: billingInterval, proration_mode: 'prorated_immediately' },
+      });
+      toast.dismiss(loadingToast);
+      if (error) {
+        toast.error('Could not change your plan. Opening customer portal…');
+        await openCustomerPortal();
+        return;
+      }
+      if (data?.error) {
+        toast.error(data.message || 'Could not change your plan.');
+        if (data.error === 'no_subscription') await openCustomerPortal();
+        return;
+      }
+      toast.success(data?.message || `Plan changed to ${PLANS[target].name}.`);
+      setTimeout(() => window.location.reload(), 900);
+    } catch (err) {
+      toast.dismiss(loadingToast);
+      console.error('Plan change error:', err);
+      toast.error('Could not change your plan. Please try again.');
+    }
   };
+
 
   const CANCEL_REASONS: { value: string; label: string }[] = [
     { value: 'too_expensive', label: 'Too expensive' },
