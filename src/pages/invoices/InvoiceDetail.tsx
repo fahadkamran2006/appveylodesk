@@ -69,6 +69,7 @@ interface Invoice {
     business_address: string | null;
     tax_id: string | null;
     invoice_footer: string | null;
+    plan_tier: string | null;
   } | null;
   payment_method: { id: string; name: string; details: string; payment_link: string | null } | null;
 }
