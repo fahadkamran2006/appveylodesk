@@ -117,7 +117,7 @@ const PLAN_ORDER: PlanKey[] = ['starter', 'growth', 'scale'];
 
 const BillingPage = () => {
   const { user, userRole, loading: authLoading } = useAuth();
-  const { isActive, planTier, subscriptionEndsAt, loading: subLoading, agencyId } = useSubscription();
+  const { isActive, isFree, planTier, subscriptionEndsAt, loading: subLoading, agencyId } = useSubscription();
   const { currentClients, storageUsedBytes, storageLimitBytes, formatBytes, getStoragePercentage, refetch: refetchLimits } = useAgencyLimits();
   const navigate = useNavigate();
 
@@ -390,7 +390,7 @@ const BillingPage = () => {
 
   // Compare plans by tier order to determine upgrade vs downgrade
   const getChangeKind = (target: PlanKey): 'upgrade' | 'downgrade' | 'same' | 'new' => {
-    if (!isActive || !planTier) return 'new';
+    if (!isActive || isFree || !planTier) return 'new';
     const currentIdx = PLAN_ORDER.indexOf(planTier as PlanKey);
     const targetIdx = PLAN_ORDER.indexOf(target);
     if (currentIdx === -1) return 'new';
@@ -404,8 +404,8 @@ const BillingPage = () => {
       return;
     }
 
-    // Active subscriber → confirm change first, then route to portal
-    if (isActive) {
+    // Existing paid subscriber → confirm in-app plan change first
+    if (isActive && !isFree) {
       setPendingChange(plan);
       return;
     }
