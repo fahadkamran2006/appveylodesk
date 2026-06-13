@@ -64,7 +64,18 @@ export const SubscriptionSettings = ({ className }: SubscriptionSettingsProps) =
     );
   }
 
-  const currentPlan = planTier && PLAN_DETAILS[planTier as keyof typeof PLAN_DETAILS];
+  const FREE_PLAN_DETAILS = {
+    name: 'Free',
+    icon: Zap,
+    color: 'text-emerald-500',
+    bgColor: 'bg-emerald-500/10',
+    clients: 1,
+    storage: '2 GB',
+  } as const;
+
+  const currentPlan = isFree
+    ? FREE_PLAN_DETAILS
+    : (planTier && PLAN_DETAILS[planTier as keyof typeof PLAN_DETAILS]);
   const CurrentIcon = currentPlan?.icon || Zap;
 
   const formatDate = (dateString: string | null) => {
