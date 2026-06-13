@@ -593,6 +593,13 @@ export default function PublicReview() {
         </div>
       </div>
 
+      {reviewData?.is_free_plan && (
+        <div className="border-t border-zinc-800 bg-[#0a0a12]">
+          <PoweredByVeylodesk variant="footer" />
+        </div>
+      )}
+
+
       {/* Approve Dialog */}
       <AlertDialog open={showApproveDialog} onOpenChange={setShowApproveDialog}>
         <AlertDialogContent className="bg-[#0f0f18] border-zinc-800 text-white">
