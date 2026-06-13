@@ -49,6 +49,7 @@ interface GeneratePDFParams {
   project: ProjectData | null;
   paymentMethod: PaymentMethodData | null;
   lineItems: InvoiceLineItem[];
+  isFreePlan?: boolean;
 }
 
 export async function generateInvoicePDF({
@@ -58,6 +59,7 @@ export async function generateInvoicePDF({
   project,
   paymentMethod,
   lineItems,
+  isFreePlan = false,
 }: GeneratePDFParams): Promise<Blob> {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
