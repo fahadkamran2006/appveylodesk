@@ -465,10 +465,41 @@ const BillingPage = () => {
   }, [pendingChange, fetchPreview]);
 
   const confirmPlanChange = async () => {
+    if (!pendingChange) return;
+    const target = pendingChange;
     setPendingChange(null);
-    toast.info('Opening customer portal to complete your plan change…');
-    await openCustomerPortal();
+    const loadingToast = toast.loading(`Switching to ${PLANS[target].name}…`);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session?.session?.access_token) {
+        toast.dismiss(loadingToast);
+        toast.error('Please log in first');
+        return;
+      }
+      const { data, error } = await supabase.functions.invoke('paddle-change-plan', {
+        headers: { Authorization: `Bearer ${session.session.access_token}` },
+        body: { plan: target, interval: billingInterval, proration_mode: 'prorated_immediately' },
+      });
+      toast.dismiss(loadingToast);
+      if (error) {
+        toast.error('Could not change your plan. Opening customer portal…');
+        await openCustomerPortal();
+        return;
+      }
+      if (data?.error) {
+        toast.error(data.message || 'Could not change your plan.');
+        if (data.error === 'no_subscription') await openCustomerPortal();
+        return;
+      }
+      toast.success(data?.message || `Plan changed to ${PLANS[target].name}.`);
+      setTimeout(() => window.location.reload(), 900);
+    } catch (err) {
+      toast.dismiss(loadingToast);
+      console.error('Plan change error:', err);
+      toast.error('Could not change your plan. Please try again.');
+    }
   };
+
 
   const CANCEL_REASONS: { value: string; label: string }[] = [
     { value: 'too_expensive', label: 'Too expensive' },
@@ -1493,8 +1524,8 @@ const BillingPage = () => {
                     <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/20 border border-border/40">
                       <Info className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
                       <p className="text-xs text-muted-foreground">
-                        We'll open the secure Paddle portal to confirm and process your plan change.
-                        Changes take effect once Paddle confirms — refresh this page after to see the update.
+                        We'll switch your plan instantly. Upgrades are prorated and charged immediately;
+                        downgrades take effect on your next renewal.
                       </p>
                     </div>
                   </div>
@@ -1509,10 +1540,10 @@ const BillingPage = () => {
                           : 'bg-foreground/80 hover:bg-foreground'
                       )}
                     >
-                      Continue to Paddle
-                      <ExternalLink className="w-4 h-4 ml-2" />
+                      Confirm Plan Change
                     </AlertDialogAction>
                   </AlertDialogFooter>
+
                 </>
               );
             })()}
