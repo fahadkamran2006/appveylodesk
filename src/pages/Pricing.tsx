@@ -110,6 +110,16 @@ const Pricing = () => {
   };
 
   const handleSelectPlan = (plan: Plan) => {
+    // Free plan: send users straight to signup / onboarding (no Paddle checkout)
+    if (plan.key === 'free') {
+      if (!user) {
+        navigate(`/auth/signup?plan=free`);
+      } else {
+        navigate(agencyId ? '/admin/dashboard' : '/onboarding');
+      }
+      return;
+    }
+
     // If not logged in, redirect to signup with plan param
     if (!user) {
       navigate(`/auth/signup?plan=${plan.key}`);
@@ -126,7 +136,7 @@ const Pricing = () => {
     
     // Build checkout URL with agency_id
     const interval = isYearly ? 'yearly' : 'monthly';
-    openPaddleCheckout(plan.key, interval, agencyId);
+    openPaddleCheckout(plan.key as 'starter' | 'growth' | 'scale', interval, agencyId);
     setTimeout(() => setLoadingPlan(null), 2000);
   };
 
