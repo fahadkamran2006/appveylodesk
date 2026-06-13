@@ -13,12 +13,13 @@ interface PlanFeature {
 
 interface Plan {
   name: string;
-  key: 'starter' | 'growth' | 'scale';
+  key: 'free' | 'starter' | 'growth' | 'scale';
   monthlyPrice: number;
   yearlyPrice: number;
   description: string;
   features: PlanFeature[];
   popular: boolean;
+  isFree?: boolean;
 }
 
 const PricingSection = () => {
