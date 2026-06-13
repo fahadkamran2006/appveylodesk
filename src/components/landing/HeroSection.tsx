@@ -117,6 +117,7 @@ const HeroSection = () => {
             className="text-sm text-muted-foreground/80 mb-6"
           >
             Free forever plan available · 1 client · 2 GB storage · Upgrade anytime
+          </motion.p>
 
           {/* Trust signals */}
           <motion.div
