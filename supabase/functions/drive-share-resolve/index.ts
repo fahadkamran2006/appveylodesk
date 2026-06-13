@@ -72,6 +72,7 @@ serve(async (req) => {
           file_id: link.file_id,
         },
         file,
+        is_free_plan: isFreePlan,
       });
     }
 
