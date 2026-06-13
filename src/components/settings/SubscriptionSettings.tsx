@@ -49,7 +49,7 @@ const PLAN_DETAILS = {
 };
 
 export const SubscriptionSettings = ({ className }: SubscriptionSettingsProps) => {
-  const { isActive, planTier, subscriptionEndsAt, loading, agencyId } = useSubscription();
+  const { isActive, isFree, planTier, subscriptionEndsAt, loading, agencyId } = useSubscription();
   const { currentClients, maxClients, storageUsedBytes, storageLimitBytes, formatBytes, refetch: refetchLimits } = useAgencyLimits();
   const [syncLoading, setSyncLoading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
