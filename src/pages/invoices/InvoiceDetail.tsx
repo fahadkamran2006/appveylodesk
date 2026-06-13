@@ -136,7 +136,7 @@ const InvoiceDetailPage = () => {
       // Fetch agency
       const { data: agencyData } = await supabase
         .from('agencies')
-        .select('id, name, logo_url, branding, business_name, business_address, tax_id, invoice_footer')
+        .select('id, name, logo_url, branding, business_name, business_address, tax_id, invoice_footer, plan_tier')
         .eq('id', invoiceData.agency_id)
         .single();
 
