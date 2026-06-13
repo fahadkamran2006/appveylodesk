@@ -275,6 +275,7 @@ export const CreateInvoiceModal = ({
               rate: item.rate,
               amount: item.amount,
             })),
+            isFreePlan: (agencyData as any)?.plan_tier === 'free',
           });
 
           const reader = new FileReader();
