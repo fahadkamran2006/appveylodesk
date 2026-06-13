@@ -125,6 +125,7 @@ serve(async (req) => {
       folder: rootFolder,
       subfolders: subfolders || [],
       files: allFiles,
+      is_free_plan: isFreePlan,
     });
   } catch (e: any) {
     console.error("share-resolve error", e);
