@@ -15,7 +15,7 @@ interface AgencyLimits {
   loading: boolean;
 }
 
-const ACTIVE_PROJECT_STATUSES = ['backlog', 'in_progress', 'quality_check', 'review'];
+const ACTIVE_PROJECT_STATUSES = ['backlog', 'in_progress', 'quality_check', 'review'] as const;
 
 export function useAgencyLimits() {
   const { user } = useAuth();
