@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 import { useBranding } from '@/contexts/BrandingContext';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { PoweredByVeylodesk } from '@/components/PoweredByVeylodesk';
 import { cn } from '@/lib/utils';
 
 const navItems = [
