@@ -312,6 +312,7 @@ Deno.serve(async (req) => {
           created_at: c.created_at,
           source: 'internal',
         })),
+        is_free_plan: isFreePlan,
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
