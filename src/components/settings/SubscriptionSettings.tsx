@@ -244,10 +244,18 @@ export const SubscriptionSettings = ({ className }: SubscriptionSettingsProps) =
           </>
         )}
 
-        {/* Customer Portal - only for paid active subscribers */}
+        {/* Paid active subscribers: in-app plan change + billing portal */}
         {isActive && !isFree && (
           <div className="space-y-3">
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button
+                variant="hero"
+                className="flex-1"
+                onClick={() => setChangePlanOpen(true)}
+              >
+                <ArrowUpDown className="w-4 h-4 mr-2" />
+                Change Plan
+              </Button>
               <Button
                 variant="outline"
                 className="flex-1"
@@ -259,7 +267,7 @@ export const SubscriptionSettings = ({ className }: SubscriptionSettingsProps) =
                 ) : (
                   <ExternalLink className="w-4 h-4 mr-2" />
                 )}
-                Manage Billing & Invoices
+                Billing & Invoices
               </Button>
               <Button
                 variant="ghost"
@@ -276,29 +284,11 @@ export const SubscriptionSettings = ({ className }: SubscriptionSettingsProps) =
               </Button>
             </div>
             <p className="text-xs text-muted-foreground text-center">
-              Upgrade, downgrade, update payment method, or cancel your subscription
+              Change Plan upgrades/downgrades instantly. Use Billing & Invoices to update payment method or cancel.
             </p>
           </div>
         )}
 
-        {/* Info message for paid active subscribers */}
-        {isActive && !isFree && (
-          <>
-            <Separator />
-            <div className="text-center py-4 px-6 rounded-lg bg-muted/50 border border-border/50">
-              <p className="text-sm text-muted-foreground">
-                To upgrade, downgrade, or cancel your plan, use the{' '}
-                <button 
-                  onClick={openCustomerPortal} 
-                  className="text-primary hover:underline font-medium"
-                >
-                  Customer Portal
-                </button>{' '}
-                above.
-              </p>
-            </div>
-          </>
-        )}
 
         {/* Show subscribe link for inactive (no plan at all) */}
         {!isActive && !isFree && (
