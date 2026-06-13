@@ -61,28 +61,30 @@ export const useSubscription = (): SubscriptionStatus => {
         const { data: agency } = await supabase
           .from('agencies')
           .select('plan_tier, subscription_ends_at')
-          .eq('id', profile.agency_id)
+          .eq('id', agencyId)
           .maybeSingle();
 
         if (!agency) {
-          setSubscriptionStatus({ isActive: false, isFree: false, planTier: null, subscriptionEndsAt: null, loading: false, agencyId: profile.agency_id });
+          // No agency row → treat as free so user is not locked out
+          setSubscriptionStatus({ isActive: true, isFree: true, planTier: 'free', subscriptionEndsAt: null, loading: false, agencyId });
           return;
         }
 
         const now = new Date();
         const endsAt = agency.subscription_ends_at ? new Date(agency.subscription_ends_at) : null;
-        const isFree = agency.plan_tier === 'free';
-        // Free is always "active" (no paywall guard).
+        // Treat null/free plan_tier as free (no paywall)
+        const isFree = !agency.plan_tier || agency.plan_tier === 'free';
         const isActive = isFree || (endsAt !== null && endsAt > now);
 
         setSubscriptionStatus({
           isActive,
           isFree,
-          planTier: agency.plan_tier,
+          planTier: agency.plan_tier ?? 'free',
           subscriptionEndsAt: agency.subscription_ends_at,
           loading: false,
-          agencyId: profile.agency_id,
+          agencyId,
         });
+
       } catch (error) {
         console.error('Error checking subscription:', error);
         setSubscriptionStatus({ isActive: false, isFree: false, planTier: null, subscriptionEndsAt: null, loading: false, agencyId: null });
