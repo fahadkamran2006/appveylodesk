@@ -120,13 +120,43 @@ Deno.serve(async (req) => {
       .eq("id", agencyId)
       .single();
 
-    const customerId = agency?.paddle_customer_id;
+    let customerId: string | null = agency?.paddle_customer_id ?? null;
     if (!customerId) {
       return new Response(
         JSON.stringify({ transactions: [], message: "No billing history yet" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Legacy numeric IDs aren't valid for Paddle Billing API — resolve via email lookup.
+    if (!customerId.startsWith("ctm_")) {
+      const email = (claimsData.claims as any).email as string | undefined;
+      if (email) {
+        try {
+          const lookupRes = await fetch(
+            `https://api.paddle.com/customers?email=${encodeURIComponent(email)}`,
+            { headers: { Authorization: `Bearer ${paddleApiKey}` } }
+          );
+          if (lookupRes.ok) {
+            const lookupJson = await lookupRes.json();
+            const resolved = lookupJson?.data?.[0]?.id;
+            if (resolved && typeof resolved === "string" && resolved.startsWith("ctm_")) {
+              customerId = resolved;
+              await adminClient.from("agencies").update({ paddle_customer_id: resolved }).eq("id", agencyId);
+            }
+          }
+        } catch (e) {
+          console.warn("Paddle customer lookup failed:", e);
+        }
+      }
+      if (!customerId.startsWith("ctm_")) {
+        return new Response(
+          JSON.stringify({ transactions: [], message: "No billing history yet", fallback: true }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
 
     // Fetch transactions from Paddle
     const url = new URL("https://api.paddle.com/transactions");
