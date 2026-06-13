@@ -313,6 +313,14 @@ export async function generateInvoicePDF({
     doc.text(footerLines, margin, footerY);
   }
 
+  // Powered by Veylodesk (free plan)
+  if (isFreePlan) {
+    const brandY = doc.internal.pageSize.getHeight() - 10;
+    doc.setFontSize(8);
+    doc.setTextColor(140, 140, 140);
+    doc.text('Powered by Veylodesk — veylodesk.com', pageWidth / 2, brandY, { align: 'center' });
+  }
+
   return doc.output('blob');
 }
 
