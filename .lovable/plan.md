@@ -1,107 +1,89 @@
-# Custom Staff Roles & Permissions
 
-Add a new `staff` seat type alongside admin/client/editor. Admins define reusable **role templates** (Manager, Accountant, HR, etc.) with a permission set, assign one per staff member, and can override individual permissions. Some permissions are global (finance/HR/workspace); clients & projects also support **per-record assignment scoping** so a manager can be limited to "their" clients.
+## Goal
+Introduce a `free` tier (`$0/mo`) with airtight, server-enforced limits and visible Veylodesk attribution. Paid plans remain untouched.
 
-## 1. Permission catalog
+## Free plan limits
+- **1 client** (role=client in agency)
+- **1 active project** at a time — "active" = status NOT IN (`done`, `cancelled`, `proposal`, `request`). Applied identically in DB helper, `CreateProjectModal`, `RequestVideoModal`, and any other creation entry point.
+- **2 GB storage** (2,147,483,648 bytes)
+- **Unlimited editors**
+- **No custom branding / white-label** — `BrandingContext` returns Veylodesk defaults regardless of agency overrides
+- **"Powered by Veylodesk"** badge on invoice PDFs + invoice view, public review pages, client portal sidebar, drive share pages
 
-Each permission is a string key, grouped by area. Stored as a JSONB map `{ key: true/false }`.
+## Database migration (single file)
 
-**Operations**
-- `clients.view`, `clients.create`, `clients.invite`, `clients.edit`, `clients.delete`
-- `projects.view`, `projects.create`, `projects.edit`, `projects.assign_editor`, `projects.change_status`, `projects.delete`
-- `team.view`, `team.invite`, `team.edit`, `team.remove`
-- `messaging.dm_clients`, `messaging.dm_team`, `messaging.project_channels`
+1. **Add `'free'` value** to plan tier enum / check constraint.
+2. **Default-safe column changes on `agencies`**:
+   - `ALTER COLUMN plan_tier SET DEFAULT 'free'`
+   - `ALTER COLUMN plan_tier SET NOT NULL`
+   - `ALTER COLUMN max_clients SET DEFAULT 1`
+   - `ALTER COLUMN storage_limit_bytes SET DEFAULT 2147483648`
+   - Backfill any existing NULL `plan_tier` → `'free'`.
+   - This guarantees: even if frontend signup crashes mid-flow, the row inserts with `plan_tier='free'` automatically.
+3. **Helper `public.get_active_project_count(_agency_id uuid)`** — returns count where `agency_id = _agency_id AND status NOT IN ('done','cancelled','proposal','request')`. SECURITY DEFINER, stable.
+4. **Helper `public.check_active_project_limit(_agency_id uuid)`** — returns boolean; for `plan_tier='free'`: active count < 1; for paid plans: always true.
+5. **Update `check_client_limit`** to remain authoritative (already counts role=client; with `max_clients=1` default on free, this just works).
+6. **Update `check_storage_limit`** — already correct, but is the **server-side** enforcement we'll wire into uploads (see below).
+7. **Hard server-side enforcement triggers** (defense in depth — frontend bypass cannot defeat these):
+   - `BEFORE INSERT ON public.projects`: if status NOT IN ('done','cancelled','proposal','request') AND `check_active_project_limit(agency_id)` is false → RAISE EXCEPTION `'FREE_PLAN_PROJECT_LIMIT'`.
+   - `BEFORE UPDATE ON public.projects` (when status transitions INTO an active state): same check.
+   - `BEFORE INSERT ON public.user_roles` for `role='client'`: if `check_client_limit(agency_id)` false → RAISE EXCEPTION `'FREE_PLAN_CLIENT_LIMIT'`.
+   - `BEFORE INSERT ON public.deliverables` and `public.drive_files`: if `check_storage_limit(agency_id, file_size)` false → RAISE EXCEPTION `'FREE_PLAN_STORAGE_LIMIT'`.
+8. **Edge function enforcement** — `presigned-upload`, `drive-upload`, `drive-share-upload`, `deliverables-ops` all call `check_storage_limit` server-side and reject 413 before issuing TUS/presigned URLs. This is the real hard wall (triggers are the safety net).
+9. **Update `public-review` SQL/function payload** to return `is_free_plan boolean` derived directly from `agencies.plan_tier = 'free'` — included in the JSON the edge function returns. Unauthenticated viewers get the badge state in one round trip.
 
-**Finance**
-- `invoices.view`, `invoices.create`, `invoices.send`, `invoices.mark_paid`
-- `payments.view_methods`, `payments.manage_methods`
-- `payroll.view`, `payroll.pay`, `payroll.bonuses`, `payroll.balances`
+## Enforcement UX (hard block + informative upgrade modal)
 
-**HR**
-- `attendance.view`, `attendance.report`
-- `leave.view`, `leave.approve`
-- `performance.view`
+`<UpgradeRequiredModal limitType="client"|"project"|"storage"|"branding" />`:
+- Title names the exact limit hit (e.g. "You've reached your client limit").
+- Shows current usage ("1 of 1 clients used").
+- Shows **next plan name, monthly price, and the specific unlocked limit** (e.g. "Upgrade to **Starter — $49/mo** to add up to **10 clients** and get **200 GB** storage").
+- Bullets the other Starter perks (custom branding, unlimited active projects).
+- Primary CTA: "Upgrade to Starter" → opens Paddle overlay via existing `openPaddleCheckout`.
+- Secondary: "See all plans" → `/admin/settings/subscription`.
 
-**Workspace**
-- `storage.view`, `storage.upload`, `storage.delete`
-- `branding.manage`, `settings.manage`, `billing.manage` (last two strongly recommended admin-only, but toggleable)
+Triggered from: `CreateProjectModal`, `RequestVideoModal` (project limit), `InviteUserModal` + `AddManualClientModal` (client limit), `UploadContext` and any upload entry (storage limit), `BrandingSettings` page (branding lock).
 
-For each permission, an additional implicit modifier `scope = 'all' | 'assigned'` applies **only** to `clients.*` and `projects.*` (where assignment exists).
+When a backend trigger fires, surface the exception message via toast and open the matching modal.
 
-## 2. Database schema
+## Frontend changes
 
-**New tables**
-- `staff_roles` — `id, agency_id, name, description, permissions jsonb, scope_clients ('all'|'assigned'), scope_projects ('all'|'assigned'), is_system bool, created_by`. Seeded with three system templates per agency on first staff invite: Manager, Accountant, HR Coordinator.
-- `staff_members` — `id, user_id, agency_id, staff_role_id, permission_overrides jsonb (sparse map), created_by`. One row per staff seat. Unique `(user_id, agency_id)`.
-- `staff_client_assignments` — `staff_user_id, client_user_id (nullable), managed_client_id (nullable), agency_id`. XOR on the two client refs.
-- `staff_project_assignments` — `staff_user_id, project_id, agency_id`.
+- **`useSubscription`**: treat `planTier='free'` as `isActive=true`; expose `isFree`, `nextPaidPlan` ('starter'), `nextPaidPrice` (49).
+- **`useAgencyLimits`**: add `activeProjectCount`, `canCreateProject()`, expose `isFree`.
+- **`SubscriptionGuard`**: allow `free` through.
+- **`BrandingContext`**: if `isFree`, force-return Veylodesk defaults.
+- **`Pricing.tsx` + `landing/PricingSection.tsx`**: add Free — $0 card listing the 3 limits + "Powered by Veylodesk" disclaimer.
+- **`Signup.tsx` / `Onboarding.tsx`**: rely on DB default; do not set `plan_tier` explicitly unless user picks a paid plan.
+- **`SubscriptionSettings.tsx`**: render Free as current plan with Upgrade CTA; hide cancel.
 
-**Enum change** — add `'staff'` to `app_role`.
+## Dashboard usage indicator (new)
 
-**Helpers (SECURITY DEFINER)**
-- `get_staff_permissions(_user_id) → jsonb` — merges role template + overrides.
-- `staff_has_permission(_user_id, _key text) → bool`.
-- `staff_client_visible(_staff_user_id, _client_user_id, _managed_client_id) → bool` — true if scope='all' OR assignment exists.
-- `staff_project_visible(_staff_user_id, _project_id) → bool` — same pattern.
+`<FreePlanUsageWidget>` component — visible only when `isFree`:
+- Three compact rows with progress bars: clients (`x of 1`), active projects (`x of 1`), storage (`x.x GB of 2 GB`).
+- Each row turns amber when at 100%; row label is clickable → opens the matching upgrade modal.
+- Placed at the **top of the admin dashboard** (above stat cards) and as a **collapsed card in `CollapsibleSidebar`** for persistent visibility on every page.
+- Subtle styling (muted card, not aggressive).
 
-**RLS rewrites** — for every table the staff role can read (clients/profiles, managed_clients, projects, project_containers, invoices, invoice_line_items, deliverables, project_editors, payroll_payments, editor_balances, leave_requests, daily_logs, drive_files/folders, channels): add policies that allow rows when the user is `staff` AND the relevant `staff_has_permission` returns true AND, for scoped tables, the visibility helper returns true. Write policies gated on the matching `.create`/`.edit`/`.delete` permission.
+## "Powered by Veylodesk" placement
 
-**Seat counting** — `check_client_limit` and editor seat count stay unchanged. Staff seats don't count toward any limit yet (separate `staff` seat type, unlimited).
+`<PoweredByVeylodesk variant="compact|footer|pdf" />`, rendered when the relevant agency is on free:
+- `src/lib/generateInvoicePDF.ts` — appended footer line.
+- `src/pages/invoices/InvoiceDetail.tsx` — footer.
+- `src/pages/review/PublicReview.tsx` — footer; visibility from `is_free_plan` in the edge payload.
+- `src/components/client/ClientSidebar.tsx` — small bottom badge.
+- `src/pages/share/SharePage.tsx` — footer; `is_free_plan` returned from `drive-share-resolve`.
 
-## 3. Frontend
+## Files to add / edit
 
-**New admin pages**
-- `Settings → Roles & Permissions` (admin only):
-  - List staff_roles with edit/delete (system roles are non-deletable but editable).
-  - Role editor: name, description, grouped permission checkboxes (Operations / Finance / HR / Workspace), two scope toggles (clients: all vs assigned; projects: all vs assigned).
-- `Team` page: add a **"Invite Staff"** button next to "Invite Editor". Modal collects name, email, role template, then optional per-permission overrides (collapsed advanced section). Sends invite via existing `send-invite-email` with role=`staff` + metadata.
-- On each staff member's row: "Edit permissions" (overrides), "Manage assignments" (pick clients/projects they own when scope='assigned').
+**New:**
+- `src/components/UpgradeRequiredModal.tsx`
+- `src/components/PoweredByVeylodesk.tsx`
+- `src/components/FreePlanUsageWidget.tsx`
+- `supabase/migrations/<timestamp>_add_free_plan.sql`
 
-**Permission hook**
-- `usePermissions()` — returns `{ can(key), scope(area), assignedClientIds, assignedProjectIds, loading }`. Wraps a single query against `get_staff_permissions` + assignments. Admins always return `can=true`. Clients/editors keep current behavior.
-- `<PermissionGuard permission="invoices.create">` wrapper for buttons/sections.
+**Edit:** `useSubscription.tsx`, `useAgencyLimits.tsx`, `SubscriptionGuard.tsx`, `BrandingContext.tsx`, `Pricing.tsx`, `landing/PricingSection.tsx`, `Signup.tsx`, `Onboarding.tsx`, `SubscriptionSettings.tsx`, `CreateProjectModal.tsx`, `RequestVideoModal.tsx`, `InviteUserModal.tsx`, `AddManualClientModal.tsx`, `UploadContext.tsx`, `BrandingSettings.tsx`, `CollapsibleSidebar.tsx`, `admin/Dashboard.tsx`, `generateInvoicePDF.ts`, `InvoiceDetail.tsx`, `PublicReview.tsx`, `ClientSidebar.tsx`, `SharePage.tsx`, edge functions: `public-review`, `drive-share-resolve`, `presigned-upload`, `drive-upload`, `drive-share-upload`, `deliverables-ops`.
 
-**Sidebar & routing**
-- New `StaffSidebar` derived from current admin sidebar, but each nav item is gated by the relevant `*.view` permission (Clients, Projects, Invoices, Payroll, Attendance, Leave, Storage, Messages, Performance).
-- Add `role='staff'` branch in `DashboardLayout`, `useAuth.redirectByRole`, and route guards. Staff land at `/staff/dashboard` (a simple landing showing the areas they can access).
-- Reuse existing admin pages where possible: pages read `usePermissions` and hide actions / filter lists accordingly. No duplicate pages.
-
-**Action gating examples**
-- `Clients.tsx`: hide "Invite Client" / "Add Manually" unless `clients.invite`/`clients.create`; filter list by `assignedClientIds` if scope='assigned'.
-- `Projects.tsx`: hide create/assign/status controls per permission; filter by `assignedProjectIds` if scoped.
-- `Invoices.tsx`, `Payroll.tsx`, `LeaveManagement.tsx`, `AttendanceReport.tsx`, `StoragePage.tsx`, `BrandingSettings.tsx`, `Billing.tsx` all wrap their primary actions in `PermissionGuard`.
-
-**Messaging**
-- DM rules in `get_or_create_dm_channel` extended: staff can DM clients only if `messaging.dm_clients`; can DM editors/admins only if `messaging.dm_team`. Project channels auto-include staff who are assigned to that project (or all staff with `projects.view` + scope='all').
-
-## 4. Invitation flow
-
-- `agency_invitations` already supports any `app_role`. Extend the join page to recognize `staff`, create a `staff_members` row using `invitation.metadata.staff_role_id` and `permission_overrides`, then route to `/staff/dashboard`.
-
-## 5. Out of scope (this phase)
-
-- No per-permission scoping on finance/HR/storage records (action-gated only).
-- No audit log of permission changes (can be added later).
-- No bulk-assign UI for clients/projects (single-record assignment via existing pickers).
-- No mobile-specific staff nav re-design — reuse `MobileBottomNav` with permission gating.
-
-## Technical details
-
-```text
-permission resolution
-─────────────────────
-final[key] = overrides[key] ?? template.permissions[key] ?? false
-scope[area] = overrides.__scope_<area> ?? template.scope_<area> ?? 'all'
-
-visibility (client/project rows)
-────────────────────────────────
-visible = scope='all'
-       OR exists(staff_*_assignments where staff_user_id=auth.uid() and ref=row)
-```
-
-Files touched (high level):
-- New migration: enum extension, 4 tables + GRANTs + RLS, helper functions, policy rewrites on ~15 tables.
-- New: `src/hooks/usePermissions.tsx`, `src/components/PermissionGuard.tsx`, `src/components/StaffSidebar.tsx`, `src/pages/staff/Dashboard.tsx`, `src/pages/settings/RolesPermissions.tsx`, `src/components/staff/RoleEditorModal.tsx`, `src/components/staff/InviteStaffModal.tsx`, `src/components/staff/StaffPermissionOverridesModal.tsx`, `src/components/staff/StaffAssignmentsModal.tsx`.
-- Edited: `useAuth.tsx` (staff routing), `DashboardLayout.tsx`, `App.tsx` routes, `Team.tsx`, `Clients.tsx`, `Projects.tsx`, `Invoices.tsx`, `Payroll.tsx`, `LeaveManagement.tsx`, `AttendanceReport.tsx`, `EditorPerformance.tsx`, `StoragePage.tsx`, `DrivePage.tsx`, `BrandingSettings.tsx`, `Billing.tsx`, `Settings.tsx` (add Roles tab), `JoinTeam.tsx`, edge functions `send-invite-email` and `send-invoice-email` (no change needed if invitation metadata flows through).
-
-I'll deliver this in two builds: **(a) schema + Roles UI + Invite Staff + staff sidebar/routing**, then **(b) per-page permission gating + assignment scoping across all listed pages**. Confirm and I'll start with (a).
+## Out of scope
+- No changes to paid Starter/Growth/Scale pricing or limits.
+- No "trial" wording (per existing rule).
+- Existing agencies keep their current `plan_tier`; only NULL rows are backfilled to free.
