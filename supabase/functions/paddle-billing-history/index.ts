@@ -65,28 +65,46 @@ Deno.serve(async (req) => {
 
     const userId = claimsData.claims.sub;
 
-    // Get user's agency + verify admin
+    // Get user's agency: try profiles, fall back to user_roles
     const { data: profile } = await supabase
       .from("profiles")
       .select("agency_id")
       .eq("id", userId)
       .maybeSingle();
 
-    if (!profile?.agency_id) {
+    let agencyId: string | null = profile?.agency_id ?? null;
+    let role: string | null = null;
+
+    if (!agencyId) {
+      const { data: roleRow } = await supabase
+        .from("user_roles")
+        .select("agency_id, role")
+        .eq("user_id", userId)
+        .not("agency_id", "is", null)
+        .limit(1)
+        .maybeSingle();
+      agencyId = roleRow?.agency_id ?? null;
+      role = roleRow?.role ?? null;
+    }
+
+    if (!agencyId) {
       return new Response(
-        JSON.stringify({ error: "No agency found" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ transactions: [], message: "No billing history yet" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const { data: roleRow } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .eq("agency_id", profile.agency_id)
-      .maybeSingle();
+    if (!role) {
+      const { data: roleRow } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .eq("agency_id", agencyId)
+        .maybeSingle();
+      role = roleRow?.role ?? null;
+    }
 
-    if (roleRow?.role !== "admin") {
+    if (role !== "admin") {
       return new Response(
         JSON.stringify({ error: "Forbidden" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -99,7 +117,7 @@ Deno.serve(async (req) => {
     const { data: agency } = await adminClient
       .from("agencies")
       .select("paddle_customer_id")
-      .eq("id", profile.agency_id)
+      .eq("id", agencyId)
       .single();
 
     const customerId = agency?.paddle_customer_id;
