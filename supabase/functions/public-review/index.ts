@@ -248,6 +248,17 @@ Deno.serve(async (req) => {
         agencyId = project?.agency_id || '';
       }
 
+      // Lookup agency plan tier for "Powered by Veylodesk" badge
+      let isFreePlan = false;
+      if (agencyId) {
+        const { data: agencyRow } = await supabaseAdmin
+          .from('agencies')
+          .select('plan_tier')
+          .eq('id', agencyId)
+          .maybeSingle();
+        isFreePlan = (agencyRow?.plan_tier || 'free') === 'free';
+      }
+
       // Generate signed URL for the video if it's in Supabase storage
       let signedUrl: string | null = null;
       const fileUrl = deliverable?.file_url || '';
@@ -301,6 +312,7 @@ Deno.serve(async (req) => {
           created_at: c.created_at,
           source: 'internal',
         })),
+        is_free_plan: isFreePlan,
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

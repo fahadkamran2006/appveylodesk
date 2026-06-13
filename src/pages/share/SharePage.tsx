@@ -14,6 +14,7 @@ import {
   Image as ImageIcon, FileText, FolderPlus, ChevronRight, Home,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { PoweredByVeylodesk } from "@/components/PoweredByVeylodesk";
 
 function formatBytes(b: number) {
   if (!b) return "0 B";
@@ -297,6 +298,13 @@ export default function SharePage() {
           ))}
         </div>
       </div>
+
+      {data?.is_free_plan && (
+        <div className="max-w-3xl mx-auto px-4 pb-6">
+          <PoweredByVeylodesk variant="footer" />
+        </div>
+      )}
+
 
       <Dialog open={showNew} onOpenChange={setShowNew}>
         <DialogContent>

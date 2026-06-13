@@ -13,12 +13,13 @@ interface PlanFeature {
 
 interface Plan {
   name: string;
-  key: 'starter' | 'growth' | 'scale';
+  key: 'free' | 'starter' | 'growth' | 'scale';
   monthlyPrice: number;
   yearlyPrice: number;
   description: string;
   features: PlanFeature[];
   popular: boolean;
+  isFree?: boolean;
 }
 
 const PricingSection = () => {
@@ -29,6 +30,22 @@ const PricingSection = () => {
   const navigate = useNavigate();
 
   const plans: Plan[] = [
+    {
+      name: "Free",
+      key: "free",
+      monthlyPrice: 0,
+      yearlyPrice: 0,
+      description: "For Solo Creators",
+      features: [
+        { text: "Unlimited Editors", highlight: true },
+        { text: "1 Active Client", highlight: false },
+        { text: "1 Active Project", highlight: false },
+        { text: "2GB Storage", highlight: false },
+        { text: "Powered by Veylodesk branding", highlight: false },
+      ],
+      popular: false,
+      isFree: true,
+    },
     {
       name: "Starter",
       key: "starter",
@@ -73,7 +90,11 @@ const PricingSection = () => {
     },
   ];
 
+
   const getDisplayPrice = (plan: Plan) => {
+    if (plan.isFree) {
+      return { main: '$0', period: '/mo', subtext: 'Free forever' };
+    }
     if (isYearly) {
       const monthlyEquivalent = Math.round(plan.yearlyPrice / 12);
       return {
@@ -91,6 +112,11 @@ const PricingSection = () => {
 
   const handleSelectPlan = (plan: Plan) => {
     const interval = isYearly ? 'yearly' : 'monthly';
+    if (plan.key === 'free') {
+      if (!user) navigate(`/auth/signup?plan=free`);
+      else navigate(agencyId ? '/admin/dashboard' : '/onboarding');
+      return;
+    }
     // If not logged in, redirect to signup with plan param
     if (!user) {
       navigate(`/auth/signup?plan=${plan.key}&interval=${interval}`);
@@ -104,7 +130,7 @@ const PricingSection = () => {
     }
 
     setLoadingPlan(plan.key);
-    openPaddleCheckout(plan.key, interval, agencyId);
+    openPaddleCheckout(plan.key as 'starter' | 'growth' | 'scale', interval, agencyId);
     setTimeout(() => setLoadingPlan(null), 2000);
   };
 
@@ -151,7 +177,7 @@ const PricingSection = () => {
         </div>
 
         {/* Pricing Cards */}
-        <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto items-stretch">
           {plans.map((plan) => {
             const price = getDisplayPrice(plan);
             const isLoading = loadingPlan === plan.key;
@@ -160,7 +186,7 @@ const PricingSection = () => {
                 key={plan.name}
                 className={`relative glass-card rounded-2xl p-8 flex flex-col ${
                   plan.popular
-                    ? "border-primary/50 shadow-glow scale-105 md:scale-110 z-10"
+                    ? "border-primary/50 shadow-glow lg:scale-105 z-10"
                     : "border-border/30"
                 }`}
               >
@@ -207,7 +233,9 @@ const PricingSection = () => {
                     </>
                   ) : (
                     <>
-                      {user ? 'Subscribe Now' : 'Get Started'}
+                      {plan.isFree
+                        ? (user ? 'Use Free Plan' : 'Start for Free')
+                        : (user ? 'Subscribe Now' : 'Get Started')}
                       <ArrowRight className="w-4 h-4" />
                     </>
                   )}

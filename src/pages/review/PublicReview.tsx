@@ -34,6 +34,7 @@ import {
   Undo2,
 } from 'lucide-react';
 import { VideoPlayer, VideoPlayerHandle } from '@/components/video/VideoPlayer';
+import { PoweredByVeylodesk } from '@/components/PoweredByVeylodesk';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -592,6 +593,13 @@ export default function PublicReview() {
           </ScrollArea>
         </div>
       </div>
+
+      {reviewData?.is_free_plan && (
+        <div className="border-t border-zinc-800 bg-[#0a0a12]">
+          <PoweredByVeylodesk variant="footer" />
+        </div>
+      )}
+
 
       {/* Approve Dialog */}
       <AlertDialog open={showApproveDialog} onOpenChange={setShowApproveDialog}>

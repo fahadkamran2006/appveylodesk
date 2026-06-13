@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { generateInvoicePDF, downloadInvoicePDF } from '@/lib/generateInvoicePDF';
+import { PoweredByVeylodesk } from '@/components/PoweredByVeylodesk';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -69,6 +70,7 @@ interface Invoice {
     business_address: string | null;
     tax_id: string | null;
     invoice_footer: string | null;
+    plan_tier: string | null;
   } | null;
   payment_method: { id: string; name: string; details: string; payment_link: string | null } | null;
 }
@@ -135,7 +137,7 @@ const InvoiceDetailPage = () => {
       // Fetch agency
       const { data: agencyData } = await supabase
         .from('agencies')
-        .select('id, name, logo_url, branding, business_name, business_address, tax_id, invoice_footer')
+        .select('id, name, logo_url, branding, business_name, business_address, tax_id, invoice_footer, plan_tier')
         .eq('id', invoiceData.agency_id)
         .single();
 
@@ -279,6 +281,7 @@ const InvoiceDetailPage = () => {
           rate: item.rate,
           amount: item.amount,
         })),
+        isFreePlan: invoice.agency?.plan_tier === 'free',
       });
 
       downloadInvoicePDF(pdfBlob, invoice.invoice_number);
@@ -339,6 +342,7 @@ const InvoiceDetailPage = () => {
             rate: item.rate,
             amount: item.amount,
           })),
+          isFreePlan: invoice.agency?.plan_tier === 'free',
         });
         const reader = new FileReader();
         pdfBase64 = await new Promise<string>((resolve, reject) => {
@@ -682,6 +686,11 @@ const InvoiceDetailPage = () => {
             </div>
           </div>
         </div>
+        {invoice.agency?.plan_tier === 'free' && (
+          <div className="mt-6 flex justify-center">
+            <PoweredByVeylodesk variant="footer" />
+          </div>
+        )}
       </div>
 
       {/* Upload Payment Proof Modal */}

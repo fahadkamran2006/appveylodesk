@@ -43,6 +43,17 @@ serve(async (req) => {
       if (h !== link.password_hash) return json({ error: "Wrong password" }, 401);
     }
 
+    // Determine "Powered by Veylodesk" badge by looking up agency plan_tier
+    let isFreePlan = false;
+    try {
+      const agencyId = (link as any).agency_id;
+      if (agencyId) {
+        const { data: a } = await admin.from('agencies').select('plan_tier').eq('id', agencyId).maybeSingle();
+        isFreePlan = ((a as any)?.plan_tier || 'free') === 'free';
+      }
+    } catch (_) { /* ignore */ }
+
+
     // ----- File-share short-circuit -----
     if (link.file_id) {
       const { data: file } = await admin
@@ -61,6 +72,7 @@ serve(async (req) => {
           file_id: link.file_id,
         },
         file,
+        is_free_plan: isFreePlan,
       });
     }
 
@@ -113,6 +125,7 @@ serve(async (req) => {
       folder: rootFolder,
       subfolders: subfolders || [],
       files: allFiles,
+      is_free_plan: isFreePlan,
     });
   } catch (e: any) {
     console.error("share-resolve error", e);

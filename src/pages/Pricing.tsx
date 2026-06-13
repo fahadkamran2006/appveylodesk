@@ -16,12 +16,13 @@ interface PlanFeature {
 
 interface Plan {
   name: string;
-  key: 'starter' | 'growth' | 'scale';
+  key: 'free' | 'starter' | 'growth' | 'scale';
   monthlyPrice: number;
   yearlyPrice: number;
   description: string;
   features: PlanFeature[];
   popular: boolean;
+  isFree?: boolean;
 }
 
 const Pricing = () => {
@@ -32,6 +33,22 @@ const Pricing = () => {
   const navigate = useNavigate();
 
   const plans: Plan[] = [
+    {
+      name: "Free",
+      key: "free",
+      monthlyPrice: 0,
+      yearlyPrice: 0,
+      description: "For Solo Creators",
+      features: [
+        { text: "Unlimited Editors", highlight: true },
+        { text: "1 Active Client", highlight: false },
+        { text: "1 Active Project", highlight: false },
+        { text: "2GB Storage", highlight: false },
+        { text: "Powered by Veylodesk branding", highlight: false },
+      ],
+      popular: false,
+      isFree: true,
+    },
     {
       name: "Starter",
       key: "starter",
@@ -77,6 +94,9 @@ const Pricing = () => {
   ];
 
   const getDisplayPrice = (plan: Plan) => {
+    if (plan.isFree) {
+      return { main: '$0', period: '/mo', subtext: 'Free forever' };
+    }
     if (isYearly) {
       const monthlyEquivalent = Math.round(plan.yearlyPrice / 12);
       return {
@@ -93,6 +113,16 @@ const Pricing = () => {
   };
 
   const handleSelectPlan = (plan: Plan) => {
+    // Free plan: send users straight to signup / onboarding (no Paddle checkout)
+    if (plan.key === 'free') {
+      if (!user) {
+        navigate(`/auth/signup?plan=free`);
+      } else {
+        navigate(agencyId ? '/admin/dashboard' : '/onboarding');
+      }
+      return;
+    }
+
     // If not logged in, redirect to signup with plan param
     if (!user) {
       navigate(`/auth/signup?plan=${plan.key}`);
@@ -109,7 +139,7 @@ const Pricing = () => {
     
     // Build checkout URL with agency_id
     const interval = isYearly ? 'yearly' : 'monthly';
-    openPaddleCheckout(plan.key, interval, agencyId);
+    openPaddleCheckout(plan.key as 'starter' | 'growth' | 'scale', interval, agencyId);
     setTimeout(() => setLoadingPlan(null), 2000);
   };
 
@@ -176,7 +206,7 @@ const Pricing = () => {
             </div>
 
             {/* Pricing Cards */}
-            <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
               {plans.map((plan) => {
                 const price = getDisplayPrice(plan);
                 const isLoading = loadingPlan === plan.key;
@@ -232,7 +262,9 @@ const Pricing = () => {
                         </>
                       ) : (
                         <>
-                          {user ? 'Subscribe Now' : 'Get Started'}
+                          {plan.isFree
+                            ? (user ? 'Use Free Plan' : 'Start for Free')
+                            : (user ? 'Subscribe Now' : 'Get Started')}
                           <ArrowRight className="w-4 h-4" />
                         </>
                       )}

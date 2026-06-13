@@ -49,6 +49,7 @@ interface GeneratePDFParams {
   project: ProjectData | null;
   paymentMethod: PaymentMethodData | null;
   lineItems: InvoiceLineItem[];
+  isFreePlan?: boolean;
 }
 
 export async function generateInvoicePDF({
@@ -58,6 +59,7 @@ export async function generateInvoicePDF({
   project,
   paymentMethod,
   lineItems,
+  isFreePlan = false,
 }: GeneratePDFParams): Promise<Blob> {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -309,6 +311,14 @@ export async function generateInvoicePDF({
     doc.setTextColor(...mutedColor);
     const footerLines = doc.splitTextToSize(agency.invoice_footer, pageWidth - margin * 2);
     doc.text(footerLines, margin, footerY);
+  }
+
+  // Powered by Veylodesk (free plan)
+  if (isFreePlan) {
+    const brandY = doc.internal.pageSize.getHeight() - 10;
+    doc.setFontSize(8);
+    doc.setTextColor(140, 140, 140);
+    doc.text('Powered by Veylodesk — veylodesk.com', pageWidth / 2, brandY, { align: 'center' });
   }
 
   return doc.output('blob');

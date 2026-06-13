@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 import { useBranding } from '@/contexts/BrandingContext';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { PoweredByVeylodesk } from '@/components/PoweredByVeylodesk';
 import { cn } from '@/lib/utils';
 
 const navItems = [
@@ -79,11 +80,12 @@ export const ClientSidebar = () => {
         })}
       </nav>
 
-      <div className="p-4 border-t border-border/50">
+      <div className="p-4 border-t border-border/50 space-y-2">
         <Button variant="ghost" className="w-full justify-start text-muted-foreground" onClick={signOut}>
           <LogOut className="w-5 h-5 mr-3" />
           Sign out
         </Button>
+        {!isCustomBrandingActive && <PoweredByVeylodesk variant="footer" />}
       </div>
     </aside>
   );
