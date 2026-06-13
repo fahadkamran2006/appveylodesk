@@ -2290,6 +2290,10 @@ export type Database = {
         Args: { _agency_id: string; _channel_id: string }
         Returns: boolean
       }
+      check_active_project_limit: {
+        Args: { _agency_id: string }
+        Returns: boolean
+      }
       check_client_limit: { Args: { _agency_id: string }; Returns: boolean }
       check_storage_limit: {
         Args: { _agency_id: string; _file_size: number }
@@ -2322,6 +2326,10 @@ export type Database = {
         Returns: string
       }
       generate_invoice_number: { Args: { _agency_id: string }; Returns: string }
+      get_active_project_count: {
+        Args: { _agency_id: string }
+        Returns: number
+      }
       get_admin_agency_stats: {
         Args: never
         Returns: {
