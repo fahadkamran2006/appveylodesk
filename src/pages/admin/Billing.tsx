@@ -1524,8 +1524,8 @@ const BillingPage = () => {
                     <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/20 border border-border/40">
                       <Info className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
                       <p className="text-xs text-muted-foreground">
-                        We'll open the secure Paddle portal to confirm and process your plan change.
-                        Changes take effect once Paddle confirms — refresh this page after to see the update.
+                        We'll switch your plan instantly. Upgrades are prorated and charged immediately;
+                        downgrades take effect on your next renewal.
                       </p>
                     </div>
                   </div>
@@ -1540,10 +1540,10 @@ const BillingPage = () => {
                           : 'bg-foreground/80 hover:bg-foreground'
                       )}
                     >
-                      Continue to Paddle
-                      <ExternalLink className="w-4 h-4 ml-2" />
+                      Confirm Plan Change
                     </AlertDialogAction>
                   </AlertDialogFooter>
+
                 </>
               );
             })()}
