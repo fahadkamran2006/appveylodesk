@@ -26,15 +26,15 @@ const Subscribe = () => {
   const [isYearly, setIsYearly] = useState(true);
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [agencyName, setAgencyName] = useState('');
-  const { agencyId, isActive, loading } = useSubscription();
+  const { agencyId, isActive, isFree, loading } = useSubscription();
   const navigate = useNavigate();
 
-  // Redirect if already subscribed
+  // Redirect if already on a paid plan (free users land here to upgrade)
   useEffect(() => {
-    if (!loading && isActive) {
+    if (!loading && isActive && !isFree) {
       navigate('/admin/dashboard');
     }
-  }, [isActive, loading, navigate]);
+  }, [isActive, isFree, loading, navigate]);
 
   // Fetch agency name
   useEffect(() => {
