@@ -278,6 +278,12 @@ export function CreateProjectModal({
   const onSubmit = async (data: VideoFormData) => {
     if (!user || !agencyId) return;
 
+    // Front-end gate: free plan = max 1 active project
+    if (isFree && !canCreateProject()) {
+      setShowUpgrade(true);
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       // Parse budget values
@@ -352,7 +358,12 @@ export function CreateProjectModal({
       setSelectedFiles([]);
       onOpenChange(false);
       onSuccess?.();
+      refetchLimits();
     } catch (error: any) {
+      if (error.message?.includes('FREE_PLAN_PROJECT_LIMIT')) {
+        setShowUpgrade(true);
+        return;
+      }
       toast({
         title: 'Error',
         description: error.message || 'Failed to create project',
