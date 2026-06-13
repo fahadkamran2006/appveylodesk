@@ -9,18 +9,26 @@ interface AgencyLimits {
   storageUsedBytes: number;
   planTier: string | null;
   isActive: boolean;
+  isFree: boolean;
+  activeProjectCount: number;
+  agencyId: string | null;
   loading: boolean;
 }
+
+const ACTIVE_PROJECT_STATUSES = ['backlog', 'in_progress', 'quality_check', 'review'];
 
 export function useAgencyLimits() {
   const { user } = useAuth();
   const [limits, setLimits] = useState<AgencyLimits>({
-    maxClients: 5,
+    maxClients: 1,
     currentClients: 0,
-    storageLimitBytes: 214748364800, // 200 GB default
+    storageLimitBytes: 2147483648,
     storageUsedBytes: 0,
     planTier: null,
     isActive: false,
+    isFree: false,
+    activeProjectCount: 0,
+    agencyId: null,
     loading: true,
   });
 
@@ -31,7 +39,6 @@ export function useAgencyLimits() {
     }
 
     try {
-      // Get user's agency
       const { data: userRole } = await supabase
         .from('user_roles')
         .select('agency_id')
@@ -45,7 +52,6 @@ export function useAgencyLimits() {
 
       const agencyId = userRole.agency_id;
 
-      // Get agency details
       const { data: agency } = await supabase
         .from('agencies')
         .select('max_clients, storage_limit_bytes, storage_used_bytes, plan_tier, subscription_ends_at')
@@ -57,25 +63,33 @@ export function useAgencyLimits() {
         return;
       }
 
-      // Count current clients
       const { count: clientCount } = await supabase
         .from('user_roles')
         .select('*', { count: 'exact', head: true })
         .eq('agency_id', agencyId)
         .eq('role', 'client');
 
-      // Check if subscription is active
+      const { count: activeProjectCount } = await supabase
+        .from('projects')
+        .select('*', { count: 'exact', head: true })
+        .eq('agency_id', agencyId)
+        .in('status', ACTIVE_PROJECT_STATUSES);
+
       const now = new Date();
       const endsAt = agency.subscription_ends_at ? new Date(agency.subscription_ends_at) : null;
-      const isActive = endsAt !== null && endsAt > now;
+      const isFree = agency.plan_tier === 'free';
+      const isActive = isFree || (endsAt !== null && endsAt > now);
 
       setLimits({
-        maxClients: agency.max_clients || 5,
+        maxClients: agency.max_clients ?? 1,
         currentClients: clientCount || 0,
-        storageLimitBytes: agency.storage_limit_bytes || 214748364800,
+        storageLimitBytes: agency.storage_limit_bytes ?? 2147483648,
         storageUsedBytes: agency.storage_used_bytes || 0,
         planTier: agency.plan_tier,
         isActive,
+        isFree,
+        activeProjectCount: activeProjectCount || 0,
+        agencyId,
         loading: false,
       });
     } catch (error) {
@@ -89,18 +103,20 @@ export function useAgencyLimits() {
   }, [fetchLimits]);
 
   const canAddClient = useCallback(() => {
-    // Scale plan has unlimited clients
     if (limits.planTier === 'scale') return true;
     return limits.currentClients < limits.maxClients;
+  }, [limits]);
+
+  const canCreateProject = useCallback(() => {
+    if (!limits.isFree) return true;
+    return limits.activeProjectCount < 1;
   }, [limits]);
 
   const canUploadBytes = useCallback((fileSize: number) => {
     return (limits.storageUsedBytes + fileSize) <= limits.storageLimitBytes;
   }, [limits]);
 
-  const getRemainingStorage = useCallback(() => {
-    return limits.storageLimitBytes - limits.storageUsedBytes;
-  }, [limits]);
+  const getRemainingStorage = useCallback(() => limits.storageLimitBytes - limits.storageUsedBytes, [limits]);
 
   const formatBytes = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes';
@@ -118,6 +134,7 @@ export function useAgencyLimits() {
   return {
     ...limits,
     canAddClient,
+    canCreateProject,
     canUploadBytes,
     getRemainingStorage,
     getStoragePercentage,

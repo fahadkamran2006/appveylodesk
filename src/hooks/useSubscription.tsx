@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 
 interface SubscriptionStatus {
   isActive: boolean;
+  isFree: boolean;
   planTier: string | null;
   subscriptionEndsAt: string | null;
   loading: boolean;
@@ -14,6 +15,7 @@ export const useSubscription = (): SubscriptionStatus => {
   const { user, userRole, loading: authLoading } = useAuth();
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus>({
     isActive: false,
+    isFree: false,
     planTier: null,
     subscriptionEndsAt: null,
     loading: true,
@@ -23,9 +25,9 @@ export const useSubscription = (): SubscriptionStatus => {
   useEffect(() => {
     const checkSubscription = async () => {
       if (authLoading) return;
-      
+
       if (!user) {
-        setSubscriptionStatus({ isActive: false, planTier: null, subscriptionEndsAt: null, loading: false, agencyId: null });
+        setSubscriptionStatus({ isActive: false, isFree: false, planTier: null, subscriptionEndsAt: null, loading: false, agencyId: null });
         return;
       }
 
@@ -37,7 +39,7 @@ export const useSubscription = (): SubscriptionStatus => {
           .maybeSingle();
 
         if (!profile?.agency_id) {
-          setSubscriptionStatus({ isActive: false, planTier: null, subscriptionEndsAt: null, loading: false, agencyId: null });
+          setSubscriptionStatus({ isActive: false, isFree: false, planTier: null, subscriptionEndsAt: null, loading: false, agencyId: null });
           return;
         }
 
@@ -48,16 +50,19 @@ export const useSubscription = (): SubscriptionStatus => {
           .maybeSingle();
 
         if (!agency) {
-          setSubscriptionStatus({ isActive: false, planTier: null, subscriptionEndsAt: null, loading: false, agencyId: profile.agency_id });
+          setSubscriptionStatus({ isActive: false, isFree: false, planTier: null, subscriptionEndsAt: null, loading: false, agencyId: profile.agency_id });
           return;
         }
 
         const now = new Date();
         const endsAt = agency.subscription_ends_at ? new Date(agency.subscription_ends_at) : null;
-        const isActive = endsAt !== null && endsAt > now;
+        const isFree = agency.plan_tier === 'free';
+        // Free is always "active" (no paywall guard).
+        const isActive = isFree || (endsAt !== null && endsAt > now);
 
         setSubscriptionStatus({
           isActive,
+          isFree,
           planTier: agency.plan_tier,
           subscriptionEndsAt: agency.subscription_ends_at,
           loading: false,
@@ -65,7 +70,7 @@ export const useSubscription = (): SubscriptionStatus => {
         });
       } catch (error) {
         console.error('Error checking subscription:', error);
-        setSubscriptionStatus({ isActive: false, planTier: null, subscriptionEndsAt: null, loading: false, agencyId: null });
+        setSubscriptionStatus({ isActive: false, isFree: false, planTier: null, subscriptionEndsAt: null, loading: false, agencyId: null });
       }
     };
 
@@ -107,8 +112,6 @@ export const openPaddleCheckout = (
 ) => {
   const priceId = getPaddlePriceId(plan, interval);
 
-  // Track session lifecycle so we can tell a real abandonment apart from
-  // a "closed" event that fires after a successful payment.
   let completed = false;
   let failureReason: 'closed' | 'payment_failed' | 'error' | null = null;
   let failureMessage: string | undefined;
@@ -116,14 +119,7 @@ export const openPaddleCheckout = (
   const dispatchFailure = (reason: 'closed' | 'payment_failed' | 'error', message?: string) => {
     window.dispatchEvent(
       new CustomEvent('veylo:checkout-failure', {
-        detail: {
-          reason,
-          plan,
-          interval,
-          agencyId,
-          userEmail,
-          errorMessage: message,
-        },
+        detail: { reason, plan, interval, agencyId, userEmail, errorMessage: message },
       })
     );
   };
@@ -136,25 +132,15 @@ export const openPaddleCheckout = (
         break;
       case 'checkout.payment.failed':
         failureReason = 'payment_failed';
-        failureMessage =
-          event?.data?.payment?.error_message ||
-          event?.data?.error?.detail ||
-          undefined;
+        failureMessage = event?.data?.payment?.error_message || event?.data?.error?.detail || undefined;
         break;
       case 'checkout.error':
         failureReason = 'error';
-        failureMessage =
-          event?.data?.error?.detail ||
-          event?.data?.message ||
-          undefined;
+        failureMessage = event?.data?.error?.detail || event?.data?.message || undefined;
         break;
       case 'checkout.closed':
         if (completed) return;
-        // Defer slightly so a payment_failed/error event that arrives just
-        // before close has a chance to set the more specific reason.
-        setTimeout(() => {
-          dispatchFailure(failureReason ?? 'closed', failureMessage);
-        }, 50);
+        setTimeout(() => dispatchFailure(failureReason ?? 'closed', failureMessage), 50);
         break;
     }
   };
@@ -170,11 +156,9 @@ export const openPaddleCheckout = (
     eventCallback,
   };
 
-  if (userEmail) {
-    checkoutSettings.customer = { email: userEmail };
-  }
+  if (userEmail) checkoutSettings.customer = { email: userEmail };
 
-  // @ts-ignore - Paddle is loaded globally
+  // @ts-ignore
   if (window.Paddle) {
     // @ts-ignore
     window.Paddle.Checkout.open(checkoutSettings);
