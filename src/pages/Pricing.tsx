@@ -123,9 +123,10 @@ const Pricing = () => {
       return;
     }
 
-    // If not logged in, redirect to signup with plan param
+    // If not logged in, redirect to signup with plan + interval params
+    const interval = isYearly ? 'yearly' : 'monthly';
     if (!user) {
-      navigate(`/auth/signup?plan=${plan.key}`);
+      navigate(`/auth/signup?plan=${plan.key}&interval=${interval}`);
       return;
     }
 
