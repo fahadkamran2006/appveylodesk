@@ -280,6 +280,7 @@ const InvoiceDetailPage = () => {
           rate: item.rate,
           amount: item.amount,
         })),
+        isFreePlan: invoice.agency?.plan_tier === 'free',
       });
 
       downloadInvoicePDF(pdfBlob, invoice.invoice_number);
