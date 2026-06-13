@@ -96,8 +96,8 @@ const HeroSection = () => {
             className="flex flex-col sm:flex-row items-start gap-4 mb-6"
           >
             <Button variant="hero" size="xl" className="btn-glow cta-pulse" asChild>
-              <Link to="/auth/signup">
-                Get Started
+              <Link to="/auth/signup?plan=free">
+                Start Free — No Card Required
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Link>
             </Button>
@@ -108,6 +108,16 @@ const HeroSection = () => {
               </a>
             </Button>
           </motion.div>
+
+          {/* Free plan callout */}
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.8, delay: 0.55 }}
+            className="text-sm text-muted-foreground/80 mb-6"
+          >
+            Free forever plan available · 1 client · 2 GB storage · Upgrade anytime
+          </motion.p>
 
           {/* Trust signals */}
           <motion.div

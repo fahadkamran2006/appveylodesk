@@ -123,9 +123,10 @@ const Pricing = () => {
       return;
     }
 
-    // If not logged in, redirect to signup with plan param
+    // If not logged in, redirect to signup with plan + interval params
+    const interval = isYearly ? 'yearly' : 'monthly';
     if (!user) {
-      navigate(`/auth/signup?plan=${plan.key}`);
+      navigate(`/auth/signup?plan=${plan.key}&interval=${interval}`);
       return;
     }
 
@@ -136,9 +137,8 @@ const Pricing = () => {
     }
 
     setLoadingPlan(plan.key);
-    
+
     // Build checkout URL with agency_id
-    const interval = isYearly ? 'yearly' : 'monthly';
     openPaddleCheckout(plan.key as 'starter' | 'growth' | 'scale', interval, agencyId);
     setTimeout(() => setLoadingPlan(null), 2000);
   };

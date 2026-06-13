@@ -49,7 +49,7 @@ const PLAN_DETAILS = {
 };
 
 export const SubscriptionSettings = ({ className }: SubscriptionSettingsProps) => {
-  const { isActive, planTier, subscriptionEndsAt, loading, agencyId } = useSubscription();
+  const { isActive, isFree, planTier, subscriptionEndsAt, loading, agencyId } = useSubscription();
   const { currentClients, maxClients, storageUsedBytes, storageLimitBytes, formatBytes, refetch: refetchLimits } = useAgencyLimits();
   const [syncLoading, setSyncLoading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
@@ -64,7 +64,18 @@ export const SubscriptionSettings = ({ className }: SubscriptionSettingsProps) =
     );
   }
 
-  const currentPlan = planTier && PLAN_DETAILS[planTier as keyof typeof PLAN_DETAILS];
+  const FREE_PLAN_DETAILS = {
+    name: 'Free',
+    icon: Zap,
+    color: 'text-emerald-500',
+    bgColor: 'bg-emerald-500/10',
+    clients: 1,
+    storage: '2 GB',
+  } as const;
+
+  const currentPlan = isFree
+    ? FREE_PLAN_DETAILS
+    : (planTier && PLAN_DETAILS[planTier as keyof typeof PLAN_DETAILS]);
   const CurrentIcon = currentPlan?.icon || Zap;
 
   const formatDate = (dateString: string | null) => {
@@ -215,8 +226,24 @@ export const SubscriptionSettings = ({ className }: SubscriptionSettingsProps) =
           )}
         </div>
 
-        {/* Customer Portal - Always show for active subscribers */}
-        {isActive && (
+        {/* Free plan: show upgrade CTA, not Paddle portal */}
+        {isFree && (
+          <>
+            <Separator />
+            <div className="text-center py-6 px-6 rounded-lg bg-primary/5 border border-primary/20 space-y-3">
+              <h4 className="font-semibold text-foreground">You're on the Free plan</h4>
+              <p className="text-sm text-muted-foreground">
+                Upgrade to unlock more clients, projects, storage, and remove the "Powered by Veylodesk" branding.
+              </p>
+              <Button variant="hero" asChild>
+                <a href="/subscribe">Upgrade Plan</a>
+              </Button>
+            </div>
+          </>
+        )}
+
+        {/* Customer Portal - only for paid active subscribers */}
+        {isActive && !isFree && (
           <div className="space-y-3">
             <div className="flex gap-2">
               <Button
@@ -252,8 +279,8 @@ export const SubscriptionSettings = ({ className }: SubscriptionSettingsProps) =
           </div>
         )}
 
-        {/* Info message for active subscribers */}
-        {isActive && (
+        {/* Info message for paid active subscribers */}
+        {isActive && !isFree && (
           <>
             <Separator />
             <div className="text-center py-4 px-6 rounded-lg bg-muted/50 border border-border/50">
@@ -271,8 +298,8 @@ export const SubscriptionSettings = ({ className }: SubscriptionSettingsProps) =
           </>
         )}
 
-        {/* Show subscribe link for inactive */}
-        {!isActive && (
+        {/* Show subscribe link for inactive (no plan at all) */}
+        {!isActive && !isFree && (
           <>
             <Separator />
             <div className="text-center py-4">
