@@ -137,9 +137,8 @@ const Pricing = () => {
     }
 
     setLoadingPlan(plan.key);
-    
+
     // Build checkout URL with agency_id
-    const interval = isYearly ? 'yearly' : 'monthly';
     openPaddleCheckout(plan.key as 'starter' | 'growth' | 'scale', interval, agencyId);
     setTimeout(() => setLoadingPlan(null), 2000);
   };
