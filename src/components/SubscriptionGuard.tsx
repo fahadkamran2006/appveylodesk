@@ -11,10 +11,10 @@ interface SubscriptionGuardProps {
 }
 
 export function SubscriptionGuard({ children, bypass = false }: SubscriptionGuardProps) {
-  const { isActive, loading } = useSubscription();
+  const { isActive, isFree, loading } = useSubscription();
 
-  // If bypass is enabled, always show children
-  if (bypass) {
+  // If bypass is enabled or user is on Free plan, always show children
+  if (bypass || isFree) {
     return <>{children}</>;
   }
 
