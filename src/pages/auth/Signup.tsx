@@ -34,9 +34,10 @@ const Signup = () => {
     }
     // Capture plan selection from URL for smart checkout flow
     const selectedPlan = searchParams.get('plan');
-    if (selectedPlan && ['starter', 'growth', 'scale'].includes(selectedPlan)) {
+    if (selectedPlan && ['free', 'starter', 'growth', 'scale'].includes(selectedPlan)) {
       localStorage.setItem('selected_plan', selectedPlan);
     }
+
     const selectedInterval = searchParams.get('interval');
     if (selectedInterval && ['monthly', 'yearly'].includes(selectedInterval)) {
       localStorage.setItem('selected_interval', selectedInterval);
