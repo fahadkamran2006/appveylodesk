@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { generateInvoicePDF, downloadInvoicePDF } from '@/lib/generateInvoicePDF';
+import { PoweredByVeylodesk } from '@/components/PoweredByVeylodesk';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
