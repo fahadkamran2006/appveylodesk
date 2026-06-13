@@ -14,6 +14,7 @@ import {
   Image as ImageIcon, FileText, FolderPlus, ChevronRight, Home,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { PoweredByVeylodesk } from "@/components/PoweredByVeylodesk";
 
 function formatBytes(b: number) {
   if (!b) return "0 B";
