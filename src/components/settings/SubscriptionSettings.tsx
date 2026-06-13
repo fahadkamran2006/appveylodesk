@@ -54,6 +54,7 @@ export const SubscriptionSettings = ({ className }: SubscriptionSettingsProps) =
   const { currentClients, maxClients, storageUsedBytes, storageLimitBytes, formatBytes, refetch: refetchLimits } = useAgencyLimits();
   const [syncLoading, setSyncLoading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
+  const [changePlanOpen, setChangePlanOpen] = useState(false);
 
   if (loading) {
     return (
