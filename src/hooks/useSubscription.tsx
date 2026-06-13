@@ -32,16 +32,31 @@ export const useSubscription = (): SubscriptionStatus => {
       }
 
       try {
+        // Try profiles first, then fall back to user_roles (some users may not have profile.agency_id set)
         const { data: profile } = await supabase
           .from('profiles')
           .select('agency_id')
           .eq('id', user.id)
           .maybeSingle();
 
-        if (!profile?.agency_id) {
+        let agencyId = profile?.agency_id ?? null;
+
+        if (!agencyId) {
+          const { data: roleRow } = await supabase
+            .from('user_roles')
+            .select('agency_id')
+            .eq('user_id', user.id)
+            .not('agency_id', 'is', null)
+            .limit(1)
+            .maybeSingle();
+          agencyId = roleRow?.agency_id ?? null;
+        }
+
+        if (!agencyId) {
           setSubscriptionStatus({ isActive: false, isFree: false, planTier: null, subscriptionEndsAt: null, loading: false, agencyId: null });
           return;
         }
+
 
         const { data: agency } = await supabase
           .from('agencies')
