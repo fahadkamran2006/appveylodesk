@@ -90,21 +90,6 @@ const PricingSection = () => {
     },
   ];
 
-  const getDisplayPrice = (plan: Plan) => {
-    if (isYearly) {
-      const monthlyEquivalent = Math.round(plan.yearlyPrice / 12);
-      return {
-        main: `$${monthlyEquivalent}`,
-        period: "/mo",
-        subtext: `Billed $${plan.yearlyPrice}/year`,
-      };
-    }
-    return {
-      main: `$${plan.monthlyPrice}`,
-      period: "/mo",
-      subtext: "Billed monthly",
-    };
-  };
 
   const getDisplayPrice = (plan: Plan) => {
     if (plan.isFree) {
