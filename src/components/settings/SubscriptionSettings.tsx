@@ -6,10 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Crown, Zap, Rocket, ExternalLink, Calendar, Users, HardDrive, Loader2, RefreshCw } from 'lucide-react';
+import { Crown, Zap, Rocket, ExternalLink, Calendar, Users, HardDrive, Loader2, RefreshCw, ArrowUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useAgencyLimits } from '@/hooks/useAgencyLimits';
+import { ChangePlanModal } from './ChangePlanModal';
 
 interface SubscriptionSettingsProps {
   className?: string;
