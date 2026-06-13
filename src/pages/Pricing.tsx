@@ -262,7 +262,9 @@ const Pricing = () => {
                         </>
                       ) : (
                         <>
-                          {user ? 'Subscribe Now' : 'Get Started'}
+                          {plan.isFree
+                            ? (user ? 'Use Free Plan' : 'Start for Free')
+                            : (user ? 'Subscribe Now' : 'Get Started')}
                           <ArrowRight className="w-4 h-4" />
                         </>
                       )}
