@@ -751,6 +751,7 @@ export function CreateProjectModal({
           </form>
         </Form>
       </DialogContent>
+      <UpgradeRequiredModal open={showUpgrade} onOpenChange={setShowUpgrade} limitType="project" />
     </Dialog>
   );
 }

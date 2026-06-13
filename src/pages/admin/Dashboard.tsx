@@ -13,6 +13,7 @@ import { ProposalsSection } from '@/components/admin/ProposalsSection';
 import { VideoRequestsSection } from '@/components/admin/VideoRequestsSection';
 import { Plus, Clock, DollarSign, FolderKanban, Receipt, Users, Loader2 } from 'lucide-react';
 import { format, isPast, parseISO } from 'date-fns';
+import { FreePlanUsageWidget } from '@/components/FreePlanUsageWidget';
 const AdminDashboard = () => {
   const {
     user,
@@ -142,6 +143,9 @@ const AdminDashboard = () => {
             New Project
           </Button>
         </div>
+
+        <FreePlanUsageWidget className="mb-6 md:mb-8" />
+
 
         {/* Stats Grid - Single column on mobile, 2 on tablet, 4 on desktop */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
