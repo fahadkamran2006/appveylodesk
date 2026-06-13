@@ -298,6 +298,13 @@ export default function SharePage() {
         </div>
       </div>
 
+      {data?.is_free_plan && (
+        <div className="max-w-3xl mx-auto px-4 pb-6">
+          <PoweredByVeylodesk variant="footer" />
+        </div>
+      )}
+
+
       <Dialog open={showNew} onOpenChange={setShowNew}>
         <DialogContent>
           <DialogHeader><DialogTitle>New folder</DialogTitle></DialogHeader>
