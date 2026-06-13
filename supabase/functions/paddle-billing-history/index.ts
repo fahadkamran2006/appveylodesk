@@ -117,7 +117,7 @@ Deno.serve(async (req) => {
     const { data: agency } = await adminClient
       .from("agencies")
       .select("paddle_customer_id")
-      .eq("id", profile.agency_id)
+      .eq("id", agencyId)
       .single();
 
     const customerId = agency?.paddle_customer_id;
