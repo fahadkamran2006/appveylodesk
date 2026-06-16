@@ -1,52 +1,35 @@
-import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function Unsubscribe() {
   const [params] = useSearchParams();
-  const token = params.get("token");
-  const [state, setState] = useState<"loading" | "ok" | "error">("loading");
+  const [status, setStatus] = useState<'loading' | 'ok' | 'error'>('loading');
 
   useEffect(() => {
-    if (!token) {
-      setState("error");
-      return;
-    }
+    const token = params.get('token');
+    if (!token) { setStatus('error'); return; }
     (async () => {
-      const { error } = await supabase.functions.invoke("lead-magnet-unsubscribe", {
-        body: { token },
-      });
-      setState(error ? "error" : "ok");
+      const { data, error } = await supabase.functions.invoke('welcome-sequence-unsubscribe', { body: { token } });
+      setStatus(!error && (data as any)?.ok ? 'ok' : 'error');
     })();
-  }, [token]);
+  }, [params]);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-foreground flex items-center justify-center px-6">
-      <div className="max-w-md w-full text-center rounded-2xl border border-white/10 bg-white/[0.03] p-10 space-y-4">
-        {state === "loading" && (
+    <div style={{ minHeight: '100vh', background: '#0D0D1F', color: '#BBBBDD', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Inter, system-ui, sans-serif', padding: '24px' }}>
+      <div style={{ background: '#16162E', padding: '40px', borderRadius: '12px', maxWidth: '480px', textAlign: 'center' }}>
+        <div style={{ color: '#4B4BE1', fontWeight: 800, letterSpacing: 2, marginBottom: 20 }}>VEYLODESK</div>
+        {status === 'loading' && <p>Updating your preferences…</p>}
+        {status === 'ok' && (
           <>
-            <Loader2 className="w-10 h-10 animate-spin mx-auto text-[#4B4BE1]" />
-            <p className="text-muted-foreground">Processing your request…</p>
+            <h1 style={{ color: '#fff', fontSize: 22, margin: '0 0 12px' }}>You're unsubscribed</h1>
+            <p>You won't receive any more onboarding emails from us. Reply to any past email if you change your mind.</p>
           </>
         )}
-        {state === "ok" && (
+        {status === 'error' && (
           <>
-            <CheckCircle2 className="w-10 h-10 mx-auto text-[#4B4BE1]" />
-            <h1 className="text-xl font-semibold">You're unsubscribed</h1>
-            <p className="text-muted-foreground text-sm">
-              You won't receive any more emails about the Veylodesk guide. Thanks for
-              being here.
-            </p>
-          </>
-        )}
-        {state === "error" && (
-          <>
-            <AlertTriangle className="w-10 h-10 mx-auto text-destructive" />
-            <h1 className="text-xl font-semibold">Invalid link</h1>
-            <p className="text-muted-foreground text-sm">
-              This unsubscribe link is invalid or has expired.
-            </p>
+            <h1 style={{ color: '#fff', fontSize: 22, margin: '0 0 12px' }}>Link invalid</h1>
+            <p>This unsubscribe link is invalid or expired. Email hello@fahadkamran.com and we'll handle it manually.</p>
           </>
         )}
       </div>
