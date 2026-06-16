@@ -937,6 +937,47 @@ export type Database = {
           },
         ]
       }
+      email_sequences: {
+        Row: {
+          agency_id: string | null
+          created_at: string
+          email_1_sent_at: string | null
+          email_2_sent_at: string | null
+          email_3_sent_at: string | null
+          id: string
+          unsubscribed_at: string | null
+          user_id: string
+        }
+        Insert: {
+          agency_id?: string | null
+          created_at?: string
+          email_1_sent_at?: string | null
+          email_2_sent_at?: string | null
+          email_3_sent_at?: string | null
+          id?: string
+          unsubscribed_at?: string | null
+          user_id: string
+        }
+        Update: {
+          agency_id?: string | null
+          created_at?: string
+          email_1_sent_at?: string | null
+          email_2_sent_at?: string | null
+          email_3_sent_at?: string | null
+          id?: string
+          unsubscribed_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_sequences_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_line_items: {
         Row: {
           amount: number
