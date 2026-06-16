@@ -148,6 +148,11 @@ const Onboarding = () => {
 
       if (profileError) throw profileError;
 
+      // Fire welcome email 1 (non-blocking)
+      supabase.functions.invoke('welcome-sequence', {
+        body: { action: 'signup', agency_id: agency.id },
+      }).catch((e) => console.warn('welcome-sequence signup failed', e));
+
       // Move to invite step
       setStep(3);
     } catch (error: any) {
