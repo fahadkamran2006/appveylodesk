@@ -133,6 +133,7 @@ const MessagesPage = () => {
                 selectedChannelId={selectedChannelId}
                 onSelectChannel={handleSelectChannel}
                 onNewDM={() => setShowNewDM(true)}
+                onNewChannel={userRole === 'admin' ? () => setShowNewChannel(true) : undefined}
                 onDeleteChannel={handleDeleteChannel}
                 onChannelDeleted={() => { setSelectedChannelId(null); refetchChannels(); }}
                 loading={channelsLoading}
