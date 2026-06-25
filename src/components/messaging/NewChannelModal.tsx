@@ -36,7 +36,7 @@ interface NewChannelModalProps {
 }
 
 
-export function NewChannelModal({ open, onOpenChange, agencyId, onCreate }: NewChannelModalProps) {
+export function NewChannelModal({ open, onOpenChange, agencyId, groupId, groupName, onCreate }: NewChannelModalProps) {
   const { user } = useAuth();
   const [users, setUsers] = useState<AgencyUser[]>([]);
   const [loading, setLoading] = useState(true);
