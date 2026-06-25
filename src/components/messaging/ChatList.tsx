@@ -71,6 +71,7 @@ export function ChatList({
   selectedChannelId,
   onSelectChannel,
   onNewDM,
+  onNewChannel,
   onDeleteChannel,
   onChannelDeleted,
   loading,
