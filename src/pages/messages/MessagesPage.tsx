@@ -171,6 +171,17 @@ const MessagesPage = () => {
         agencyId={agencyId}
         onSelectUser={handleNewDMSelect}
       />
+
+      <NewChannelModal
+        open={showNewChannel}
+        onOpenChange={setShowNewChannel}
+        agencyId={agencyId}
+        onCreate={async (name, ids) => {
+          const channelId = await createCustomChannel(name, ids);
+          if (channelId) handleSelectChannel(channelId);
+          return channelId;
+        }}
+      />
     </>
   );
 };
