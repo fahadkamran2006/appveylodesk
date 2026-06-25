@@ -9,6 +9,7 @@ import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
 import { ChatList } from '@/components/messaging/ChatList';
 import { ChatWindow } from '@/components/messaging/ChatWindow';
 import { NewDMModal } from '@/components/messaging/NewDMModal';
+import { NewChannelModal } from '@/components/messaging/NewChannelModal';
 import { MessageSquare } from 'lucide-react';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { cn } from '@/lib/utils';
@@ -19,6 +20,7 @@ const MessagesPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [showNewDM, setShowNewDM] = useState(false);
+  const [showNewChannel, setShowNewChannel] = useState(false);
 
   const { 
     dmChannels, 
@@ -26,6 +28,7 @@ const MessagesPage = () => {
     loading: channelsLoading, 
     agencyId,
     getOrCreateDM,
+    createCustomChannel,
     deleteChannel,
     refetch: refetchChannels,
   } = useMessaging();
@@ -130,6 +133,7 @@ const MessagesPage = () => {
                 selectedChannelId={selectedChannelId}
                 onSelectChannel={handleSelectChannel}
                 onNewDM={() => setShowNewDM(true)}
+                onNewChannel={userRole === 'admin' ? () => setShowNewChannel(true) : undefined}
                 onDeleteChannel={handleDeleteChannel}
                 onChannelDeleted={() => { setSelectedChannelId(null); refetchChannels(); }}
                 loading={channelsLoading}
@@ -166,6 +170,17 @@ const MessagesPage = () => {
         onOpenChange={setShowNewDM}
         agencyId={agencyId}
         onSelectUser={handleNewDMSelect}
+      />
+
+      <NewChannelModal
+        open={showNewChannel}
+        onOpenChange={setShowNewChannel}
+        agencyId={agencyId}
+        onCreate={async (name, ids) => {
+          const channelId = await createCustomChannel(name, ids);
+          if (channelId) handleSelectChannel(channelId);
+          return channelId;
+        }}
       />
     </>
   );
