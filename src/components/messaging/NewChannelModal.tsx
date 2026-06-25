@@ -30,8 +30,11 @@ interface NewChannelModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   agencyId: string | null;
-  onCreate: (name: string, participantIds: string[]) => Promise<string | null>;
+  groupId?: string | null;
+  groupName?: string | null;
+  onCreate: (name: string, participantIds: string[], groupId?: string | null) => Promise<string | null>;
 }
+
 
 export function NewChannelModal({ open, onOpenChange, agencyId, onCreate }: NewChannelModalProps) {
   const { user } = useAuth();
