@@ -268,6 +268,18 @@ export function ChatList({
                   </Badge>
                 )}
               </span>
+              {onNewChannel && (
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={(e) => { e.stopPropagation(); onNewChannel(); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onNewChannel(); } }}
+                  className="p-0.5 rounded hover:bg-muted/80 text-muted-foreground hover:text-foreground cursor-pointer"
+                  title="New channel"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </span>
+              )}
             </button>
 
             {projectExpanded && (
