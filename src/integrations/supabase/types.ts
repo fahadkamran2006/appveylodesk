@@ -978,6 +978,33 @@ export type Database = {
           },
         ]
       }
+      employee_compensation: {
+        Row: {
+          accumulated_bonus: number
+          created_at: string
+          id: string
+          monthly_salary: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          accumulated_bonus?: number
+          created_at?: string
+          id?: string
+          monthly_salary?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          accumulated_bonus?: number
+          created_at?: string
+          id?: string
+          monthly_salary?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       invoice_line_items: {
         Row: {
           amount: number
