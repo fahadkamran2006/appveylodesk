@@ -2523,7 +2523,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "client" | "editor" | "staff"
-      channel_type: "dm" | "project"
+      channel_type: "dm" | "project" | "custom"
       drive_folder_kind:
         | "custom"
         | "project_root"
@@ -2682,7 +2682,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "client", "editor", "staff"],
-      channel_type: ["dm", "project"],
+      channel_type: ["dm", "project", "custom"],
       drive_folder_kind: [
         "custom",
         "project_root",
