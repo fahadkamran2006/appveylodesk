@@ -306,6 +306,41 @@ export type Database = {
           },
         ]
       }
+      channel_groups: {
+        Row: {
+          agency_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          agency_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          agency_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_groups_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       channel_mutes: {
         Row: {
           channel_id: string
@@ -404,6 +439,7 @@ export type Database = {
           agency_id: string
           container_id: string | null
           created_at: string
+          group_id: string | null
           id: string
           is_archived: boolean
           name: string | null
@@ -415,6 +451,7 @@ export type Database = {
           agency_id: string
           container_id?: string | null
           created_at?: string
+          group_id?: string | null
           id?: string
           is_archived?: boolean
           name?: string | null
@@ -426,6 +463,7 @@ export type Database = {
           agency_id?: string
           container_id?: string | null
           created_at?: string
+          group_id?: string | null
           id?: string
           is_archived?: boolean
           name?: string | null
@@ -446,6 +484,13 @@ export type Database = {
             columns: ["container_id"]
             isOneToOne: false
             referencedRelation: "project_containers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channels_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "channel_groups"
             referencedColumns: ["id"]
           },
           {

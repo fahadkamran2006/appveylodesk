@@ -74,6 +74,13 @@ async function fetchProfilesWithRetry(
   return [];
 }
 
+export interface ChannelGroup {
+  id: string;
+  agency_id: string;
+  name: string;
+  created_at: string;
+}
+
 export function useMessaging() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -82,25 +89,37 @@ export function useMessaging() {
   const [channels, setChannels] = useState<ChannelWithDetails[]>(cached || []);
   const [loading, setLoading] = useState(!cached);
   const [agencyId, setAgencyId] = useState<string | null>(null);
+  const [channelGroups, setChannelGroups] = useState<ChannelGroup[]>([]);
 
-  // Fetch agency ID
+  // Fetch agency ID (deterministic for multi-agency users)
   useEffect(() => {
     const fetchAgencyId = async () => {
       if (!user) return;
-      
       const { data } = await supabase
         .from('user_roles')
-        .select('agency_id')
+        .select('agency_id, created_at')
         .eq('user_id', user.id)
+        .order('created_at', { ascending: true })
+        .limit(1)
         .maybeSingle();
-      
-      if (data?.agency_id) {
-        setAgencyId(data.agency_id);
-      }
+      if (data?.agency_id) setAgencyId(data.agency_id);
     };
-
     fetchAgencyId();
   }, [user?.id]);
+
+  // Fetch channel groups for this agency
+  const fetchChannelGroups = useCallback(async () => {
+    if (!agencyId) return;
+    const { data, error } = await supabase
+      .from('channel_groups' as any)
+      .select('*')
+      .eq('agency_id', agencyId)
+      .order('name', { ascending: true });
+    if (!error && data) setChannelGroups(data as any);
+  }, [agencyId]);
+
+  useEffect(() => { fetchChannelGroups(); }, [fetchChannelGroups]);
+
 
   // Fetch all channels for the user
   const fetchChannels = useCallback(async () => {
@@ -300,7 +319,8 @@ export function useMessaging() {
   // Create a custom (group) channel and add selected agency members
   const createCustomChannel = async (
     name: string,
-    participantIds: string[]
+    participantIds: string[],
+    groupId?: string | null
   ): Promise<string | null> => {
     if (!user || !agencyId) return null;
     try {
@@ -310,6 +330,7 @@ export function useMessaging() {
           agency_id: agencyId,
           type: 'custom' as any,
           name: name.trim(),
+          group_id: groupId ?? null,
         } as any)
         .select('id')
         .single();
@@ -336,6 +357,62 @@ export function useMessaging() {
     }
   };
 
+  const renameChannel = async (channelId: string, newName: string): Promise<boolean> => {
+    const trimmed = newName.trim();
+    if (!trimmed) return false;
+    const { error } = await supabase
+      .from('channels')
+      .update({ name: trimmed })
+      .eq('id', channelId);
+    if (error) {
+      toast({ title: 'Rename failed', description: error.message, variant: 'destructive' });
+      return false;
+    }
+    await fetchChannels();
+    return true;
+  };
+
+  const createChannelGroup = async (name: string): Promise<string | null> => {
+    if (!agencyId) return null;
+    const { data, error } = await supabase
+      .from('channel_groups' as any)
+      .insert({ agency_id: agencyId, name: name.trim() } as any)
+      .select('id')
+      .single();
+    if (error) {
+      toast({ title: 'Could not create group', description: error.message, variant: 'destructive' });
+      return null;
+    }
+    await fetchChannelGroups();
+    return (data as any).id;
+  };
+
+  const renameChannelGroup = async (groupId: string, newName: string): Promise<boolean> => {
+    const { error } = await supabase
+      .from('channel_groups' as any)
+      .update({ name: newName.trim() } as any)
+      .eq('id', groupId);
+    if (error) {
+      toast({ title: 'Rename failed', description: error.message, variant: 'destructive' });
+      return false;
+    }
+    await fetchChannelGroups();
+    return true;
+  };
+
+  const deleteChannelGroup = async (groupId: string): Promise<boolean> => {
+    const { error } = await supabase
+      .from('channel_groups' as any)
+      .delete()
+      .eq('id', groupId);
+    if (error) {
+      toast({ title: 'Delete failed', description: error.message, variant: 'destructive' });
+      return false;
+    }
+    await Promise.all([fetchChannelGroups(), fetchChannels()]);
+    return true;
+  };
+
   const dmChannels = channels.filter(c => c.type === 'dm');
   // "Channels" section includes project channels + admin-created custom channels
   const projectChannels = channels.filter(
@@ -346,14 +423,21 @@ export function useMessaging() {
     channels,
     dmChannels,
     projectChannels,
+    channelGroups,
     loading,
     agencyId,
     getOrCreateDM,
     createCustomChannel,
+    renameChannel,
+    createChannelGroup,
+    renameChannelGroup,
+    deleteChannelGroup,
     deleteChannel,
     refetch: fetchChannels,
+    refetchGroups: fetchChannelGroups,
   };
 }
+
 
 // Hook for individual channel messages
 export function useChannelMessages(channelId: string | null) {

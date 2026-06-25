@@ -30,10 +30,13 @@ interface NewChannelModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   agencyId: string | null;
-  onCreate: (name: string, participantIds: string[]) => Promise<string | null>;
+  groupId?: string | null;
+  groupName?: string | null;
+  onCreate: (name: string, participantIds: string[], groupId?: string | null) => Promise<string | null>;
 }
 
-export function NewChannelModal({ open, onOpenChange, agencyId, onCreate }: NewChannelModalProps) {
+
+export function NewChannelModal({ open, onOpenChange, agencyId, groupId, groupName, onCreate }: NewChannelModalProps) {
   const { user } = useAuth();
   const [users, setUsers] = useState<AgencyUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -108,12 +111,13 @@ export function NewChannelModal({ open, onOpenChange, agencyId, onCreate }: NewC
     if (!trimmed) return;
     setSubmitting(true);
     try {
-      const id = await onCreate(trimmed, Array.from(selected));
+      const id = await onCreate(trimmed, Array.from(selected), groupId ?? null);
       if (id) onOpenChange(false);
     } finally {
       setSubmitting(false);
     }
   };
+
 
   const roleBadge = (r: string) => {
     switch (r) {
@@ -133,8 +137,11 @@ export function NewChannelModal({ open, onOpenChange, agencyId, onCreate }: NewC
             New Channel
           </DialogTitle>
           <DialogDescription>
-            Create a custom channel and add people from your agency.
+            {groupName
+              ? <>Create a channel inside <span className="font-medium text-foreground">{groupName}</span> and add people from your agency.</>
+              : 'Create a custom channel and add people from your agency.'}
           </DialogDescription>
+
         </DialogHeader>
 
         <div className="space-y-4">
