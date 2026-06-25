@@ -93,6 +93,7 @@ const App = () => (
           <SidebarProvider>
             <Toaster />
             <Sonner />
+            <GlobalErrorHandler />
             <BrowserRouter>
               <AuthProvider>
                 <BrandingProvider>
