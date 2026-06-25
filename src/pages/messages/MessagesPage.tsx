@@ -20,6 +20,7 @@ const MessagesPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [showNewDM, setShowNewDM] = useState(false);
+  const [showNewChannel, setShowNewChannel] = useState(false);
 
   const { 
     dmChannels, 
@@ -27,6 +28,7 @@ const MessagesPage = () => {
     loading: channelsLoading, 
     agencyId,
     getOrCreateDM,
+    createCustomChannel,
     deleteChannel,
     refetch: refetchChannels,
   } = useMessaging();
