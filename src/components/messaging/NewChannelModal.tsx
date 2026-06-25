@@ -137,8 +137,11 @@ export function NewChannelModal({ open, onOpenChange, agencyId, groupId, groupNa
             New Channel
           </DialogTitle>
           <DialogDescription>
-            Create a custom channel and add people from your agency.
+            {groupName
+              ? <>Create a channel inside <span className="font-medium text-foreground">{groupName}</span> and add people from your agency.</>
+              : 'Create a custom channel and add people from your agency.'}
           </DialogDescription>
+
         </DialogHeader>
 
         <div className="space-y-4">
