@@ -127,7 +127,7 @@ export function GlobalUploadTray() {
       animate={{ y: 0, opacity: 1 }}
       exit={{ y: 80, opacity: 0 }}
       transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-      className="fixed bottom-4 right-4 w-[360px] max-w-[calc(100vw-2rem)] bg-card border border-border rounded-2xl shadow-2xl z-50 overflow-hidden backdrop-blur-sm"
+      className="fixed bottom-4 right-4 w-[360px] max-w-[calc(100vw-2rem)] bg-card border border-border rounded-2xl shadow-2xl z-[100] overflow-hidden backdrop-blur-sm"
     >
       {/* Header */}
       <div
