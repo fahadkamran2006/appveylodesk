@@ -9,6 +9,7 @@ import { CollapsibleSidebar } from '@/components/CollapsibleSidebar';
 import { ChatList } from '@/components/messaging/ChatList';
 import { ChatWindow } from '@/components/messaging/ChatWindow';
 import { NewDMModal } from '@/components/messaging/NewDMModal';
+import { NewChannelModal } from '@/components/messaging/NewChannelModal';
 import { MessageSquare } from 'lucide-react';
 import { MobileBottomNav } from '@/components/MobileBottomNav';
 import { cn } from '@/lib/utils';
