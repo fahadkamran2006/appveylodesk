@@ -74,6 +74,13 @@ async function fetchProfilesWithRetry(
   return [];
 }
 
+export interface ChannelGroup {
+  id: string;
+  agency_id: string;
+  name: string;
+  created_at: string;
+}
+
 export function useMessaging() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -82,25 +89,37 @@ export function useMessaging() {
   const [channels, setChannels] = useState<ChannelWithDetails[]>(cached || []);
   const [loading, setLoading] = useState(!cached);
   const [agencyId, setAgencyId] = useState<string | null>(null);
+  const [channelGroups, setChannelGroups] = useState<ChannelGroup[]>([]);
 
-  // Fetch agency ID
+  // Fetch agency ID (deterministic for multi-agency users)
   useEffect(() => {
     const fetchAgencyId = async () => {
       if (!user) return;
-      
       const { data } = await supabase
         .from('user_roles')
-        .select('agency_id')
+        .select('agency_id, created_at')
         .eq('user_id', user.id)
+        .order('created_at', { ascending: true })
+        .limit(1)
         .maybeSingle();
-      
-      if (data?.agency_id) {
-        setAgencyId(data.agency_id);
-      }
+      if (data?.agency_id) setAgencyId(data.agency_id);
     };
-
     fetchAgencyId();
   }, [user?.id]);
+
+  // Fetch channel groups for this agency
+  const fetchChannelGroups = useCallback(async () => {
+    if (!agencyId) return;
+    const { data, error } = await supabase
+      .from('channel_groups' as any)
+      .select('*')
+      .eq('agency_id', agencyId)
+      .order('name', { ascending: true });
+    if (!error && data) setChannelGroups(data as any);
+  }, [agencyId]);
+
+  useEffect(() => { fetchChannelGroups(); }, [fetchChannelGroups]);
+
 
   // Fetch all channels for the user
   const fetchChannels = useCallback(async () => {
