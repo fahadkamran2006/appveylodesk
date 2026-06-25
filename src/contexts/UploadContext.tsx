@@ -776,11 +776,8 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
         currentUploadId: null,
       }));
 
-      toast({
-        title: 'Upload failed',
-        description: error.message || 'Please try again',
-        variant: 'destructive',
-      });
+      const { showFriendlyError } = await import('@/lib/friendlyError');
+      showFriendlyError(toast, error, { context: 'upload' });
     }
 
     processingRef.current = false;
