@@ -297,8 +297,50 @@ export function useMessaging() {
     }
   };
 
+  // Create a custom (group) channel and add selected agency members
+  const createCustomChannel = async (
+    name: string,
+    participantIds: string[]
+  ): Promise<string | null> => {
+    if (!user || !agencyId) return null;
+    try {
+      const { data: created, error: chanErr } = await supabase
+        .from('channels')
+        .insert({
+          agency_id: agencyId,
+          type: 'custom' as any,
+          name: name.trim(),
+        } as any)
+        .select('id')
+        .single();
+      if (chanErr) throw chanErr;
+      const channelId = created!.id as string;
+
+      const uniqueIds = Array.from(new Set([user.id, ...participantIds]));
+      const rows = uniqueIds.map(uid => ({ channel_id: channelId, user_id: uid }));
+      const { error: partErr } = await supabase
+        .from('channel_participants')
+        .insert(rows);
+      if (partErr) throw partErr;
+
+      await fetchChannels();
+      return channelId;
+    } catch (error: any) {
+      console.error('Error creating channel:', error);
+      toast({
+        title: 'Could not create channel',
+        description: error.message || 'Please try again.',
+        variant: 'destructive',
+      });
+      return null;
+    }
+  };
+
   const dmChannels = channels.filter(c => c.type === 'dm');
-  const projectChannels = channels.filter(c => c.type === 'project');
+  // "Channels" section includes project channels + admin-created custom channels
+  const projectChannels = channels.filter(
+    c => c.type === 'project' || (c.type as any) === 'custom'
+  );
 
   return {
     channels,
@@ -307,6 +349,7 @@ export function useMessaging() {
     loading,
     agencyId,
     getOrCreateDM,
+    createCustomChannel,
     deleteChannel,
     refetch: fetchChannels,
   };
