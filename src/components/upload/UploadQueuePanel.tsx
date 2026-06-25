@@ -109,7 +109,7 @@ export function UploadQueuePanel({
       initial={{ y: 100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       exit={{ y: 100, opacity: 0 }}
-      className="fixed bottom-4 right-4 w-96 max-w-[calc(100vw-2rem)] bg-surface-elevated border border-border rounded-xl shadow-2xl z-50 overflow-hidden"
+      className="fixed bottom-4 right-4 w-96 max-w-[calc(100vw-2rem)] bg-surface-elevated border border-border rounded-xl shadow-2xl z-[100] overflow-hidden"
     >
       {/* Header */}
       <div
