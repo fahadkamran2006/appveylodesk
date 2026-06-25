@@ -98,7 +98,7 @@ export function GlobalUploadTray() {
       <motion.div
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="fixed bottom-4 right-4 z-50"
+        className="fixed bottom-4 right-4 z-[100]"
       >
         <Button
           onClick={() => setIsMinimized(false)}
