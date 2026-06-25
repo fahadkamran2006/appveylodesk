@@ -15,6 +15,7 @@ import { GlobalUploadTray } from "@/components/upload/GlobalUploadTray";
 import { GlobalDownloadTray } from "@/components/download/GlobalDownloadTray";
 import { CheckoutFailureModal } from "@/components/CheckoutFailureModal";
 import { AdminOnlyGuard } from "@/components/AdminOnlyGuard";
+import { GlobalErrorHandler } from "@/components/GlobalErrorHandler";
 
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
@@ -92,6 +93,7 @@ const App = () => (
           <SidebarProvider>
             <Toaster />
             <Sonner />
+            <GlobalErrorHandler />
             <BrowserRouter>
               <AuthProvider>
                 <BrandingProvider>
