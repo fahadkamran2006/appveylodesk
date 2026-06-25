@@ -31,7 +31,7 @@ interface Participant {
 
 interface Channel {
   id: string;
-  type: 'dm' | 'project';
+  type: 'dm' | 'project' | 'custom';
   name: string | null;
   is_archived: boolean;
   updated_at: string;
@@ -57,6 +57,7 @@ interface ChatListProps {
   selectedChannelId: string | null;
   onSelectChannel: (channelId: string) => void;
   onNewDM?: () => void;
+  onNewChannel?: () => void;
   onDeleteChannel?: (channelId: string) => Promise<boolean>;
   onChannelDeleted?: () => void;
   loading?: boolean;
