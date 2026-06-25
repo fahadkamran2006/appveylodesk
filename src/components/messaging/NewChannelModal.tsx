@@ -111,12 +111,13 @@ export function NewChannelModal({ open, onOpenChange, agencyId, groupId, groupNa
     if (!trimmed) return;
     setSubmitting(true);
     try {
-      const id = await onCreate(trimmed, Array.from(selected));
+      const id = await onCreate(trimmed, Array.from(selected), groupId ?? null);
       if (id) onOpenChange(false);
     } finally {
       setSubmitting(false);
     }
   };
+
 
   const roleBadge = (r: string) => {
     switch (r) {
