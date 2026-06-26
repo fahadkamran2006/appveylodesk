@@ -191,9 +191,9 @@ export function ClientProjectsGrid({
                   {project.title}
                 </h3>
                 
-                {project.description && (
+                {project.description && stripHtml(project.description) && (
                   <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                    {project.description}
+                    {stripHtml(project.description)}
                   </p>
                 )}
                 
