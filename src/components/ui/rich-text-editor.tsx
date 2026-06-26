@@ -16,8 +16,55 @@ interface RichTextEditorProps {
 }
 
 // Configure DOMPurify to only allow safe HTML tags
-const ALLOWED_TAGS = ['p', 'br', 'strong', 'em', 'u', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'blockquote', 'code', 'pre'];
-const ALLOWED_ATTR = ['class'];
+const ALLOWED_TAGS = ['p', 'br', 'strong', 'em', 'u', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'blockquote', 'code', 'pre', 'a'];
+const ALLOWED_ATTR = ['class', 'href', 'target', 'rel'];
+
+// Convert bare URLs in text nodes to anchor tags so links are clickable.
+function autoLinkifyHtml(html: string): string {
+  if (typeof window === 'undefined') return html;
+  const URL_RE = /(https?:\/\/[^\s<>"']+)/g;
+  const container = document.createElement('div');
+  container.innerHTML = html;
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
+    acceptNode: (node) => {
+      const p = node.parentElement;
+      if (!p) return NodeFilter.FILTER_REJECT;
+      if (p.closest('a')) return NodeFilter.FILTER_REJECT;
+      return URL_RE.test(node.nodeValue || '') ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+    },
+  });
+  const targets: Text[] = [];
+  let n: Node | null;
+  while ((n = walker.nextNode())) targets.push(n as Text);
+  for (const t of targets) {
+    const frag = document.createDocumentFragment();
+    const text = t.nodeValue || '';
+    let last = 0;
+    text.replace(URL_RE, (match, _u, offset: number) => {
+      if (offset > last) frag.appendChild(document.createTextNode(text.slice(last, offset)));
+      const a = document.createElement('a');
+      a.href = match;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.textContent = match;
+      frag.appendChild(a);
+      last = offset + match.length;
+      return match;
+    });
+    if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
+    t.replaceWith(frag);
+  }
+  return container.innerHTML;
+}
+
+// Strip HTML to plain text for preview cards.
+export function stripHtml(html: string | null | undefined): string {
+  if (!html) return '';
+  if (typeof window === 'undefined') return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  return (div.textContent || div.innerText || '').replace(/\s+/g, ' ').trim();
+}
 
 export function RichTextEditor({
   content,
