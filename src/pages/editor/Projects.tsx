@@ -215,9 +215,9 @@ export default function EditorProjects() {
                                   }`}
                                 >
                                   <h4 className="font-medium text-foreground text-sm">{project.title}</h4>
-                                  {project.description && (
+                                  {project.description && stripHtml(project.description) && (
                                     <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                                      {project.description}
+                                      {stripHtml(project.description)}
                                     </p>
                                   )}
                                   <div className="flex items-center justify-between mt-3">
