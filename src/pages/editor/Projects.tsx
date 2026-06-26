@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ProjectDetailSheet } from '@/components/projects/ProjectDetailSheet';
+import { stripHtml } from '@/components/ui/rich-text-editor';
 
 type ProjectStatus = 'backlog' | 'in_progress' | 'review' | 'quality_check' | 'done';
 
