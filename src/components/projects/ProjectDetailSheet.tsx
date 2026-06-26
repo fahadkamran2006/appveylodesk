@@ -382,9 +382,7 @@ export function ProjectDetailSheet({
             <div className="animate-pulse text-muted-foreground">Loading...</div>
           </div>
         ) : project ? (
-          selectedVideo ? (
           <>
-            {/* Header (video review mode) */}
             {/* Header */}
             <SheetHeader className="p-6 border-b border-border">
               <div className="flex items-start justify-between">
