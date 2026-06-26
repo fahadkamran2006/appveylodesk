@@ -383,189 +383,52 @@ export function ProjectDetailSheet({
           </div>
         ) : project ? (
           <>
-            {/* Header */}
-            <SheetHeader className="p-6 border-b border-border">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  {selectedVideo ? (
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={handleBackFromVideo}
-                      >
-                        <ArrowLeft className="w-4 h-4" />
-                      </Button>
-                      <div>
-                        <SheetTitle className="text-lg">{selectedVideo.file_name}</SheetTitle>
-                        <p className="text-sm text-muted-foreground">
-                          Version {selectedVideo.version}
-                        </p>
-                      </div>
-                      {(userRole === 'admin' || userRole === 'editor') && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setShowReviewLinkModal(true)}
-                          className="ml-auto"
-                        >
-                          <Link2 className="w-4 h-4 mr-2" />
-                          Share Review Link
-                        </Button>
-                      )}
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex items-center gap-3">
-                        <SheetTitle className="text-xl">{project.title}</SheetTitle>
-                        {canEdit && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setShowEditModal(true)}
-                            className="h-8 w-8"
-                          >
-                            <Edit3 className="w-4 h-4" />
-                          </Button>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 mt-2">
-                        <Badge className={cn('text-xs', STATUS_COLORS[project.status])}>
-                          {STATUS_LABELS[project.status] || project.status}
-                        </Badge>
-                        {project.due_date && (
-                          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Calendar className="w-3 h-3" />
-                            Due {format(new Date(project.due_date), 'MMM d, yyyy')}
-                          </span>
-                        )}
-                      </div>
-                    </>
+            {/* Compact sticky header */}
+            <SheetHeader className="p-6 pb-4 border-b border-border shrink-0">
+              {selectedVideo ? (
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="icon" onClick={handleBackFromVideo}>
+                    <ArrowLeft className="w-4 h-4" />
+                  </Button>
+                  <div className="flex-1 min-w-0">
+                    <SheetTitle className="text-lg truncate">{selectedVideo.file_name}</SheetTitle>
+                    <p className="text-sm text-muted-foreground">Version {selectedVideo.version}</p>
+                  </div>
+                  {(userRole === 'admin' || userRole === 'editor') && (
+                    <Button variant="outline" size="sm" onClick={() => setShowReviewLinkModal(true)}>
+                      <Link2 className="w-4 h-4 mr-2" />
+                      Share Review Link
+                    </Button>
                   )}
                 </div>
-              </div>
-
-              {!selectedVideo && (
+              ) : (
                 <>
-                  <div className="flex flex-wrap gap-4 mt-4 text-sm">
-                    {project.client_name && (
-                      <div className="flex items-center gap-1.5 text-muted-foreground">
-                        <User className="w-4 h-4" />
-                        <span>Client: <span className="text-foreground">{project.client_name}</span></span>
-                      </div>
-                    )}
-                    {project.editor_name && (
-                      <div className="flex items-center gap-1.5 text-muted-foreground">
-                        <Users className="w-4 h-4" />
-                        <span>Editor: <span className="text-foreground">{project.editor_name}</span></span>
-                      </div>
-                    )}
-                    {/* Budget - only visible to admin and client */}
-                    {canSeeBudget && project.budget && (
-                      <div className="flex items-center gap-1.5 text-muted-foreground">
-                        <DollarSign className="w-4 h-4" />
-                        <span>Budget: <span className="text-foreground">${project.budget.toLocaleString()}</span></span>
-                      </div>
-                    )}
-                    {projectChannelId && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleOpenProjectChat}
-                      >
-                        <MessageSquare className="w-4 h-4 mr-2" />
-                        Open Project Chat
+                  <div className="flex items-center gap-3">
+                    <SheetTitle className="text-xl">{project.title}</SheetTitle>
+                    {canEdit && (
+                      <Button variant="ghost" size="icon" onClick={() => setShowEditModal(true)} className="h-8 w-8">
+                        <Edit3 className="w-4 h-4" />
                       </Button>
                     )}
-                    {userRole === 'admin' && (
-                      <>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setShowMoveModal(true)}
-                        >
-                          <ArrowRightLeft className="w-4 h-4 mr-2" />
-                          Move Video
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setShowDeleteDialog(true)}
-                          className="ml-auto text-destructive hover:text-destructive hover:bg-destructive/10"
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Delete Project
-                        </Button>
-                      </>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge className={cn('text-xs', STATUS_COLORS[project.status])}>
+                      {STATUS_LABELS[project.status] || project.status}
+                    </Badge>
+                    {project.due_date && (
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Calendar className="w-3 h-3" />
+                        Due {format(new Date(project.due_date), 'MMM d, yyyy')}
+                      </span>
                     )}
                   </div>
-
-                  {/* Description (Trello-like) */}
-                  {project.description && project.description.trim() && (
-                    <div className="mt-4 p-3 rounded-lg bg-muted/30 border border-border">
-                      <div className="flex items-center gap-2 text-sm font-medium mb-2">
-                        <Edit3 className="w-4 h-4" />
-                        Description
-                      </div>
-                      <RichTextDisplay content={project.description} />
-                    </div>
-                  )}
-
-                  {/* Reference Links */}
-                  {referenceLinks.length > 0 && (
-                    <div className="mt-4 p-3 rounded-lg bg-muted/30 border border-border">
-                      <div className="flex items-center gap-2 text-sm font-medium mb-2">
-                        <LinkIcon className="w-4 h-4" />
-                        Reference Links
-                      </div>
-                      <div className="space-y-1">
-                        {referenceLinks.map((link, index) => (
-                          <a
-                            key={index}
-                            href={link.startsWith('http') ? link : `https://${link}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-2 text-sm text-primary hover:underline truncate"
-                          >
-                            <ExternalLink className="w-3 h-3 flex-shrink-0" />
-                            <span className="truncate">{link}</span>
-                          </a>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Video Approval Actions for Clients */}
-                  {userRole === 'client' && project.client_id === user?.id && (
-                    <VideoApprovalActions
-                      projectId={project.id}
-                      projectTitle={project.title}
-                      status={project.status}
-                      onStatusChange={fetchProject}
-                    />
-                  )}
                 </>
-              )}
-
-              {/* Storage usage for admin */}
-              {!selectedVideo && userRole === 'admin' && storageInfo && (
-                <div className="mt-4 p-3 rounded-lg bg-muted/30 border border-border">
-                  <div className="flex items-center justify-between text-sm mb-2">
-                    <span className="text-muted-foreground">Agency Storage</span>
-                    <span className="font-medium">
-                      {storageInfo.storageUsedPercentage.toFixed(1)}% used
-                    </span>
-                  </div>
-                  <Progress value={storageInfo.storageUsedPercentage} className="h-2" />
-                </div>
               )}
             </SheetHeader>
 
-            {/* Content */}
+            {/* Body */}
             {selectedVideo ? (
-              // Video review mode — stacks vertically on mobile, side-by-side on desktop
               <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-                {/* Video player */}
                 <div className="w-full md:flex-1 flex flex-col bg-black min-h-[200px] md:min-h-0" style={{ maxHeight: 'clamp(200px, 40vh, 50vh)' }}>
                   <VideoPlayer
                     ref={videoPlayerRef}
@@ -579,8 +442,6 @@ export function ProjectDetailSheet({
                     className="flex-1"
                   />
                 </div>
-
-                {/* Comment panel */}
                 <div className="flex-1 md:flex-none md:w-80 border-t md:border-t-0 md:border-l border-border bg-background overflow-hidden">
                   <CommentPanel
                     comments={comments}
@@ -600,28 +461,115 @@ export function ProjectDetailSheet({
                 </div>
               </div>
             ) : (
-              // File management mode
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-                <TabsList className="mx-6 mt-4 w-auto">
-                  <TabsTrigger value="assets" className="gap-2">
-                    <Package className="w-4 h-4" />
-                    Assets ({assetFiles.length})
-                  </TabsTrigger>
-                  <TabsTrigger value="files" className="gap-2">
-                    <FolderOpen className="w-4 h-4" />
-                    Deliverables ({deliverableFiles.length})
-                  </TabsTrigger>
-                  <TabsTrigger value="review" className="gap-2">
-                    <Video className="w-4 h-4" />
-                    Review
-                  </TabsTrigger>
-                  <TabsTrigger value="activity" className="gap-2">
-                    <MessageSquare className="w-4 h-4" />
-                    Activity
-                  </TabsTrigger>
-                </TabsList>
+              <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                {/* Meta row */}
+                <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
+                  {project.client_name && (
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <User className="w-4 h-4" />
+                      <span>Client: <span className="text-foreground">{project.client_name}</span></span>
+                    </div>
+                  )}
+                  {project.editor_name && (
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <Users className="w-4 h-4" />
+                      <span>Editor: <span className="text-foreground">{project.editor_name}</span></span>
+                    </div>
+                  )}
+                  {canSeeBudget && project.budget && (
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <DollarSign className="w-4 h-4" />
+                      <span>Budget: <span className="text-foreground">${project.budget.toLocaleString()}</span></span>
+                    </div>
+                  )}
+                  {projectChannelId && (
+                    <Button variant="outline" size="sm" onClick={handleOpenProjectChat}>
+                      <MessageSquare className="w-4 h-4 mr-2" />
+                      Open Project Chat
+                    </Button>
+                  )}
+                  {userRole === 'admin' && (
+                    <>
+                      <Button variant="outline" size="sm" onClick={() => setShowMoveModal(true)}>
+                        <ArrowRightLeft className="w-4 h-4 mr-2" />
+                        Move Video
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowDeleteDialog(true)}
+                        className="ml-auto text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete Project
+                      </Button>
+                    </>
+                  )}
+                </div>
 
-                <TabsContent value="assets" className="flex-1 overflow-hidden m-0">
+                {/* Description (collapsible) */}
+                {project.description && project.description.trim() && (
+                  <CollapsibleSection
+                    title="Description"
+                    icon={<Edit3 className="w-4 h-4" />}
+                    defaultOpen
+                  >
+                    <RichTextDisplay content={project.description} />
+                  </CollapsibleSection>
+                )}
+
+                {/* Reference Links */}
+                {referenceLinks.length > 0 && (
+                  <CollapsibleSection
+                    title={`Reference Links (${referenceLinks.length})`}
+                    icon={<LinkIcon className="w-4 h-4" />}
+                    defaultOpen
+                  >
+                    <div className="space-y-1">
+                      {referenceLinks.map((link, index) => (
+                        <a
+                          key={index}
+                          href={link.startsWith('http') ? link : `https://${link}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 text-sm text-primary hover:underline truncate"
+                        >
+                          <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                          <span className="truncate">{link}</span>
+                        </a>
+                      ))}
+                    </div>
+                  </CollapsibleSection>
+                )}
+
+                {/* Client approval actions */}
+                {userRole === 'client' && project.client_id === user?.id && (
+                  <VideoApprovalActions
+                    projectId={project.id}
+                    projectTitle={project.title}
+                    status={project.status}
+                    onStatusChange={fetchProject}
+                  />
+                )}
+
+                {/* Storage */}
+                {userRole === 'admin' && storageInfo && (
+                  <div className="p-3 rounded-lg bg-muted/30 border border-border">
+                    <div className="flex items-center justify-between text-sm mb-2">
+                      <span className="text-muted-foreground">Agency Storage</span>
+                      <span className="font-medium">{storageInfo.storageUsedPercentage.toFixed(1)}% used</span>
+                    </div>
+                    <Progress value={storageInfo.storageUsedPercentage} className="h-2" />
+                  </div>
+                )}
+
+                {/* Sections */}
+                <CollapsibleSection
+                  title={`Assets (${assetFiles.length})`}
+                  icon={<Package className="w-4 h-4" />}
+                  defaultOpen
+                  bodyClassName="h-[520px] p-0"
+                >
                   <FileManager
                     projectId={project.id}
                     deliverables={assetFiles}
@@ -636,9 +584,13 @@ export function ProjectDetailSheet({
                     uploadLabel="Upload raw assets"
                     userRole={userRole || undefined}
                   />
-                </TabsContent>
+                </CollapsibleSection>
 
-                <TabsContent value="files" className="flex-1 overflow-hidden m-0">
+                <CollapsibleSection
+                  title={`Deliverables (${deliverableFiles.length})`}
+                  icon={<FolderOpen className="w-4 h-4" />}
+                  bodyClassName="h-[520px] p-0"
+                >
                   <FileManager
                     projectId={project.id}
                     deliverables={deliverableFiles}
@@ -653,65 +605,69 @@ export function ProjectDetailSheet({
                     uploadLabel="Upload deliverable"
                     userRole={userRole || undefined}
                   />
-                </TabsContent>
+                </CollapsibleSection>
 
-                <TabsContent value="review" className="flex-1 overflow-auto m-0">
-                  <div className="p-6 space-y-6">
-                    {(() => {
-                      const isVideoDeliverable = (d: any) => {
-                        const ext = (d.file_name || '').split('.').pop()?.toLowerCase();
-                        if (['mp4', 'mov', 'avi', 'webm', 'mkv'].includes(ext || '')) return true;
-                        const url: string = d.file_url || '';
-                        if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(url)) return true;
-                        if (/vz-[a-z0-9]+\.b-cdn\.net/i.test(url) || url.includes('iframe.mediadelivery.net')) return true;
-                        return false;
-                      };
-                      const videos = deliverableFiles.filter(isVideoDeliverable);
-                      if (videos.length === 0) {
-                        return (
-                          <div className="text-center py-12 text-muted-foreground">
-                            <Video className="w-10 h-10 mx-auto mb-3 opacity-50" />
-                            <p className="text-sm font-medium">No videos to review</p>
-                            <p className="text-xs">Upload a video deliverable to start reviewing</p>
-                          </div>
-                        );
-                      }
+                <CollapsibleSection
+                  title="Review"
+                  icon={<Video className="w-4 h-4" />}
+                >
+                  {(() => {
+                    const isVideoDeliverable = (d: any) => {
+                      const ext = (d.file_name || '').split('.').pop()?.toLowerCase();
+                      if (['mp4', 'mov', 'avi', 'webm', 'mkv'].includes(ext || '')) return true;
+                      const url: string = d.file_url || '';
+                      if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(url)) return true;
+                      if (/vz-[a-z0-9]+\.b-cdn\.net/i.test(url) || url.includes('iframe.mediadelivery.net')) return true;
+                      return false;
+                    };
+                    const videos = deliverableFiles.filter(isVideoDeliverable);
+                    if (videos.length === 0) {
                       return (
-                        <>
-                          <div>
-                            <h4 className="text-sm font-semibold mb-3">Videos</h4>
-                            <div className="grid grid-cols-2 gap-4">
-                              {videos.map(video => (
-                                <button
-                                  key={video.id}
-                                  onClick={() => handleViewVideo(video)}
-                                  className="p-4 rounded-lg border border-border bg-card hover:bg-muted/30 transition-colors text-left"
-                                >
-                                  <Video className="w-8 h-8 text-primary mb-2" />
-                                  <p className="font-medium text-sm truncate">{video.file_name}</p>
-                                  <p className="text-xs text-muted-foreground">
-                                    Version {video.version} • {video.uploader_name}
-                                  </p>
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                          <ProjectReviewQueue
-                            projectId={project.id}
-                            videoDeliverables={videos}
-                            onOpenVideo={handleViewVideo}
-                          />
-                        </>
+                        <div className="text-center py-8 text-muted-foreground">
+                          <Video className="w-10 h-10 mx-auto mb-3 opacity-50" />
+                          <p className="text-sm font-medium">No videos to review</p>
+                          <p className="text-xs">Upload a video deliverable to start reviewing</p>
+                        </div>
                       );
-                    })()}
-                  </div>
-                </TabsContent>
+                    }
+                    return (
+                      <div className="space-y-6">
+                        <div>
+                          <h4 className="text-sm font-semibold mb-3">Videos</h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {videos.map((video) => (
+                              <button
+                                key={video.id}
+                                onClick={() => handleViewVideo(video)}
+                                className="p-4 rounded-lg border border-border bg-card hover:bg-muted/30 transition-colors text-left"
+                              >
+                                <Video className="w-8 h-8 text-primary mb-2" />
+                                <p className="font-medium text-sm truncate">{video.file_name}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  Version {video.version} • {video.uploader_name}
+                                </p>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <ProjectReviewQueue
+                          projectId={project.id}
+                          videoDeliverables={videos}
+                          onOpenVideo={handleViewVideo}
+                        />
+                      </div>
+                    );
+                  })()}
+                </CollapsibleSection>
 
-
-                <TabsContent value="activity" className="flex-1 overflow-hidden m-0">
+                <CollapsibleSection
+                  title="Activity"
+                  icon={<MessageSquare className="w-4 h-4" />}
+                  bodyClassName="p-0"
+                >
                   <ReviewActivityTab projectId={project.id} />
-                </TabsContent>
-              </Tabs>
+                </CollapsibleSection>
+              </div>
             )}
           </>
         ) : null}
