@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
-import { Clock, Upload, Inbox } from 'lucide-react';
+import { Clock, Upload, Inbox, Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 import { useAuth } from '@/hooks/useAuth';
