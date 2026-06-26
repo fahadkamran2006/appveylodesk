@@ -32,13 +32,14 @@ const COLUMNS: { id: ProjectStatus; title: string }[] = [
   { id: 'done', title: 'Delivered' },
 ];
 
-const columnStyles: Partial<Record<ProjectStatus, string>> = {
-  backlog: 'border-muted-foreground/30',
-  in_progress: 'border-primary/50',
-  review: 'border-amber-500/50',
-  quality_check: 'border-indigo-500/50',
-  done: 'border-emerald-500/50',
+const columnAccents: Partial<Record<ProjectStatus, string>> = {
+  backlog: 'bg-muted-foreground/60',
+  in_progress: 'bg-primary',
+  quality_check: 'bg-indigo-500',
+  review: 'bg-amber-500',
+  done: 'bg-emerald-500',
 };
+
 
 export default function EditorProjects() {
   const navigate = useNavigate();
