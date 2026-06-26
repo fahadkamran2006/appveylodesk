@@ -108,6 +108,38 @@ const STATUS_LABELS: Record<string, string> = {
   cancelled: 'Cancelled',
 };
 
+function CollapsibleSection({
+  title,
+  icon,
+  defaultOpen = false,
+  bodyClassName,
+  children,
+}: {
+  title: string;
+  icon?: React.ReactNode;
+  defaultOpen?: boolean;
+  bodyClassName?: string;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <Collapsible open={open} onOpenChange={setOpen} className="rounded-lg border border-border bg-muted/20 overflow-hidden">
+      <CollapsibleTrigger className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          {icon}
+          {title}
+        </div>
+        <ChevronDown className={cn('w-4 h-4 text-muted-foreground transition-transform', open && 'rotate-180')} />
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className={cn('p-3 pt-2 border-t border-border', bodyClassName)}>{children}</div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+
+
 export function ProjectDetailSheet({
   projectId,
   open,
