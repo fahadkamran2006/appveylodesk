@@ -60,6 +60,8 @@ import { GenerateReviewLinkModal } from './GenerateReviewLinkModal';
 import { ReviewActivityTab } from './ReviewActivityTab';
 import { ProjectReviewQueue } from './ProjectReviewQueue';
 import { RichTextDisplay } from '@/components/ui/rich-text-editor';
+import { Skeleton } from '@/components/ui/skeleton';
+
 
 interface ProjectDetailSheetProps {
   projectId: string | null;
