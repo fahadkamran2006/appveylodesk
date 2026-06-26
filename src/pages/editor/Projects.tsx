@@ -106,8 +106,9 @@ export default function EditorProjects() {
   const handleDragEnd = async (result: DropResult) => {
     if (!result.destination) return;
 
-    const { draggableId, destination } = result;
+    const { draggableId, destination, source } = result;
     const newStatus = destination.droppableId as ProjectStatus;
+    if (source.droppableId === destination.droppableId) return;
 
     // Editors cannot move projects to 'review' or 'done' — only admin can
     if (newStatus === 'review' || newStatus === 'done') {
@@ -119,7 +120,11 @@ export default function EditorProjects() {
       return;
     }
 
-    // Optimistic update
+    const targetTitle = COLUMNS.find((c) => c.id === newStatus)?.title ?? newStatus;
+    const movedProject = projects.find((p) => p.id === draggableId);
+
+    // Optimistic update + loading state
+    setMovingId(draggableId);
     setProjects((prev) => prev.map((p) => (p.id === draggableId ? { ...p, status: newStatus } : p)));
 
     try {
@@ -131,19 +136,22 @@ export default function EditorProjects() {
       if (error) throw error;
 
       toast({
-        title: 'Project updated',
-        description: `Moved to ${COLUMNS.find((c) => c.id === newStatus)?.title}`,
+        title: '✓ Moved to ' + targetTitle,
+        description: movedProject ? `"${movedProject.title}" is now in ${targetTitle}.` : undefined,
       });
     } catch (error) {
       console.error('Error updating project:', error);
       fetchProjects(); // Revert on error
       toast({
-        title: 'Error',
-        description: 'Failed to update project status',
+        title: 'Could not move project',
+        description: 'We saved your change locally but the server rejected it. Please try again.',
         variant: 'destructive',
       });
+    } finally {
+      setMovingId(null);
     }
   };
+
 
   const getProjectsByStatus = (status: ProjectStatus) => projects.filter((p) => p.status === status);
 
