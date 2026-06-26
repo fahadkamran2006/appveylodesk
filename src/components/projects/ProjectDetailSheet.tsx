@@ -410,9 +410,20 @@ export function ProjectDetailSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-4xl p-0 flex flex-col">
         {loading ? (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="animate-pulse text-muted-foreground">Loading...</div>
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            <div className="space-y-3">
+              <Skeleton className="h-7 w-2/3" />
+              <div className="flex gap-2">
+                <Skeleton className="h-5 w-20" />
+                <Skeleton className="h-5 w-28" />
+              </div>
+            </div>
+            <Skeleton className="h-24 w-full rounded-lg" />
+            <Skeleton className="h-12 w-full rounded-lg" />
+            <Skeleton className="h-12 w-full rounded-lg" />
+            <Skeleton className="h-64 w-full rounded-lg" />
           </div>
+
         ) : project ? (
           <>
             {/* Compact sticky header */}
