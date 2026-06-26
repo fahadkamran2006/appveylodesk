@@ -268,15 +268,22 @@ export default function EditorProjects() {
                                       if (snapshot.isDragging) return;
                                       setSelectedProjectId(project.id);
                                     }}
-                                    className={`group p-3.5 rounded-lg border bg-card transition-all cursor-pointer ${
+                                    className={`group relative p-3.5 rounded-lg border bg-card transition-all duration-200 cursor-pointer ${
                                       snapshot.isDragging
-                                        ? 'shadow-lg border-primary ring-1 ring-primary/30'
-                                        : 'border-border/70 hover:border-primary/40 hover:shadow-sm'
-                                    }`}
+                                        ? 'shadow-xl border-primary ring-2 ring-primary/30 rotate-[0.5deg] scale-[1.02]'
+                                        : 'border-border/70 hover:border-primary/40 hover:shadow-sm hover:-translate-y-0.5'
+                                    } ${movingId === project.id ? 'opacity-70' : ''}`}
                                   >
-                                    <h4 className="font-medium text-foreground text-sm leading-snug line-clamp-2">
+                                    {movingId === project.id && (
+                                      <div className="absolute top-2 right-2 flex items-center gap-1 text-[10px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
+                                        <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                                        Moving
+                                      </div>
+                                    )}
+                                    <h4 className="font-medium text-foreground text-sm leading-snug line-clamp-2 pr-14">
                                       {project.title}
                                     </h4>
+
                                     {project.description && stripHtml(project.description) && (
                                       <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2 leading-relaxed">
                                         {stripHtml(project.description)}
