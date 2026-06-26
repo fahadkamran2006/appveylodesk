@@ -317,6 +317,8 @@ export default function EditorProjects() {
               })}
             </div>
           </DragDropContext>
+          )}
+
         </main>
       </div>
 
