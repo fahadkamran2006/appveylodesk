@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { stripHtml } from '@/components/ui/rich-text-editor';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -191,9 +192,9 @@ export function ClientProjectsGrid({
                   {project.title}
                 </h3>
                 
-                {project.description && (
+                {project.description && stripHtml(project.description) && (
                   <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                    {project.description}
+                    {stripHtml(project.description)}
                   </p>
                 )}
                 

@@ -5,6 +5,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { format, isPast, isToday } from 'date-fns';
 import { Calendar, AlertCircle, User, FolderKanban } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { stripHtml } from '@/components/ui/rich-text-editor';
 import { Project, ProjectStatus } from './KanbanColumn';
 
 interface ProjectListViewProps {
@@ -137,9 +138,9 @@ export function ProjectListView({
                       <p className="font-medium text-foreground truncate max-w-[200px]">
                         {project.title}
                       </p>
-                      {project.description && (
+                      {project.description && stripHtml(project.description) && (
                         <p className="text-xs text-muted-foreground truncate max-w-[200px]">
-                          {project.description}
+                          {stripHtml(project.description)}
                         </p>
                       )}
                     </div>
