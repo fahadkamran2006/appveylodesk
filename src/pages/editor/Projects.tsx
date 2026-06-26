@@ -174,8 +174,47 @@ export default function EditorProjects() {
             </p>
           </div>
 
-          {/* Kanban Board */}
+          {isInitialLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              {COLUMNS.map((column) => (
+                <div key={column.id} className="flex flex-col min-w-0">
+                  <div className="flex items-center justify-between mb-3 px-1">
+                    <div className="flex items-center gap-2">
+                      <span className={`h-2 w-2 rounded-full ${columnAccents[column.id] ?? 'bg-muted-foreground/40'}`} />
+                      <Skeleton className="h-4 w-20" />
+                    </div>
+                    <Skeleton className="h-5 w-6 rounded-full" />
+                  </div>
+                  <div className="flex-1 rounded-xl border border-border/60 bg-muted/30 p-2.5 space-y-2.5 min-h-[300px]">
+                    {Array.from({ length: 2 }).map((_, i) => (
+                      <div key={i} className="p-3.5 rounded-lg border border-border/70 bg-card space-y-2">
+                        <Skeleton className="h-4 w-3/4" />
+                        <Skeleton className="h-3 w-full" />
+                        <Skeleton className="h-3 w-2/3" />
+                        <div className="flex justify-between pt-1">
+                          <Skeleton className="h-3 w-12" />
+                          <Skeleton className="h-3 w-10" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : hasNoProjects ? (
+            <div className="rounded-2xl border border-dashed border-border/70 bg-muted/20 py-16 px-6 text-center">
+              <div className="mx-auto w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-4">
+                <Inbox className="w-7 h-7 text-muted-foreground" />
+              </div>
+              <h2 className="text-lg font-semibold text-foreground">No projects assigned yet</h2>
+              <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto leading-relaxed">
+                When an admin assigns you to a project, it will appear here. You'll be able to upload
+                deliverables, track revisions, and move work through the pipeline.
+              </p>
+            </div>
+          ) : (
           <DragDropContext onDragEnd={handleDragEnd}>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 min-h-[600px]">
               {COLUMNS.map((column) => {
                 const items = getProjectsByStatus(column.id);
