@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
-import { Clock, Upload, Inbox } from 'lucide-react';
+import { Clock, Upload, Inbox, Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 import { useAuth } from '@/hooks/useAuth';
@@ -49,7 +49,9 @@ export default function EditorProjects() {
   const { toast } = useToast();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [movingId, setMovingId] = useState<string | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+
 
   const fetchProjects = useCallback(async () => {
     if (!user) return;
@@ -104,8 +106,9 @@ export default function EditorProjects() {
   const handleDragEnd = async (result: DropResult) => {
     if (!result.destination) return;
 
-    const { draggableId, destination } = result;
+    const { draggableId, destination, source } = result;
     const newStatus = destination.droppableId as ProjectStatus;
+    if (source.droppableId === destination.droppableId) return;
 
     // Editors cannot move projects to 'review' or 'done' — only admin can
     if (newStatus === 'review' || newStatus === 'done') {
@@ -117,7 +120,11 @@ export default function EditorProjects() {
       return;
     }
 
-    // Optimistic update
+    const targetTitle = COLUMNS.find((c) => c.id === newStatus)?.title ?? newStatus;
+    const movedProject = projects.find((p) => p.id === draggableId);
+
+    // Optimistic update + loading state
+    setMovingId(draggableId);
     setProjects((prev) => prev.map((p) => (p.id === draggableId ? { ...p, status: newStatus } : p)));
 
     try {
@@ -129,19 +136,22 @@ export default function EditorProjects() {
       if (error) throw error;
 
       toast({
-        title: 'Project updated',
-        description: `Moved to ${COLUMNS.find((c) => c.id === newStatus)?.title}`,
+        title: '✓ Moved to ' + targetTitle,
+        description: movedProject ? `"${movedProject.title}" is now in ${targetTitle}.` : undefined,
       });
     } catch (error) {
       console.error('Error updating project:', error);
       fetchProjects(); // Revert on error
       toast({
-        title: 'Error',
-        description: 'Failed to update project status',
+        title: 'Could not move project',
+        description: 'We saved your change locally but the server rejected it. Please try again.',
         variant: 'destructive',
       });
+    } finally {
+      setMovingId(null);
     }
   };
+
 
   const getProjectsByStatus = (status: ProjectStatus) => projects.filter((p) => p.status === status);
 
@@ -258,15 +268,22 @@ export default function EditorProjects() {
                                       if (snapshot.isDragging) return;
                                       setSelectedProjectId(project.id);
                                     }}
-                                    className={`group p-3.5 rounded-lg border bg-card transition-all cursor-pointer ${
+                                    className={`group relative p-3.5 rounded-lg border bg-card transition-all duration-200 cursor-pointer ${
                                       snapshot.isDragging
-                                        ? 'shadow-lg border-primary ring-1 ring-primary/30'
-                                        : 'border-border/70 hover:border-primary/40 hover:shadow-sm'
-                                    }`}
+                                        ? 'shadow-xl border-primary ring-2 ring-primary/30 rotate-[0.5deg] scale-[1.02]'
+                                        : 'border-border/70 hover:border-primary/40 hover:shadow-sm hover:-translate-y-0.5'
+                                    } ${movingId === project.id ? 'opacity-70' : ''}`}
                                   >
-                                    <h4 className="font-medium text-foreground text-sm leading-snug line-clamp-2">
+                                    {movingId === project.id && (
+                                      <div className="absolute top-2 right-2 flex items-center gap-1 text-[10px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
+                                        <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                                        Moving
+                                      </div>
+                                    )}
+                                    <h4 className="font-medium text-foreground text-sm leading-snug line-clamp-2 pr-14">
                                       {project.title}
                                     </h4>
+
                                     {project.description && stripHtml(project.description) && (
                                       <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2 leading-relaxed">
                                         {stripHtml(project.description)}

@@ -114,18 +114,39 @@ function CollapsibleSection({
   title,
   icon,
   defaultOpen = false,
+  storageKey,
   bodyClassName,
   children,
 }: {
   title: string;
   icon?: React.ReactNode;
   defaultOpen?: boolean;
+  storageKey?: string;
   bodyClassName?: string;
   children: React.ReactNode;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
+  const lsKey = storageKey ? `pds:section:${storageKey}` : null;
+  const [open, setOpen] = useState(() => {
+    if (!lsKey || typeof window === 'undefined') return defaultOpen;
+    const v = window.localStorage.getItem(lsKey);
+    return v === null ? defaultOpen : v === '1';
+  });
+  useEffect(() => {
+    if (!lsKey || typeof window === 'undefined') return;
+    window.localStorage.setItem(lsKey, open ? '1' : '0');
+  }, [open, lsKey]);
+  // Listen for programmatic open requests (e.g. activity CTA → expand Deliverables)
+  useEffect(() => {
+    if (!storageKey || typeof window === 'undefined') return;
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent<string>;
+      if (ce.detail === storageKey) setOpen(true);
+    };
+    window.addEventListener('pds:open-section', handler as EventListener);
+    return () => window.removeEventListener('pds:open-section', handler as EventListener);
+  }, [storageKey]);
   return (
-    <Collapsible open={open} onOpenChange={setOpen} className="rounded-lg border border-border bg-muted/20 overflow-hidden">
+    <Collapsible open={open} onOpenChange={setOpen} className="rounded-lg border border-border bg-muted/20 overflow-hidden" data-section={storageKey}>
       <CollapsibleTrigger className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors">
         <div className="flex items-center gap-2 text-sm font-medium">
           {icon}
@@ -139,6 +160,7 @@ function CollapsibleSection({
     </Collapsible>
   );
 }
+
 
 
 
@@ -558,6 +580,7 @@ export function ProjectDetailSheet({
                     title="Description"
                     icon={<Edit3 className="w-4 h-4" />}
                     defaultOpen
+                    storageKey="description"
                   >
                     <RichTextDisplay content={project.description} />
                   </CollapsibleSection>
@@ -569,6 +592,7 @@ export function ProjectDetailSheet({
                     title={`Reference Links (${referenceLinks.length})`}
                     icon={<LinkIcon className="w-4 h-4" />}
                     defaultOpen
+                    storageKey="reference-links"
                   >
                     <div className="space-y-1">
                       {referenceLinks.map((link, index) => (
@@ -577,9 +601,9 @@ export function ProjectDetailSheet({
                           href={link.startsWith('http') ? link : `https://${link}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-2 text-sm text-primary hover:underline truncate"
+                          className="group flex items-center gap-2 text-sm text-primary hover:underline truncate"
                         >
-                          <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                          <ExternalLink className="w-3 h-3 flex-shrink-0 opacity-60 group-hover:opacity-100 transition-opacity" />
                           <span className="truncate">{link}</span>
                         </a>
                       ))}
@@ -613,6 +637,7 @@ export function ProjectDetailSheet({
                   title={`Assets (${assetFiles.length})`}
                   icon={<Package className="w-4 h-4" />}
                   defaultOpen
+                  storageKey="assets"
                   bodyClassName="h-[520px] p-0"
                 >
                   <FileManager
@@ -634,6 +659,7 @@ export function ProjectDetailSheet({
                 <CollapsibleSection
                   title={`Deliverables (${deliverableFiles.length})`}
                   icon={<FolderOpen className="w-4 h-4" />}
+                  storageKey="deliverables"
                   bodyClassName="h-[520px] p-0"
                 >
                   <FileManager
@@ -655,6 +681,7 @@ export function ProjectDetailSheet({
                 <CollapsibleSection
                   title="Review"
                   icon={<Video className="w-4 h-4" />}
+                  storageKey="review"
                 >
                   {(() => {
                     const isVideoDeliverable = (d: any) => {
@@ -708,10 +735,22 @@ export function ProjectDetailSheet({
                 <CollapsibleSection
                   title="Activity"
                   icon={<MessageSquare className="w-4 h-4" />}
+                  storageKey="activity"
                   bodyClassName="p-0"
                 >
-                  <ReviewActivityTab projectId={project.id} />
+                  <ReviewActivityTab
+                    projectId={project.id}
+                    onCheckDeliverables={() => {
+                      window.dispatchEvent(new CustomEvent('pds:open-section', { detail: 'deliverables' }));
+                      // Scroll the deliverables section into view
+                      setTimeout(() => {
+                        const el = document.querySelector('[data-section="deliverables"]');
+                        el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }, 80);
+                    }}
+                  />
                 </CollapsibleSection>
+
               </div>
             )}
           </>

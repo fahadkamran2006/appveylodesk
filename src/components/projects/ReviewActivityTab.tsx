@@ -19,9 +19,11 @@ interface ReviewEvent {
 
 interface ReviewActivityTabProps {
   projectId: string;
+  onCheckDeliverables?: () => void;
 }
 
-export function ReviewActivityTab({ projectId }: ReviewActivityTabProps) {
+export function ReviewActivityTab({ projectId, onCheckDeliverables }: ReviewActivityTabProps) {
+
   const [events, setEvents] = useState<ReviewEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -143,17 +145,40 @@ export function ReviewActivityTab({ projectId }: ReviewActivityTabProps) {
 
   if (events.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center mb-4">
-          <Eye className="w-6 h-6 text-muted-foreground/50" />
+      <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+        <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/20 flex items-center justify-center mb-4">
+          <Eye className="w-7 h-7 text-primary/70" />
         </div>
-        <p className="text-sm font-medium text-foreground mb-1">No review activity yet</p>
-        <p className="text-xs text-muted-foreground max-w-[240px]">
-          Share a review link for a video deliverable to start collecting feedback from external reviewers.
+        <p className="text-base font-semibold text-foreground mb-1.5">No review activity yet</p>
+        <p className="text-sm text-muted-foreground max-w-[320px] mb-5 leading-relaxed">
+          Once you share a review link, this timeline will fill up with every action reviewers take.
         </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 max-w-md w-full mb-5">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/40 border border-border/60 text-xs text-muted-foreground">
+            <MessageSquare className="w-3.5 h-3.5 text-primary/70" />
+            <span>New comment</span>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/40 border border-border/60 text-xs text-muted-foreground">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+            <span>Approved</span>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/40 border border-border/60 text-xs text-muted-foreground">
+            <XCircle className="w-3.5 h-3.5 text-amber-500" />
+            <span>Revision</span>
+          </div>
+        </div>
+        {onCheckDeliverables && (
+          <button
+            onClick={onCheckDeliverables}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 hover:underline underline-offset-4"
+          >
+            Check delivered files →
+          </button>
+        )}
       </div>
     );
   }
+
 
   return (
     <ScrollArea className="h-full">
