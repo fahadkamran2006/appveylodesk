@@ -5,6 +5,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { format, isPast, isToday } from 'date-fns';
 import { Calendar, AlertCircle, User, FolderKanban } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { stripHtml } from '@/components/ui/rich-text-editor';
 import { Project, ProjectStatus } from './KanbanColumn';
 
 interface ProjectListViewProps {
