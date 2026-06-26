@@ -19,9 +19,11 @@ interface ReviewEvent {
 
 interface ReviewActivityTabProps {
   projectId: string;
+  onCheckDeliverables?: () => void;
 }
 
-export function ReviewActivityTab({ projectId }: ReviewActivityTabProps) {
+export function ReviewActivityTab({ projectId, onCheckDeliverables }: ReviewActivityTabProps) {
+
   const [events, setEvents] = useState<ReviewEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
