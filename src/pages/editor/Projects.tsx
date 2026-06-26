@@ -148,13 +148,9 @@ export default function EditorProjects() {
     return new Date(dueDate) < new Date();
   };
 
-  if (authLoading || loading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <div className="animate-pulse text-muted-foreground">Loading...</div>
-      </div>
-    );
-  }
+  const isInitialLoading = authLoading || loading;
+  const hasNoProjects = !isInitialLoading && projects.length === 0;
+
 
   return (
     <>
