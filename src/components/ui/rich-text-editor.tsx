@@ -203,16 +203,43 @@ export function RichTextDisplay({ content, className }: { content: string; class
   const sanitizedContent = DOMPurify.sanitize(linked, {
     ALLOWED_TAGS,
     ALLOWED_ATTR,
+    ADD_ATTR: ['target', 'rel'],
   });
+
+  // Post-process: harden every anchor to open in a new tab safely.
+  let finalHtml = sanitizedContent;
+  if (typeof window !== 'undefined') {
+    const wrap = document.createElement('div');
+    wrap.innerHTML = sanitizedContent;
+    wrap.querySelectorAll('a[href]').forEach((a) => {
+      const href = a.getAttribute('href') || '';
+      // Only externalize http(s) and protocol-relative links
+      if (/^(https?:)?\/\//i.test(href) || (!href.startsWith('#') && !href.startsWith('mailto:') && !href.startsWith('tel:'))) {
+        a.setAttribute('target', '_blank');
+        a.setAttribute('rel', 'noopener noreferrer');
+      }
+    });
+    finalHtml = wrap.innerHTML;
+  }
 
   return (
     <div
       className={cn(
         'prose prose-sm dark:prose-invert max-w-none',
-        '[&_a]:text-primary [&_a]:underline [&_a]:underline-offset-2 [&_a]:break-all hover:[&_a]:text-primary/80',
+        '[&_a]:inline-flex [&_a]:items-baseline [&_a]:gap-1 [&_a]:text-primary [&_a]:underline [&_a]:underline-offset-2 [&_a]:break-all hover:[&_a]:text-primary/80',
+        // External-link affordance via CSS mask on a pseudo-element (no extra DOM needed).
+        // Hidden until hover so it stays clean at rest.
+        "[&_a[target='_blank']]:after:content-['']",
+        "[&_a[target='_blank']]:after:inline-block [&_a[target='_blank']]:after:w-3 [&_a[target='_blank']]:after:h-3",
+        "[&_a[target='_blank']]:after:ml-0.5 [&_a[target='_blank']]:after:opacity-0",
+        "hover:[&_a[target='_blank']]:after:opacity-80 [&_a[target='_blank']]:after:transition-opacity",
+        "[&_a[target='_blank']]:after:bg-current",
+        "[&_a[target='_blank']]:after:[mask-image:url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6'/><polyline points='15 3 21 3 21 9'/><line x1='10' y1='14' x2='21' y2='3'/></svg>\")]",
+        "[&_a[target='_blank']]:after:[mask-repeat:no-repeat] [&_a[target='_blank']]:after:[mask-size:contain]",
         className
       )}
-      dangerouslySetInnerHTML={{ __html: sanitizedContent }}
+      dangerouslySetInnerHTML={{ __html: finalHtml }}
     />
   );
 }
+
