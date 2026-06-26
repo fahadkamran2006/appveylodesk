@@ -49,7 +49,9 @@ export default function EditorProjects() {
   const { toast } = useToast();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [movingId, setMovingId] = useState<string | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+
 
   const fetchProjects = useCallback(async () => {
     if (!user) return;
