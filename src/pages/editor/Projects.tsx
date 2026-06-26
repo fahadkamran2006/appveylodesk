@@ -169,102 +169,120 @@ export default function EditorProjects() {
         </div>
 
         <main className="flex-1 p-4 md:p-8 pb-24 md:pb-8 overflow-auto">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-foreground">My Projects</h1>
-            <p className="text-muted-foreground mt-1">Manage your assigned projects and upload deliverables</p>
+          <div className="mb-6 md:mb-8">
+            <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground">My Projects</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Drag a card to update its status. Tap any project to open its workspace.
+            </p>
           </div>
 
           {/* Kanban Board */}
           <DragDropContext onDragEnd={handleDragEnd}>
-            <div className="grid grid-cols-4 gap-4 min-h-[600px]">
-              {COLUMNS.map((column) => (
-                <div key={column.id} className="flex flex-col">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold text-foreground">{column.title}</h3>
-                    <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
-                      {getProjectsByStatus(column.id).length}
-                    </span>
-                  </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 min-h-[600px]">
+              {COLUMNS.map((column) => {
+                const items = getProjectsByStatus(column.id);
+                return (
+                  <div key={column.id} className="flex flex-col min-w-0">
+                    <div className="flex items-center justify-between mb-3 px-1">
+                      <div className="flex items-center gap-2">
+                        <span className={`h-2 w-2 rounded-full ${columnAccents[column.id] ?? 'bg-muted-foreground/40'}`} />
+                        <h3 className="text-sm font-semibold tracking-wide text-foreground uppercase">{column.title}</h3>
+                      </div>
+                      <span className="text-[11px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                        {items.length}
+                      </span>
+                    </div>
 
-                  <Droppable droppableId={column.id}>
-                    {(provided, snapshot) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.droppableProps}
-                        className={`flex-1 rounded-xl border-2 border-dashed p-3 transition-colors ${
-                          snapshot.isDraggingOver
-                            ? 'border-primary bg-primary/5'
-                            : columnStyles[column.id] + ' bg-card/50'
-                        }`}
-                      >
-                        <div className="space-y-3">
-                          {getProjectsByStatus(column.id).map((project, index) => (
-                            <Draggable key={project.id} draggableId={project.id} index={index}>
-                              {(provided, snapshot) => (
-                                <div
-                                  ref={provided.innerRef}
-                                  {...provided.draggableProps}
-                                  {...provided.dragHandleProps}
-                                  onClick={() => {
-                                    if (snapshot.isDragging) return;
-                                    setSelectedProjectId(project.id);
-                                  }}
-                                  className={`p-4 rounded-lg border bg-card transition-shadow cursor-pointer ${
-                                    snapshot.isDragging
-                                      ? 'shadow-lg border-primary'
-                                      : 'border-border hover:border-primary/30'
-                                  }`}
-                                >
-                                  <h4 className="font-medium text-foreground text-sm">{project.title}</h4>
-                                  {project.description && stripHtml(project.description) && (
-                                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                                      {stripHtml(project.description)}
-                                    </p>
-                                  )}
-                                  <div className="flex items-center justify-between mt-3">
-                                    {project.due_date && (
-                                      <span
-                                        className={`text-xs flex items-center gap-1 ${
-                                          isOverdue(project.due_date) ? 'text-destructive' : 'text-muted-foreground'
-                                        }`}
-                                      >
-                                        <Clock className="w-3 h-3" />
-                                        {format(new Date(project.due_date), 'MMM d')}
-                                      </span>
+                    <Droppable droppableId={column.id}>
+                      {(provided, snapshot) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.droppableProps}
+                          className={`flex-1 rounded-xl border p-2.5 transition-colors ${
+                            snapshot.isDraggingOver
+                              ? 'border-primary/60 bg-primary/5'
+                              : 'border-border/60 bg-muted/30'
+                          }`}
+                        >
+                          <div className="space-y-2.5">
+                            {items.length === 0 && (
+                              <div className="text-center text-xs text-muted-foreground/70 py-8">
+                                Nothing here
+                              </div>
+                            )}
+                            {items.map((project, index) => (
+                              <Draggable key={project.id} draggableId={project.id} index={index}>
+                                {(provided, snapshot) => (
+                                  <div
+                                    ref={provided.innerRef}
+                                    {...provided.draggableProps}
+                                    {...provided.dragHandleProps}
+                                    onClick={() => {
+                                      if (snapshot.isDragging) return;
+                                      setSelectedProjectId(project.id);
+                                    }}
+                                    className={`group p-3.5 rounded-lg border bg-card transition-all cursor-pointer ${
+                                      snapshot.isDragging
+                                        ? 'shadow-lg border-primary ring-1 ring-primary/30'
+                                        : 'border-border/70 hover:border-primary/40 hover:shadow-sm'
+                                    }`}
+                                  >
+                                    <h4 className="font-medium text-foreground text-sm leading-snug line-clamp-2">
+                                      {project.title}
+                                    </h4>
+                                    {project.description && stripHtml(project.description) && (
+                                      <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2 leading-relaxed">
+                                        {stripHtml(project.description)}
+                                      </p>
                                     )}
-                                    {project.editor_rate && (
-                                      <span className="text-xs text-emerald-500">${project.editor_rate}</span>
+                                    <div className="flex items-center justify-between mt-3 gap-2">
+                                      {project.due_date ? (
+                                        <span
+                                          className={`text-[11px] flex items-center gap-1 font-medium ${
+                                            isOverdue(project.due_date) ? 'text-destructive' : 'text-muted-foreground'
+                                          }`}
+                                        >
+                                          <Clock className="w-3 h-3" />
+                                          {format(new Date(project.due_date), 'MMM d')}
+                                        </span>
+                                      ) : <span />}
+                                      {project.editor_rate && (
+                                        <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                                          ${project.editor_rate}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {column.id === 'in_progress' && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="w-full mt-3 h-8 text-xs"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedProjectId(project.id);
+                                        }}
+                                      >
+                                        <Upload className="w-3 h-3 mr-1.5" />
+                                        Upload Deliverable
+                                      </Button>
                                     )}
                                   </div>
-                                  {column.id === 'in_progress' && (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="w-full mt-3 text-xs"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setSelectedProjectId(project.id);
-                                      }}
-                                    >
-                                      <Upload className="w-3 h-3 mr-1" />
-                                      Upload Deliverable
-                                    </Button>
-                                  )}
-                                </div>
-                              )}
-                            </Draggable>
-                          ))}
+                                )}
+                              </Draggable>
+                            ))}
+                          </div>
+                          {provided.placeholder}
                         </div>
-                        {provided.placeholder}
-                      </div>
-                    )}
-                  </Droppable>
-                </div>
-              ))}
+                      )}
+                    </Droppable>
+                  </div>
+                );
+              })}
             </div>
           </DragDropContext>
         </main>
       </div>
+
 
       <ProjectDetailSheet
         projectId={selectedProjectId}
