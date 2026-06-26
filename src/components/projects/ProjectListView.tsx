@@ -138,9 +138,9 @@ export function ProjectListView({
                       <p className="font-medium text-foreground truncate max-w-[200px]">
                         {project.title}
                       </p>
-                      {project.description && (
+                      {project.description && stripHtml(project.description) && (
                         <p className="text-xs text-muted-foreground truncate max-w-[200px]">
-                          {project.description}
+                          {stripHtml(project.description)}
                         </p>
                       )}
                     </div>
