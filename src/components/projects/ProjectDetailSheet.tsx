@@ -114,18 +114,39 @@ function CollapsibleSection({
   title,
   icon,
   defaultOpen = false,
+  storageKey,
   bodyClassName,
   children,
 }: {
   title: string;
   icon?: React.ReactNode;
   defaultOpen?: boolean;
+  storageKey?: string;
   bodyClassName?: string;
   children: React.ReactNode;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
+  const lsKey = storageKey ? `pds:section:${storageKey}` : null;
+  const [open, setOpen] = useState(() => {
+    if (!lsKey || typeof window === 'undefined') return defaultOpen;
+    const v = window.localStorage.getItem(lsKey);
+    return v === null ? defaultOpen : v === '1';
+  });
+  useEffect(() => {
+    if (!lsKey || typeof window === 'undefined') return;
+    window.localStorage.setItem(lsKey, open ? '1' : '0');
+  }, [open, lsKey]);
+  // Listen for programmatic open requests (e.g. activity CTA → expand Deliverables)
+  useEffect(() => {
+    if (!storageKey || typeof window === 'undefined') return;
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent<string>;
+      if (ce.detail === storageKey) setOpen(true);
+    };
+    window.addEventListener('pds:open-section', handler as EventListener);
+    return () => window.removeEventListener('pds:open-section', handler as EventListener);
+  }, [storageKey]);
   return (
-    <Collapsible open={open} onOpenChange={setOpen} className="rounded-lg border border-border bg-muted/20 overflow-hidden">
+    <Collapsible open={open} onOpenChange={setOpen} className="rounded-lg border border-border bg-muted/20 overflow-hidden" data-section={storageKey}>
       <CollapsibleTrigger className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors">
         <div className="flex items-center gap-2 text-sm font-medium">
           {icon}
@@ -139,6 +160,7 @@ function CollapsibleSection({
     </Collapsible>
   );
 }
+
 
 
 
