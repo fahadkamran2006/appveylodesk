@@ -197,16 +197,21 @@ export function RichTextEditor({
   );
 }
 
-export function RichTextDisplay({ content }: { content: string }) {
-  // Sanitize HTML content to prevent XSS attacks
-  const sanitizedContent = DOMPurify.sanitize(content, {
+export function RichTextDisplay({ content, className }: { content: string; className?: string }) {
+  // Auto-link bare URLs first, then sanitize to keep only safe tags/attrs.
+  const linked = autoLinkifyHtml(content || '');
+  const sanitizedContent = DOMPurify.sanitize(linked, {
     ALLOWED_TAGS,
     ALLOWED_ATTR,
   });
 
   return (
     <div
-      className="prose prose-sm dark:prose-invert max-w-none"
+      className={cn(
+        'prose prose-sm dark:prose-invert max-w-none',
+        '[&_a]:text-primary [&_a]:underline [&_a]:underline-offset-2 [&_a]:break-all hover:[&_a]:text-primary/80',
+        className
+      )}
       dangerouslySetInnerHTML={{ __html: sanitizedContent }}
     />
   );
