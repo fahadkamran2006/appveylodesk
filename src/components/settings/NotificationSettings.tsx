@@ -169,17 +169,21 @@ export function NotificationSettings({ className }: NotificationSettingsProps) {
         {/* Push Notification Permission */}
         <PushNotificationToggle />
 
-        {/* Channel Legend */}
-        <div className="flex items-center gap-4 p-3 rounded-lg bg-muted/50">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Smartphone className="h-4 w-4" />
-            <span>In-App</span>
+        {/* Channel Legend + Preview */}
+        <div className="flex items-center justify-between gap-4 p-3 rounded-lg bg-muted/50">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Smartphone className="h-4 w-4" />
+              <span>In-App</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Mail className="h-4 w-4" />
+              <span>Email</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Mail className="h-4 w-4" />
-            <span>Email</span>
-          </div>
+          <EmailPreviewModal />
         </div>
+
 
         {/* Notification Categories */}
         {Object.entries(groupedNotifications).map(([category, types], categoryIndex) => (
