@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { PushNotificationToggle } from '@/components/notifications/PushNotificationToggle';
+import { EmailPreviewModal } from '@/components/settings/EmailPreviewModal';
 
 interface NotificationSettingsProps {
   className?: string;
