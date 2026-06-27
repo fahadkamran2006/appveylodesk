@@ -13,6 +13,8 @@ import { SubscriptionSettings } from '@/components/settings/SubscriptionSettings
 import { BrandingSettings } from '@/components/settings/BrandingSettings';
 import { LegalSettings } from '@/components/settings/LegalSettings';
 import { NotificationSettings } from '@/components/settings/NotificationSettings';
+import { WebhookEndpointsSettings } from '@/components/settings/WebhookEndpointsSettings';
+
 import { PaymentMethodsSettings } from '@/components/settings/PaymentMethodsSettings';
 import { WorkScheduleSettings } from '@/components/settings/WorkScheduleSettings';
 import { InstallPWAButton } from '@/components/InstallPWAButton';
@@ -285,9 +287,11 @@ const SettingsPage = () => {
             </TabsContent>
 
             {/* Notifications Tab */}
-            <TabsContent value="notifications">
+            <TabsContent value="notifications" className="space-y-6">
               <NotificationSettings />
+              {userRole === 'admin' && <WebhookEndpointsSettings />}
             </TabsContent>
+
 
             {/* Payment Methods Tab - Admin Only */}
             {userRole === 'admin' && (
