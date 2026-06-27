@@ -2379,6 +2379,59 @@ export type Database = {
           },
         ]
       }
+      webhook_endpoints: {
+        Row: {
+          agency_id: string
+          created_at: string
+          created_by: string | null
+          events: string[]
+          id: string
+          is_active: boolean
+          last_delivery_at: string | null
+          last_delivery_status: number | null
+          name: string
+          secret: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          agency_id: string
+          created_at?: string
+          created_by?: string | null
+          events?: string[]
+          id?: string
+          is_active?: boolean
+          last_delivery_at?: string | null
+          last_delivery_status?: number | null
+          name: string
+          secret?: string
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          agency_id?: string
+          created_at?: string
+          created_by?: string | null
+          events?: string[]
+          id?: string
+          is_active?: boolean
+          last_delivery_at?: string | null
+          last_delivery_status?: number | null
+          name?: string
+          secret?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhook_endpoints_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -2437,6 +2490,10 @@ export type Database = {
           _project_id: string
         }
         Returns: string
+      }
+      dispatch_webhook_event: {
+        Args: { _agency_id: string; _event: string; _payload: Json }
+        Returns: undefined
       }
       generate_invoice_number: { Args: { _agency_id: string }; Returns: string }
       get_active_project_count: {
