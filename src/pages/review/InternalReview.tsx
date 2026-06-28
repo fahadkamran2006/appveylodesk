@@ -167,6 +167,10 @@ export default function InternalReview() {
               Share Review Link
             </Button>
           )}
+          <Button variant="outline" size="sm" onClick={handleDownload}>
+            <Download className="w-4 h-4 mr-2" />
+            Download
+          </Button>
         </div>
       </header>
 
