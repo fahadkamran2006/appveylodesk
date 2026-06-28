@@ -184,6 +184,7 @@ const App = () => (
                   {/* Catch-all must be last */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
+                </RouteErrorBoundary>
                 </DownloadProvider>
                 </UploadProvider>
                 </BrandingProvider>
