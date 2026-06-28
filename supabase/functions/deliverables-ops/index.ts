@@ -215,6 +215,50 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
+    if (action === "download_url") {
+      if (!canView) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // 1) Bunny Stream video → return best MP4 progressive URL
+      if (isStreamUrl(deliverable.file_url) && BUNNY_STREAM_LIBRARY_ID) {
+        const vid = extractStreamVideoId(deliverable.file_url);
+        if (vid) {
+          const mp4 = await pickBestStreamMp4(BUNNY_STREAM_LIBRARY_ID, vid);
+          if (mp4) {
+            return new Response(JSON.stringify({ downloadUrl: mp4 }), {
+              status: 200,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+        }
+      }
+
+      // 2) Supabase storage → signed URL
+      const filePath = extractDeliverablesPathFromUrl(deliverable.file_url);
+      if (filePath) {
+        const { data, error } = await service.storage
+          .from("deliverables")
+          .createSignedUrl(filePath, 3600, { download: deliverable.file_name });
+        if (!error && data?.signedUrl) {
+          return new Response(JSON.stringify({ downloadUrl: data.signedUrl }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+
+      // 3) Fallback: return raw file_url
+      return new Response(JSON.stringify({ downloadUrl: deliverable.file_url }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+
     if (action === "rename") {
       if (!canManage) {
         return new Response(JSON.stringify({ error: "Forbidden" }), {
