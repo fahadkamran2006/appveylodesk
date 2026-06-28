@@ -7,7 +7,42 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-type Action = "signed_url" | "rename" | "delete";
+type Action = "signed_url" | "download_url" | "rename" | "delete";
+
+const BUNNY_STREAM_LIBRARY_ID = Deno.env.get("BUNNY_STREAM_LIBRARY_ID") || "";
+const BUNNY_STREAM_API_KEY = Deno.env.get("BUNNY_STREAM_API_KEY") || "";
+
+function extractStreamVideoId(url: string): string | null {
+  const m = url.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
+  return m ? m[1] : null;
+}
+
+function isStreamUrl(url: string): boolean {
+  if (!url) return false;
+  return (
+    /vz-[a-z0-9]+\.b-cdn\.net.*\/playlist\.m3u8/i.test(url) ||
+    url.includes("iframe.mediadelivery.net") ||
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(url)
+  );
+}
+
+async function pickBestStreamMp4(libraryId: string, videoId: string): Promise<string | null> {
+  const candidates = [
+    `https://vz-${libraryId}.b-cdn.net/${videoId}/play_1080p.mp4`,
+    `https://vz-${libraryId}.b-cdn.net/${videoId}/play_720p.mp4`,
+    `https://vz-${libraryId}.b-cdn.net/${videoId}/play_480p.mp4`,
+    `https://vz-${libraryId}.b-cdn.net/${videoId}/play_360p.mp4`,
+    `https://vz-${libraryId}.b-cdn.net/${videoId}/play_240p.mp4`,
+    `https://vz-${libraryId}.b-cdn.net/${videoId}/original`,
+  ];
+  for (const u of candidates) {
+    try {
+      const r = await fetch(u, { method: "HEAD" });
+      if (r.ok) return u;
+    } catch (_) { /* try next */ }
+  }
+  return null;
+}
 
 function extractDeliverablesPathFromUrl(fileUrl: string): string | null {
   if (!fileUrl) return null;
@@ -179,6 +214,50 @@ const handler = async (req: Request): Promise<Response> => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    if (action === "download_url") {
+      if (!canView) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // 1) Bunny Stream video → return best MP4 progressive URL
+      if (isStreamUrl(deliverable.file_url) && BUNNY_STREAM_LIBRARY_ID) {
+        const vid = extractStreamVideoId(deliverable.file_url);
+        if (vid) {
+          const mp4 = await pickBestStreamMp4(BUNNY_STREAM_LIBRARY_ID, vid);
+          if (mp4) {
+            return new Response(JSON.stringify({ downloadUrl: mp4 }), {
+              status: 200,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+        }
+      }
+
+      // 2) Supabase storage → signed URL
+      const filePath = extractDeliverablesPathFromUrl(deliverable.file_url);
+      if (filePath) {
+        const { data, error } = await service.storage
+          .from("deliverables")
+          .createSignedUrl(filePath, 3600, { download: deliverable.file_name });
+        if (!error && data?.signedUrl) {
+          return new Response(JSON.stringify({ downloadUrl: data.signedUrl }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+
+      // 3) Fallback: return raw file_url
+      return new Response(JSON.stringify({ downloadUrl: deliverable.file_url }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
 
     if (action === "rename") {
       if (!canManage) {

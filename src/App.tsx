@@ -16,6 +16,7 @@ import { GlobalDownloadTray } from "@/components/download/GlobalDownloadTray";
 import { CheckoutFailureModal } from "@/components/CheckoutFailureModal";
 import { AdminOnlyGuard } from "@/components/AdminOnlyGuard";
 import { GlobalErrorHandler } from "@/components/GlobalErrorHandler";
+import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
 
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
@@ -102,6 +103,7 @@ const App = () => (
                   <GlobalUploadTray />
                   <GlobalDownloadTray />
                   <CheckoutFailureModal />
+                <RouteErrorBoundary>
                 <Routes>
                   {/* Public invite signup routes (must remain unguarded) */}
                   <Route path="/join-client" element={<JoinClient />} />
@@ -182,6 +184,7 @@ const App = () => (
                   {/* Catch-all must be last */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
+                </RouteErrorBoundary>
                 </DownloadProvider>
                 </UploadProvider>
                 </BrandingProvider>

@@ -146,7 +146,36 @@ async function proxyDownload(deliverable: any): Promise<Response> {
     }
   }
 
-  // Fallback: Supabase storage signed URL redirect
+  // Fallback: Supabase storage signed URL — stream contents back so the browser triggers a download
+  try {
+    const sb = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
+    const idx = fileUrl.indexOf('/deliverables/');
+    const path = idx !== -1
+      ? decodeURIComponent(fileUrl.slice(idx + '/deliverables/'.length).split('?')[0])
+      : fileUrl;
+    const { data: signed, error: signErr } = await sb.storage
+      .from('deliverables')
+      .createSignedUrl(path, 3600, { download: fileName });
+    if (!signErr && signed?.signedUrl) {
+      const res = await fetch(signed.signedUrl);
+      if (res.ok && res.body) {
+        const ext = (fileName.split('.').pop() || 'bin').toLowerCase();
+        return new Response(res.body, {
+          status: 200,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': res.headers.get('Content-Type') || 'application/octet-stream',
+            'Content-Disposition': `attachment; filename="${sanitizeDownloadName(fileName, ext)}"`,
+            'Content-Length': res.headers.get('Content-Length') || '',
+          },
+        });
+      }
+    }
+  } catch (_) { /* fall through */ }
+
   return new Response(JSON.stringify({ error: 'Unsupported file source' }), {
     status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });

@@ -44,7 +44,7 @@ export function GenerateReviewLinkModal({
   // Form state
   const [allowComments, setAllowComments] = useState(true);
   const [allowApproval, setAllowApproval] = useState(false);
-  const [allowDownload, setAllowDownload] = useState(false);
+  const [allowDownload, setAllowDownload] = useState(true);
   const [expiryOption, setExpiryOption] = useState('7d');
   const [customDays, setCustomDays] = useState('30');
 

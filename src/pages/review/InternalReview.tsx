@@ -9,7 +9,8 @@ import { CommentPanel } from '@/components/video/CommentPanel';
 import { GenerateReviewLinkModal } from '@/components/projects/GenerateReviewLinkModal';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Link2, Loader2 } from 'lucide-react';
+import { ArrowLeft, Link2, Loader2, Download } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface DeliverableInfo {
   id: string;
@@ -24,6 +25,7 @@ export default function InternalReview() {
   const { projectId, deliverableId } = useParams<{ projectId: string; deliverableId: string }>();
   const { user, userRole } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const videoPlayerRef = useRef<VideoPlayerHandle>(null);
 
   const [deliverable, setDeliverable] = useState<DeliverableInfo | null>(null);
@@ -92,6 +94,27 @@ export default function InternalReview() {
   const canResolve = userRole === 'admin' || userRole === 'editor';
   const canShareLink = userRole === 'admin' || userRole === 'editor';
 
+  const handleDownload = async () => {
+    if (!deliverable) return;
+    try {
+      const { data, error } = await supabase.functions.invoke('deliverables-ops', {
+        body: { action: 'download_url', deliverableId: deliverable.id },
+      });
+      if (error) throw error;
+      const url = (data as any)?.downloadUrl || (data as any)?.signedUrl || (data as any)?.url;
+      if (!url) throw new Error('Could not generate download URL');
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = deliverable.file_name;
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (e: any) {
+      toast({ title: 'Download failed', description: e.message || 'Please try again', variant: 'destructive' });
+    }
+  };
+
   const basePath = userRole === 'admin' ? '/admin' : userRole === 'client' ? '/client' : '/editor';
 
   if (loading) {
@@ -144,6 +167,10 @@ export default function InternalReview() {
               Share Review Link
             </Button>
           )}
+          <Button variant="outline" size="sm" onClick={handleDownload}>
+            <Download className="w-4 h-4 mr-2" />
+            Download
+          </Button>
         </div>
       </header>
 
