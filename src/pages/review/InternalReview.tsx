@@ -25,6 +25,7 @@ export default function InternalReview() {
   const { projectId, deliverableId } = useParams<{ projectId: string; deliverableId: string }>();
   const { user, userRole } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const videoPlayerRef = useRef<VideoPlayerHandle>(null);
 
   const [deliverable, setDeliverable] = useState<DeliverableInfo | null>(null);
