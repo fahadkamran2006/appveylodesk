@@ -16,6 +16,7 @@ import { GlobalDownloadTray } from "@/components/download/GlobalDownloadTray";
 import { CheckoutFailureModal } from "@/components/CheckoutFailureModal";
 import { AdminOnlyGuard } from "@/components/AdminOnlyGuard";
 import { GlobalErrorHandler } from "@/components/GlobalErrorHandler";
+import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
 
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
