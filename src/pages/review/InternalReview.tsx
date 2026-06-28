@@ -9,7 +9,8 @@ import { CommentPanel } from '@/components/video/CommentPanel';
 import { GenerateReviewLinkModal } from '@/components/projects/GenerateReviewLinkModal';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Link2, Loader2 } from 'lucide-react';
+import { ArrowLeft, Link2, Loader2, Download } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface DeliverableInfo {
   id: string;
