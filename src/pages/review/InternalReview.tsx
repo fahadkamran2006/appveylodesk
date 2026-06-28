@@ -94,6 +94,27 @@ export default function InternalReview() {
   const canResolve = userRole === 'admin' || userRole === 'editor';
   const canShareLink = userRole === 'admin' || userRole === 'editor';
 
+  const handleDownload = async () => {
+    if (!deliverable) return;
+    try {
+      const { data, error } = await supabase.functions.invoke('deliverables-ops', {
+        body: { action: 'download_url', deliverableId: deliverable.id },
+      });
+      if (error) throw error;
+      const url = (data as any)?.downloadUrl || (data as any)?.signedUrl || (data as any)?.url;
+      if (!url) throw new Error('Could not generate download URL');
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = deliverable.file_name;
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (e: any) {
+      toast({ title: 'Download failed', description: e.message || 'Please try again', variant: 'destructive' });
+    }
+  };
+
   const basePath = userRole === 'admin' ? '/admin' : userRole === 'client' ? '/client' : '/editor';
 
   if (loading) {
