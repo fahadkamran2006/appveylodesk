@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Breadcrumb,
@@ -34,7 +35,7 @@ export function ProjectBreadcrumb({ items }: ProjectBreadcrumbProps) {
           const isLast = index === items.length - 1;
 
           return (
-            <div key={index} className="contents">
+            <Fragment key={index}>
               <BreadcrumbItem>
                 {item.href && !isLast ? (
                   <BreadcrumbLink asChild>
@@ -51,7 +52,7 @@ export function ProjectBreadcrumb({ items }: ProjectBreadcrumbProps) {
                 )}
               </BreadcrumbItem>
               {!isLast && <BreadcrumbSeparator />}
-            </div>
+            </Fragment>
           );
         })}
       </BreadcrumbList>
