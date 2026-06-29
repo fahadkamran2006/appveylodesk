@@ -82,10 +82,11 @@ function withDownloadHeaders(
   body: BodyInit | null,
   init: { status?: number; contentType?: string | null; fileName: string; contentLength?: string | null },
 ) {
+  const asciiFileName = init.fileName.replace(/[^\x20-\x7E]/g, '_').replace(/["\\]/g, '_') || 'download';
   const headers: Record<string, string> = {
     ...corsHeaders,
     'Content-Type': init.contentType || 'application/octet-stream',
-    'Content-Disposition': `attachment; filename="${init.fileName}"; filename*=UTF-8''${encodeURIComponent(init.fileName)}`,
+    'Content-Disposition': `attachment; filename="${asciiFileName}"; filename*=UTF-8''${encodeURIComponent(init.fileName)}`,
     'Cache-Control': 'no-store',
   };
   if (init.contentLength) headers['Content-Length'] = init.contentLength;
