@@ -203,8 +203,13 @@ export default function PublicReview() {
         throw new Error(j.error || `Download failed (${res.status})`);
       }
       const disp = res.headers.get('Content-Disposition') || '';
-      const match = disp.match(/filename="([^"]+)"/);
-      const name = match ? match[1] : (reviewData?.deliverable?.file_name || 'download');
+      const encodedMatch = disp.match(/filename\*=UTF-8''([^;]+)/i);
+      const quotedMatch = disp.match(/filename="([^"]+)"/i);
+      const name = encodedMatch
+        ? decodeURIComponent(encodedMatch[1])
+        : quotedMatch
+          ? quotedMatch[1]
+          : (reviewData?.deliverable?.file_name || 'download');
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -213,7 +218,9 @@ export default function PublicReview() {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      // Chrome can show "file wasn't available on site" if the blob URL is
+      // revoked before the download manager fully takes ownership of it.
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (e: any) {
       console.error('Download error:', e);
       alert(e.message || 'Download failed. Please try again or contact support.');

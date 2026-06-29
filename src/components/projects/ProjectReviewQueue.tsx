@@ -145,6 +145,31 @@ export function ProjectReviewQueue({ projectId, videoDeliverables, onOpenVideo }
     load();
   }, [load]);
 
+  // Build list of editors who have uploaded any video in this project.
+  // Keep hooks before any early returns to avoid React hook-order crashes when
+  // the queue changes from loading -> loaded.
+  const editorOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    items.forEach(i => {
+      if (i.uploaded_by) map.set(i.uploaded_by, i.uploader_name);
+    });
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [items]);
+
+  const filteredByEditor = editorFilter === 'all'
+    ? items
+    : items.filter(i => i.uploaded_by === editorFilter);
+
+  const unresolved = filteredByEditor.filter(i => !i.is_resolved);
+  const resolved = filteredByEditor.filter(i => i.is_resolved);
+  const visible = showResolved ? filteredByEditor : unresolved;
+
+  // Group by deliverable for cleaner display
+  const grouped = visible.reduce<Record<string, ReviewItem[]>>((acc, item) => {
+    (acc[item.deliverable_id] ||= []).push(item);
+    return acc;
+  }, {});
+
   const handleResolve = async (item: ReviewItem) => {
     if (!user) return;
     setResolvingId(item.comment_id);
@@ -168,29 +193,6 @@ export function ProjectReviewQueue({ projectId, videoDeliverables, onOpenVideo }
       </div>
     );
   }
-
-  // Build list of editors who have uploaded any video in this project
-  const editorOptions = useMemo(() => {
-    const map = new Map<string, string>();
-    items.forEach(i => {
-      if (i.uploaded_by) map.set(i.uploaded_by, i.uploader_name);
-    });
-    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
-  }, [items]);
-
-  const filteredByEditor = editorFilter === 'all'
-    ? items
-    : items.filter(i => i.uploaded_by === editorFilter);
-
-  const unresolved = filteredByEditor.filter(i => !i.is_resolved);
-  const resolved = filteredByEditor.filter(i => i.is_resolved);
-  const visible = showResolved ? filteredByEditor : unresolved;
-
-  // Group by deliverable for cleaner display
-  const grouped = visible.reduce<Record<string, ReviewItem[]>>((acc, item) => {
-    (acc[item.deliverable_id] ||= []).push(item);
-    return acc;
-  }, {});
 
   return (
     <div className="space-y-4">

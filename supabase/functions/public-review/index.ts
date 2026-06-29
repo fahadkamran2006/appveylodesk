@@ -3,6 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Expose-Headers': 'Content-Disposition, Content-Length, Content-Type',
 };
 
 async function notifyAdmins(supabaseAdmin: any, agencyId: string, title: string, message: string, link: string, metadata: Record<string, unknown> = {}) {
@@ -49,6 +50,7 @@ async function notifyAdmins(supabaseAdmin: any, agencyId: string, title: string,
 const BUNNY_STREAM_LIBRARY_ID = Deno.env.get('BUNNY_STREAM_LIBRARY_ID') || '';
 const BUNNY_STREAM_STORAGE_KEY = Deno.env.get('BUNNY_STREAM_STORAGE_KEY') || '';
 const BUNNY_STREAM_API_KEY = Deno.env.get('BUNNY_STREAM_API_KEY') || '';
+const BUNNY_STREAM_STORAGE_ZONE = Deno.env.get('BUNNY_STREAM_STORAGE_ZONE') || 'vz-b78eeeb2-7b9';
 const BUNNY_STORAGE_HOSTNAME = Deno.env.get('BUNNY_STORAGE_HOSTNAME') || 'storage.bunnycdn.com';
 const BUNNY_STORAGE_ZONE = Deno.env.get('BUNNY_STORAGE_ZONE') || '';
 const BUNNY_API_KEY = Deno.env.get('BUNNY_API_KEY') || '';
@@ -60,11 +62,48 @@ function extractStreamVideoId(url: string): string | null {
 }
 
 function sanitizeDownloadName(name: string, ext: string): string {
-  let safe = (name || 'file').replace(/[/\\:*?"<>|]/g, '_');
+  let safe = (name || 'file').replace(/[\u0000-\u001f\u007f/\\:*?"<>|]/g, '_').trim();
+  if (!safe) safe = 'file';
   if (!safe.toLowerCase().endsWith(`.${ext.toLowerCase()}`)) {
     safe = safe.replace(/\.[^.]+$/, '') + `.${ext}`;
   }
   return safe;
+}
+
+function streamPullZoneHost(fileUrl: string): string | null {
+  try {
+    const u = new URL(fileUrl);
+    if (u.hostname.includes('.b-cdn.net')) return u.hostname;
+  } catch (_) { /* not a URL */ }
+  return null;
+}
+
+function withDownloadHeaders(
+  body: BodyInit | null,
+  init: { status?: number; contentType?: string | null; fileName: string; contentLength?: string | null },
+) {
+  const asciiFileName = init.fileName.replace(/[^\x20-\x7E]/g, '_').replace(/["\\]/g, '_') || 'download';
+  const headers: Record<string, string> = {
+    ...corsHeaders,
+    'Content-Type': init.contentType || 'application/octet-stream',
+    'Content-Disposition': `attachment; filename="${asciiFileName}"; filename*=UTF-8''${encodeURIComponent(init.fileName)}`,
+    'Cache-Control': 'no-store',
+  };
+  if (init.contentLength) headers['Content-Length'] = init.contentLength;
+  return new Response(body, { status: init.status ?? 200, headers });
+}
+
+async function fetchFirstOk(urls: string[], accessKey?: string): Promise<Response | null> {
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, accessKey ? { headers: { AccessKey: accessKey } } : undefined);
+      if (res.ok && res.body) return res;
+      console.warn('Download candidate failed:', url, res.status);
+    } catch (error) {
+      console.warn('Download candidate errored:', url, error);
+    }
+  }
+  return null;
 }
 
 async function proxyDownload(deliverable: any): Promise<Response> {
@@ -84,29 +123,57 @@ async function proxyDownload(deliverable: any): Promise<Response> {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-    const libShort = `vz-${BUNNY_STREAM_LIBRARY_ID.slice(0, 8)}`;
-    const urls = [
-      `https://storage.bunnycdn.com/${libShort}/${videoId}/original`,
-      `https://storage.bunnycdn.com/${libShort}/${videoId}/play_1080p.mp4`,
-      `https://storage.bunnycdn.com/${libShort}/${videoId}/play_720p.mp4`,
-      `https://storage.bunnycdn.com/${libShort}/${videoId}/play_480p.mp4`,
-      `https://storage.bunnycdn.com/${libShort}/${videoId}/play_360p.mp4`,
+
+    const storageZones = Array.from(new Set([
+      BUNNY_STREAM_STORAGE_ZONE,
+      BUNNY_STREAM_LIBRARY_ID ? `vz-${BUNNY_STREAM_LIBRARY_ID}` : '',
+      BUNNY_STREAM_LIBRARY_ID ? `vz-${BUNNY_STREAM_LIBRARY_ID.slice(0, 8)}` : '',
+      // Legacy zone used by the current Stream library. Kept as a fallback so
+      // older review links download instead of returning Chrome's "file not available".
+      'vz-b78eeeb2-7b9',
+    ].filter(Boolean)));
+
+    const streamFiles = [
+      'original',
+      'play_2160p.mp4',
+      'play_1440p.mp4',
+      'play_1080p.mp4',
+      'play_720p.mp4',
+      'play_480p.mp4',
+      'play_360p.mp4',
+      'play_240p.mp4',
     ];
-    for (const u of urls) {
-      const res = await fetch(u, { headers: { AccessKey: BUNNY_STREAM_STORAGE_KEY } });
-      if (res.ok && res.body) {
+
+    const storageUrls = storageZones.flatMap(zone =>
+      streamFiles.map(name => `https://storage.bunnycdn.com/${zone}/${videoId}/${name}`)
+    );
+
+    const storageRes = await fetchFirstOk(storageUrls, BUNNY_STREAM_STORAGE_KEY);
+    if (storageRes) {
+      const downloadName = sanitizeDownloadName(fileName, 'mp4');
+      return withDownloadHeaders(storageRes.body, {
+        contentType: storageRes.headers.get('Content-Type') || 'video/mp4',
+        fileName: downloadName,
+        contentLength: storageRes.headers.get('Content-Length'),
+      });
+    }
+
+    const pullHost = streamPullZoneHost(fileUrl);
+    if (pullHost) {
+      const cdnUrls = streamFiles
+        .filter(name => name !== 'original')
+        .map(name => `https://${pullHost}/${videoId}/${name}`);
+      const cdnRes = await fetchFirstOk(cdnUrls);
+      if (cdnRes) {
         const downloadName = sanitizeDownloadName(fileName, 'mp4');
-        return new Response(res.body, {
-          status: 200,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'video/mp4',
-            'Content-Disposition': `attachment; filename="${downloadName}"`,
-            'Content-Length': res.headers.get('Content-Length') || '',
-          },
+        return withDownloadHeaders(cdnRes.body, {
+          contentType: cdnRes.headers.get('Content-Type') || 'video/mp4',
+          fileName: downloadName,
+          contentLength: cdnRes.headers.get('Content-Length'),
         });
       }
     }
+
     return new Response(JSON.stringify({ error: 'Video not available for download' }), {
       status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
@@ -130,14 +197,10 @@ async function proxyDownload(deliverable: any): Promise<Response> {
         });
       }
       const ext = (fileName.split('.').pop() || 'bin').toLowerCase();
-      return new Response(res.body, {
-        status: 200,
-        headers: {
-          ...corsHeaders,
-          'Content-Type': res.headers.get('Content-Type') || 'application/octet-stream',
-          'Content-Disposition': `attachment; filename="${sanitizeDownloadName(fileName, ext)}"`,
-          'Content-Length': res.headers.get('Content-Length') || '',
-        },
+      return withDownloadHeaders(res.body, {
+        contentType: res.headers.get('Content-Type') || 'application/octet-stream',
+        fileName: sanitizeDownloadName(fileName, ext),
+        contentLength: res.headers.get('Content-Length'),
       });
     } catch (e) {
       return new Response(JSON.stringify({ error: 'Invalid file URL' }), {
@@ -163,14 +226,10 @@ async function proxyDownload(deliverable: any): Promise<Response> {
       const res = await fetch(signed.signedUrl);
       if (res.ok && res.body) {
         const ext = (fileName.split('.').pop() || 'bin').toLowerCase();
-        return new Response(res.body, {
-          status: 200,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': res.headers.get('Content-Type') || 'application/octet-stream',
-            'Content-Disposition': `attachment; filename="${sanitizeDownloadName(fileName, ext)}"`,
-            'Content-Length': res.headers.get('Content-Length') || '',
-          },
+          return withDownloadHeaders(res.body, {
+            contentType: res.headers.get('Content-Type') || 'application/octet-stream',
+            fileName: sanitizeDownloadName(fileName, ext),
+            contentLength: res.headers.get('Content-Length'),
         });
       }
     }
