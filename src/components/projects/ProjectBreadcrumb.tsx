@@ -34,22 +34,24 @@ export function ProjectBreadcrumb({ items }: ProjectBreadcrumbProps) {
           const isLast = index === items.length - 1;
 
           return (
-            <BreadcrumbItem key={index}>
-              {item.href && !isLast ? (
-                <BreadcrumbLink asChild>
-                  <Link to={item.href} className="flex items-center gap-1.5 hover:text-primary transition-colors">
+            <div key={index} className="contents">
+              <BreadcrumbItem>
+                {item.href && !isLast ? (
+                  <BreadcrumbLink asChild>
+                    <Link to={item.href} className="flex items-center gap-1.5 hover:text-primary transition-colors">
+                      {Icon && <Icon className="w-3.5 h-3.5" />}
+                      {item.label}
+                    </Link>
+                  </BreadcrumbLink>
+                ) : (
+                  <BreadcrumbPage className="flex items-center gap-1.5 font-medium">
                     {Icon && <Icon className="w-3.5 h-3.5" />}
                     {item.label}
-                  </Link>
-                </BreadcrumbLink>
-              ) : (
-                <BreadcrumbPage className="flex items-center gap-1.5 font-medium">
-                  {Icon && <Icon className="w-3.5 h-3.5" />}
-                  {item.label}
-                </BreadcrumbPage>
-              )}
+                  </BreadcrumbPage>
+                )}
+              </BreadcrumbItem>
               {!isLast && <BreadcrumbSeparator />}
-            </BreadcrumbItem>
+            </div>
           );
         })}
       </BreadcrumbList>
