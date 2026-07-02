@@ -534,7 +534,23 @@ export function FilePreviewModal({
             />
           )}
 
-          {!urlError && !isVideoProcessing && !isImage && !isVideo && !isAudio && !isPdf && (
+          {!urlError && isOffice && officeViewerUrl && (
+            <iframe
+              src={officeViewerUrl}
+              className="w-full h-full min-h-[500px] bg-white rounded"
+              title={file.file_name}
+            />
+          )}
+
+          {!urlError && isText && (
+            <iframe
+              src={previewUrl}
+              className="w-full h-full min-h-[500px] bg-background rounded"
+              title={file.file_name}
+            />
+          )}
+
+          {!urlError && !isVideoProcessing && !isImage && !isVideo && !isAudio && !isPdf && !isOffice && !isText && (
             <div className="text-center text-muted-foreground">
               <p className="text-lg font-medium mb-2">Preview not available</p>
               <p className="text-sm">Click download to view this file</p>
@@ -546,6 +562,7 @@ export function FilePreviewModal({
               )}
             </div>
           )}
+
         </div>
       </DialogContent>
     </Dialog>
