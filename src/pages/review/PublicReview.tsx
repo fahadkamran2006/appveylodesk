@@ -196,6 +196,8 @@ export default function PublicReview() {
 
   const handleDownload = async () => {
     if (!token) return;
+    setDownloading(true);
+    setDownloadError(null);
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -224,14 +226,16 @@ export default function PublicReview() {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      // Chrome can show "file wasn't available on site" if the blob URL is
-      // revoked before the download manager fully takes ownership of it.
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setDownloadRetryCount(0);
     } catch (e: any) {
       console.error('Download error:', e);
-      alert(e.message || 'Download failed. Please try again or contact support.');
+      setDownloadError(e?.message || 'The download link is temporarily unavailable.');
+    } finally {
+      setDownloading(false);
     }
   };
+
 
   const handleToggleResolve = async (comment: ReviewComment) => {
     const resolved = !comment.is_resolved;
