@@ -313,10 +313,16 @@ export function FilePreviewModal({
   const previewUrl = resolvedUrl ?? file.file_url;
 
   const ext = file.file_name.split('.').pop()?.toLowerCase() || '';
-  const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext);
+  const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico'].includes(ext);
   const isVideo = ['mp4', 'mov', 'avi', 'webm', 'mkv'].includes(ext) || isStreamVideo;
-  const isAudio = ['mp3', 'wav', 'aac', 'm4a'].includes(ext);
+  const isAudio = ['mp3', 'wav', 'aac', 'm4a', 'ogg', 'flac', 'opus'].includes(ext);
   const isPdf = ext === 'pdf';
+  const isOffice = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'odp'].includes(ext);
+  const isText = ['txt', 'md', 'json', 'csv', 'log', 'xml', 'yml', 'yaml', 'html', 'css', 'js', 'ts', 'tsx', 'jsx'].includes(ext);
+  const officeViewerUrl = isOffice && previewUrl
+    ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(previewUrl)}`
+    : null;
+
 
   const handleRename = async () => {
     if (!onRename || !newName.trim() || newName === file.file_name) {
