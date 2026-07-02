@@ -369,11 +369,20 @@ export function FilePreview({ open, onOpenChange, file, onRename }: Props) {
           {k === "audio" && <audio src={file.file_url} controls className="w-full px-6" />}
           {k === "pdf" && <div className="w-full p-2"><PdfViewer url={file.file_url} fullscreen={fullscreen} /></div>}
           {k === "text" && <iframe src={file.file_url} className={cn("w-full bg-background", fullscreen ? "h-[calc(100vh-140px)]" : "h-[70vh]")} title={file.file_name} />}
+          {k === "office" && (
+            <iframe
+              src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(file.file_url)}`}
+              className={cn("w-full bg-white rounded", fullscreen ? "h-[calc(100vh-140px)]" : "h-[70vh]")}
+              title={file.file_name}
+            />
+          )}
           {k === "other" && (
             <div className="text-center p-8 text-muted-foreground">
               <p>No preview available for this file type.</p>
+              <p className="text-xs mt-2">Use Download or Open in new tab to view it.</p>
             </div>
           )}
+
         </div>
 
         <div className="flex justify-end gap-2">
