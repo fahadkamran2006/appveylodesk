@@ -87,6 +87,12 @@ export default function PublicReview() {
   const [approved, setApproved] = useState(false);
   const [revisionRequested, setRevisionRequested] = useState(false);
 
+  // Download state
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [downloadRetryCount, setDownloadRetryCount] = useState(0);
+
+
   // Comment tabs
   const [commentTab, setCommentTab] = useState('all');
 
