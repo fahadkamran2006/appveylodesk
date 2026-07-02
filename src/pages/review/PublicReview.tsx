@@ -87,6 +87,12 @@ export default function PublicReview() {
   const [approved, setApproved] = useState(false);
   const [revisionRequested, setRevisionRequested] = useState(false);
 
+  // Download state
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [downloadRetryCount, setDownloadRetryCount] = useState(0);
+
+
   // Comment tabs
   const [commentTab, setCommentTab] = useState('all');
 
@@ -190,6 +196,8 @@ export default function PublicReview() {
 
   const handleDownload = async () => {
     if (!token) return;
+    setDownloading(true);
+    setDownloadError(null);
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -218,14 +226,16 @@ export default function PublicReview() {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      // Chrome can show "file wasn't available on site" if the blob URL is
-      // revoked before the download manager fully takes ownership of it.
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setDownloadRetryCount(0);
     } catch (e: any) {
       console.error('Download error:', e);
-      alert(e.message || 'Download failed. Please try again or contact support.');
+      setDownloadError(e?.message || 'The download link is temporarily unavailable.');
+    } finally {
+      setDownloading(false);
     }
   };
+
 
   const handleToggleResolve = async (comment: ReviewComment) => {
     const resolved = !comment.is_resolved;
@@ -370,12 +380,18 @@ export default function PublicReview() {
               size="sm"
               variant="outline"
               onClick={handleDownload}
+              disabled={downloading}
               className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
             >
-              <Download className="w-4 h-4 mr-1" />
-              Download
+              {downloading ? (
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4 mr-1" />
+              )}
+              {downloading ? 'Preparing…' : 'Download'}
             </Button>
           )}
+
         </div>
       </header>
 
@@ -645,6 +661,52 @@ export default function PublicReview() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Download-unavailable dialog with retry + support steps */}
+      <AlertDialog open={!!downloadError} onOpenChange={(o) => !o && setDownloadError(null)}>
+        <AlertDialogContent className="bg-[#0f0f18] border-zinc-800 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-400" />
+              Download unavailable
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-zinc-400 space-y-3">
+              <p>{downloadError}</p>
+              <div className="rounded-md border border-zinc-800 bg-zinc-900/60 p-3 text-sm text-zinc-300">
+                <p className="font-medium text-zinc-200 mb-2">Try these steps:</p>
+                <ol className="list-decimal ml-4 space-y-1 text-zinc-400">
+                  <li>Click <span className="text-zinc-200">Retry</span> — the file may still be finalizing.</li>
+                  <li>Disable browser extensions or download managers (e.g. IDM) that block blob downloads.</li>
+                  <li>Try a different browser or an incognito window.</li>
+                  <li>Ask the person who shared this link to re-share, or contact <a href="mailto:support@veylodesk.com" className="text-violet-400 underline">support@veylodesk.com</a> with this link.</li>
+                </ol>
+              </div>
+              {downloadRetryCount >= 2 && (
+                <p className="text-xs text-amber-400">
+                  Still failing after {downloadRetryCount} tries — please contact support with the review link URL.
+                </p>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-zinc-700 text-zinc-300 hover:bg-zinc-800">Close</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                setDownloadRetryCount((n) => n + 1);
+                setDownloadError(null);
+                handleDownload();
+              }}
+              disabled={downloading}
+              className="bg-violet-600 hover:bg-violet-700"
+            >
+              {downloading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              Retry download
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
+
