@@ -29,16 +29,18 @@ interface Props {
   onRename?: (newBaseName: string) => Promise<boolean | void>;
 }
 
-function kindOf(name: string, mime?: string | null, url?: string): "image" | "video" | "audio" | "pdf" | "text" | "bunny_stream" | "other" {
+function kindOf(name: string, mime?: string | null, url?: string): "image" | "video" | "audio" | "pdf" | "text" | "office" | "bunny_stream" | "other" {
   if (url && isDefinitelyBunnyStreamUrl(url)) return "bunny_stream";
   const ext = name.split(".").pop()?.toLowerCase() || "";
-  if (mime?.startsWith("image/") || ["jpg", "jpeg", "png", "gif", "webp", "svg"].includes(ext)) return "image";
+  if (mime?.startsWith("image/") || ["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "ico"].includes(ext)) return "image";
   if (mime?.startsWith("video/") || ["mp4", "webm", "mov", "mkv"].includes(ext)) return "video";
-  if (mime?.startsWith("audio/") || ["mp3", "wav", "m4a", "aac", "ogg"].includes(ext)) return "audio";
+  if (mime?.startsWith("audio/") || ["mp3", "wav", "m4a", "aac", "ogg", "flac", "opus"].includes(ext)) return "audio";
   if (mime === "application/pdf" || ext === "pdf") return "pdf";
-  if (mime?.startsWith("text/") || ["txt", "md", "json", "csv", "log"].includes(ext)) return "text";
+  if (["doc", "docx", "xls", "xlsx", "ppt", "pptx", "odt", "ods", "odp"].includes(ext)) return "office";
+  if (mime?.startsWith("text/") || ["txt", "md", "json", "csv", "log", "xml", "yml", "yaml", "html", "css", "js", "ts", "tsx", "jsx"].includes(ext)) return "text";
   return "other";
 }
+
 
 /** Thumbnail that only renders its <Page/> when scrolled into view, throttled. */
 function LazyThumbnail({
