@@ -380,12 +380,18 @@ export default function PublicReview() {
               size="sm"
               variant="outline"
               onClick={handleDownload}
+              disabled={downloading}
               className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
             >
-              <Download className="w-4 h-4 mr-1" />
-              Download
+              {downloading ? (
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4 mr-1" />
+              )}
+              {downloading ? 'Preparing…' : 'Download'}
             </Button>
           )}
+
         </div>
       </header>
 
