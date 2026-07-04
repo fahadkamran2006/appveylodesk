@@ -101,12 +101,13 @@ export function KanbanColumn({
                         ? 'all 0.22s cubic-bezier(0.2, 0.8, 0.2, 1)'
                         : dragProvided.draggableProps.style?.transition,
                     }}
-                    className={cn(
-                      'will-change-transform',
-                      dragSnapshot.isDragging &&
-                        'rotate-[0.6deg] scale-[1.015] shadow-[0_18px_40px_-12px_rgba(0,0,0,0.5)]'
-                    )}
+                    className="will-change-transform"
                   >
+                    {/*
+                      IMPORTANT: keep rotate/scale on an INNER wrapper only.
+                      @hello-pangea/dnd positions the outer ref using getBoundingClientRect,
+                      so any transform on the outer element shifts the card away from the cursor.
+                    */}
                     <motion.div
                       initial={{ opacity: 0, y: 6 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -115,6 +116,10 @@ export function KanbanColumn({
                         delay: Math.min(index * 0.02, 0.12),
                         ease: [0.4, 0, 0.2, 1],
                       }}
+                      className={cn(
+                        dragSnapshot.isDragging &&
+                          'shadow-[0_18px_40px_-12px_rgba(0,0,0,0.5)] rounded-xl'
+                      )}
                     >
                       <ProjectCard
                         id={project.id}

@@ -200,41 +200,27 @@ export default function PublicReview() {
     setDownloadError(null);
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      const res = await fetch(`${supabaseUrl}/functions/v1/public-review`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'apikey': anonKey, 'Authorization': `Bearer ${anonKey}` },
-        body: JSON.stringify({ action: 'download', token }),
-      });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j.error || `Download failed (${res.status})`);
-      }
-      const disp = res.headers.get('Content-Disposition') || '';
-      const encodedMatch = disp.match(/filename\*=UTF-8''([^;]+)/i);
-      const quotedMatch = disp.match(/filename="([^"]+)"/i);
-      const name = encodedMatch
-        ? decodeURIComponent(encodedMatch[1])
-        : quotedMatch
-          ? quotedMatch[1]
-          : (reviewData?.deliverable?.file_name || 'download');
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
+      // Native browser download — no blob, no hang. verify_jwt=false on this function.
+      const downloadUrl = `${supabaseUrl}/functions/v1/public-review?action=download&token=${encodeURIComponent(token)}`;
+
       const a = document.createElement('a');
-      a.href = url;
-      a.download = name;
+      a.href = downloadUrl;
+      a.rel = 'noopener noreferrer';
+      // Let server-provided Content-Disposition dictate the filename; omit a.download to preserve UTF-8 name.
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
       setDownloadRetryCount(0);
     } catch (e: any) {
       console.error('Download error:', e);
+      setDownloadRetryCount((n) => n + 1);
       setDownloadError(e?.message || 'The download link is temporarily unavailable.');
     } finally {
-      setDownloading(false);
+      // Native download hands off to browser instantly; drop spinner shortly after.
+      setTimeout(() => setDownloading(false), 800);
     }
   };
+
 
 
   const handleToggleResolve = async (comment: ReviewComment) => {
