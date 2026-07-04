@@ -250,6 +250,29 @@ Deno.serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   );
 
+  // Native browser download via GET: /public-review?action=download&token=XYZ
+  if (req.method === 'GET') {
+    const url = new URL(req.url);
+    const action = url.searchParams.get('action');
+    const token = url.searchParams.get('token');
+    if (action === 'download' && token) {
+      const { data: link } = await supabaseAdmin
+        .from('public_review_links')
+        .select('id, deliverable_id, allow_download, expires_at, is_active, deliverables(id, file_name, file_url)')
+        .eq('token', token)
+        .eq('is_active', true)
+        .single();
+      if (!link || !link.allow_download) {
+        return new Response('Download not allowed', { status: 403, headers: corsHeaders });
+      }
+      if (link.expires_at && new Date(link.expires_at) < new Date()) {
+        return new Response('Link expired', { status: 410, headers: corsHeaders });
+      }
+      return await proxyDownload(link.deliverables);
+    }
+    return new Response('Not found', { status: 404, headers: corsHeaders });
+  }
+
   try {
     const body = await req.json();
     const { action, token, reviewer_name, content, timestamp_seconds, approval_action } = body;
