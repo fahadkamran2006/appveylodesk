@@ -200,10 +200,9 @@ export default function PublicReview() {
     setDownloadError(null);
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      // Native browser download — no blob, no hanging.
-      // Preflight HEAD-ish check via GET small request would double-fetch; skip and let browser handle.
-      const downloadUrl = `${supabaseUrl}/functions/v1/public-review?action=download&token=${encodeURIComponent(token)}&apikey=${encodeURIComponent(anonKey)}`;
+      // Native browser download — no blob, no hang. verify_jwt=false on this function.
+      const downloadUrl = `${supabaseUrl}/functions/v1/public-review?action=download&token=${encodeURIComponent(token)}`;
+
       const a = document.createElement('a');
       a.href = downloadUrl;
       a.rel = 'noopener noreferrer';
