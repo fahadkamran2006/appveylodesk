@@ -75,7 +75,7 @@ export function RichTextEditor({
 }: RichTextEditorProps) {
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit as any,
       Placeholder.configure({ placeholder }),
     ],
     content,
