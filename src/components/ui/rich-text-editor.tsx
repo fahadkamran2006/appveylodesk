@@ -113,7 +113,7 @@ export function RichTextEditor({
             type="button"
             variant="ghost"
             size="sm"
-            onClick={() => editor.chain().focus().toggleBold().run()}
+            onClick={() => (editor.chain().focus() as any).toggleBold().run()}
             className={cn(
               'h-8 w-8 p-0',
               editor.isActive('bold') && 'bg-primary/20 text-primary'
@@ -125,7 +125,7 @@ export function RichTextEditor({
             type="button"
             variant="ghost"
             size="sm"
-            onClick={() => editor.chain().focus().toggleItalic().run()}
+            onClick={() => (editor.chain().focus() as any).toggleItalic().run()}
             className={cn(
               'h-8 w-8 p-0',
               editor.isActive('italic') && 'bg-primary/20 text-primary'
@@ -137,7 +137,7 @@ export function RichTextEditor({
             type="button"
             variant="ghost"
             size="sm"
-            onClick={() => editor.chain().focus().toggleBulletList().run()}
+            onClick={() => (editor.chain().focus() as any).toggleBulletList().run()}
             className={cn(
               'h-8 w-8 p-0',
               editor.isActive('bulletList') && 'bg-primary/20 text-primary'
@@ -149,7 +149,7 @@ export function RichTextEditor({
             type="button"
             variant="ghost"
             size="sm"
-            onClick={() => editor.chain().focus().toggleOrderedList().run()}
+            onClick={() => (editor.chain().focus() as any).toggleOrderedList().run()}
             className={cn(
               'h-8 w-8 p-0',
               editor.isActive('orderedList') && 'bg-primary/20 text-primary'
@@ -162,8 +162,8 @@ export function RichTextEditor({
             type="button"
             variant="ghost"
             size="sm"
-            onClick={() => editor.chain().focus().undo().run()}
-            disabled={!editor.can().undo()}
+            onClick={() => (editor.chain().focus() as any).undo().run()}
+            disabled={!(editor.can() as any).undo()}
             className="h-8 w-8 p-0"
           >
             <Undo className="w-4 h-4" />
@@ -172,8 +172,8 @@ export function RichTextEditor({
             type="button"
             variant="ghost"
             size="sm"
-            onClick={() => editor.chain().focus().redo().run()}
-            disabled={!editor.can().redo()}
+            onClick={() => (editor.chain().focus() as any).redo().run()}
+            disabled={!(editor.can() as any).redo()}
             className="h-8 w-8 p-0"
           >
             <Redo className="w-4 h-4" />
