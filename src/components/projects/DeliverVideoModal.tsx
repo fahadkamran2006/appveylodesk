@@ -139,7 +139,7 @@ export function DeliverVideoModal({
 
         const { error: lockError } = await supabase
           .from('deliverables')
-          .update(updateData)
+          .update(updateData as any)
           .eq('project_id', projectId)
           .eq('file_type', 'deliverable');
 
