@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -234,18 +234,22 @@ export function useMessaging() {
   }, [fetchChannels]);
 
   // Real-time subscription for channel updates
+  const fetchChannelsRef = useRef(fetchChannels);
+  useEffect(() => { fetchChannelsRef.current = fetchChannels; }, [fetchChannels]);
+
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) return;
 
     const channelSubscription = supabase
-      .channel('channels-realtime')
+      .channel(`channels-realtime:${user.id}:${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'channels' }, () => {
-        fetchChannels();
+        fetchChannelsRef.current();
       })
       .subscribe();
 
     return () => { supabase.removeChannel(channelSubscription); };
-  }, [user?.id, fetchChannels]);
+  }, [user?.id]);
+
 
   // Get or create DM channel
   const getOrCreateDM = async (otherUserId: string): Promise<string | null> => {
