@@ -1973,7 +1973,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SET search_path = public;
 
--- CREATE TRIGGER CREATE TRIGGER set_project_completed_at_trigger
+-- Create trigger
+DROP TRIGGER IF EXISTS set_project_completed_at_trigger ON public.projects;
+CREATE TRIGGER set_project_completed_at_trigger
 BEFORE UPDATE ON public.projects
 FOR EACH ROW
 EXECUTE FUNCTION public.set_project_completed_at();
