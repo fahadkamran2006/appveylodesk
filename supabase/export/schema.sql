@@ -4,16 +4,25 @@
 -- >>> 20251228012201_4cd7a89f-0842-4ccc-93da-4d613ed10902.sql
 
 -- Create enum for user roles
-CREATE TYPE public.app_role AS ENUM ('admin', 'client', 'editor');
+DO $do$ BEGIN
+  CREATE TYPE public.app_role AS ENUM ('admin', 'client', 'editor');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $do$;
 
 -- Create enum for project status
-CREATE TYPE public.project_status AS ENUM ('backlog', 'in_progress', 'review', 'done');
+DO $do$ BEGIN
+  CREATE TYPE public.project_status AS ENUM ('backlog', 'in_progress', 'review', 'done');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $do$;
 
 -- Create enum for invoice status
-CREATE TYPE public.invoice_status AS ENUM ('unpaid', 'paid', 'overdue');
+DO $do$ BEGIN
+  CREATE TYPE public.invoice_status AS ENUM ('unpaid', 'paid', 'overdue');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $do$;
 
 -- Agencies table
-CREATE TABLE public.agencies (
+CREATE TABLE IF NOT EXISTS public.agencies (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,
   logo_url TEXT,
@@ -22,7 +31,7 @@ CREATE TABLE public.agencies (
 );
 
 -- Profiles table (extends auth.users)
-CREATE TABLE public.profiles (
+CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID NOT NULL PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email TEXT NOT NULL,
   full_name TEXT,
@@ -34,7 +43,7 @@ CREATE TABLE public.profiles (
 );
 
 -- User roles table (separate for security)
-CREATE TABLE public.user_roles (
+CREATE TABLE IF NOT EXISTS public.user_roles (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   role app_role NOT NULL DEFAULT 'client',
@@ -44,7 +53,7 @@ CREATE TABLE public.user_roles (
 );
 
 -- Projects table
-CREATE TABLE public.projects (
+CREATE TABLE IF NOT EXISTS public.projects (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   agency_id UUID NOT NULL REFERENCES public.agencies(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
@@ -58,7 +67,7 @@ CREATE TABLE public.projects (
 );
 
 -- Project editor assignments (many-to-many)
-CREATE TABLE public.project_editors (
+CREATE TABLE IF NOT EXISTS public.project_editors (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   project_id UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
   editor_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -67,7 +76,7 @@ CREATE TABLE public.project_editors (
 );
 
 -- Invoices table
-CREATE TABLE public.invoices (
+CREATE TABLE IF NOT EXISTS public.invoices (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   project_id UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
   agency_id UUID NOT NULL REFERENCES public.agencies(id) ON DELETE CASCADE,
@@ -83,7 +92,7 @@ CREATE TABLE public.invoices (
 );
 
 -- Messages/Comments table
-CREATE TABLE public.messages (
+CREATE TABLE IF NOT EXISTS public.messages (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   project_id UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
   sender_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -93,7 +102,7 @@ CREATE TABLE public.messages (
 );
 
 -- Project deliverables/files
-CREATE TABLE public.deliverables (
+CREATE TABLE IF NOT EXISTS public.deliverables (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   project_id UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
   uploaded_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -161,73 +170,73 @@ AS $$
 $$;
 
 -- Profiles policies
-CREATE POLICY "Users can view their own profile"
-ON public.profiles FOR SELECT
+DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
+CREATE POLICY "Users can view their own profile" ON public.profiles FOR SELECT
 USING (auth.uid() = id);
 
-CREATE POLICY "Users can update their own profile"
-ON public.profiles FOR UPDATE
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
+CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE
 USING (auth.uid() = id);
 
-CREATE POLICY "Users can insert their own profile"
-ON public.profiles FOR INSERT
+DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
+CREATE POLICY "Users can insert their own profile" ON public.profiles FOR INSERT
 WITH CHECK (auth.uid() = id);
 
-CREATE POLICY "Admins can view agency profiles"
-ON public.profiles FOR SELECT
+DROP POLICY IF EXISTS "Admins can view agency profiles" ON public.profiles;
+CREATE POLICY "Admins can view agency profiles" ON public.profiles FOR SELECT
 USING (
   public.has_role(auth.uid(), 'admin') AND
   agency_id = public.get_user_agency_id(auth.uid())
 );
 
 -- Agencies policies
-CREATE POLICY "Users can view their agency"
-ON public.agencies FOR SELECT
+DROP POLICY IF EXISTS "Users can view their agency" ON public.agencies;
+CREATE POLICY "Users can view their agency" ON public.agencies FOR SELECT
 USING (
   public.user_belongs_to_agency(auth.uid(), id)
 );
 
-CREATE POLICY "Admins can update their agency"
-ON public.agencies FOR UPDATE
+DROP POLICY IF EXISTS "Admins can update their agency" ON public.agencies;
+CREATE POLICY "Admins can update their agency" ON public.agencies FOR UPDATE
 USING (
   public.has_role(auth.uid(), 'admin') AND
   public.user_belongs_to_agency(auth.uid(), id)
 );
 
-CREATE POLICY "Authenticated users can create agencies"
-ON public.agencies FOR INSERT
+DROP POLICY IF EXISTS "Authenticated users can create agencies" ON public.agencies;
+CREATE POLICY "Authenticated users can create agencies" ON public.agencies FOR INSERT
 WITH CHECK (auth.uid() IS NOT NULL);
 
 -- User roles policies
-CREATE POLICY "Users can view their own roles"
-ON public.user_roles FOR SELECT
+DROP POLICY IF EXISTS "Users can view their own roles" ON public.user_roles;
+CREATE POLICY "Users can view their own roles" ON public.user_roles FOR SELECT
 USING (user_id = auth.uid());
 
-CREATE POLICY "Admins can manage roles in their agency"
-ON public.user_roles FOR ALL
+DROP POLICY IF EXISTS "Admins can manage roles in their agency" ON public.user_roles;
+CREATE POLICY "Admins can manage roles in their agency" ON public.user_roles FOR ALL
 USING (
   public.has_role(auth.uid(), 'admin') AND
   agency_id = public.get_user_agency_id(auth.uid())
 );
 
-CREATE POLICY "Users can insert their own role during signup"
-ON public.user_roles FOR INSERT
+DROP POLICY IF EXISTS "Users can insert their own role during signup" ON public.user_roles;
+CREATE POLICY "Users can insert their own role during signup" ON public.user_roles FOR INSERT
 WITH CHECK (user_id = auth.uid());
 
 -- Projects policies
-CREATE POLICY "Admins can manage all agency projects"
-ON public.projects FOR ALL
+DROP POLICY IF EXISTS "Admins can manage all agency projects" ON public.projects;
+CREATE POLICY "Admins can manage all agency projects" ON public.projects FOR ALL
 USING (
   public.has_role(auth.uid(), 'admin') AND
   public.user_belongs_to_agency(auth.uid(), agency_id)
 );
 
-CREATE POLICY "Clients can view their projects"
-ON public.projects FOR SELECT
+DROP POLICY IF EXISTS "Clients can view their projects" ON public.projects;
+CREATE POLICY "Clients can view their projects" ON public.projects FOR SELECT
 USING (client_id = auth.uid());
 
-CREATE POLICY "Editors can view assigned projects"
-ON public.projects FOR SELECT
+DROP POLICY IF EXISTS "Editors can view assigned projects" ON public.projects;
+CREATE POLICY "Editors can view assigned projects" ON public.projects FOR SELECT
 USING (
   EXISTS (
     SELECT 1 FROM public.project_editors
@@ -235,8 +244,8 @@ USING (
   )
 );
 
-CREATE POLICY "Editors can update assigned projects"
-ON public.projects FOR UPDATE
+DROP POLICY IF EXISTS "Editors can update assigned projects" ON public.projects;
+CREATE POLICY "Editors can update assigned projects" ON public.projects FOR UPDATE
 USING (
   EXISTS (
     SELECT 1 FROM public.project_editors
@@ -245,8 +254,8 @@ USING (
 );
 
 -- Project editors policies
-CREATE POLICY "Admins can manage editor assignments"
-ON public.project_editors FOR ALL
+DROP POLICY IF EXISTS "Admins can manage editor assignments" ON public.project_editors;
+CREATE POLICY "Admins can manage editor assignments" ON public.project_editors FOR ALL
 USING (
   public.has_role(auth.uid(), 'admin') AND
   EXISTS (
@@ -256,29 +265,29 @@ USING (
   )
 );
 
-CREATE POLICY "Editors can view their assignments"
-ON public.project_editors FOR SELECT
+DROP POLICY IF EXISTS "Editors can view their assignments" ON public.project_editors;
+CREATE POLICY "Editors can view their assignments" ON public.project_editors FOR SELECT
 USING (editor_id = auth.uid());
 
 -- Invoices policies
-CREATE POLICY "Admins can manage agency invoices"
-ON public.invoices FOR ALL
+DROP POLICY IF EXISTS "Admins can manage agency invoices" ON public.invoices;
+CREATE POLICY "Admins can manage agency invoices" ON public.invoices FOR ALL
 USING (
   public.has_role(auth.uid(), 'admin') AND
   public.user_belongs_to_agency(auth.uid(), agency_id)
 );
 
-CREATE POLICY "Clients can view their invoices"
-ON public.invoices FOR SELECT
+DROP POLICY IF EXISTS "Clients can view their invoices" ON public.invoices;
+CREATE POLICY "Clients can view their invoices" ON public.invoices FOR SELECT
 USING (client_id = auth.uid());
 
-CREATE POLICY "Clients can update invoice payment proof"
-ON public.invoices FOR UPDATE
+DROP POLICY IF EXISTS "Clients can update invoice payment proof" ON public.invoices;
+CREATE POLICY "Clients can update invoice payment proof" ON public.invoices FOR UPDATE
 USING (client_id = auth.uid());
 
 -- Messages policies
-CREATE POLICY "Users can view messages on their projects"
-ON public.messages FOR SELECT
+DROP POLICY IF EXISTS "Users can view messages on their projects" ON public.messages;
+CREATE POLICY "Users can view messages on their projects" ON public.messages FOR SELECT
 USING (
   EXISTS (
     SELECT 1 FROM public.projects p
@@ -291,8 +300,8 @@ USING (
   )
 );
 
-CREATE POLICY "Users can send messages on their projects"
-ON public.messages FOR INSERT
+DROP POLICY IF EXISTS "Users can send messages on their projects" ON public.messages;
+CREATE POLICY "Users can send messages on their projects" ON public.messages FOR INSERT
 WITH CHECK (
   sender_id = auth.uid() AND
   EXISTS (
@@ -307,8 +316,8 @@ WITH CHECK (
 );
 
 -- Deliverables policies
-CREATE POLICY "Users can view deliverables on their projects"
-ON public.deliverables FOR SELECT
+DROP POLICY IF EXISTS "Users can view deliverables on their projects" ON public.deliverables;
+CREATE POLICY "Users can view deliverables on their projects" ON public.deliverables FOR SELECT
 USING (
   EXISTS (
     SELECT 1 FROM public.projects p
@@ -321,8 +330,8 @@ USING (
   )
 );
 
-CREATE POLICY "Editors and admins can upload deliverables"
-ON public.deliverables FOR INSERT
+DROP POLICY IF EXISTS "Editors and admins can upload deliverables" ON public.deliverables;
+CREATE POLICY "Editors and admins can upload deliverables" ON public.deliverables FOR INSERT
 WITH CHECK (
   uploaded_by = auth.uid() AND
   EXISTS (
@@ -353,6 +362,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
@@ -367,18 +377,22 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Add updated_at triggers
+DROP TRIGGER IF EXISTS update_agencies_updated_at ON public.agencies;
 CREATE TRIGGER update_agencies_updated_at
   BEFORE UPDATE ON public.agencies
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_profiles_updated_at ON public.profiles;
 CREATE TRIGGER update_profiles_updated_at
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_projects_updated_at ON public.projects;
 CREATE TRIGGER update_projects_updated_at
   BEFORE UPDATE ON public.projects
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_invoices_updated_at ON public.invoices;
 CREATE TRIGGER update_invoices_updated_at
   BEFORE UPDATE ON public.invoices
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
@@ -404,8 +418,8 @@ $function$;
 DROP POLICY IF EXISTS "Authenticated users can create agencies" ON public.agencies;
 
 -- Create a PERMISSIVE INSERT policy for authenticated users
-CREATE POLICY "Authenticated users can create agencies"
-ON public.agencies
+DROP POLICY IF EXISTS "Authenticated users can create agencies" ON public.agencies;
+CREATE POLICY "Authenticated users can create agencies" ON public.agencies
 FOR INSERT
 TO authenticated
 WITH CHECK (true);
@@ -413,8 +427,8 @@ WITH CHECK (true);
 -- Also fix the SELECT policy - drop restrictive and make permissive
 DROP POLICY IF EXISTS "Users can view their agency" ON public.agencies;
 
-CREATE POLICY "Users can view their agency"
-ON public.agencies
+DROP POLICY IF EXISTS "Users can view their agency" ON public.agencies;
+CREATE POLICY "Users can view their agency" ON public.agencies
 FOR SELECT
 TO authenticated
 USING (user_belongs_to_agency(auth.uid(), id));
@@ -422,8 +436,8 @@ USING (user_belongs_to_agency(auth.uid(), id));
 -- Fix the UPDATE policy as well
 DROP POLICY IF EXISTS "Admins can update their agency" ON public.agencies;
 
-CREATE POLICY "Admins can update their agency"
-ON public.agencies
+DROP POLICY IF EXISTS "Admins can update their agency" ON public.agencies;
+CREATE POLICY "Admins can update their agency" ON public.agencies
 FOR UPDATE
 TO authenticated
 USING (has_role(auth.uid(), 'admin') AND user_belongs_to_agency(auth.uid(), id))
@@ -468,16 +482,16 @@ ALTER COLUMN created_by SET DEFAULT auth.uid();
 
 -- Replace agencies INSERT policy to require creator match
 DROP POLICY IF EXISTS "Authenticated users can create agencies" ON public.agencies;
-CREATE POLICY "Authenticated users can create agencies"
-ON public.agencies
+DROP POLICY IF EXISTS "Authenticated users can create agencies" ON public.agencies;
+CREATE POLICY "Authenticated users can create agencies" ON public.agencies
 FOR INSERT
 TO authenticated
 WITH CHECK (created_by = auth.uid());
 
 -- Allow creator to read their newly-created agency immediately, OR via membership
 DROP POLICY IF EXISTS "Users can view their agency" ON public.agencies;
-CREATE POLICY "Users can view their agency"
-ON public.agencies
+DROP POLICY IF EXISTS "Users can view their agency" ON public.agencies;
+CREATE POLICY "Users can view their agency" ON public.agencies
 FOR SELECT
 TO authenticated
 USING (
@@ -487,8 +501,8 @@ USING (
 
 -- Keep update restricted to admins in the agency
 DROP POLICY IF EXISTS "Admins can update their agency" ON public.agencies;
-CREATE POLICY "Admins can update their agency"
-ON public.agencies
+DROP POLICY IF EXISTS "Admins can update their agency" ON public.agencies;
+CREATE POLICY "Admins can update their agency" ON public.agencies
 FOR UPDATE
 TO authenticated
 USING (
@@ -513,8 +527,8 @@ DROP POLICY IF EXISTS "Editors can view assigned projects" ON public.projects;
 
 -- Create fixed policies for projects table
 -- 1. Admins can manage all agency projects
-CREATE POLICY "Admins can manage all agency projects" 
-ON public.projects 
+DROP POLICY IF EXISTS "Admins can manage all agency projects" ON public.projects;
+CREATE POLICY "Admins can manage all agency projects" ON public.projects 
 FOR ALL 
 USING (
   has_role(auth.uid(), 'admin'::app_role) 
@@ -526,14 +540,14 @@ WITH CHECK (
 );
 
 -- 2. Clients can view their own projects
-CREATE POLICY "Clients can view their projects" 
-ON public.projects 
+DROP POLICY IF EXISTS "Clients can view their projects" ON public.projects;
+CREATE POLICY "Clients can view their projects" ON public.projects 
 FOR SELECT 
 USING (client_id = auth.uid());
 
 -- 3. Editors can view assigned projects (FIXED: was self-referencing)
-CREATE POLICY "Editors can view assigned projects" 
-ON public.projects 
+DROP POLICY IF EXISTS "Editors can view assigned projects" ON public.projects;
+CREATE POLICY "Editors can view assigned projects" ON public.projects 
 FOR SELECT 
 USING (
   EXISTS (
@@ -544,8 +558,8 @@ USING (
 );
 
 -- 4. Editors can update assigned projects (FIXED: was self-referencing)
-CREATE POLICY "Editors can update assigned projects" 
-ON public.projects 
+DROP POLICY IF EXISTS "Editors can update assigned projects" ON public.projects;
+CREATE POLICY "Editors can update assigned projects" ON public.projects 
 FOR UPDATE 
 USING (
   EXISTS (
@@ -559,8 +573,8 @@ USING (
 DROP POLICY IF EXISTS "Admins can view agency profiles" ON public.profiles;
 
 -- Allow users to view profiles in their agency
-CREATE POLICY "Users can view agency profiles" 
-ON public.profiles 
+DROP POLICY IF EXISTS "Users can view agency profiles" ON public.profiles;
+CREATE POLICY "Users can view agency profiles" ON public.profiles 
 FOR SELECT 
 USING (
   agency_id = get_user_agency_id(auth.uid())
@@ -570,8 +584,8 @@ USING (
 -- >>> 20260105210648_571848b1-5393-417b-9fa4-a68cd8713794.sql
 
 -- Allow admins to insert profiles for invited users in their agency
-CREATE POLICY "Admins can insert profiles in their agency"
-ON public.profiles
+DROP POLICY IF EXISTS "Admins can insert profiles in their agency" ON public.profiles;
+CREATE POLICY "Admins can insert profiles in their agency" ON public.profiles
 FOR INSERT
 TO authenticated
 WITH CHECK (
@@ -598,8 +612,8 @@ ALTER TABLE public.agency_invitations ENABLE ROW LEVEL SECURITY;
 
 -- Admins can manage invitations within their agency
 DROP POLICY IF EXISTS "Admins can view invitations in their agency" ON public.agency_invitations;
-CREATE POLICY "Admins can view invitations in their agency"
-ON public.agency_invitations
+DROP POLICY IF EXISTS "Admins can view invitations in their agency" ON public.agency_invitations;
+CREATE POLICY "Admins can view invitations in their agency" ON public.agency_invitations
 FOR SELECT
 TO authenticated
 USING (
@@ -608,8 +622,8 @@ USING (
 );
 
 DROP POLICY IF EXISTS "Admins can create invitations in their agency" ON public.agency_invitations;
-CREATE POLICY "Admins can create invitations in their agency"
-ON public.agency_invitations
+DROP POLICY IF EXISTS "Admins can create invitations in their agency" ON public.agency_invitations;
+CREATE POLICY "Admins can create invitations in their agency" ON public.agency_invitations
 FOR INSERT
 TO authenticated
 WITH CHECK (
@@ -619,8 +633,8 @@ WITH CHECK (
 );
 
 DROP POLICY IF EXISTS "Admins can update invitations in their agency" ON public.agency_invitations;
-CREATE POLICY "Admins can update invitations in their agency"
-ON public.agency_invitations
+DROP POLICY IF EXISTS "Admins can update invitations in their agency" ON public.agency_invitations;
+CREATE POLICY "Admins can update invitations in their agency" ON public.agency_invitations
 FOR UPDATE
 TO authenticated
 USING (
@@ -633,8 +647,8 @@ WITH CHECK (
 );
 
 DROP POLICY IF EXISTS "Admins can delete invitations in their agency" ON public.agency_invitations;
-CREATE POLICY "Admins can delete invitations in their agency"
-ON public.agency_invitations
+DROP POLICY IF EXISTS "Admins can delete invitations in their agency" ON public.agency_invitations;
+CREATE POLICY "Admins can delete invitations in their agency" ON public.agency_invitations
 FOR DELETE
 TO authenticated
 USING (
@@ -710,8 +724,8 @@ GRANT EXECUTE ON FUNCTION public.accept_agency_invitation(uuid) TO authenticated
 
 -- Tighten role self-assignment policy (prevents joining arbitrary agencies)
 DROP POLICY IF EXISTS "Users can insert their own role during signup" ON public.user_roles;
-CREATE POLICY "Users can assign themselves as agency admin"
-ON public.user_roles
+DROP POLICY IF EXISTS "Users can assign themselves as agency admin" ON public.user_roles;
+CREATE POLICY "Users can assign themselves as agency admin" ON public.user_roles
 FOR INSERT
 TO authenticated
 WITH CHECK (
@@ -738,24 +752,24 @@ ON CONFLICT (id) DO NOTHING;
 
 -- Storage policies for payment_proofs bucket
 -- Clients can upload their own payment proofs
-CREATE POLICY "Clients can upload payment proofs"
-ON storage.objects FOR INSERT
+DROP POLICY IF EXISTS "Clients can upload payment proofs" ON storage.objects;
+CREATE POLICY "Clients can upload payment proofs" ON storage.objects FOR INSERT
 WITH CHECK (
   bucket_id = 'payment_proofs' 
   AND auth.uid()::text = (storage.foldername(name))[1]
 );
 
 -- Clients can view their own payment proofs
-CREATE POLICY "Clients can view their own payment proofs"
-ON storage.objects FOR SELECT
+DROP POLICY IF EXISTS "Clients can view their own payment proofs" ON storage.objects;
+CREATE POLICY "Clients can view their own payment proofs" ON storage.objects FOR SELECT
 USING (
   bucket_id = 'payment_proofs' 
   AND auth.uid()::text = (storage.foldername(name))[1]
 );
 
 -- Admins can view all payment proofs in their agency
-CREATE POLICY "Admins can view payment proofs"
-ON storage.objects FOR SELECT
+DROP POLICY IF EXISTS "Admins can view payment proofs" ON storage.objects;
+CREATE POLICY "Admins can view payment proofs" ON storage.objects FOR SELECT
 USING (
   bucket_id = 'payment_proofs' 
   AND has_role(auth.uid(), 'admin')
@@ -775,8 +789,8 @@ ALTER TYPE public.invoice_status ADD VALUE IF NOT EXISTS 'pending';
 -- >>> 20260108093032_0a9d63aa-88a6-4ba6-bf2d-8ccd0a5703e6.sql
 
 -- Allow anyone to read an invitation by its ID (for join pages)
-CREATE POLICY "Anyone can view invitation by id for verification"
-ON public.agency_invitations
+DROP POLICY IF EXISTS "Anyone can view invitation by id for verification" ON public.agency_invitations;
+CREATE POLICY "Anyone can view invitation by id for verification" ON public.agency_invitations
 FOR SELECT
 USING (true);
 
@@ -854,10 +868,13 @@ $function$;
 -- =====================================================
 
 -- Create channel types enum
-CREATE TYPE public.channel_type AS ENUM ('dm', 'project');
+DO $do$ BEGIN
+  CREATE TYPE public.channel_type AS ENUM ('dm', 'project');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $do$;
 
 -- Create channels table
-CREATE TABLE public.channels (
+CREATE TABLE IF NOT EXISTS public.channels (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   agency_id UUID NOT NULL REFERENCES public.agencies(id) ON DELETE CASCADE,
   type channel_type NOT NULL,
@@ -873,7 +890,7 @@ CREATE TABLE public.channels (
 );
 
 -- Create channel participants table
-CREATE TABLE public.channel_participants (
+CREATE TABLE IF NOT EXISTS public.channel_participants (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   channel_id UUID NOT NULL REFERENCES public.channels(id) ON DELETE CASCADE,
   user_id UUID NOT NULL,
@@ -882,7 +899,7 @@ CREATE TABLE public.channel_participants (
 );
 
 -- Create channel mutes table (for client muting feature)
-CREATE TABLE public.channel_mutes (
+CREATE TABLE IF NOT EXISTS public.channel_mutes (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   channel_id UUID NOT NULL REFERENCES public.channels(id) ON DELETE CASCADE,
   muted_by UUID NOT NULL,
@@ -897,13 +914,13 @@ ALTER TABLE public.messages
   ALTER COLUMN project_id DROP NOT NULL;
 
 -- Create indexes for performance
-CREATE INDEX idx_channels_agency ON public.channels(agency_id);
-CREATE INDEX idx_channels_project ON public.channels(project_id);
-CREATE INDEX idx_channels_type ON public.channels(type);
-CREATE INDEX idx_channel_participants_channel ON public.channel_participants(channel_id);
-CREATE INDEX idx_channel_participants_user ON public.channel_participants(user_id);
-CREATE INDEX idx_messages_channel ON public.messages(channel_id);
-CREATE INDEX idx_channel_mutes_channel ON public.channel_mutes(channel_id);
+CREATE INDEX IF NOT EXISTS idx_channels_agency ON public.channels(agency_id);
+CREATE INDEX IF NOT EXISTS idx_channels_project ON public.channels(project_id);
+CREATE INDEX IF NOT EXISTS idx_channels_type ON public.channels(type);
+CREATE INDEX IF NOT EXISTS idx_channel_participants_channel ON public.channel_participants(channel_id);
+CREATE INDEX IF NOT EXISTS idx_channel_participants_user ON public.channel_participants(user_id);
+CREATE INDEX IF NOT EXISTS idx_messages_channel ON public.messages(channel_id);
+CREATE INDEX IF NOT EXISTS idx_channel_mutes_channel ON public.channel_mutes(channel_id);
 
 -- Enable RLS on all tables
 ALTER TABLE public.channels ENABLE ROW LEVEL SECURITY;
@@ -915,8 +932,8 @@ ALTER TABLE public.channel_mutes ENABLE ROW LEVEL SECURITY;
 -- =====================================================
 
 -- Users can view channels they participate in
-CREATE POLICY "Users can view their channels"
-ON public.channels FOR SELECT
+DROP POLICY IF EXISTS "Users can view their channels" ON public.channels;
+CREATE POLICY "Users can view their channels" ON public.channels FOR SELECT
 USING (
   EXISTS (
     SELECT 1 FROM public.channel_participants cp
@@ -925,16 +942,16 @@ USING (
 );
 
 -- Admins can create channels in their agency
-CREATE POLICY "Admins can create channels"
-ON public.channels FOR INSERT
+DROP POLICY IF EXISTS "Admins can create channels" ON public.channels;
+CREATE POLICY "Admins can create channels" ON public.channels FOR INSERT
 WITH CHECK (
   has_role(auth.uid(), 'admin') AND 
   agency_id = get_user_agency_id(auth.uid())
 );
 
 -- Admins can update channels in their agency
-CREATE POLICY "Admins can update channels"
-ON public.channels FOR UPDATE
+DROP POLICY IF EXISTS "Admins can update channels" ON public.channels;
+CREATE POLICY "Admins can update channels" ON public.channels FOR UPDATE
 USING (
   has_role(auth.uid(), 'admin') AND 
   agency_id = get_user_agency_id(auth.uid())
@@ -945,8 +962,8 @@ USING (
 -- =====================================================
 
 -- Users can view participants in channels they belong to
-CREATE POLICY "Users can view channel participants"
-ON public.channel_participants FOR SELECT
+DROP POLICY IF EXISTS "Users can view channel participants" ON public.channel_participants;
+CREATE POLICY "Users can view channel participants" ON public.channel_participants FOR SELECT
 USING (
   EXISTS (
     SELECT 1 FROM public.channel_participants my_participation
@@ -956,8 +973,8 @@ USING (
 );
 
 -- Admins can manage participants
-CREATE POLICY "Admins can manage participants"
-ON public.channel_participants FOR ALL
+DROP POLICY IF EXISTS "Admins can manage participants" ON public.channel_participants;
+CREATE POLICY "Admins can manage participants" ON public.channel_participants FOR ALL
 USING (
   EXISTS (
     SELECT 1 FROM public.channels c
@@ -972,8 +989,8 @@ USING (
 -- =====================================================
 
 -- Clients can mute users in project channels they participate in
-CREATE POLICY "Clients can manage mutes in their project channels"
-ON public.channel_mutes FOR ALL
+DROP POLICY IF EXISTS "Clients can manage mutes in their project channels" ON public.channel_mutes;
+CREATE POLICY "Clients can manage mutes in their project channels" ON public.channel_mutes FOR ALL
 USING (
   muted_by = auth.uid() AND
   has_role(auth.uid(), 'client') AND
@@ -987,8 +1004,8 @@ USING (
 );
 
 -- Admins can manage all mutes in their agency
-CREATE POLICY "Admins can manage all mutes"
-ON public.channel_mutes FOR ALL
+DROP POLICY IF EXISTS "Admins can manage all mutes" ON public.channel_mutes;
+CREATE POLICY "Admins can manage all mutes" ON public.channel_mutes FOR ALL
 USING (
   EXISTS (
     SELECT 1 FROM public.channels c
@@ -999,8 +1016,8 @@ USING (
 );
 
 -- Users can view mutes in channels they participate in
-CREATE POLICY "Users can view mutes in their channels"
-ON public.channel_mutes FOR SELECT
+DROP POLICY IF EXISTS "Users can view mutes in their channels" ON public.channel_mutes;
+CREATE POLICY "Users can view mutes in their channels" ON public.channel_mutes FOR SELECT
 USING (
   EXISTS (
     SELECT 1 FROM public.channel_participants cp
@@ -1018,8 +1035,8 @@ DROP POLICY IF EXISTS "Users can send messages on their projects" ON public.mess
 DROP POLICY IF EXISTS "Users can view messages on their projects" ON public.messages;
 
 -- Users can send messages to channels they participate in (if not archived)
-CREATE POLICY "Users can send messages to their channels"
-ON public.messages FOR INSERT
+DROP POLICY IF EXISTS "Users can send messages to their channels" ON public.messages;
+CREATE POLICY "Users can send messages to their channels" ON public.messages FOR INSERT
 WITH CHECK (
   sender_id = auth.uid() AND
   channel_id IS NOT NULL AND
@@ -1033,8 +1050,8 @@ WITH CHECK (
 );
 
 -- Users can view messages in channels they participate in
-CREATE POLICY "Users can view messages in their channels"
-ON public.messages FOR SELECT
+DROP POLICY IF EXISTS "Users can view messages in their channels" ON public.messages;
+CREATE POLICY "Users can view messages in their channels" ON public.messages FOR SELECT
 USING (
   channel_id IS NOT NULL AND
   EXISTS (
@@ -1143,7 +1160,8 @@ BEGIN
 END;
 $function$;
 
--- Create trigger for auto-creating project channels
+-- DROP TRIGGER IF EXISTS for ON public.projects;
+CREATE TRIGGER for auto-creating project channels
 CREATE TRIGGER on_project_created_create_channel
   AFTER INSERT ON public.projects
   FOR EACH ROW
@@ -1178,7 +1196,8 @@ BEGIN
 END;
 $function$;
 
--- Create trigger for adding editors to channels
+-- DROP TRIGGER IF EXISTS for ON public.project_editors;
+CREATE TRIGGER for adding editors to channels
 CREATE TRIGGER on_editor_assigned_add_to_channel
   AFTER INSERT ON public.project_editors
   FOR EACH ROW
@@ -1209,7 +1228,8 @@ BEGIN
 END;
 $function$;
 
--- Create trigger for archiving channels
+-- DROP TRIGGER IF EXISTS for ON public.projects;
+CREATE TRIGGER for archiving channels
 CREATE TRIGGER on_project_status_change_archive_channel
   AFTER UPDATE OF status ON public.projects
   FOR EACH ROW
@@ -1224,20 +1244,20 @@ VALUES ('avatars', 'avatars', true, 5242880, ARRAY['image/jpeg', 'image/png', 'i
 ON CONFLICT (id) DO NOTHING;
 
 -- Storage policies for avatars
-CREATE POLICY "Avatar images are publicly accessible"
-ON storage.objects FOR SELECT
+DROP POLICY IF EXISTS "Avatar images are publicly accessible" ON storage.objects;
+CREATE POLICY "Avatar images are publicly accessible" ON storage.objects FOR SELECT
 USING (bucket_id = 'avatars');
 
-CREATE POLICY "Users can upload their own avatar"
-ON storage.objects FOR INSERT
+DROP POLICY IF EXISTS "Users can upload their own avatar" ON storage.objects;
+CREATE POLICY "Users can upload their own avatar" ON storage.objects FOR INSERT
 WITH CHECK (bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1]);
 
-CREATE POLICY "Users can update their own avatar"
-ON storage.objects FOR UPDATE
+DROP POLICY IF EXISTS "Users can update their own avatar" ON storage.objects;
+CREATE POLICY "Users can update their own avatar" ON storage.objects FOR UPDATE
 USING (bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1]);
 
-CREATE POLICY "Users can delete their own avatar"
-ON storage.objects FOR DELETE
+DROP POLICY IF EXISTS "Users can delete their own avatar" ON storage.objects;
+CREATE POLICY "Users can delete their own avatar" ON storage.objects FOR DELETE
 USING (bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1]);
 
 -- =====================================================
@@ -1248,6 +1268,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.channels;
 
 -- Update timestamps trigger for channels
+DROP TRIGGER IF EXISTS update_channels_updated_at ON public.channels;
 CREATE TRIGGER update_channels_updated_at
   BEFORE UPDATE ON public.channels
   FOR EACH ROW
@@ -1261,8 +1282,8 @@ ADD COLUMN subscription_plan TEXT NOT NULL DEFAULT 'starter' CHECK (subscription
 ADD COLUMN storage_limit_bytes BIGINT NOT NULL DEFAULT 214748364800, -- 200GB in bytes
 ADD COLUMN storage_used_bytes BIGINT NOT NULL DEFAULT 0;
 
--- Create table for timestamped video comments
-CREATE TABLE public.deliverable_comments (
+-- CREATE TABLE IF NOT EXISTS for timestamped video comments
+CREATE TABLE IF NOT EXISTS public.deliverable_comments (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   deliverable_id UUID NOT NULL REFERENCES public.deliverables(id) ON DELETE CASCADE,
   user_id UUID NOT NULL,
@@ -1280,8 +1301,8 @@ ALTER TABLE public.deliverable_comments ENABLE ROW LEVEL SECURITY;
 
 -- RLS policies for deliverable_comments
 -- Users can view comments on deliverables they have access to
-CREATE POLICY "Users can view comments on accessible deliverables"
-ON public.deliverable_comments FOR SELECT
+DROP POLICY IF EXISTS "Users can view comments on accessible deliverables" ON public.deliverable_comments;
+CREATE POLICY "Users can view comments on accessible deliverables" ON public.deliverable_comments FOR SELECT
 USING (
   EXISTS (
     SELECT 1 FROM public.deliverables d
@@ -1296,8 +1317,8 @@ USING (
 );
 
 -- Users can create comments on deliverables they have access to
-CREATE POLICY "Users can create comments on accessible deliverables"
-ON public.deliverable_comments FOR INSERT
+DROP POLICY IF EXISTS "Users can create comments on accessible deliverables" ON public.deliverable_comments;
+CREATE POLICY "Users can create comments on accessible deliverables" ON public.deliverable_comments FOR INSERT
 WITH CHECK (
   user_id = auth.uid()
   AND EXISTS (
@@ -1313,8 +1334,8 @@ WITH CHECK (
 );
 
 -- Editors and admins can update comments (mark as resolved)
-CREATE POLICY "Editors and admins can update comments"
-ON public.deliverable_comments FOR UPDATE
+DROP POLICY IF EXISTS "Editors and admins can update comments" ON public.deliverable_comments;
+CREATE POLICY "Editors and admins can update comments" ON public.deliverable_comments FOR UPDATE
 USING (
   EXISTS (
     SELECT 1 FROM public.deliverables d
@@ -1342,8 +1363,8 @@ VALUES (
 
 -- Storage policies for deliverables bucket
 -- Admins can manage all files in their agency's projects
-CREATE POLICY "Admins can manage deliverable files"
-ON storage.objects FOR ALL
+DROP POLICY IF EXISTS "Admins can manage deliverable files" ON storage.objects;
+CREATE POLICY "Admins can manage deliverable files" ON storage.objects FOR ALL
 USING (
   bucket_id = 'deliverables'
   AND has_role(auth.uid(), 'admin')
@@ -1360,8 +1381,8 @@ WITH CHECK (
 );
 
 -- Editors can upload/delete files in their assigned projects
-CREATE POLICY "Editors can manage files in assigned projects"
-ON storage.objects FOR ALL
+DROP POLICY IF EXISTS "Editors can manage files in assigned projects" ON storage.objects;
+CREATE POLICY "Editors can manage files in assigned projects" ON storage.objects FOR ALL
 USING (
   bucket_id = 'deliverables'
   AND EXISTS (
@@ -1382,8 +1403,8 @@ WITH CHECK (
 );
 
 -- Clients can view files and upload assets in their projects
-CREATE POLICY "Clients can view and upload in their projects"
-ON storage.objects FOR SELECT
+DROP POLICY IF EXISTS "Clients can view and upload in their projects" ON storage.objects;
+CREATE POLICY "Clients can view and upload in their projects" ON storage.objects FOR SELECT
 USING (
   bucket_id = 'deliverables'
   AND EXISTS (
@@ -1393,8 +1414,8 @@ USING (
   )
 );
 
-CREATE POLICY "Clients can upload assets in their projects"
-ON storage.objects FOR INSERT
+DROP POLICY IF EXISTS "Clients can upload assets in their projects" ON storage.objects;
+CREATE POLICY "Clients can upload assets in their projects" ON storage.objects FOR INSERT
 WITH CHECK (
   bucket_id = 'deliverables'
   AND EXISTS (
@@ -1446,6 +1467,7 @@ END;
 $$;
 
 -- Trigger to update storage on deliverable changes
+DROP TRIGGER IF EXISTS update_storage_on_deliverable_change ON public.deliverables;
 CREATE TRIGGER update_storage_on_deliverable_change
 AFTER INSERT OR DELETE ON public.deliverables
 FOR EACH ROW
@@ -1465,6 +1487,7 @@ AS $$
 $$;
 
 -- Add trigger to update updated_at on deliverable_comments
+DROP TRIGGER IF EXISTS update_deliverable_comments_updated_at ON public.deliverable_comments;
 CREATE TRIGGER update_deliverable_comments_updated_at
 BEFORE UPDATE ON public.deliverable_comments
 FOR EACH ROW
@@ -1497,20 +1520,20 @@ CREATE TABLE IF NOT EXISTS public.cancellation_requests (
 ALTER TABLE public.cancellation_requests ENABLE ROW LEVEL SECURITY;
 
 -- RLS policies for cancellation_requests
-CREATE POLICY "Admins can manage all cancellation requests"
-ON public.cancellation_requests
+DROP POLICY IF EXISTS "Admins can manage all cancellation requests" ON public.cancellation_requests;
+CREATE POLICY "Admins can manage all cancellation requests" ON public.cancellation_requests
 FOR ALL
 USING (has_role(auth.uid(), 'admin') AND EXISTS (
   SELECT 1 FROM projects p WHERE p.id = cancellation_requests.project_id AND p.agency_id = get_user_agency_id(auth.uid())
 ));
 
-CREATE POLICY "Clients can view and create their own cancellation requests"
-ON public.cancellation_requests
+DROP POLICY IF EXISTS "Clients can view and create their own cancellation requests" ON public.cancellation_requests;
+CREATE POLICY "Clients can view and create their own cancellation requests" ON public.cancellation_requests
 FOR SELECT
 USING (requested_by = auth.uid());
 
-CREATE POLICY "Clients can create cancellation requests for their projects"
-ON public.cancellation_requests
+DROP POLICY IF EXISTS "Clients can create cancellation requests for their projects" ON public.cancellation_requests;
+CREATE POLICY "Clients can create cancellation requests for their projects" ON public.cancellation_requests
 FOR INSERT
 WITH CHECK (
   requested_by = auth.uid() AND
@@ -1524,18 +1547,19 @@ ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS budget NUMERIC DEFAULT NULL
 ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS editor_rate NUMERIC DEFAULT NULL;
 
 -- Allow admins to delete projects
-CREATE POLICY "Admins can delete agency projects"
-ON public.projects
+DROP POLICY IF EXISTS "Admins can delete agency projects" ON public.projects;
+CREATE POLICY "Admins can delete agency projects" ON public.projects
 FOR DELETE
 USING (has_role(auth.uid(), 'admin') AND agency_id = get_user_agency_id(auth.uid()));
 
 -- Allow editors to view their assigned projects (not just select from project_editors)
-CREATE POLICY "Editors can view assigned projects"
-ON public.projects
+DROP POLICY IF EXISTS "Editors can view assigned projects" ON public.projects;
+CREATE POLICY "Editors can view assigned projects" ON public.projects
 FOR SELECT
 USING (is_project_editor(auth.uid(), id));
 
 -- Update trigger for cancellation_requests
+DROP TRIGGER IF EXISTS update_cancellation_requests_updated_at ON public.cancellation_requests;
 CREATE TRIGGER update_cancellation_requests_updated_at
 BEFORE UPDATE ON public.cancellation_requests
 FOR EACH ROW
@@ -1719,7 +1743,9 @@ BEGIN
 END;
 $$;
 
--- Create trigger for auto-archiving
+-- DROP TRIGGER IF EXISTS for ON public.projects;
+CREATE TRIGGER for auto-archiving
+DROP TRIGGER IF EXISTS trigger_auto_archive_project_channel ON public.projects;
 DROP TRIGGER IF EXISTS trigger_auto_archive_project_channel ON public.projects;
 CREATE TRIGGER trigger_auto_archive_project_channel
   AFTER UPDATE OF status ON public.projects
@@ -1740,7 +1766,9 @@ BEGIN
 END;
 $$;
 
--- Create trigger for auto-adding editors to project channels
+-- DROP TRIGGER IF EXISTS for ON public.project_editors;
+CREATE TRIGGER for auto-adding editors to project channels
+DROP TRIGGER IF EXISTS trigger_add_editor_to_channel ON public.project_editors;
 DROP TRIGGER IF EXISTS trigger_add_editor_to_channel ON public.project_editors;
 CREATE TRIGGER trigger_add_editor_to_channel
   AFTER INSERT ON public.project_editors
@@ -1789,8 +1817,8 @@ DROP POLICY IF EXISTS "Users can view channel participants" ON public.channel_pa
 DROP POLICY IF EXISTS "Users can view participants in channels they belong to" ON public.channel_participants;
 
 -- Create new non-recursive SELECT policy using the helper function
-CREATE POLICY "Users can view channel participants"
-ON public.channel_participants
+DROP POLICY IF EXISTS "Users can view channel participants" ON public.channel_participants;
+CREATE POLICY "Users can view channel participants" ON public.channel_participants
 FOR SELECT
 USING (public.is_channel_member(channel_id, auth.uid()));
 
@@ -1819,8 +1847,8 @@ GRANT EXECUTE ON FUNCTION public.channel_belongs_to_agency(uuid, uuid) TO authen
 -- Replace recursive admin policy
 DROP POLICY IF EXISTS "Admins can manage participants" ON public.channel_participants;
 
-CREATE POLICY "Admins can manage participants"
-ON public.channel_participants
+DROP POLICY IF EXISTS "Admins can manage participants" ON public.channel_participants;
+CREATE POLICY "Admins can manage participants" ON public.channel_participants
 FOR ALL
 TO authenticated
 USING (
@@ -1836,8 +1864,8 @@ WITH CHECK (
 -- (recreate it idempotently)
 DROP POLICY IF EXISTS "Users can view channel participants" ON public.channel_participants;
 
-CREATE POLICY "Users can view channel participants"
-ON public.channel_participants
+DROP POLICY IF EXISTS "Users can view channel participants" ON public.channel_participants;
+CREATE POLICY "Users can view channel participants" ON public.channel_participants
 FOR SELECT
 TO authenticated
 USING (public.is_channel_member(channel_id, auth.uid()));
@@ -1845,7 +1873,7 @@ USING (public.is_channel_member(channel_id, auth.uid()));
 -- >>> 20260111112208_b268bcd5-37f0-44ab-9cc7-0f098b24cb3e.sql
 
 -- Create channel_read_receipts table to track when users last viewed each channel
-CREATE TABLE public.channel_read_receipts (
+CREATE TABLE IF NOT EXISTS public.channel_read_receipts (
   id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   channel_id uuid NOT NULL REFERENCES public.channels(id) ON DELETE CASCADE,
   user_id uuid NOT NULL,
@@ -1858,21 +1886,21 @@ CREATE TABLE public.channel_read_receipts (
 ALTER TABLE public.channel_read_receipts ENABLE ROW LEVEL SECURITY;
 
 -- Users can view their own read receipts
-CREATE POLICY "Users can view their own read receipts"
-ON public.channel_read_receipts
+DROP POLICY IF EXISTS "Users can view their own read receipts" ON public.channel_read_receipts;
+CREATE POLICY "Users can view their own read receipts" ON public.channel_read_receipts
 FOR SELECT
 TO authenticated
 USING (user_id = auth.uid());
 
 -- Users can upsert their own read receipts
-CREATE POLICY "Users can upsert their own read receipts"
-ON public.channel_read_receipts
+DROP POLICY IF EXISTS "Users can upsert their own read receipts" ON public.channel_read_receipts;
+CREATE POLICY "Users can upsert their own read receipts" ON public.channel_read_receipts
 FOR INSERT
 TO authenticated
 WITH CHECK (user_id = auth.uid() AND public.is_channel_member(channel_id, auth.uid()));
 
-CREATE POLICY "Users can update their own read receipts"
-ON public.channel_read_receipts
+DROP POLICY IF EXISTS "Users can update their own read receipts" ON public.channel_read_receipts;
+CREATE POLICY "Users can update their own read receipts" ON public.channel_read_receipts
 FOR UPDATE
 TO authenticated
 USING (user_id = auth.uid())
@@ -1950,8 +1978,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SET search_path = public;
 
--- Create trigger
-CREATE TRIGGER set_project_completed_at_trigger
+-- DROP TRIGGER IF EXISTS CREATE ON public.projects;
+CREATE TRIGGER CREATE TRIGGER set_project_completed_at_trigger
 BEFORE UPDATE ON public.projects
 FOR EACH ROW
 EXECUTE FUNCTION public.set_project_completed_at();
@@ -1964,8 +1992,8 @@ WHERE status = 'done' AND completed_at IS NULL;
 -- >>> 20260116232413_5a0b94de-09aa-4ec9-a5b2-03a2655d6f9f.sql
 
 -- Allow clients to create project proposals (with status 'proposal')
-CREATE POLICY "Clients can create project proposals"
-ON public.projects
+DROP POLICY IF EXISTS "Clients can create project proposals" ON public.projects;
+CREATE POLICY "Clients can create project proposals" ON public.projects
 FOR INSERT
 WITH CHECK (
   has_role(auth.uid(), 'client'::app_role) 
@@ -2047,7 +2075,9 @@ Please review and let me know the pricing and timeline. Thank you!';
 END;
 $$;
 
--- Create trigger for auto-DM on proposal creation
+-- DROP TRIGGER IF EXISTS for ON proposal;
+CREATE TRIGGER for auto-DM ON proposal creation
+DROP TRIGGER IF EXISTS trigger_auto_dm_on_proposal ON public.projects;
 DROP TRIGGER IF EXISTS trigger_auto_dm_on_proposal ON public.projects;
 CREATE TRIGGER trigger_auto_dm_on_proposal
   AFTER INSERT ON public.projects
@@ -2249,8 +2279,8 @@ BEGIN;
 
 -- Replace existing SELECT policy with an authenticated-only version
 DROP POLICY IF EXISTS "Users can view their agency" ON public.agencies;
-CREATE POLICY "Users can view their agency"
-ON public.agencies
+DROP POLICY IF EXISTS "Users can view their agency" ON public.agencies;
+CREATE POLICY "Users can view their agency" ON public.agencies
 AS PERMISSIVE
 FOR SELECT
 TO authenticated
@@ -2264,8 +2294,8 @@ USING (
 
 -- Explicitly deny anonymous reads (defense-in-depth)
 DROP POLICY IF EXISTS "Deny anonymous agency access" ON public.agencies;
-CREATE POLICY "Deny anonymous agency access"
-ON public.agencies
+DROP POLICY IF EXISTS "Deny anonymous agency access" ON public.agencies;
+CREATE POLICY "Deny anonymous agency access" ON public.agencies
 AS PERMISSIVE
 FOR SELECT
 TO anon
@@ -2285,15 +2315,15 @@ DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
 DROP POLICY IF EXISTS "Users can view agency profiles" ON public.profiles;
 
 -- Recreate with explicit authenticated role requirement
-CREATE POLICY "Users can view their own profile"
-ON public.profiles
+DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
+CREATE POLICY "Users can view their own profile" ON public.profiles
 AS RESTRICTIVE
 FOR SELECT
 TO authenticated
 USING (auth.uid() IS NOT NULL AND auth.uid() = id);
 
-CREATE POLICY "Users can view agency profiles"
-ON public.profiles
+DROP POLICY IF EXISTS "Users can view agency profiles" ON public.profiles;
+CREATE POLICY "Users can view agency profiles" ON public.profiles
 AS PERMISSIVE
 FOR SELECT
 TO authenticated
@@ -2304,8 +2334,8 @@ USING (
 
 -- Add explicit deny policy for anonymous users (defense-in-depth)
 DROP POLICY IF EXISTS "Deny anonymous profile access" ON public.profiles;
-CREATE POLICY "Deny anonymous profile access"
-ON public.profiles
+DROP POLICY IF EXISTS "Deny anonymous profile access" ON public.profiles;
+CREATE POLICY "Deny anonymous profile access" ON public.profiles
 AS PERMISSIVE
 FOR SELECT
 TO anon
@@ -2324,8 +2354,8 @@ DROP POLICY IF EXISTS "Users can view agency profiles" ON public.profiles;
 
 -- Create a single comprehensive SELECT policy that uses user_roles for agency membership
 -- This properly handles the case where agency_id on profiles might be NULL
-CREATE POLICY "Authenticated users can view agency member profiles"
-  ON public.profiles
+DROP POLICY IF EXISTS "Authenticated users can view agency member profiles" ON public.profiles;
+CREATE POLICY "Authenticated users can view agency member profiles" ON public.profiles
   FOR SELECT
   TO authenticated
   USING (
@@ -2363,8 +2393,8 @@ ADD CONSTRAINT deliverables_file_type_check
 CHECK (file_type IN ('asset', 'deliverable'));
 
 -- Create RLS policy allowing clients to upload assets to their projects
-CREATE POLICY "Clients can upload assets to their projects"
-ON public.deliverables
+DROP POLICY IF EXISTS "Clients can upload assets to their projects" ON public.deliverables;
+CREATE POLICY "Clients can upload assets to their projects" ON public.deliverables
 FOR INSERT
 WITH CHECK (
   uploaded_by = auth.uid() 
@@ -2375,8 +2405,8 @@ WITH CHECK (
   )
 );
 
--- Create index for faster file_type filtering
-CREATE INDEX idx_deliverables_file_type ON public.deliverables(file_type);
+-- CREATE INDEX IF NOT EXISTS for faster file_type filtering
+CREATE INDEX IF NOT EXISTS idx_deliverables_file_type ON public.deliverables(file_type);
 
 -- >>> 20260123163744_64da1660-02f2-4370-a1e8-c052618d48fd.sql
 
@@ -2434,7 +2464,7 @@ $$;
 
 -- >>> 20260123214105_93338337-a722-4076-9d42-b0a40e5727a0.sql
 
--- Create table to track individual message read status (for read receipts / seen ticks)
+-- CREATE TABLE IF NOT EXISTS to track individual message read status (for read receipts / seen ticks)
 CREATE TABLE IF NOT EXISTS public.message_read_receipts (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   message_id UUID NOT NULL REFERENCES public.messages(id) ON DELETE CASCADE,
@@ -2447,8 +2477,8 @@ CREATE TABLE IF NOT EXISTS public.message_read_receipts (
 ALTER TABLE public.message_read_receipts ENABLE ROW LEVEL SECURITY;
 
 -- Users can view read receipts for messages in their channels
-CREATE POLICY "Users can view read receipts in their channels"
-ON public.message_read_receipts
+DROP POLICY IF EXISTS "Users can view read receipts in their channels" ON public.message_read_receipts;
+CREATE POLICY "Users can view read receipts in their channels" ON public.message_read_receipts
 FOR SELECT
 USING (
   EXISTS (
@@ -2460,8 +2490,8 @@ USING (
 );
 
 -- Users can mark messages as read in their channels
-CREATE POLICY "Users can mark messages as read"
-ON public.message_read_receipts
+DROP POLICY IF EXISTS "Users can mark messages as read" ON public.message_read_receipts;
+CREATE POLICY "Users can mark messages as read" ON public.message_read_receipts
 FOR INSERT
 WITH CHECK (
   user_id = auth.uid() AND
@@ -2473,7 +2503,7 @@ WITH CHECK (
   )
 );
 
--- Create table for cleared chats (hide history for user)
+-- CREATE TABLE IF NOT EXISTS for cleared chats (hide history for user)
 CREATE TABLE IF NOT EXISTS public.cleared_chats (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   channel_id UUID NOT NULL REFERENCES public.channels(id) ON DELETE CASCADE,
@@ -2486,20 +2516,20 @@ CREATE TABLE IF NOT EXISTS public.cleared_chats (
 ALTER TABLE public.cleared_chats ENABLE ROW LEVEL SECURITY;
 
 -- Users can view their own cleared chats
-CREATE POLICY "Users can view their cleared chats"
-ON public.cleared_chats
+DROP POLICY IF EXISTS "Users can view their cleared chats" ON public.cleared_chats;
+CREATE POLICY "Users can view their cleared chats" ON public.cleared_chats
 FOR SELECT
 USING (user_id = auth.uid());
 
 -- Users can clear their own chats
-CREATE POLICY "Users can clear their chats"
-ON public.cleared_chats
+DROP POLICY IF EXISTS "Users can clear their chats" ON public.cleared_chats;
+CREATE POLICY "Users can clear their chats" ON public.cleared_chats
 FOR INSERT
 WITH CHECK (user_id = auth.uid() AND is_channel_member(channel_id, auth.uid()));
 
 -- Users can update their cleared chats (to re-clear)
-CREATE POLICY "Users can update their cleared chats"
-ON public.cleared_chats
+DROP POLICY IF EXISTS "Users can update their cleared chats" ON public.cleared_chats;
+CREATE POLICY "Users can update their cleared chats" ON public.cleared_chats
 FOR UPDATE
 USING (user_id = auth.uid());
 
@@ -2510,8 +2540,8 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.message_read_receipts;
 
 -- Allow authenticated users to view user_roles of members in the same agency
 -- This is required for the profiles RLS policy JOIN to work for Clients/Editors
-CREATE POLICY "Users can view roles of agency members"
-ON public.user_roles
+DROP POLICY IF EXISTS "Users can view roles of agency members" ON public.user_roles;
+CREATE POLICY "Users can view roles of agency members" ON public.user_roles
 FOR SELECT
 TO authenticated
 USING (
@@ -2550,8 +2580,8 @@ $$;
 -- 3) Replace profiles SELECT policy to use the helper (no JOINs that depend on user_roles SELECT visibility)
 DROP POLICY IF EXISTS "Authenticated users can view agency member profiles" ON public.profiles;
 
-CREATE POLICY "Authenticated users can view agency member profiles"
-ON public.profiles
+DROP POLICY IF EXISTS "Authenticated users can view agency member profiles" ON public.profiles;
+CREATE POLICY "Authenticated users can view agency member profiles" ON public.profiles
 FOR SELECT
 TO authenticated
 USING (
@@ -2622,7 +2652,8 @@ CHECK (
 -- >>> 20260201063044_1e6df294-8323-4ecf-b5e4-31f1e98a9927.sql
 
 -- Create enum for notification types
-CREATE TYPE public.notification_type AS ENUM (
+DO $do$ BEGIN
+  CREATE TYPE public.notification_type AS ENUM (
   'task_assignment',
   'new_message',
   'invoice_sent',
@@ -2634,9 +2665,11 @@ CREATE TYPE public.notification_type AS ENUM (
   'deliverable_uploaded',
   'comment_added'
 );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $do$;
 
 -- Create notifications table
-CREATE TABLE public.notifications (
+CREATE TABLE IF NOT EXISTS public.notifications (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL,
   agency_id UUID NOT NULL REFERENCES public.agencies(id) ON DELETE CASCADE,
@@ -2651,7 +2684,7 @@ CREATE TABLE public.notifications (
 );
 
 -- Create notification preferences table
-CREATE TABLE public.notification_preferences (
+CREATE TABLE IF NOT EXISTS public.notification_preferences (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL,
   agency_id UUID NOT NULL REFERENCES public.agencies(id) ON DELETE CASCADE,
@@ -2668,36 +2701,36 @@ ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notification_preferences ENABLE ROW LEVEL SECURITY;
 
 -- Create indexes for performance
-CREATE INDEX idx_notifications_user_id ON public.notifications(user_id);
-CREATE INDEX idx_notifications_agency_id ON public.notifications(agency_id);
-CREATE INDEX idx_notifications_is_read ON public.notifications(is_read);
-CREATE INDEX idx_notifications_created_at ON public.notifications(created_at DESC);
-CREATE INDEX idx_notification_preferences_user_agency ON public.notification_preferences(user_id, agency_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON public.notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_agency_id ON public.notifications(agency_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON public.notifications(is_read);
+CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON public.notifications(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_notification_preferences_user_agency ON public.notification_preferences(user_id, agency_id);
 
 -- RLS Policies for notifications
-CREATE POLICY "Users can view their own notifications"
-ON public.notifications FOR SELECT
+DROP POLICY IF EXISTS "Users can view their own notifications" ON public.notifications;
+CREATE POLICY "Users can view their own notifications" ON public.notifications FOR SELECT
 USING (user_id = auth.uid());
 
-CREATE POLICY "Users can update their own notifications"
-ON public.notifications FOR UPDATE
+DROP POLICY IF EXISTS "Users can update their own notifications" ON public.notifications;
+CREATE POLICY "Users can update their own notifications" ON public.notifications FOR UPDATE
 USING (user_id = auth.uid());
 
-CREATE POLICY "Users can delete their own notifications"
-ON public.notifications FOR DELETE
+DROP POLICY IF EXISTS "Users can delete their own notifications" ON public.notifications;
+CREATE POLICY "Users can delete their own notifications" ON public.notifications FOR DELETE
 USING (user_id = auth.uid());
 
 -- RLS Policies for notification_preferences
-CREATE POLICY "Users can view their own preferences"
-ON public.notification_preferences FOR SELECT
+DROP POLICY IF EXISTS "Users can view their own preferences" ON public.notification_preferences;
+CREATE POLICY "Users can view their own preferences" ON public.notification_preferences FOR SELECT
 USING (user_id = auth.uid());
 
-CREATE POLICY "Users can insert their own preferences"
-ON public.notification_preferences FOR INSERT
+DROP POLICY IF EXISTS "Users can insert their own preferences" ON public.notification_preferences;
+CREATE POLICY "Users can insert their own preferences" ON public.notification_preferences FOR INSERT
 WITH CHECK (user_id = auth.uid());
 
-CREATE POLICY "Users can update their own preferences"
-ON public.notification_preferences FOR UPDATE
+DROP POLICY IF EXISTS "Users can update their own preferences" ON public.notification_preferences;
+CREATE POLICY "Users can update their own preferences" ON public.notification_preferences FOR UPDATE
 USING (user_id = auth.uid());
 
 -- Enable realtime for notifications
@@ -2758,7 +2791,8 @@ AS $$
   );
 $$;
 
--- Create trigger function for project editor assignment
+-- DROP TRIGGER IF EXISTS function ON a.id;
+CREATE TRIGGER function for project editor assignment
 CREATE OR REPLACE FUNCTION public.notify_editor_assignment()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -2791,7 +2825,8 @@ BEGIN
 END;
 $$;
 
--- Create trigger for editor assignment
+-- DROP TRIGGER IF EXISTS for ON public.project_editors;
+CREATE TRIGGER for editor assignment
 CREATE TRIGGER on_editor_assigned
 AFTER INSERT ON public.project_editors
 FOR EACH ROW
@@ -2855,7 +2890,8 @@ BEGIN
 END;
 $$;
 
--- Create trigger for project status changes
+-- DROP TRIGGER IF EXISTS for ON public.projects;
+CREATE TRIGGER for project status changes
 CREATE TRIGGER on_project_status_change
 AFTER UPDATE ON public.projects
 FOR EACH ROW
@@ -2900,7 +2936,8 @@ BEGIN
 END;
 $$;
 
--- Create trigger for new proposals
+-- DROP TRIGGER IF EXISTS for ON public.projects;
+CREATE TRIGGER for new proposals
 CREATE TRIGGER on_new_proposal
 AFTER INSERT ON public.projects
 FOR EACH ROW
@@ -2955,17 +2992,20 @@ END;
 $$;
 
 -- Create triggers for invoices
+DROP TRIGGER IF EXISTS on_invoice_created ON public.invoices;
 CREATE TRIGGER on_invoice_created
 AFTER INSERT ON public.invoices
 FOR EACH ROW
 EXECUTE FUNCTION notify_invoice_change();
 
+DROP TRIGGER IF EXISTS on_invoice_updated ON public.invoices;
 CREATE TRIGGER on_invoice_updated
 AFTER UPDATE ON public.invoices
 FOR EACH ROW
 EXECUTE FUNCTION notify_invoice_change();
 
--- Create trigger function for new messages
+-- DROP TRIGGER IF EXISTS function ON p.id;
+CREATE TRIGGER function for new messages
 CREATE OR REPLACE FUNCTION public.notify_new_message()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -3020,13 +3060,16 @@ BEGIN
 END;
 $$;
 
--- Create trigger for new messages
+-- DROP TRIGGER IF EXISTS for ON public.messages;
+CREATE TRIGGER for new messages
 CREATE TRIGGER on_new_message
 AFTER INSERT ON public.messages
 FOR EACH ROW
 EXECUTE FUNCTION notify_new_message();
 
--- Create trigger for updated_at on notification_preferences
+-- DROP TRIGGER IF EXISTS for ON notification_preferences;
+CREATE TRIGGER for updated_at ON notification_preferences
+DROP TRIGGER IF EXISTS update_notification_preferences_updated_at ON public.notification_preferences;
 CREATE TRIGGER update_notification_preferences_updated_at
 BEFORE UPDATE ON public.notification_preferences
 FOR EACH ROW
@@ -3035,7 +3078,7 @@ EXECUTE FUNCTION update_updated_at_column();
 -- >>> 20260204234155_53eb3f7f-91df-49fd-b358-338d00d37acf.sql
 
 -- Create project_containers table for the middle tier (Client > Container > Video)
-CREATE TABLE public.project_containers (
+CREATE TABLE IF NOT EXISTS public.project_containers (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   agency_id UUID NOT NULL REFERENCES public.agencies(id) ON DELETE CASCADE,
   client_id UUID NOT NULL,
@@ -3053,8 +3096,8 @@ ADD COLUMN container_id UUID;
 ALTER TABLE public.project_containers ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for project_containers
-CREATE POLICY "Admins can manage agency project containers"
-ON public.project_containers
+DROP POLICY IF EXISTS "Admins can manage agency project containers" ON public.project_containers;
+CREATE POLICY "Admins can manage agency project containers" ON public.project_containers
 FOR ALL
 USING (
   has_role(auth.uid(), 'admin') 
@@ -3065,13 +3108,13 @@ WITH CHECK (
   AND agency_id = get_user_agency_id(auth.uid())
 );
 
-CREATE POLICY "Clients can view their project containers"
-ON public.project_containers
+DROP POLICY IF EXISTS "Clients can view their project containers" ON public.project_containers;
+CREATE POLICY "Clients can view their project containers" ON public.project_containers
 FOR SELECT
 USING (client_id = auth.uid());
 
-CREATE POLICY "Editors can view containers for assigned projects"
-ON public.project_containers
+DROP POLICY IF EXISTS "Editors can view containers for assigned projects" ON public.project_containers;
+CREATE POLICY "Editors can view containers for assigned projects" ON public.project_containers
 FOR SELECT
 USING (
   EXISTS (
@@ -3088,11 +3131,12 @@ ADD CONSTRAINT fk_projects_container
 FOREIGN KEY (container_id) REFERENCES public.project_containers(id) ON DELETE CASCADE;
 
 -- Create indexes for better query performance
-CREATE INDEX idx_projects_container_id ON public.projects(container_id);
-CREATE INDEX idx_project_containers_client_id ON public.project_containers(client_id);
-CREATE INDEX idx_project_containers_agency_id ON public.project_containers(agency_id);
+CREATE INDEX IF NOT EXISTS idx_projects_container_id ON public.projects(container_id);
+CREATE INDEX IF NOT EXISTS idx_project_containers_client_id ON public.project_containers(client_id);
+CREATE INDEX IF NOT EXISTS idx_project_containers_agency_id ON public.project_containers(agency_id);
 
 -- Trigger for updated_at
+DROP TRIGGER IF EXISTS update_project_containers_updated_at ON public.project_containers;
 CREATE TRIGGER update_project_containers_updated_at
 BEFORE UPDATE ON public.project_containers
 FOR EACH ROW
@@ -3116,7 +3160,7 @@ $$;
 -- >>> 20260207121848_b815c9e2-ff19-467c-b298-e24978b5eba6.sql
 
 -- Create payment_methods table for agency payment profiles
-CREATE TABLE public.payment_methods (
+CREATE TABLE IF NOT EXISTS public.payment_methods (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   agency_id UUID NOT NULL REFERENCES public.agencies(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
@@ -3131,18 +3175,18 @@ CREATE TABLE public.payment_methods (
 ALTER TABLE public.payment_methods ENABLE ROW LEVEL SECURITY;
 
 -- Admins can manage payment methods in their agency
-CREATE POLICY "Admins can manage payment methods"
-  ON public.payment_methods FOR ALL
+DROP POLICY IF EXISTS "Admins can manage payment methods" ON public.payment_methods;
+CREATE POLICY "Admins can manage payment methods" ON public.payment_methods FOR ALL
   USING (has_role(auth.uid(), 'admin'::app_role) AND agency_id = get_user_agency_id(auth.uid()))
   WITH CHECK (has_role(auth.uid(), 'admin'::app_role) AND agency_id = get_user_agency_id(auth.uid()));
 
 -- All agency members can view payment methods (needed for invoice display)
-CREATE POLICY "Agency members can view payment methods"
-  ON public.payment_methods FOR SELECT
+DROP POLICY IF EXISTS "Agency members can view payment methods" ON public.payment_methods;
+CREATE POLICY "Agency members can view payment methods" ON public.payment_methods FOR SELECT
   USING (user_belongs_to_agency(auth.uid(), agency_id));
 
 -- Create invoice_line_items table
-CREATE TABLE public.invoice_line_items (
+CREATE TABLE IF NOT EXISTS public.invoice_line_items (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   invoice_id UUID NOT NULL REFERENCES public.invoices(id) ON DELETE CASCADE,
   description TEXT NOT NULL,
@@ -3157,8 +3201,8 @@ CREATE TABLE public.invoice_line_items (
 ALTER TABLE public.invoice_line_items ENABLE ROW LEVEL SECURITY;
 
 -- Admins can manage line items for their agency invoices
-CREATE POLICY "Admins can manage invoice line items"
-  ON public.invoice_line_items FOR ALL
+DROP POLICY IF EXISTS "Admins can manage invoice line items" ON public.invoice_line_items;
+CREATE POLICY "Admins can manage invoice line items" ON public.invoice_line_items FOR ALL
   USING (
     EXISTS (
       SELECT 1 FROM invoices i
@@ -3177,8 +3221,8 @@ CREATE POLICY "Admins can manage invoice line items"
   );
 
 -- Clients can view line items for their invoices
-CREATE POLICY "Clients can view their invoice line items"
-  ON public.invoice_line_items FOR SELECT
+DROP POLICY IF EXISTS "Clients can view their invoice line items" ON public.invoice_line_items;
+CREATE POLICY "Clients can view their invoice line items" ON public.invoice_line_items FOR SELECT
   USING (
     EXISTS (
       SELECT 1 FROM invoices i
@@ -3214,7 +3258,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
--- Create trigger for updated_at on payment_methods
+-- DROP TRIGGER IF EXISTS for ON payment_methods;
+CREATE TRIGGER for updated_at ON payment_methods
+DROP TRIGGER IF EXISTS update_payment_methods_updated_at ON public.payment_methods;
 CREATE TRIGGER update_payment_methods_updated_at
   BEFORE UPDATE ON public.payment_methods
   FOR EACH ROW
@@ -3318,7 +3364,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
--- Create trigger for video approval notifications
+-- DROP TRIGGER IF EXISTS for ON public.projects;
+CREATE TRIGGER for video approval notifications
+DROP TRIGGER IF EXISTS trigger_video_approval_notification ON public.projects;
 DROP TRIGGER IF EXISTS trigger_video_approval_notification ON public.projects;
 CREATE TRIGGER trigger_video_approval_notification
   AFTER UPDATE ON public.projects
@@ -3327,8 +3375,8 @@ CREATE TRIGGER trigger_video_approval_notification
 
 -- Update RLS policy for projects to allow clients to update status from review to done or in_progress
 DROP POLICY IF EXISTS "Clients can approve their review videos" ON public.projects;
-CREATE POLICY "Clients can approve their review videos"
-  ON public.projects
+DROP POLICY IF EXISTS "Clients can approve their review videos" ON public.projects;
+CREATE POLICY "Clients can approve their review videos" ON public.projects
   FOR UPDATE
   USING (
     auth.uid() = client_id 
@@ -3394,7 +3442,9 @@ BEGIN
 END;
 $function$;
 
--- Create trigger for channel creation on approval
+-- DROP TRIGGER IF EXISTS for ON approval;
+CREATE TRIGGER for channel creation ON approval
+DROP TRIGGER IF EXISTS trigger_create_channel_on_approval ON public.projects;
 CREATE TRIGGER trigger_create_channel_on_approval
   AFTER UPDATE ON public.projects
   FOR EACH ROW
@@ -3444,6 +3494,7 @@ END;
 $function$;
 
 -- Recreate the insert trigger for new projects
+DROP TRIGGER IF EXISTS trigger_create_project_channel ON public.projects;
 CREATE TRIGGER trigger_create_project_channel
   AFTER INSERT ON public.projects
   FOR EACH ROW
@@ -3452,8 +3503,8 @@ CREATE TRIGGER trigger_create_project_channel
 -- >>> 20260208212928_85db4360-d539-4033-800b-d0fe5faaa624.sql
 
 -- Add RLS policy for admins to delete profiles of users in their agency
-CREATE POLICY "Admins can delete profiles in their agency"
-ON public.profiles
+DROP POLICY IF EXISTS "Admins can delete profiles in their agency" ON public.profiles;
+CREATE POLICY "Admins can delete profiles in their agency" ON public.profiles
 FOR DELETE
 TO authenticated
 USING (
@@ -3492,7 +3543,10 @@ END $$;
 -- >>> 20260209105007_53c44969-cdd1-428e-bf80-4de0f0850553.sql
 
 -- Create employment_type enum
-CREATE TYPE public.employment_type AS ENUM ('freelance', 'salaried');
+DO $do$ BEGIN
+  CREATE TYPE public.employment_type AS ENUM ('freelance', 'salaried');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $do$;
 
 -- Add employment columns to profiles table
 ALTER TABLE public.profiles 
@@ -3507,7 +3561,7 @@ ADD COLUMN IF NOT EXISTS accumulated_bonus NUMERIC NOT NULL DEFAULT 0;
 ALTER TABLE public.messages ADD COLUMN IF NOT EXISTS parent_id UUID REFERENCES public.messages(id) ON DELETE SET NULL;
 
 -- Create message_reactions table
-CREATE TABLE public.message_reactions (
+CREATE TABLE IF NOT EXISTS public.message_reactions (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   message_id UUID NOT NULL REFERENCES public.messages(id) ON DELETE CASCADE,
   user_id UUID NOT NULL,
@@ -3520,8 +3574,8 @@ CREATE TABLE public.message_reactions (
 ALTER TABLE public.message_reactions ENABLE ROW LEVEL SECURITY;
 
 -- Users can view reactions in their channels
-CREATE POLICY "Users can view reactions in their channels"
-ON public.message_reactions
+DROP POLICY IF EXISTS "Users can view reactions in their channels" ON public.message_reactions;
+CREATE POLICY "Users can view reactions in their channels" ON public.message_reactions
 FOR SELECT
 USING (
   EXISTS (
@@ -3532,8 +3586,8 @@ USING (
 );
 
 -- Users can add reactions to messages in their channels
-CREATE POLICY "Users can add reactions"
-ON public.message_reactions
+DROP POLICY IF EXISTS "Users can add reactions" ON public.message_reactions;
+CREATE POLICY "Users can add reactions" ON public.message_reactions
 FOR INSERT
 WITH CHECK (
   user_id = auth.uid() AND
@@ -3545,22 +3599,22 @@ WITH CHECK (
 );
 
 -- Users can remove their own reactions
-CREATE POLICY "Users can remove their own reactions"
-ON public.message_reactions
+DROP POLICY IF EXISTS "Users can remove their own reactions" ON public.message_reactions;
+CREATE POLICY "Users can remove their own reactions" ON public.message_reactions
 FOR DELETE
 USING (user_id = auth.uid());
 
 -- Enable realtime for reactions
 ALTER PUBLICATION supabase_realtime ADD TABLE public.message_reactions;
 
--- Create index for performance
-CREATE INDEX idx_message_reactions_message_id ON public.message_reactions(message_id);
-CREATE INDEX idx_messages_parent_id ON public.messages(parent_id);
+-- CREATE INDEX IF NOT EXISTS for performance
+CREATE INDEX IF NOT EXISTS idx_message_reactions_message_id ON public.message_reactions(message_id);
+CREATE INDEX IF NOT EXISTS idx_messages_parent_id ON public.messages(parent_id);
 
 -- >>> 20260210102859_9536d5e2-2afe-4b53-ad73-fa09a7588d06.sql
 
-CREATE POLICY "Admins can update profiles in their agency"
-ON public.profiles
+DROP POLICY IF EXISTS "Admins can update profiles in their agency" ON public.profiles;
+CREATE POLICY "Admins can update profiles in their agency" ON public.profiles
 FOR UPDATE
 USING (
   has_role(auth.uid(), 'admin'::app_role)
@@ -3578,7 +3632,7 @@ USING (
 
 
 -- Payroll payments table to track paid/unpaid status per month
-CREATE TABLE public.payroll_payments (
+CREATE TABLE IF NOT EXISTS public.payroll_payments (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   agency_id UUID NOT NULL REFERENCES public.agencies(id) ON DELETE CASCADE,
   editor_id UUID NOT NULL,
@@ -3598,23 +3652,24 @@ CREATE TABLE public.payroll_payments (
 
 ALTER TABLE public.payroll_payments ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Admins can manage payroll payments"
-ON public.payroll_payments FOR ALL
+DROP POLICY IF EXISTS "Admins can manage payroll payments" ON public.payroll_payments;
+CREATE POLICY "Admins can manage payroll payments" ON public.payroll_payments FOR ALL
 USING (
   has_role(auth.uid(), 'admin'::app_role)
   AND user_belongs_to_agency(auth.uid(), agency_id)
 );
 
-CREATE POLICY "Editors can view their own payments"
-ON public.payroll_payments FOR SELECT
+DROP POLICY IF EXISTS "Editors can view their own payments" ON public.payroll_payments;
+CREATE POLICY "Editors can view their own payments" ON public.payroll_payments FOR SELECT
 USING (auth.uid() = editor_id);
 
+DROP TRIGGER IF EXISTS update_payroll_payments_updated_at ON public.payroll_payments;
 CREATE TRIGGER update_payroll_payments_updated_at
 BEFORE UPDATE ON public.payroll_payments
 FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 -- Company owes / balance tracking (security funds, advances, etc.)
-CREATE TABLE public.editor_balances (
+CREATE TABLE IF NOT EXISTS public.editor_balances (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   agency_id UUID NOT NULL REFERENCES public.agencies(id) ON DELETE CASCADE,
   editor_id UUID NOT NULL,
@@ -3628,25 +3683,26 @@ CREATE TABLE public.editor_balances (
 
 ALTER TABLE public.editor_balances ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Admins can manage editor balances"
-ON public.editor_balances FOR ALL
+DROP POLICY IF EXISTS "Admins can manage editor balances" ON public.editor_balances;
+CREATE POLICY "Admins can manage editor balances" ON public.editor_balances FOR ALL
 USING (
   has_role(auth.uid(), 'admin'::app_role)
   AND user_belongs_to_agency(auth.uid(), agency_id)
 );
 
-CREATE POLICY "Editors can view their own balances"
-ON public.editor_balances FOR SELECT
+DROP POLICY IF EXISTS "Editors can view their own balances" ON public.editor_balances;
+CREATE POLICY "Editors can view their own balances" ON public.editor_balances FOR SELECT
 USING (auth.uid() = editor_id);
 
+DROP TRIGGER IF EXISTS update_editor_balances_updated_at ON public.editor_balances;
 CREATE TRIGGER update_editor_balances_updated_at
 BEFORE UPDATE ON public.editor_balances
 FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 -- >>> 20260210105213_22ac5da3-e433-41c0-97d0-0673cb02a92c.sql
 
-CREATE POLICY "Clients can create video requests"
-ON public.projects
+DROP POLICY IF EXISTS "Clients can create video requests" ON public.projects;
+CREATE POLICY "Clients can create video requests" ON public.projects
 FOR INSERT
 WITH CHECK (
   has_role(auth.uid(), 'client'::app_role)
@@ -3712,6 +3768,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS trigger_create_container_channel ON public.project_containers;
 CREATE TRIGGER trigger_create_container_channel
 AFTER INSERT ON public.project_containers
 FOR EACH ROW EXECUTE FUNCTION public.create_container_channel();
@@ -3750,6 +3807,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS trigger_add_editor_to_container_channel ON public.project_editors;
 CREATE TRIGGER trigger_add_editor_to_container_channel
 AFTER INSERT ON public.project_editors
 FOR EACH ROW EXECUTE FUNCTION public.add_editor_to_container_channel();
@@ -3856,8 +3914,8 @@ $function$;
 -- >>> 20260213172225_64c89adc-8425-40ce-a5ff-103ab3735c17.sql
 
 -- Allow admins to upload agency logos to the avatars bucket under agency-logos/ path
-CREATE POLICY "Admins can upload agency logos"
-ON storage.objects
+DROP POLICY IF EXISTS "Admins can upload agency logos" ON storage.objects;
+CREATE POLICY "Admins can upload agency logos" ON storage.objects
 FOR INSERT
 WITH CHECK (
   bucket_id = 'avatars'
@@ -3865,8 +3923,8 @@ WITH CHECK (
   AND has_role(auth.uid(), 'admin'::app_role)
 );
 
-CREATE POLICY "Admins can update agency logos"
-ON storage.objects
+DROP POLICY IF EXISTS "Admins can update agency logos" ON storage.objects;
+CREATE POLICY "Admins can update agency logos" ON storage.objects
 FOR UPDATE
 USING (
   bucket_id = 'avatars'
@@ -3874,8 +3932,8 @@ USING (
   AND has_role(auth.uid(), 'admin'::app_role)
 );
 
-CREATE POLICY "Admins can delete agency logos"
-ON storage.objects
+DROP POLICY IF EXISTS "Admins can delete agency logos" ON storage.objects;
+CREATE POLICY "Admins can delete agency logos" ON storage.objects
 FOR DELETE
 USING (
   bucket_id = 'avatars'
@@ -3907,7 +3965,7 @@ $function$;
 
 
 -- Create push_subscriptions table to store Web Push subscriptions
-CREATE TABLE public.push_subscriptions (
+CREATE TABLE IF NOT EXISTS public.push_subscriptions (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL,
   endpoint TEXT NOT NULL,
@@ -3922,20 +3980,20 @@ CREATE TABLE public.push_subscriptions (
 ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;
 
 -- Users can manage their own subscriptions
-CREATE POLICY "Users can view their own subscriptions"
-  ON public.push_subscriptions FOR SELECT
+DROP POLICY IF EXISTS "Users can view their own subscriptions" ON public.push_subscriptions;
+CREATE POLICY "Users can view their own subscriptions" ON public.push_subscriptions FOR SELECT
   USING (user_id = auth.uid());
 
-CREATE POLICY "Users can insert their own subscriptions"
-  ON public.push_subscriptions FOR INSERT
+DROP POLICY IF EXISTS "Users can insert their own subscriptions" ON public.push_subscriptions;
+CREATE POLICY "Users can insert their own subscriptions" ON public.push_subscriptions FOR INSERT
   WITH CHECK (user_id = auth.uid());
 
-CREATE POLICY "Users can update their own subscriptions"
-  ON public.push_subscriptions FOR UPDATE
+DROP POLICY IF EXISTS "Users can update their own subscriptions" ON public.push_subscriptions;
+CREATE POLICY "Users can update their own subscriptions" ON public.push_subscriptions FOR UPDATE
   USING (user_id = auth.uid());
 
-CREATE POLICY "Users can delete their own subscriptions"
-  ON public.push_subscriptions FOR DELETE
+DROP POLICY IF EXISTS "Users can delete their own subscriptions" ON public.push_subscriptions;
+CREATE POLICY "Users can delete their own subscriptions" ON public.push_subscriptions FOR DELETE
   USING (user_id = auth.uid());
 
 -- Enable realtime for notifications table (needed for push trigger)
@@ -3973,7 +4031,9 @@ BEGIN
 END;
 $function$;
 
--- Create trigger to send web push on notification insert
+-- DROP TRIGGER IF EXISTS to ON notification;
+CREATE TRIGGER to send web push ON notification insert
+DROP TRIGGER IF EXISTS on_notification_send_web_push ON public.notifications;
 CREATE TRIGGER on_notification_send_web_push
   AFTER INSERT ON public.notifications
   FOR EACH ROW
@@ -3990,15 +4050,15 @@ DROP FUNCTION IF EXISTS public.trigger_web_push_notification();
 
 
 -- Allow users to update their own messages (for editing)
-CREATE POLICY "Users can update their own messages"
-ON public.messages
+DROP POLICY IF EXISTS "Users can update their own messages" ON public.messages;
+CREATE POLICY "Users can update their own messages" ON public.messages
 FOR UPDATE
 USING (sender_id = auth.uid())
 WITH CHECK (sender_id = auth.uid());
 
 -- Allow users to delete their own messages (hard delete)
-CREATE POLICY "Users can delete their own messages"
-ON public.messages
+DROP POLICY IF EXISTS "Users can delete their own messages" ON public.messages;
+CREATE POLICY "Users can delete their own messages" ON public.messages
 FOR DELETE
 USING (sender_id = auth.uid());
 
@@ -4012,8 +4072,8 @@ USING (sender_id = auth.uid());
 
 -- Allow deleting read receipts for messages owned by the deleter
 -- This is needed for cleanup when a user deletes their own message
-CREATE POLICY "Users can delete read receipts for their messages"
-ON public.message_read_receipts
+DROP POLICY IF EXISTS "Users can delete read receipts for their messages" ON public.message_read_receipts;
+CREATE POLICY "Users can delete read receipts for their messages" ON public.message_read_receipts
 FOR DELETE
 USING (
   EXISTS (
@@ -4037,21 +4097,21 @@ VALUES ('chat-attachments', 'chat-attachments', true)
 ON CONFLICT (id) DO NOTHING;
 
 -- Allow authenticated users to upload to chat-attachments
-CREATE POLICY "Authenticated users can upload chat attachments"
-ON storage.objects
+DROP POLICY IF EXISTS "Authenticated users can upload chat attachments" ON storage.objects;
+CREATE POLICY "Authenticated users can upload chat attachments" ON storage.objects
 FOR INSERT
 TO authenticated
 WITH CHECK (bucket_id = 'chat-attachments');
 
 -- Allow public read access to chat attachments
-CREATE POLICY "Public read access to chat attachments"
-ON storage.objects
+DROP POLICY IF EXISTS "Public read access to chat attachments" ON storage.objects;
+CREATE POLICY "Public read access to chat attachments" ON storage.objects
 FOR SELECT
 USING (bucket_id = 'chat-attachments');
 
 -- Allow users to delete their own chat attachments
-CREATE POLICY "Users can delete own chat attachments"
-ON storage.objects
+DROP POLICY IF EXISTS "Users can delete own chat attachments" ON storage.objects;
+CREATE POLICY "Users can delete own chat attachments" ON storage.objects
 FOR DELETE
 TO authenticated
 USING (bucket_id = 'chat-attachments' AND auth.uid()::text = (storage.foldername(name))[1]);
@@ -4108,7 +4168,7 @@ AS $$
 $$;
 
 -- 3. system_logs table
-CREATE TABLE public.system_logs (
+CREATE TABLE IF NOT EXISTS public.system_logs (
   id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   event_type text NOT NULL,
   message text NOT NULL,
@@ -4119,8 +4179,8 @@ CREATE TABLE public.system_logs (
 ALTER TABLE public.system_logs ENABLE ROW LEVEL SECURITY;
 
 -- Only super admin can read
-CREATE POLICY "Super admin can read system logs"
-ON public.system_logs
+DROP POLICY IF EXISTS "Super admin can read system logs" ON public.system_logs;
+CREATE POLICY "Super admin can read system logs" ON public.system_logs
 FOR SELECT
 USING (public.is_super_admin(auth.uid()));
 
@@ -4162,6 +4222,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS trg_log_new_agency ON public.agencies;
 CREATE TRIGGER trg_log_new_agency
   AFTER INSERT ON public.agencies
   FOR EACH ROW
@@ -4194,6 +4255,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS trg_log_subscription_change ON public.agencies;
 CREATE TRIGGER trg_log_subscription_change
   AFTER UPDATE ON public.agencies
   FOR EACH ROW
@@ -4216,6 +4278,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS trg_log_new_user_signup ON public.profiles;
 CREATE TRIGGER trg_log_new_user_signup
   AFTER INSERT ON public.profiles
   FOR EACH ROW
@@ -4225,7 +4288,7 @@ CREATE TRIGGER trg_log_new_user_signup
 
 
 -- Public review links table
-CREATE TABLE public.public_review_links (
+CREATE TABLE IF NOT EXISTS public.public_review_links (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   deliverable_id uuid NOT NULL REFERENCES public.deliverables(id) ON DELETE CASCADE,
   token text NOT NULL UNIQUE DEFAULT encode(gen_random_bytes(16), 'hex'),
@@ -4238,7 +4301,7 @@ CREATE TABLE public.public_review_links (
 );
 
 -- Public review comments table (no auth required)
-CREATE TABLE public.public_review_comments (
+CREATE TABLE IF NOT EXISTS public.public_review_comments (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   review_link_id uuid NOT NULL REFERENCES public.public_review_links(id) ON DELETE CASCADE,
   reviewer_name text NOT NULL DEFAULT 'Anonymous',
@@ -4252,8 +4315,8 @@ ALTER TABLE public.public_review_links ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.public_review_comments ENABLE ROW LEVEL SECURITY;
 
 -- RLS for review links: only authenticated users who belong to the project's agency
-CREATE POLICY "Users can view review links for their deliverables"
-  ON public.public_review_links FOR SELECT
+DROP POLICY IF EXISTS "Users can view review links for their deliverables" ON public.public_review_links;
+CREATE POLICY "Users can view review links for their deliverables" ON public.public_review_links FOR SELECT
   USING (
     EXISTS (
       SELECT 1 FROM public.deliverables d
@@ -4267,8 +4330,8 @@ CREATE POLICY "Users can view review links for their deliverables"
     )
   );
 
-CREATE POLICY "Admins and editors can create review links"
-  ON public.public_review_links FOR INSERT
+DROP POLICY IF EXISTS "Admins and editors can create review links" ON public.public_review_links;
+CREATE POLICY "Admins and editors can create review links" ON public.public_review_links FOR INSERT
   WITH CHECK (
     created_by = auth.uid() AND
     EXISTS (
@@ -4282,8 +4345,8 @@ CREATE POLICY "Admins and editors can create review links"
     )
   );
 
-CREATE POLICY "Admins and editors can update review links"
-  ON public.public_review_links FOR UPDATE
+DROP POLICY IF EXISTS "Admins and editors can update review links" ON public.public_review_links;
+CREATE POLICY "Admins and editors can update review links" ON public.public_review_links FOR UPDATE
   USING (
     EXISTS (
       SELECT 1 FROM public.deliverables d
@@ -4296,8 +4359,8 @@ CREATE POLICY "Admins and editors can update review links"
     )
   );
 
-CREATE POLICY "Admins and editors can delete review links"
-  ON public.public_review_links FOR DELETE
+DROP POLICY IF EXISTS "Admins and editors can delete review links" ON public.public_review_links;
+CREATE POLICY "Admins and editors can delete review links" ON public.public_review_links FOR DELETE
   USING (
     EXISTS (
       SELECT 1 FROM public.deliverables d
@@ -4311,8 +4374,8 @@ CREATE POLICY "Admins and editors can delete review links"
   );
 
 -- RLS for review comments: authenticated users can view comments on their deliverables
-CREATE POLICY "Users can view public review comments for their deliverables"
-  ON public.public_review_comments FOR SELECT
+DROP POLICY IF EXISTS "Users can view public review comments for their deliverables" ON public.public_review_comments;
+CREATE POLICY "Users can view public review comments for their deliverables" ON public.public_review_comments FOR SELECT
   USING (
     EXISTS (
       SELECT 1 FROM public.public_review_links prl
@@ -4331,6 +4394,7 @@ CREATE POLICY "Users can view public review comments for their deliverables"
 ALTER PUBLICATION supabase_realtime ADD TABLE public.public_review_comments;
 
 -- Trigger for updated_at on review links
+DROP TRIGGER IF EXISTS update_public_review_links_updated_at ON public.public_review_links;
 CREATE TRIGGER update_public_review_links_updated_at
   BEFORE UPDATE ON public.public_review_links
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -4346,7 +4410,7 @@ ADD COLUMN IF NOT EXISTS allow_download boolean NOT NULL DEFAULT false;
 -- >>> 20260306151123_6ea41d05-e185-48c7-bbb8-dd4af75cdbb0.sql
 
 
-CREATE TABLE public.bug_reports (
+CREATE TABLE IF NOT EXISTS public.bug_reports (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL,
   agency_id UUID REFERENCES public.agencies(id) ON DELETE CASCADE,
@@ -4362,31 +4426,31 @@ CREATE TABLE public.bug_reports (
 ALTER TABLE public.bug_reports ENABLE ROW LEVEL SECURITY;
 
 -- Users can insert their own reports
-CREATE POLICY "Users can create bug reports"
-ON public.bug_reports FOR INSERT TO authenticated
+DROP POLICY IF EXISTS "Users can create bug reports" ON public.bug_reports;
+CREATE POLICY "Users can create bug reports" ON public.bug_reports FOR INSERT TO authenticated
 WITH CHECK (auth.uid() = user_id);
 
 -- Users can view their own reports
-CREATE POLICY "Users can view own bug reports"
-ON public.bug_reports FOR SELECT TO authenticated
+DROP POLICY IF EXISTS "Users can view own bug reports" ON public.bug_reports;
+CREATE POLICY "Users can view own bug reports" ON public.bug_reports FOR SELECT TO authenticated
 USING (auth.uid() = user_id);
 
 -- Super admin can view all
-CREATE POLICY "Super admin can view all bug reports"
-ON public.bug_reports FOR SELECT TO authenticated
+DROP POLICY IF EXISTS "Super admin can view all bug reports" ON public.bug_reports;
+CREATE POLICY "Super admin can view all bug reports" ON public.bug_reports FOR SELECT TO authenticated
 USING (public.is_super_admin(auth.uid()));
 
 -- Super admin can update all
-CREATE POLICY "Super admin can update bug reports"
-ON public.bug_reports FOR UPDATE TO authenticated
+DROP POLICY IF EXISTS "Super admin can update bug reports" ON public.bug_reports;
+CREATE POLICY "Super admin can update bug reports" ON public.bug_reports FOR UPDATE TO authenticated
 USING (public.is_super_admin(auth.uid()));
 
 -- >>> 20260307043646_cbccbcef-6b3a-493a-94eb-a69bed90433f.sql
 
 
 -- Allow admins/editors to delete deliverable comments
-CREATE POLICY "Admins and editors can delete comments"
-ON public.deliverable_comments
+DROP POLICY IF EXISTS "Admins and editors can delete comments" ON public.deliverable_comments;
+CREATE POLICY "Admins and editors can delete comments" ON public.deliverable_comments
 FOR DELETE
 TO authenticated
 USING (
@@ -4404,8 +4468,8 @@ USING (
 );
 
 -- Allow admins/editors to update public_review_comments (for resolving)
-CREATE POLICY "Admins and editors can update public review comments"
-ON public.public_review_comments
+DROP POLICY IF EXISTS "Admins and editors can update public review comments" ON public.public_review_comments;
+CREATE POLICY "Admins and editors can update public review comments" ON public.public_review_comments
 FOR UPDATE
 TO authenticated
 USING (
@@ -4432,7 +4496,7 @@ ADD COLUMN IF NOT EXISTS resolved_at timestamptz DEFAULT NULL;
 
 
 ALTER TABLE public.deliverable_comments ADD COLUMN parent_id UUID REFERENCES public.deliverable_comments(id) ON DELETE CASCADE DEFAULT NULL;
-CREATE INDEX idx_deliverable_comments_parent_id ON public.deliverable_comments(parent_id);
+CREATE INDEX IF NOT EXISTS idx_deliverable_comments_parent_id ON public.deliverable_comments(parent_id);
 
 -- >>> 20260307050751_6dc78227-293f-47ee-8024-4cd8ae3b93e5.sql
 
@@ -4464,15 +4528,15 @@ CREATE TABLE IF NOT EXISTS public.agency_restrictions (
 
 ALTER TABLE public.agency_restrictions ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Super admin can manage restrictions"
-ON public.agency_restrictions
+DROP POLICY IF EXISTS "Super admin can manage restrictions" ON public.agency_restrictions;
+CREATE POLICY "Super admin can manage restrictions" ON public.agency_restrictions
 FOR ALL
 TO authenticated
 USING (is_super_admin(auth.uid()))
 WITH CHECK (is_super_admin(auth.uid()));
 
-CREATE POLICY "Agency members can view their restrictions"
-ON public.agency_restrictions
+DROP POLICY IF EXISTS "Agency members can view their restrictions" ON public.agency_restrictions;
+CREATE POLICY "Agency members can view their restrictions" ON public.agency_restrictions
 FOR SELECT
 TO authenticated
 USING (user_belongs_to_agency(auth.uid(), agency_id) AND is_active = true);
@@ -4488,8 +4552,8 @@ CREATE TABLE IF NOT EXISTS public.marketing_emails_log (
 
 ALTER TABLE public.marketing_emails_log ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Super admin can view marketing email logs"
-ON public.marketing_emails_log
+DROP POLICY IF EXISTS "Super admin can view marketing email logs" ON public.marketing_emails_log;
+CREATE POLICY "Super admin can view marketing email logs" ON public.marketing_emails_log
 FOR ALL
 TO authenticated
 USING (is_super_admin(auth.uid()))
@@ -4499,7 +4563,7 @@ WITH CHECK (is_super_admin(auth.uid()));
 
 
 -- Create daily_logs table (unified attendance + task logs)
-CREATE TABLE public.daily_logs (
+CREATE TABLE IF NOT EXISTS public.daily_logs (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   editor_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   agency_id uuid NOT NULL REFERENCES public.agencies(id) ON DELETE CASCADE,
@@ -4513,7 +4577,7 @@ CREATE TABLE public.daily_logs (
 );
 
 -- Create leave_requests table
-CREATE TABLE public.leave_requests (
+CREATE TABLE IF NOT EXISTS public.leave_requests (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   editor_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   agency_id uuid NOT NULL REFERENCES public.agencies(id) ON DELETE CASCADE,
@@ -4533,46 +4597,46 @@ ALTER TABLE public.daily_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.leave_requests ENABLE ROW LEVEL SECURITY;
 
 -- daily_logs RLS: Editors can insert/select their own
-CREATE POLICY "Editors can insert their own daily logs"
-ON public.daily_logs FOR INSERT TO authenticated
+DROP POLICY IF EXISTS "Editors can insert their own daily logs" ON public.daily_logs;
+CREATE POLICY "Editors can insert their own daily logs" ON public.daily_logs FOR INSERT TO authenticated
 WITH CHECK (editor_id = auth.uid());
 
-CREATE POLICY "Editors can update their own daily logs"
-ON public.daily_logs FOR UPDATE TO authenticated
+DROP POLICY IF EXISTS "Editors can update their own daily logs" ON public.daily_logs;
+CREATE POLICY "Editors can update their own daily logs" ON public.daily_logs FOR UPDATE TO authenticated
 USING (editor_id = auth.uid())
 WITH CHECK (editor_id = auth.uid());
 
-CREATE POLICY "Editors can view their own daily logs"
-ON public.daily_logs FOR SELECT TO authenticated
+DROP POLICY IF EXISTS "Editors can view their own daily logs" ON public.daily_logs;
+CREATE POLICY "Editors can view their own daily logs" ON public.daily_logs FOR SELECT TO authenticated
 USING (editor_id = auth.uid());
 
 -- daily_logs RLS: Admins can view all in their agency
-CREATE POLICY "Admins can view agency daily logs"
-ON public.daily_logs FOR SELECT TO authenticated
+DROP POLICY IF EXISTS "Admins can view agency daily logs" ON public.daily_logs;
+CREATE POLICY "Admins can view agency daily logs" ON public.daily_logs FOR SELECT TO authenticated
 USING (has_role(auth.uid(), 'admin') AND user_belongs_to_agency(auth.uid(), agency_id));
 
 -- leave_requests RLS: Editors can insert/select their own
-CREATE POLICY "Editors can insert their own leave requests"
-ON public.leave_requests FOR INSERT TO authenticated
+DROP POLICY IF EXISTS "Editors can insert their own leave requests" ON public.leave_requests;
+CREATE POLICY "Editors can insert their own leave requests" ON public.leave_requests FOR INSERT TO authenticated
 WITH CHECK (editor_id = auth.uid());
 
-CREATE POLICY "Editors can view their own leave requests"
-ON public.leave_requests FOR SELECT TO authenticated
+DROP POLICY IF EXISTS "Editors can view their own leave requests" ON public.leave_requests;
+CREATE POLICY "Editors can view their own leave requests" ON public.leave_requests FOR SELECT TO authenticated
 USING (editor_id = auth.uid());
 
 -- leave_requests RLS: Admins can view and update in their agency
-CREATE POLICY "Admins can view agency leave requests"
-ON public.leave_requests FOR SELECT TO authenticated
+DROP POLICY IF EXISTS "Admins can view agency leave requests" ON public.leave_requests;
+CREATE POLICY "Admins can view agency leave requests" ON public.leave_requests FOR SELECT TO authenticated
 USING (has_role(auth.uid(), 'admin') AND user_belongs_to_agency(auth.uid(), agency_id));
 
-CREATE POLICY "Admins can update agency leave requests"
-ON public.leave_requests FOR UPDATE TO authenticated
+DROP POLICY IF EXISTS "Admins can update agency leave requests" ON public.leave_requests;
+CREATE POLICY "Admins can update agency leave requests" ON public.leave_requests FOR UPDATE TO authenticated
 USING (has_role(auth.uid(), 'admin') AND user_belongs_to_agency(auth.uid(), agency_id));
 
 -- >>> 20260310170522_6ab4979c-ca94-459d-8df8-6a219e8c6f15.sql
 
 
-CREATE TABLE public.agency_work_schedule (
+CREATE TABLE IF NOT EXISTS public.agency_work_schedule (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   agency_id uuid NOT NULL REFERENCES public.agencies(id) ON DELETE CASCADE,
   working_days integer[] NOT NULL DEFAULT ARRAY[1,2,3,4,5],
@@ -4586,20 +4650,21 @@ CREATE TABLE public.agency_work_schedule (
 -- RLS
 ALTER TABLE public.agency_work_schedule ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Admins can manage their agency work schedule"
-ON public.agency_work_schedule
+DROP POLICY IF EXISTS "Admins can manage their agency work schedule" ON public.agency_work_schedule;
+CREATE POLICY "Admins can manage their agency work schedule" ON public.agency_work_schedule
 FOR ALL
 TO authenticated
 USING (has_role(auth.uid(), 'admin'::app_role) AND user_belongs_to_agency(auth.uid(), agency_id))
 WITH CHECK (has_role(auth.uid(), 'admin'::app_role) AND user_belongs_to_agency(auth.uid(), agency_id));
 
-CREATE POLICY "Agency members can view work schedule"
-ON public.agency_work_schedule
+DROP POLICY IF EXISTS "Agency members can view work schedule" ON public.agency_work_schedule;
+CREATE POLICY "Agency members can view work schedule" ON public.agency_work_schedule
 FOR SELECT
 TO authenticated
 USING (user_belongs_to_agency(auth.uid(), agency_id));
 
 -- Updated at trigger
+DROP TRIGGER IF EXISTS update_agency_work_schedule_updated_at ON public.agency_work_schedule;
 CREATE TRIGGER update_agency_work_schedule_updated_at
   BEFORE UPDATE ON public.agency_work_schedule
   FOR EACH ROW
@@ -4624,8 +4689,8 @@ ALTER TABLE public.deliverables
 -- Update RLS: split the old SELECT policy into role-specific ones
 DROP POLICY IF EXISTS "Users can view deliverables on their projects" ON public.deliverables;
 
-CREATE POLICY "Admins and editors can view all deliverables"
-ON public.deliverables FOR SELECT
+DROP POLICY IF EXISTS "Admins and editors can view all deliverables" ON public.deliverables;
+CREATE POLICY "Admins and editors can view all deliverables" ON public.deliverables FOR SELECT
 USING (
   EXISTS (
     SELECT 1 FROM projects p
@@ -4637,8 +4702,8 @@ USING (
   )
 );
 
-CREATE POLICY "Clients can view deliverables except quality_check"
-ON public.deliverables FOR SELECT
+DROP POLICY IF EXISTS "Clients can view deliverables except quality_check" ON public.deliverables;
+CREATE POLICY "Clients can view deliverables except quality_check" ON public.deliverables FOR SELECT
 USING (
   EXISTS (
     SELECT 1 FROM projects p
@@ -4649,8 +4714,8 @@ USING (
 );
 
 -- Admin UPDATE policy for lock/unlock
-CREATE POLICY "Admins can update deliverables"
-ON public.deliverables FOR UPDATE
+DROP POLICY IF EXISTS "Admins can update deliverables" ON public.deliverables;
+CREATE POLICY "Admins can update deliverables" ON public.deliverables FOR UPDATE
 USING (
   EXISTS (
     SELECT 1 FROM projects p
@@ -4661,8 +4726,8 @@ USING (
 );
 
 -- Admin DELETE policy
-CREATE POLICY "Admins can delete deliverables"
-ON public.deliverables FOR DELETE
+DROP POLICY IF EXISTS "Admins can delete deliverables" ON public.deliverables;
+CREATE POLICY "Admins can delete deliverables" ON public.deliverables FOR DELETE
 USING (
   EXISTS (
     SELECT 1 FROM projects p
@@ -4689,6 +4754,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS trg_auto_unlock_on_payment ON public.invoices;
 CREATE TRIGGER trg_auto_unlock_on_payment
 AFTER UPDATE ON public.invoices
 FOR EACH ROW
@@ -4715,6 +4781,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS trg_auto_move_to_quality_check ON public.deliverables;
 CREATE TRIGGER trg_auto_move_to_quality_check
 AFTER INSERT ON public.deliverables
 FOR EACH ROW
@@ -4722,7 +4789,7 @@ EXECUTE FUNCTION public.auto_move_to_quality_check();
 
 -- >>> 20260503125345_5755ac2c-e7d1-4143-ba19-ae7e1f70e98f.sql
 
-CREATE TABLE public.subscription_cancellation_logs (
+CREATE TABLE IF NOT EXISTS public.subscription_cancellation_logs (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   agency_id UUID NOT NULL,
   user_id UUID NOT NULL,
@@ -4734,18 +4801,18 @@ CREATE TABLE public.subscription_cancellation_logs (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_subscription_cancellation_logs_agency ON public.subscription_cancellation_logs(agency_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_subscription_cancellation_logs_agency ON public.subscription_cancellation_logs(agency_id, created_at DESC);
 
 ALTER TABLE public.subscription_cancellation_logs ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Admins can view their agency cancellation logs"
-ON public.subscription_cancellation_logs
+DROP POLICY IF EXISTS "Admins can view their agency cancellation logs" ON public.subscription_cancellation_logs;
+CREATE POLICY "Admins can view their agency cancellation logs" ON public.subscription_cancellation_logs
 FOR SELECT
 TO authenticated
 USING (has_role(auth.uid(), 'admin'::app_role) AND agency_id = get_user_agency_id(auth.uid()));
 
-CREATE POLICY "Admins can insert cancellation logs for their agency"
-ON public.subscription_cancellation_logs
+DROP POLICY IF EXISTS "Admins can insert cancellation logs for their agency" ON public.subscription_cancellation_logs;
+CREATE POLICY "Admins can insert cancellation logs for their agency" ON public.subscription_cancellation_logs
 FOR INSERT
 TO authenticated
 WITH CHECK (
@@ -4754,8 +4821,8 @@ WITH CHECK (
   AND user_id = auth.uid()
 );
 
-CREATE POLICY "Super admin can view all cancellation logs"
-ON public.subscription_cancellation_logs
+DROP POLICY IF EXISTS "Super admin can view all cancellation logs" ON public.subscription_cancellation_logs;
+CREATE POLICY "Super admin can view all cancellation logs" ON public.subscription_cancellation_logs
 FOR SELECT
 TO authenticated
 USING (is_super_admin(auth.uid()));
@@ -4763,7 +4830,7 @@ USING (is_super_admin(auth.uid()));
 -- >>> 20260505114342_b1c41ea7-87af-4175-8270-6016440b8beb.sql
 
 
-CREATE TABLE public.lead_magnet_subscribers (
+CREATE TABLE IF NOT EXISTS public.lead_magnet_subscribers (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   email text NOT NULL UNIQUE,
   first_name text NOT NULL,
@@ -4776,15 +4843,15 @@ CREATE TABLE public.lead_magnet_subscribers (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_lead_magnet_email ON public.lead_magnet_subscribers(email);
-CREATE INDEX idx_lead_magnet_unsub_token ON public.lead_magnet_subscribers(unsubscribe_token);
+CREATE INDEX IF NOT EXISTS idx_lead_magnet_email ON public.lead_magnet_subscribers(email);
+CREATE INDEX IF NOT EXISTS idx_lead_magnet_unsub_token ON public.lead_magnet_subscribers(unsubscribe_token);
 
 ALTER TABLE public.lead_magnet_subscribers ENABLE ROW LEVEL SECURITY;
 
 -- No public access: all access goes through edge functions w/ service role.
 -- Allow super-admins (by email) to read via authenticated session.
-CREATE POLICY "Super admins can read leads"
-ON public.lead_magnet_subscribers
+DROP POLICY IF EXISTS "Super admins can read leads" ON public.lead_magnet_subscribers;
+CREATE POLICY "Super admins can read leads" ON public.lead_magnet_subscribers
 FOR SELECT
 TO authenticated
 USING (
@@ -4796,8 +4863,8 @@ USING (
 insert into storage.buckets (id, name, public) values ('lead-magnet-assets', 'lead-magnet-assets', true) on conflict (id) do update set public = true;
 
 drop policy if exists "Public read lead magnet assets" on storage.objects;
-create policy "Public read lead magnet assets"
-on storage.objects for select
+DROP POLICY IF EXISTS "Public read lead magnet assets" ON storage.objects;
+CREATE POLICY "Public read lead magnet assets" ON storage.objects for select
 using (bucket_id = 'lead-magnet-assets');
 
 -- >>> 20260505121126_f842e0a7-8a4e-4858-9fc9-2c9aa5c18e7d.sql
@@ -4832,8 +4899,8 @@ CREATE INDEX IF NOT EXISTS idx_lme_occurred_at ON public.lead_magnet_email_event
 ALTER TABLE public.lead_magnet_email_events ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Super admins read lead magnet events" ON public.lead_magnet_email_events;
-CREATE POLICY "Super admins read lead magnet events"
-ON public.lead_magnet_email_events
+DROP POLICY IF EXISTS "Super admins read lead magnet events" ON public.lead_magnet_email_events;
+CREATE POLICY "Super admins read lead magnet events" ON public.lead_magnet_email_events
 FOR SELECT
 TO authenticated
 USING (public.is_super_admin(auth.uid()));
@@ -4842,8 +4909,8 @@ USING (public.is_super_admin(auth.uid()));
 
 DROP POLICY IF EXISTS "Super admins can read leads" ON public.lead_magnet_subscribers;
 
-CREATE POLICY "Super admins can read leads"
-ON public.lead_magnet_subscribers
+DROP POLICY IF EXISTS "Super admins can read leads" ON public.lead_magnet_subscribers;
+CREATE POLICY "Super admins can read leads" ON public.lead_magnet_subscribers
 FOR SELECT
 TO authenticated
 USING (public.is_super_admin(auth.uid()));
@@ -4853,11 +4920,17 @@ USING (public.is_super_admin(auth.uid()));
 
 -- Permission enum for share links
 DO $$ BEGIN
+  DO $do$ BEGIN
   CREATE TYPE public.drive_share_permission AS ENUM ('view', 'download', 'upload', 'full');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $do$;
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 DO $$ BEGIN
+  DO $do$ BEGIN
   CREATE TYPE public.drive_folder_kind AS ENUM ('custom', 'project_root');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $do$;
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- ============ drive_folders ============
@@ -4878,30 +4951,30 @@ CREATE INDEX IF NOT EXISTS idx_drive_folders_project ON public.drive_folders(pro
 
 ALTER TABLE public.drive_folders ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Agency members view folders"
-  ON public.drive_folders FOR SELECT TO authenticated
+DROP POLICY IF EXISTS "Agency members view folders" ON public.drive_folders;
+CREATE POLICY "Agency members view folders" ON public.drive_folders FOR SELECT TO authenticated
   USING (user_belongs_to_agency(auth.uid(), agency_id));
 
-CREATE POLICY "Admins manage folders"
-  ON public.drive_folders FOR ALL TO authenticated
+DROP POLICY IF EXISTS "Admins manage folders" ON public.drive_folders;
+CREATE POLICY "Admins manage folders" ON public.drive_folders FOR ALL TO authenticated
   USING (has_role(auth.uid(), 'admin'::app_role) AND user_belongs_to_agency(auth.uid(), agency_id))
   WITH CHECK (has_role(auth.uid(), 'admin'::app_role) AND user_belongs_to_agency(auth.uid(), agency_id));
 
-CREATE POLICY "Members create custom folders"
-  ON public.drive_folders FOR INSERT TO authenticated
+DROP POLICY IF EXISTS "Members create custom folders" ON public.drive_folders;
+CREATE POLICY "Members create custom folders" ON public.drive_folders FOR INSERT TO authenticated
   WITH CHECK (
     user_belongs_to_agency(auth.uid(), agency_id)
     AND created_by = auth.uid()
     AND kind = 'custom'
   );
 
-CREATE POLICY "Members update own folders"
-  ON public.drive_folders FOR UPDATE TO authenticated
+DROP POLICY IF EXISTS "Members update own folders" ON public.drive_folders;
+CREATE POLICY "Members update own folders" ON public.drive_folders FOR UPDATE TO authenticated
   USING (created_by = auth.uid() AND kind = 'custom')
   WITH CHECK (created_by = auth.uid() AND kind = 'custom');
 
-CREATE POLICY "Members delete own folders"
-  ON public.drive_folders FOR DELETE TO authenticated
+DROP POLICY IF EXISTS "Members delete own folders" ON public.drive_folders;
+CREATE POLICY "Members delete own folders" ON public.drive_folders FOR DELETE TO authenticated
   USING (created_by = auth.uid() AND kind = 'custom');
 
 -- ============ drive_files ============
@@ -4924,28 +4997,28 @@ CREATE INDEX IF NOT EXISTS idx_drive_files_folder ON public.drive_files(folder_i
 
 ALTER TABLE public.drive_files ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Agency members view drive files"
-  ON public.drive_files FOR SELECT TO authenticated
+DROP POLICY IF EXISTS "Agency members view drive files" ON public.drive_files;
+CREATE POLICY "Agency members view drive files" ON public.drive_files FOR SELECT TO authenticated
   USING (user_belongs_to_agency(auth.uid(), agency_id));
 
-CREATE POLICY "Admins manage drive files"
-  ON public.drive_files FOR ALL TO authenticated
+DROP POLICY IF EXISTS "Admins manage drive files" ON public.drive_files;
+CREATE POLICY "Admins manage drive files" ON public.drive_files FOR ALL TO authenticated
   USING (has_role(auth.uid(), 'admin'::app_role) AND user_belongs_to_agency(auth.uid(), agency_id))
   WITH CHECK (has_role(auth.uid(), 'admin'::app_role) AND user_belongs_to_agency(auth.uid(), agency_id));
 
-CREATE POLICY "Members upload drive files"
-  ON public.drive_files FOR INSERT TO authenticated
+DROP POLICY IF EXISTS "Members upload drive files" ON public.drive_files;
+CREATE POLICY "Members upload drive files" ON public.drive_files FOR INSERT TO authenticated
   WITH CHECK (
     user_belongs_to_agency(auth.uid(), agency_id)
     AND uploaded_by = auth.uid()
   );
 
-CREATE POLICY "Members delete own drive files"
-  ON public.drive_files FOR DELETE TO authenticated
+DROP POLICY IF EXISTS "Members delete own drive files" ON public.drive_files;
+CREATE POLICY "Members delete own drive files" ON public.drive_files FOR DELETE TO authenticated
   USING (uploaded_by = auth.uid());
 
-CREATE POLICY "Members rename own drive files"
-  ON public.drive_files FOR UPDATE TO authenticated
+DROP POLICY IF EXISTS "Members rename own drive files" ON public.drive_files;
+CREATE POLICY "Members rename own drive files" ON public.drive_files FOR UPDATE TO authenticated
   USING (uploaded_by = auth.uid())
   WITH CHECK (uploaded_by = auth.uid());
 
@@ -4971,24 +5044,24 @@ CREATE INDEX IF NOT EXISTS idx_drive_share_links_agency ON public.drive_share_li
 
 ALTER TABLE public.drive_share_links ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Admins manage share links"
-  ON public.drive_share_links FOR ALL TO authenticated
+DROP POLICY IF EXISTS "Admins manage share links" ON public.drive_share_links;
+CREATE POLICY "Admins manage share links" ON public.drive_share_links FOR ALL TO authenticated
   USING (has_role(auth.uid(), 'admin'::app_role) AND user_belongs_to_agency(auth.uid(), agency_id))
   WITH CHECK (has_role(auth.uid(), 'admin'::app_role) AND user_belongs_to_agency(auth.uid(), agency_id));
 
-CREATE POLICY "Creators view own share links"
-  ON public.drive_share_links FOR SELECT TO authenticated
+DROP POLICY IF EXISTS "Creators view own share links" ON public.drive_share_links;
+CREATE POLICY "Creators view own share links" ON public.drive_share_links FOR SELECT TO authenticated
   USING (created_by = auth.uid());
 
-CREATE POLICY "Members create share links"
-  ON public.drive_share_links FOR INSERT TO authenticated
+DROP POLICY IF EXISTS "Members create share links" ON public.drive_share_links;
+CREATE POLICY "Members create share links" ON public.drive_share_links FOR INSERT TO authenticated
   WITH CHECK (
     user_belongs_to_agency(auth.uid(), agency_id)
     AND created_by = auth.uid()
   );
 
-CREATE POLICY "Creators revoke own share links"
-  ON public.drive_share_links FOR UPDATE TO authenticated
+DROP POLICY IF EXISTS "Creators revoke own share links" ON public.drive_share_links;
+CREATE POLICY "Creators revoke own share links" ON public.drive_share_links FOR UPDATE TO authenticated
   USING (created_by = auth.uid())
   WITH CHECK (created_by = auth.uid());
 
@@ -5006,8 +5079,8 @@ CREATE INDEX IF NOT EXISTS idx_drive_share_uploads_link ON public.drive_share_up
 
 ALTER TABLE public.drive_share_uploads ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Admins read share upload audit"
-  ON public.drive_share_uploads FOR SELECT TO authenticated
+DROP POLICY IF EXISTS "Admins read share upload audit" ON public.drive_share_uploads;
+CREATE POLICY "Admins read share upload audit" ON public.drive_share_uploads FOR SELECT TO authenticated
   USING (EXISTS (
     SELECT 1 FROM public.drive_share_links sl
     WHERE sl.id = drive_share_uploads.share_link_id
@@ -5016,6 +5089,7 @@ CREATE POLICY "Admins read share upload audit"
   ));
 
 -- ============ Updated_at trigger ============
+DROP TRIGGER IF EXISTS trg_drive_folders_updated ON public.drive_folders;
 DROP TRIGGER IF EXISTS trg_drive_folders_updated ON public.drive_folders;
 CREATE TRIGGER trg_drive_folders_updated
   BEFORE UPDATE ON public.drive_folders
@@ -5044,6 +5118,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS trg_drive_files_storage ON public.drive_files;
 DROP TRIGGER IF EXISTS trg_drive_files_storage ON public.drive_files;
 CREATE TRIGGER trg_drive_files_storage
   AFTER INSERT OR DELETE ON public.drive_files
@@ -5082,8 +5157,8 @@ CREATE INDEX IF NOT EXISTS idx_drive_folders_deleted_at ON public.drive_folders(
 -- 2. Tighten "view" RLS so trashed items only show to uploader/creator or admin
 -- drive_files
 DROP POLICY IF EXISTS "Agency members view drive files" ON public.drive_files;
-CREATE POLICY "Agency members view drive files"
-ON public.drive_files
+DROP POLICY IF EXISTS "Agency members view drive files" ON public.drive_files;
+CREATE POLICY "Agency members view drive files" ON public.drive_files
 FOR SELECT
 TO authenticated
 USING (
@@ -5097,8 +5172,8 @@ USING (
 
 -- drive_folders
 DROP POLICY IF EXISTS "Agency members view folders" ON public.drive_folders;
-CREATE POLICY "Agency members view folders"
-ON public.drive_folders
+DROP POLICY IF EXISTS "Agency members view folders" ON public.drive_folders;
+CREATE POLICY "Agency members view folders" ON public.drive_folders
 FOR SELECT
 TO authenticated
 USING (
@@ -5137,8 +5212,8 @@ REVOKE EXECUTE ON FUNCTION public.get_admin_agency_stats() FROM PUBLIC, anon, au
 GRANT EXECUTE ON FUNCTION public.get_admin_agency_stats() TO service_role;
 
 DROP POLICY IF EXISTS "Allow public insert" ON public.tool_leads;
-CREATE POLICY "Service role manages tool leads"
-  ON public.tool_leads
+DROP POLICY IF EXISTS "Service role manages tool leads" ON public.tool_leads;
+CREATE POLICY "Service role manages tool leads" ON public.tool_leads
   FOR ALL
   TO service_role
   USING (true)
@@ -5148,7 +5223,7 @@ CREATE POLICY "Service role manages tool leads"
 
 
 -- 1. Managed clients table
-CREATE TABLE public.managed_clients (
+CREATE TABLE IF NOT EXISTS public.managed_clients (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   agency_id UUID NOT NULL REFERENCES public.agencies(id) ON DELETE CASCADE,
   email TEXT NOT NULL,
@@ -5164,7 +5239,7 @@ CREATE TABLE public.managed_clients (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE UNIQUE INDEX managed_clients_agency_email_uniq
+CREATE UNIQUE INDEX IF NOT EXISTS managed_clients_agency_email_uniq
   ON public.managed_clients (agency_id, lower(email))
   WHERE converted_profile_id IS NULL;
 
@@ -5173,13 +5248,14 @@ GRANT ALL ON public.managed_clients TO service_role;
 
 ALTER TABLE public.managed_clients ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Admins manage their agency's managed clients"
-  ON public.managed_clients
+DROP POLICY IF EXISTS "Admins manage their agency's managed clients" ON public.managed_clients;
+CREATE POLICY "Admins manage their agency's managed clients" ON public.managed_clients
   FOR ALL
   TO authenticated
   USING (has_role(auth.uid(), 'admin'::app_role) AND agency_id = get_user_agency_id(auth.uid()))
   WITH CHECK (has_role(auth.uid(), 'admin'::app_role) AND agency_id = get_user_agency_id(auth.uid()));
 
+DROP TRIGGER IF EXISTS update_managed_clients_updated_at ON public.managed_clients;
 CREATE TRIGGER update_managed_clients_updated_at
   BEFORE UPDATE ON public.managed_clients
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
@@ -5496,7 +5572,7 @@ $function$;
 ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'staff';
 
 -- 2. staff_roles: reusable permission templates per agency
-CREATE TABLE public.staff_roles (
+CREATE TABLE IF NOT EXISTS public.staff_roles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   agency_id UUID NOT NULL REFERENCES public.agencies(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
@@ -5515,21 +5591,22 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.staff_roles TO authenticated;
 GRANT ALL ON public.staff_roles TO service_role;
 ALTER TABLE public.staff_roles ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Agency members can view staff roles"
-  ON public.staff_roles FOR SELECT TO authenticated
+DROP POLICY IF EXISTS "Agency members can view staff roles" ON public.staff_roles;
+CREATE POLICY "Agency members can view staff roles" ON public.staff_roles FOR SELECT TO authenticated
   USING (public.user_belongs_to_agency(auth.uid(), agency_id));
 
-CREATE POLICY "Admins manage staff roles"
-  ON public.staff_roles FOR ALL TO authenticated
+DROP POLICY IF EXISTS "Admins manage staff roles" ON public.staff_roles;
+CREATE POLICY "Admins manage staff roles" ON public.staff_roles FOR ALL TO authenticated
   USING (public.has_role(auth.uid(), 'admin'::app_role) AND public.user_belongs_to_agency(auth.uid(), agency_id))
   WITH CHECK (public.has_role(auth.uid(), 'admin'::app_role) AND public.user_belongs_to_agency(auth.uid(), agency_id));
 
+DROP TRIGGER IF EXISTS staff_roles_updated_at ON public.staff_roles;
 CREATE TRIGGER staff_roles_updated_at
   BEFORE UPDATE ON public.staff_roles
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 -- 3. staff_members: links a user to a role template with overrides
-CREATE TABLE public.staff_members (
+CREATE TABLE IF NOT EXISTS public.staff_members (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL,
   agency_id UUID NOT NULL REFERENCES public.agencies(id) ON DELETE CASCADE,
@@ -5545,25 +5622,26 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.staff_members TO authenticated;
 GRANT ALL ON public.staff_members TO service_role;
 ALTER TABLE public.staff_members ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Staff can view own record"
-  ON public.staff_members FOR SELECT TO authenticated
+DROP POLICY IF EXISTS "Staff can view own record" ON public.staff_members;
+CREATE POLICY "Staff can view own record" ON public.staff_members FOR SELECT TO authenticated
   USING (user_id = auth.uid());
 
-CREATE POLICY "Admins view all staff members"
-  ON public.staff_members FOR SELECT TO authenticated
+DROP POLICY IF EXISTS "Admins view all staff members" ON public.staff_members;
+CREATE POLICY "Admins view all staff members" ON public.staff_members FOR SELECT TO authenticated
   USING (public.has_role(auth.uid(), 'admin'::app_role) AND public.user_belongs_to_agency(auth.uid(), agency_id));
 
-CREATE POLICY "Admins manage staff members"
-  ON public.staff_members FOR ALL TO authenticated
+DROP POLICY IF EXISTS "Admins manage staff members" ON public.staff_members;
+CREATE POLICY "Admins manage staff members" ON public.staff_members FOR ALL TO authenticated
   USING (public.has_role(auth.uid(), 'admin'::app_role) AND public.user_belongs_to_agency(auth.uid(), agency_id))
   WITH CHECK (public.has_role(auth.uid(), 'admin'::app_role) AND public.user_belongs_to_agency(auth.uid(), agency_id));
 
+DROP TRIGGER IF EXISTS staff_members_updated_at ON public.staff_members;
 CREATE TRIGGER staff_members_updated_at
   BEFORE UPDATE ON public.staff_members
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 -- 4. staff_client_assignments
-CREATE TABLE public.staff_client_assignments (
+CREATE TABLE IF NOT EXISTS public.staff_client_assignments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   staff_user_id UUID NOT NULL,
   agency_id UUID NOT NULL REFERENCES public.agencies(id) ON DELETE CASCADE,
@@ -5572,10 +5650,10 @@ CREATE TABLE public.staff_client_assignments (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CHECK ((client_user_id IS NOT NULL AND managed_client_id IS NULL) OR (client_user_id IS NULL AND managed_client_id IS NOT NULL))
 );
-CREATE UNIQUE INDEX staff_client_assignments_real_uniq
+CREATE UNIQUE INDEX IF NOT EXISTS staff_client_assignments_real_uniq
   ON public.staff_client_assignments (staff_user_id, client_user_id)
   WHERE client_user_id IS NOT NULL;
-CREATE UNIQUE INDEX staff_client_assignments_managed_uniq
+CREATE UNIQUE INDEX IF NOT EXISTS staff_client_assignments_managed_uniq
   ON public.staff_client_assignments (staff_user_id, managed_client_id)
   WHERE managed_client_id IS NOT NULL;
 
@@ -5583,17 +5661,17 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.staff_client_assignments TO authe
 GRANT ALL ON public.staff_client_assignments TO service_role;
 ALTER TABLE public.staff_client_assignments ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Staff view own client assignments"
-  ON public.staff_client_assignments FOR SELECT TO authenticated
+DROP POLICY IF EXISTS "Staff view own client assignments" ON public.staff_client_assignments;
+CREATE POLICY "Staff view own client assignments" ON public.staff_client_assignments FOR SELECT TO authenticated
   USING (staff_user_id = auth.uid());
 
-CREATE POLICY "Admins manage staff client assignments"
-  ON public.staff_client_assignments FOR ALL TO authenticated
+DROP POLICY IF EXISTS "Admins manage staff client assignments" ON public.staff_client_assignments;
+CREATE POLICY "Admins manage staff client assignments" ON public.staff_client_assignments FOR ALL TO authenticated
   USING (public.has_role(auth.uid(), 'admin'::app_role) AND public.user_belongs_to_agency(auth.uid(), agency_id))
   WITH CHECK (public.has_role(auth.uid(), 'admin'::app_role) AND public.user_belongs_to_agency(auth.uid(), agency_id));
 
 -- 5. staff_project_assignments
-CREATE TABLE public.staff_project_assignments (
+CREATE TABLE IF NOT EXISTS public.staff_project_assignments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   staff_user_id UUID NOT NULL,
   project_id UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
@@ -5606,12 +5684,12 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.staff_project_assignments TO auth
 GRANT ALL ON public.staff_project_assignments TO service_role;
 ALTER TABLE public.staff_project_assignments ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Staff view own project assignments"
-  ON public.staff_project_assignments FOR SELECT TO authenticated
+DROP POLICY IF EXISTS "Staff view own project assignments" ON public.staff_project_assignments;
+CREATE POLICY "Staff view own project assignments" ON public.staff_project_assignments FOR SELECT TO authenticated
   USING (staff_user_id = auth.uid());
 
-CREATE POLICY "Admins manage staff project assignments"
-  ON public.staff_project_assignments FOR ALL TO authenticated
+DROP POLICY IF EXISTS "Admins manage staff project assignments" ON public.staff_project_assignments;
+CREATE POLICY "Admins manage staff project assignments" ON public.staff_project_assignments FOR ALL TO authenticated
   USING (public.has_role(auth.uid(), 'admin'::app_role) AND public.user_belongs_to_agency(auth.uid(), agency_id))
   WITH CHECK (public.has_role(auth.uid(), 'admin'::app_role) AND public.user_belongs_to_agency(auth.uid(), agency_id));
 
@@ -5832,22 +5910,22 @@ DROP POLICY IF EXISTS "Public read access to chat attachments" ON storage.object
 DROP POLICY IF EXISTS "Authenticated users can upload chat attachments" ON storage.objects;
 DROP POLICY IF EXISTS "Users can delete own chat attachments" ON storage.objects;
 
-CREATE POLICY "Channel members can read chat attachments"
-ON storage.objects FOR SELECT TO authenticated
+DROP POLICY IF EXISTS "Channel members can read chat attachments" ON storage.objects;
+CREATE POLICY "Channel members can read chat attachments" ON storage.objects FOR SELECT TO authenticated
 USING (
   bucket_id = 'chat-attachments'
   AND public.is_channel_member(((storage.foldername(name))[1])::uuid, auth.uid())
 );
 
-CREATE POLICY "Channel members can upload chat attachments"
-ON storage.objects FOR INSERT TO authenticated
+DROP POLICY IF EXISTS "Channel members can upload chat attachments" ON storage.objects;
+CREATE POLICY "Channel members can upload chat attachments" ON storage.objects FOR INSERT TO authenticated
 WITH CHECK (
   bucket_id = 'chat-attachments'
   AND public.is_channel_member(((storage.foldername(name))[1])::uuid, auth.uid())
 );
 
-CREATE POLICY "Members can delete own chat attachments"
-ON storage.objects FOR DELETE TO authenticated
+DROP POLICY IF EXISTS "Members can delete own chat attachments" ON storage.objects;
+CREATE POLICY "Members can delete own chat attachments" ON storage.objects FOR DELETE TO authenticated
 USING (
   bucket_id = 'chat-attachments'
   AND owner = auth.uid()
@@ -5877,8 +5955,8 @@ ALTER TABLE public.profiles DROP COLUMN IF EXISTS accumulated_bonus;
 -- 3. storage: deliverables INSERT must check project's agency matches admin's
 DROP POLICY IF EXISTS "Admins can manage deliverable files" ON storage.objects;
 
-CREATE POLICY "Admins can read deliverable files"
-ON storage.objects FOR SELECT
+DROP POLICY IF EXISTS "Admins can read deliverable files" ON storage.objects;
+CREATE POLICY "Admins can read deliverable files" ON storage.objects FOR SELECT
 USING (
   bucket_id = 'deliverables'
   AND has_role(auth.uid(), 'admin'::app_role)
@@ -5890,8 +5968,8 @@ USING (
   )
 );
 
-CREATE POLICY "Admins can insert deliverable files in their agency"
-ON storage.objects FOR INSERT
+DROP POLICY IF EXISTS "Admins can insert deliverable files in their agency" ON storage.objects;
+CREATE POLICY "Admins can insert deliverable files in their agency" ON storage.objects FOR INSERT
 WITH CHECK (
   bucket_id = 'deliverables'
   AND has_role(auth.uid(), 'admin'::app_role)
@@ -5902,8 +5980,8 @@ WITH CHECK (
   )
 );
 
-CREATE POLICY "Admins can update deliverable files in their agency"
-ON storage.objects FOR UPDATE
+DROP POLICY IF EXISTS "Admins can update deliverable files in their agency" ON storage.objects;
+CREATE POLICY "Admins can update deliverable files in their agency" ON storage.objects FOR UPDATE
 USING (
   bucket_id = 'deliverables'
   AND has_role(auth.uid(), 'admin'::app_role)
@@ -5914,8 +5992,8 @@ USING (
   )
 );
 
-CREATE POLICY "Admins can delete deliverable files in their agency"
-ON storage.objects FOR DELETE
+DROP POLICY IF EXISTS "Admins can delete deliverable files in their agency" ON storage.objects;
+CREATE POLICY "Admins can delete deliverable files in their agency" ON storage.objects FOR DELETE
 USING (
   bucket_id = 'deliverables'
   AND has_role(auth.uid(), 'admin'::app_role)
@@ -5929,8 +6007,8 @@ USING (
 -- 4. storage: payment_proofs admin SELECT must scope to admin's agency
 DROP POLICY IF EXISTS "Admins can view payment proofs" ON storage.objects;
 
-CREATE POLICY "Admins can view payment proofs in their agency"
-ON storage.objects FOR SELECT
+DROP POLICY IF EXISTS "Admins can view payment proofs in their agency" ON storage.objects;
+CREATE POLICY "Admins can view payment proofs in their agency" ON storage.objects FOR SELECT
 USING (
   bucket_id = 'payment_proofs'
   AND has_role(auth.uid(), 'admin'::app_role)
@@ -5946,14 +6024,14 @@ USING (
 
 -- 5. Public buckets: prevent directory listing while keeping file reads working
 DROP POLICY IF EXISTS "Avatar images are publicly accessible" ON storage.objects;
-CREATE POLICY "Avatar files are publicly readable"
-ON storage.objects FOR SELECT
+DROP POLICY IF EXISTS "Avatar files are publicly readable" ON storage.objects;
+CREATE POLICY "Avatar files are publicly readable" ON storage.objects FOR SELECT
 TO anon, authenticated
 USING (bucket_id = 'avatars' AND (storage.foldername(name))[1] IS NOT NULL);
 
 DROP POLICY IF EXISTS "Public read lead magnet assets" ON storage.objects;
-CREATE POLICY "Lead magnet files are publicly readable"
-ON storage.objects FOR SELECT
+DROP POLICY IF EXISTS "Lead magnet files are publicly readable" ON storage.objects;
+CREATE POLICY "Lead magnet files are publicly readable" ON storage.objects FOR SELECT
 TO anon, authenticated
 USING (bucket_id = 'lead-magnet-assets' AND name IS NOT NULL AND position('/' in name) > 0 OR bucket_id = 'lead-magnet-assets' AND name IS NOT NULL);
 
@@ -5995,14 +6073,15 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS enforce_client_invoice_update_columns_trg ON public.invoices;
+DROP TRIGGER IF EXISTS enforce_client_invoice_update_columns_trg ON public.invoices;
 CREATE TRIGGER enforce_client_invoice_update_columns_trg
 BEFORE UPDATE ON public.invoices
 FOR EACH ROW EXECUTE FUNCTION public.enforce_client_invoice_update_columns();
 
 -- Tighten the client update policy with an explicit WITH CHECK
 DROP POLICY IF EXISTS "Clients can update invoice payment proof" ON public.invoices;
-CREATE POLICY "Clients can update invoice payment proof"
-ON public.invoices
+DROP POLICY IF EXISTS "Clients can update invoice payment proof" ON public.invoices;
+CREATE POLICY "Clients can update invoice payment proof" ON public.invoices
 FOR UPDATE
 TO authenticated
 USING (client_id = auth.uid())
@@ -6072,6 +6151,7 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS trg_enforce_free_project_limit_insert ON public.projects;
+DROP TRIGGER IF EXISTS trg_enforce_free_project_limit_insert ON public.projects;
 CREATE TRIGGER trg_enforce_free_project_limit_insert
 BEFORE INSERT ON public.projects
 FOR EACH ROW EXECUTE FUNCTION public.enforce_free_project_limit_insert();
@@ -6094,6 +6174,7 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS trg_enforce_free_project_limit_update ON public.projects;
+DROP TRIGGER IF EXISTS trg_enforce_free_project_limit_update ON public.projects;
 CREATE TRIGGER trg_enforce_free_project_limit_update
 BEFORE UPDATE ON public.projects
 FOR EACH ROW EXECUTE FUNCTION public.enforce_free_project_limit_update();
@@ -6112,6 +6193,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS trg_enforce_client_limit ON public.user_roles;
 DROP TRIGGER IF EXISTS trg_enforce_client_limit ON public.user_roles;
 CREATE TRIGGER trg_enforce_client_limit
 BEFORE INSERT ON public.user_roles
@@ -6134,6 +6216,7 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS trg_enforce_storage_limit_deliverables ON public.deliverables;
+DROP TRIGGER IF EXISTS trg_enforce_storage_limit_deliverables ON public.deliverables;
 CREATE TRIGGER trg_enforce_storage_limit_deliverables
 BEFORE INSERT ON public.deliverables
 FOR EACH ROW EXECUTE FUNCTION public.enforce_storage_limit_deliverables();
@@ -6152,6 +6235,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS trg_enforce_storage_limit_drive ON public.drive_files;
 DROP TRIGGER IF EXISTS trg_enforce_storage_limit_drive ON public.drive_files;
 CREATE TRIGGER trg_enforce_storage_limit_drive
 BEFORE INSERT ON public.drive_files
@@ -6218,6 +6302,7 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS enforce_client_invoice_update_scope_trg ON public.invoices;
+DROP TRIGGER IF EXISTS enforce_client_invoice_update_scope_trg ON public.invoices;
 CREATE TRIGGER enforce_client_invoice_update_scope_trg
 BEFORE UPDATE ON public.invoices
 FOR EACH ROW
@@ -6234,16 +6319,16 @@ UPDATE public.agencies SET max_clients = COALESCE(max_clients, 1), storage_limit
 
 DROP POLICY IF EXISTS "Users can view agency projects" ON public.projects;
 
-CREATE POLICY "Non-clients can view agency projects"
-ON public.projects
+DROP POLICY IF EXISTS "Non-clients can view agency projects" ON public.projects;
+CREATE POLICY "Non-clients can view agency projects" ON public.projects
 FOR SELECT
 USING (
   agency_id = public.get_user_agency_id(auth.uid())
   AND NOT public.has_role(auth.uid(), 'client'::app_role)
 );
 
-CREATE POLICY "Clients can view their own projects"
-ON public.projects
+DROP POLICY IF EXISTS "Clients can view their own projects" ON public.projects;
+CREATE POLICY "Clients can view their own projects" ON public.projects
 FOR SELECT
 USING (
   client_id = auth.uid()
@@ -6253,7 +6338,7 @@ USING (
 -- >>> 20260616210228_13a514f1-b59c-4a0e-8ff6-ab58b237be48.sql
 
 
-CREATE TABLE public.email_sequences (
+CREATE TABLE IF NOT EXISTS public.email_sequences (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   agency_id uuid REFERENCES public.agencies(id) ON DELETE SET NULL,
@@ -6270,12 +6355,12 @@ GRANT ALL ON public.email_sequences TO service_role;
 
 ALTER TABLE public.email_sequences ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view own sequence"
-  ON public.email_sequences FOR SELECT
+DROP POLICY IF EXISTS "Users can view own sequence" ON public.email_sequences;
+CREATE POLICY "Users can view own sequence" ON public.email_sequences FOR SELECT
   TO authenticated
   USING (auth.uid() = user_id);
 
-CREATE INDEX idx_email_sequences_cron ON public.email_sequences(created_at, email_1_sent_at, email_2_sent_at, email_3_sent_at) WHERE unsubscribed_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_email_sequences_cron ON public.email_sequences(created_at, email_1_sent_at, email_2_sent_at, email_3_sent_at) WHERE unsubscribed_at IS NULL;
 
 -- >>> 20260625092809_7e5db7c2-8916-4a28-a65a-9b3644ce3376.sql
 
@@ -6293,29 +6378,29 @@ GRANT ALL ON public.employee_compensation TO service_role;
 
 ALTER TABLE public.employee_compensation ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view their own compensation"
-  ON public.employee_compensation FOR SELECT
+DROP POLICY IF EXISTS "Users can view their own compensation" ON public.employee_compensation;
+CREATE POLICY "Users can view their own compensation" ON public.employee_compensation FOR SELECT
   TO authenticated
   USING (user_id = auth.uid());
 
-CREATE POLICY "Admins can view team compensation"
-  ON public.employee_compensation FOR SELECT
+DROP POLICY IF EXISTS "Admins can view team compensation" ON public.employee_compensation;
+CREATE POLICY "Admins can view team compensation" ON public.employee_compensation FOR SELECT
   TO authenticated
   USING (
     public.has_role(auth.uid(), 'admin'::app_role)
     AND public.users_share_agency(auth.uid(), user_id)
   );
 
-CREATE POLICY "Admins can insert team compensation"
-  ON public.employee_compensation FOR INSERT
+DROP POLICY IF EXISTS "Admins can insert team compensation" ON public.employee_compensation;
+CREATE POLICY "Admins can insert team compensation" ON public.employee_compensation FOR INSERT
   TO authenticated
   WITH CHECK (
     public.has_role(auth.uid(), 'admin'::app_role)
     AND public.users_share_agency(auth.uid(), user_id)
   );
 
-CREATE POLICY "Admins can update team compensation"
-  ON public.employee_compensation FOR UPDATE
+DROP POLICY IF EXISTS "Admins can update team compensation" ON public.employee_compensation;
+CREATE POLICY "Admins can update team compensation" ON public.employee_compensation FOR UPDATE
   TO authenticated
   USING (
     public.has_role(auth.uid(), 'admin'::app_role)
@@ -6326,14 +6411,15 @@ CREATE POLICY "Admins can update team compensation"
     AND public.users_share_agency(auth.uid(), user_id)
   );
 
-CREATE POLICY "Admins can delete team compensation"
-  ON public.employee_compensation FOR DELETE
+DROP POLICY IF EXISTS "Admins can delete team compensation" ON public.employee_compensation;
+CREATE POLICY "Admins can delete team compensation" ON public.employee_compensation FOR DELETE
   TO authenticated
   USING (
     public.has_role(auth.uid(), 'admin'::app_role)
     AND public.users_share_agency(auth.uid(), user_id)
   );
 
+DROP TRIGGER IF EXISTS update_employee_compensation_updated_at ON public.employee_compensation;
 CREATE TRIGGER update_employee_compensation_updated_at
   BEFORE UPDATE ON public.employee_compensation
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
@@ -6363,8 +6449,8 @@ ALTER TYPE public.channel_type ADD VALUE IF NOT EXISTS 'custom';
 
 -- 1. Fix channels INSERT policy: support multi-agency admins by checking membership instead of single-agency match
 DROP POLICY IF EXISTS "Admins can create channels" ON public.channels;
-CREATE POLICY "Admins can create channels"
-ON public.channels
+DROP POLICY IF EXISTS "Admins can create channels" ON public.channels;
+CREATE POLICY "Admins can create channels" ON public.channels
 FOR INSERT
 TO authenticated
 WITH CHECK (
@@ -6374,8 +6460,8 @@ WITH CHECK (
 
 -- Same fix for UPDATE policy (rename / archive)
 DROP POLICY IF EXISTS "Admins can update channels" ON public.channels;
-CREATE POLICY "Admins can update channels"
-ON public.channels
+DROP POLICY IF EXISTS "Admins can update channels" ON public.channels;
+CREATE POLICY "Admins can update channels" ON public.channels
 FOR UPDATE
 TO authenticated
 USING (
@@ -6402,23 +6488,24 @@ GRANT ALL ON public.channel_groups TO service_role;
 
 ALTER TABLE public.channel_groups ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Members can view groups"
-ON public.channel_groups FOR SELECT TO authenticated
+DROP POLICY IF EXISTS "Members can view groups" ON public.channel_groups;
+CREATE POLICY "Members can view groups" ON public.channel_groups FOR SELECT TO authenticated
 USING (public.user_belongs_to_agency(auth.uid(), agency_id));
 
-CREATE POLICY "Admins manage groups insert"
-ON public.channel_groups FOR INSERT TO authenticated
+DROP POLICY IF EXISTS "Admins manage groups insert" ON public.channel_groups;
+CREATE POLICY "Admins manage groups insert" ON public.channel_groups FOR INSERT TO authenticated
 WITH CHECK (public.has_role(auth.uid(),'admin'::app_role) AND public.user_belongs_to_agency(auth.uid(), agency_id));
 
-CREATE POLICY "Admins manage groups update"
-ON public.channel_groups FOR UPDATE TO authenticated
+DROP POLICY IF EXISTS "Admins manage groups update" ON public.channel_groups;
+CREATE POLICY "Admins manage groups update" ON public.channel_groups FOR UPDATE TO authenticated
 USING (public.has_role(auth.uid(),'admin'::app_role) AND public.user_belongs_to_agency(auth.uid(), agency_id))
 WITH CHECK (public.has_role(auth.uid(),'admin'::app_role) AND public.user_belongs_to_agency(auth.uid(), agency_id));
 
-CREATE POLICY "Admins manage groups delete"
-ON public.channel_groups FOR DELETE TO authenticated
+DROP POLICY IF EXISTS "Admins manage groups delete" ON public.channel_groups;
+CREATE POLICY "Admins manage groups delete" ON public.channel_groups FOR DELETE TO authenticated
 USING (public.has_role(auth.uid(),'admin'::app_role) AND public.user_belongs_to_agency(auth.uid(), agency_id));
 
+DROP TRIGGER IF EXISTS trg_update_channel_groups_updated_at ON public.channel_groups;
 CREATE TRIGGER trg_update_channel_groups_updated_at
 BEFORE UPDATE ON public.channel_groups
 FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
@@ -6432,8 +6519,8 @@ CREATE INDEX IF NOT EXISTS idx_channels_group_id ON public.channels(group_id);
 -- >>> 20260626151951_55595320-079d-4dbe-80f7-a65d2738d86c.sql
 
 DROP POLICY IF EXISTS "Users can view their channels" ON public.channels;
-CREATE POLICY "Users can view their channels"
-ON public.channels
+DROP POLICY IF EXISTS "Users can view their channels" ON public.channels;
+CREATE POLICY "Users can view their channels" ON public.channels
 FOR SELECT
 TO authenticated
 USING (
@@ -6451,7 +6538,7 @@ USING (
 
 
 -- 1. Webhook endpoints table
-CREATE TABLE public.webhook_endpoints (
+CREATE TABLE IF NOT EXISTS public.webhook_endpoints (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   agency_id UUID NOT NULL REFERENCES public.agencies(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
@@ -6471,12 +6558,13 @@ GRANT ALL ON public.webhook_endpoints TO service_role;
 
 ALTER TABLE public.webhook_endpoints ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Admins manage own agency webhooks"
-ON public.webhook_endpoints FOR ALL
+DROP POLICY IF EXISTS "Admins manage own agency webhooks" ON public.webhook_endpoints;
+CREATE POLICY "Admins manage own agency webhooks" ON public.webhook_endpoints FOR ALL
 TO authenticated
 USING (has_role(auth.uid(),'admin'::app_role) AND agency_id = get_user_agency_id(auth.uid()))
 WITH CHECK (has_role(auth.uid(),'admin'::app_role) AND agency_id = get_user_agency_id(auth.uid()));
 
+DROP TRIGGER IF EXISTS trg_webhook_endpoints_updated ON public.webhook_endpoints;
 CREATE TRIGGER trg_webhook_endpoints_updated
 BEFORE UPDATE ON public.webhook_endpoints
 FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
@@ -6575,6 +6663,7 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS trg_notify_deliverable_uploaded ON public.deliverables;
+DROP TRIGGER IF EXISTS trg_notify_deliverable_uploaded ON public.deliverables;
 CREATE TRIGGER trg_notify_deliverable_uploaded
 AFTER INSERT ON public.deliverables
 FOR EACH ROW EXECUTE FUNCTION public.notify_deliverable_uploaded();
@@ -6599,6 +6688,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS trg_dispatch_review_requested ON public.projects;
 DROP TRIGGER IF EXISTS trg_dispatch_review_requested ON public.projects;
 CREATE TRIGGER trg_dispatch_review_requested
 AFTER UPDATE OF status ON public.projects
@@ -6627,6 +6717,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS trg_dispatch_invoice_paid ON public.invoices;
 DROP TRIGGER IF EXISTS trg_dispatch_invoice_paid ON public.invoices;
 CREATE TRIGGER trg_dispatch_invoice_paid
 AFTER UPDATE OF status ON public.invoices
@@ -6667,6 +6758,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS trg_auto_send_notification_email ON public.notifications;
 DROP TRIGGER IF EXISTS trg_auto_send_notification_email ON public.notifications;
 CREATE TRIGGER trg_auto_send_notification_email
 AFTER INSERT ON public.notifications
@@ -6719,6 +6811,7 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS trg_restrict_client_invoice_updates ON public.invoices;
+DROP TRIGGER IF EXISTS trg_restrict_client_invoice_updates ON public.invoices;
 CREATE TRIGGER trg_restrict_client_invoice_updates
   BEFORE UPDATE ON public.invoices
   FOR EACH ROW
@@ -6726,8 +6819,8 @@ CREATE TRIGGER trg_restrict_client_invoice_updates
 
 -- 2) Exclude clients from broad drive_files SELECT policy
 DROP POLICY IF EXISTS "Agency members view drive files" ON public.drive_files;
-CREATE POLICY "Agency members view drive files"
-  ON public.drive_files
+DROP POLICY IF EXISTS "Agency members view drive files" ON public.drive_files;
+CREATE POLICY "Agency members view drive files" ON public.drive_files
   FOR SELECT
   USING (
     user_belongs_to_agency(auth.uid(), agency_id)
