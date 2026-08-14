@@ -1265,8 +1265,16 @@ USING (bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1
 -- REALTIME: Enable for messages and channels
 -- =====================================================
 
-ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.channels;
+DO $realtime$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname='supabase_realtime' AND schemaname='public' AND tablename='messages') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
+  END IF;
+END $realtime$;
+DO $realtime$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname='supabase_realtime' AND schemaname='public' AND tablename='channels') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.channels;
+  END IF;
+END $realtime$;
 
 -- Update timestamps trigger for channels
 DROP TRIGGER IF EXISTS update_channels_updated_at ON public.channels;
@@ -1927,7 +1935,11 @@ $$;
 GRANT EXECUTE ON FUNCTION public.get_channel_unread_count(uuid, uuid) TO authenticated;
 
 -- Enable realtime for channel_read_receipts
-ALTER PUBLICATION supabase_realtime ADD TABLE public.channel_read_receipts;
+DO $realtime$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname='supabase_realtime' AND schemaname='public' AND tablename='channel_read_receipts') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.channel_read_receipts;
+  END IF;
+END $realtime$;
 
 -- >>> 20260112091729_ade60dfe-22ee-48ce-97a8-22385b97e882.sql
 
@@ -2533,7 +2545,11 @@ FOR UPDATE
 USING (user_id = auth.uid());
 
 -- Enable realtime for message_read_receipts
-ALTER PUBLICATION supabase_realtime ADD TABLE public.message_read_receipts;
+DO $realtime$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname='supabase_realtime' AND schemaname='public' AND tablename='message_read_receipts') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.message_read_receipts;
+  END IF;
+END $realtime$;
 
 -- >>> 20260124185659_835a45fe-bccb-4a9d-a99c-f35826175a8e.sql
 
@@ -2733,7 +2749,11 @@ CREATE POLICY "Users can update their own preferences" ON public.notification_pr
 USING (user_id = auth.uid());
 
 -- Enable realtime for notifications
-ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
+DO $realtime$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname='supabase_realtime' AND schemaname='public' AND tablename='notifications') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
+  END IF;
+END $realtime$;
 
 -- Create function to insert notification (used by triggers)
 CREATE OR REPLACE FUNCTION public.create_notification(
@@ -3598,7 +3618,11 @@ FOR DELETE
 USING (user_id = auth.uid());
 
 -- Enable realtime for reactions
-ALTER PUBLICATION supabase_realtime ADD TABLE public.message_reactions;
+DO $realtime$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname='supabase_realtime' AND schemaname='public' AND tablename='message_reactions') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.message_reactions;
+  END IF;
+END $realtime$;
 
 -- CREATE INDEX IF NOT EXISTS for performance
 CREATE INDEX IF NOT EXISTS idx_message_reactions_message_id ON public.message_reactions(message_id);
@@ -3990,7 +4014,11 @@ CREATE POLICY "Users can delete their own subscriptions" ON public.push_subscrip
   USING (user_id = auth.uid());
 
 -- Enable realtime for notifications table (needed for push trigger)
-ALTER PUBLICATION supabase_realtime ADD TABLE public.push_subscriptions;
+DO $realtime$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname='supabase_realtime' AND schemaname='public' AND tablename='push_subscriptions') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.push_subscriptions;
+  END IF;
+END $realtime$;
 
 -- >>> 20260215135523_793f3e24-f162-43c0-b1c9-521ea9a67e2a.sql
 
@@ -4383,7 +4411,11 @@ CREATE POLICY "Users can view public review comments for their deliverables" ON 
   );
 
 -- Enable realtime for comments
-ALTER PUBLICATION supabase_realtime ADD TABLE public.public_review_comments;
+DO $realtime$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname='supabase_realtime' AND schemaname='public' AND tablename='public_review_comments') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.public_review_comments;
+  END IF;
+END $realtime$;
 
 -- Trigger for updated_at on review links
 DROP TRIGGER IF EXISTS update_public_review_links_updated_at ON public.public_review_links;
