@@ -383,6 +383,21 @@ CREATE TRIGGER update_invoices_updated_at
   BEFORE UPDATE ON public.invoices
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
+-- >>> MISSING HELPER FUNCTIONS (restored from live database)
+
+CREATE OR REPLACE FUNCTION public.is_project_editor(_user_id uuid, _project_id uuid)
+ RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'public'
+AS $function$
+  SELECT EXISTS (SELECT 1 FROM public.project_editors pe WHERE pe.editor_id = _user_id AND pe.project_id = _project_id)
+$function$;
+
+CREATE OR REPLACE FUNCTION public.project_belongs_to_agency(_project_id uuid, _agency_id uuid)
+ RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'public'
+AS $function$
+  SELECT EXISTS (SELECT 1 FROM public.projects p WHERE p.id = _project_id AND p.agency_id = _agency_id)
+$function$;
+
+
 -- >>> 20260105191040_19034d6a-e454-4dbe-b7cc-720c982029be.sql
 
 -- Drop the existing restrictive INSERT policy on agencies
