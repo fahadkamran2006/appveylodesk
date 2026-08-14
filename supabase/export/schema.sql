@@ -5,19 +5,19 @@
 
 -- Create enum for user roles
 DO $do$ BEGIN
-  CREATE TYPE public.app_role AS ENUM ('admin', 'client', 'editor');
+  CREATE TYPE public.app_role AS ENUM ('admin', 'client', 'editor', 'staff');
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $do$;
 
 -- Create enum for project status
 DO $do$ BEGIN
-  CREATE TYPE public.project_status AS ENUM ('backlog', 'in_progress', 'review', 'done');
+  CREATE TYPE public.project_status AS ENUM ('backlog', 'in_progress', 'review', 'quality_check', 'done', 'proposal', 'cancelled', 'paid', 'archived', 'request');
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $do$;
 
 -- Create enum for invoice status
 DO $do$ BEGIN
-  CREATE TYPE public.invoice_status AS ENUM ('unpaid', 'paid', 'overdue');
+  CREATE TYPE public.invoice_status AS ENUM ('unpaid', 'paid', 'overdue', 'pending', 'draft');
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $do$;
 
@@ -784,7 +784,7 @@ USING (
 -- >>> 20260107212912_a73356c6-07fb-4891-82ad-a7c92f58b43c.sql
 
 -- Add 'pending' status to invoice_status enum for payment proof review state
-ALTER TYPE public.invoice_status ADD VALUE IF NOT EXISTS 'pending';
+-- [migration-export] enum value folded into CREATE TYPE above: ALTER TYPE public.invoice_status ADD VALUE IF NOT EXISTS 'pending';
 
 -- >>> 20260108093032_0a9d63aa-88a6-4ba6-bf2d-8ccd0a5703e6.sql
 
@@ -869,7 +869,7 @@ $function$;
 
 -- Create channel types enum
 DO $do$ BEGIN
-  CREATE TYPE public.channel_type AS ENUM ('dm', 'project');
+  CREATE TYPE public.channel_type AS ENUM ('dm', 'project', 'custom');
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $do$;
 
@@ -1494,10 +1494,10 @@ EXECUTE FUNCTION public.update_updated_at_column();
 
 
 -- Add proposal status to project_status enum
-ALTER TYPE project_status ADD VALUE IF NOT EXISTS 'proposal';
+-- [migration-export] enum value folded into CREATE TYPE above: ALTER TYPE project_status ADD VALUE IF NOT EXISTS 'proposal';
 
 -- Add cancellation_requested status
-ALTER TYPE project_status ADD VALUE IF NOT EXISTS 'cancelled';
+-- [migration-export] enum value folded into CREATE TYPE above: ALTER TYPE project_status ADD VALUE IF NOT EXISTS 'cancelled';
 
 -- Create cancellation_requests table for client cancellation requests
 CREATE TABLE IF NOT EXISTS public.cancellation_requests (
@@ -3256,8 +3256,8 @@ CREATE TRIGGER update_payment_methods_updated_at
 -- >>> 20260207131323_acb4b1fd-bf12-4a9f-b370-0eda251c283d.sql
 
 -- Add 'paid' and 'archived' values to project_status enum
-ALTER TYPE public.project_status ADD VALUE IF NOT EXISTS 'paid';
-ALTER TYPE public.project_status ADD VALUE IF NOT EXISTS 'archived';
+-- [migration-export] enum value folded into CREATE TYPE above: ALTER TYPE public.project_status ADD VALUE IF NOT EXISTS 'paid';
+-- [migration-export] enum value folded into CREATE TYPE above: ALTER TYPE public.project_status ADD VALUE IF NOT EXISTS 'archived';
 
 -- Create a function to notify users when video is approved or revision requested
 CREATE OR REPLACE FUNCTION public.notify_video_approval()
@@ -3521,7 +3521,7 @@ ADD COLUMN IF NOT EXISTS invoice_footer TEXT;
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'request' AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'project_status')) THEN
-        ALTER TYPE project_status ADD VALUE 'request';
+-- [migration-export] enum value folded into CREATE TYPE above: ALTER TYPE project_status ADD VALUE 'request';
     END IF;
 END $$;
 
@@ -4660,7 +4660,7 @@ ALTER TABLE public.agency_work_schedule ADD COLUMN IF NOT EXISTS auto_monthly_re
 
 -- >>> 20260403153352_ce8a12ce-c51f-4572-85a6-b6ce80ad761b.sql
 
-ALTER TYPE public.project_status ADD VALUE 'quality_check' BEFORE 'done';
+-- [migration-export] enum value folded into CREATE TYPE above: ALTER TYPE public.project_status ADD VALUE 'quality_check' BEFORE 'done';
 
 -- >>> 20260403153415_716c4392-c07f-4272-8c76-178ab01c89e8.sql
 
@@ -4905,14 +4905,14 @@ USING (public.is_super_admin(auth.uid()));
 -- Permission enum for share links
 DO $$ BEGIN
   DO $do$ BEGIN
-  CREATE TYPE public.drive_share_permission AS ENUM ('view', 'download', 'upload', 'full');
+  CREATE TYPE public.drive_share_permission AS ENUM ('view', 'download', 'upload', 'full', 'edit');
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $do$;
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 DO $$ BEGIN
   DO $do$ BEGIN
-  CREATE TYPE public.drive_folder_kind AS ENUM ('custom', 'project_root');
+  CREATE TYPE public.drive_folder_kind AS ENUM ('custom', 'project_root', 'client_root', 'container_root');
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $do$;
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
@@ -5171,20 +5171,20 @@ USING (
 
 -- >>> 20260513060608_0084dade-fa0f-40a7-852c-fcb303c12b87.sql
 
-ALTER TYPE drive_folder_kind ADD VALUE IF NOT EXISTS 'client_root';
+-- [migration-export] enum value folded into CREATE TYPE above: ALTER TYPE drive_folder_kind ADD VALUE IF NOT EXISTS 'client_root';
 ALTER TABLE public.drive_folders ADD COLUMN IF NOT EXISTS client_id uuid;
 CREATE INDEX IF NOT EXISTS idx_drive_folders_client_id ON public.drive_folders(client_id);
 
 -- >>> 20260513061056_082433b3-4cf1-4bfa-aaf0-126611561c30.sql
 
-ALTER TYPE drive_folder_kind ADD VALUE IF NOT EXISTS 'container_root';
+-- [migration-export] enum value folded into CREATE TYPE above: ALTER TYPE drive_folder_kind ADD VALUE IF NOT EXISTS 'container_root';
 ALTER TABLE public.drive_folders ADD COLUMN IF NOT EXISTS container_id uuid;
 CREATE INDEX IF NOT EXISTS idx_drive_folders_container_id ON public.drive_folders(container_id);
 
 -- >>> 20260513062341_e1fb510c-d3fb-48d8-9aab-5432c4b59c8c.sql
 
 -- Add 'edit' to drive_share_permission enum
-ALTER TYPE public.drive_share_permission ADD VALUE IF NOT EXISTS 'edit';
+-- [migration-export] enum value folded into CREATE TYPE above: ALTER TYPE public.drive_share_permission ADD VALUE IF NOT EXISTS 'edit';
 
 -- Track which share link created a folder (for share-link recipients to manage their own items)
 ALTER TABLE public.drive_folders ADD COLUMN IF NOT EXISTS share_link_id UUID;
@@ -5553,7 +5553,7 @@ $function$;
 
 
 -- 1. Extend app_role enum with 'staff'
-ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'staff';
+-- [migration-export] enum value folded into CREATE TYPE above: ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'staff';
 
 -- 2. staff_roles: reusable permission templates per agency
 CREATE TABLE IF NOT EXISTS public.staff_roles (
@@ -6073,7 +6073,7 @@ WITH CHECK (client_id = auth.uid());
 
 -- >>> 20260612151107_10beed52-47f9-46df-bf48-1ff1846c0b99.sql
 
-ALTER TYPE invoice_status ADD VALUE IF NOT EXISTS 'draft';
+-- [migration-export] enum value folded into CREATE TYPE above: ALTER TYPE invoice_status ADD VALUE IF NOT EXISTS 'draft';
 
 -- >>> 20260613170553_8f270bb7-f3d7-43ec-971f-294425fa1649.sql
 
@@ -6426,7 +6426,7 @@ $function$;
 -- >>> 20260625094344_5409a70f-4088-40dc-bafc-3cc0353fd8d8.sql
 
 -- Add 'custom' to channel_type enum
-ALTER TYPE public.channel_type ADD VALUE IF NOT EXISTS 'custom';
+-- [migration-export] enum value folded into CREATE TYPE above: ALTER TYPE public.channel_type ADD VALUE IF NOT EXISTS 'custom';
 
 -- >>> 20260625095907_9d9a341d-9b63-4875-b4d6-c2d6887ab242.sql
 
