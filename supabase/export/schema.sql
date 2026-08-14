@@ -1368,7 +1368,8 @@ VALUES (
         'image/jpeg', 'image/png', 'image/gif', 'image/webp',
         'application/pdf', 'application/zip', 'application/x-zip-compressed',
         'audio/mpeg', 'audio/wav', 'audio/aac']
-);
+)
+ON CONFLICT (id) DO NOTHING;
 
 -- Storage policies for deliverables bucket
 -- Admins can manage all files in their agency's projects
