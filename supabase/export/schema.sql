@@ -1162,6 +1162,7 @@ END;
 $function$;
 
 -- CREATE TRIGGER for auto-creating project channels
+DROP TRIGGER IF EXISTS on_project_created_create_channel ON public.projects;
 CREATE TRIGGER on_project_created_create_channel
   AFTER INSERT ON public.projects
   FOR EACH ROW
@@ -1197,6 +1198,7 @@ END;
 $function$;
 
 -- CREATE TRIGGER for adding editors to channels
+DROP TRIGGER IF EXISTS on_editor_assigned_add_to_channel ON public.project_editors;
 CREATE TRIGGER on_editor_assigned_add_to_channel
   AFTER INSERT ON public.project_editors
   FOR EACH ROW
@@ -1228,6 +1230,7 @@ END;
 $function$;
 
 -- CREATE TRIGGER for archiving channels
+DROP TRIGGER IF EXISTS on_project_status_change_archive_channel ON public.projects;
 CREATE TRIGGER on_project_status_change_archive_channel
   AFTER UPDATE OF status ON public.projects
   FOR EACH ROW
@@ -2821,6 +2824,7 @@ END;
 $$;
 
 -- CREATE TRIGGER for editor assignment
+DROP TRIGGER IF EXISTS on_editor_assigned ON public.project_editors;
 CREATE TRIGGER on_editor_assigned
 AFTER INSERT ON public.project_editors
 FOR EACH ROW
@@ -2885,6 +2889,7 @@ END;
 $$;
 
 -- CREATE TRIGGER for project status changes
+DROP TRIGGER IF EXISTS on_project_status_change ON public.projects;
 CREATE TRIGGER on_project_status_change
 AFTER UPDATE ON public.projects
 FOR EACH ROW
@@ -2930,6 +2935,7 @@ END;
 $$;
 
 -- CREATE TRIGGER for new proposals
+DROP TRIGGER IF EXISTS on_new_proposal ON public.projects;
 CREATE TRIGGER on_new_proposal
 AFTER INSERT ON public.projects
 FOR EACH ROW
@@ -3052,6 +3058,7 @@ END;
 $$;
 
 -- CREATE TRIGGER for new messages
+DROP TRIGGER IF EXISTS on_new_message ON public.messages;
 CREATE TRIGGER on_new_message
 AFTER INSERT ON public.messages
 FOR EACH ROW
