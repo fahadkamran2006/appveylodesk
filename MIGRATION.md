@@ -47,37 +47,32 @@ supabase functions deploy --no-verify-jwt
 and set the secrets they need (Paddle, Resend, Bunny, VAPID) in
 Project Settings → Edge Functions → Secrets.
 
-## Step 4 — Move the data
+## Step 4 — Move the data (already exported)
 
-Row counts are tiny (largest table is `notifications` at ~581 rows; total ~1.2k),
-so a plain SQL insert dump is enough. Ask me in chat:
+`supabase/export/data.sql` is generated and in the repo. It contains every row of
+all 49 public tables **plus** `auth.users` and `auth.identities`, in
+dependency-safe order, wrapped in a transaction with
+`session_replication_role = replica` so foreign keys and triggers don't fight the
+load. Every statement is `ON CONFLICT DO NOTHING`, so it is safe to re-run.
 
-> "dump my data as SQL for the new Supabase project"
+Deliberately skipped (throwaway logs, ~640 rows): `notifications`, `system_logs`,
+`lead_magnet_email_events`. Say the word if you want them too.
 
-and I will generate `supabase/export/data.sql` with INSERT statements in
-dependency-safe order (agencies → profiles → user_roles → clients → containers →
-projects → deliverables → invoices → channels → messages → the rest).
-Tell me if you want to skip throwaway tables (`notifications`, `system_logs`,
-`lead_magnet_email_events`) — most people do.
-
-Load it with:
+Load it after the schema:
 
 ```bash
 psql "postgresql://postgres:<password>@db.<your-ref>.supabase.co:5432/postgres" -f supabase/export/data.sql
 ```
 
-## Step 5 — Move the users
+## Step 5 — Users come with it
 
-`public.profiles.id` points at `auth.users.id`, so user IDs must be preserved.
-Two ways:
+`auth.users` (including `encrypted_password`) and `auth.identities` (the Google
+links) are inside `data.sql`, and IDs are preserved — so `public.profiles.id`
+still lines up and everyone keeps their existing password. You only need to
+re-create the **Google provider credentials** in the new project
+(Authentication → Providers → Google) and add your redirect URLs; the per-user
+Google links are already restored.
 
-- **Keep passwords:** insert the `auth.users` rows (id, email, `encrypted_password`,
-  `email_confirmed_at`, metadata) into the new project before loading `data.sql`.
-  I can include this block in the dump on request.
-- **Clean start:** create users fresh with the same IDs via the Admin API and have
-  everyone use "forgot password" once. Google sign-in has to be re-configured in
-  the new project either way (Authentication → Providers → Google, plus your
-  redirect URLs).
 
 ## Step 6 — Point the app at the new backend
 
