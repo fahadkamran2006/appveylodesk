@@ -658,6 +658,7 @@ USING (
 
 -- Accept invitation: assigns agency + role to the currently authenticated user.
 -- Uses SECURITY DEFINER to avoid fragile client-side role writes.
+DROP FUNCTION IF EXISTS public.accept_agency_invitation(uuid);
 CREATE OR REPLACE FUNCTION public.accept_agency_invitation(_token uuid)
 RETURNS TABLE (agency_id uuid, role public.app_role)
 LANGUAGE plpgsql
@@ -5321,6 +5322,7 @@ REVOKE EXECUTE ON FUNCTION public.activate_managed_client(UUID) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.activate_managed_client(UUID) TO authenticated;
 
 -- 4. Extend accept_agency_invitation to migrate managed-client work
+DROP FUNCTION IF EXISTS public.accept_agency_invitation(uuid);
 CREATE OR REPLACE FUNCTION public.accept_agency_invitation(_token uuid)
  RETURNS TABLE(out_agency_id uuid, out_role app_role)
  LANGUAGE plpgsql
@@ -5437,6 +5439,7 @@ ALTER TABLE public.invoices
   CHECK ((client_id IS NOT NULL)::int + (managed_client_id IS NOT NULL)::int = 1);
 
 -- Extend accept_agency_invitation to also migrate project_containers
+DROP FUNCTION IF EXISTS public.accept_agency_invitation(uuid);
 CREATE OR REPLACE FUNCTION public.accept_agency_invitation(_token uuid)
  RETURNS TABLE(out_agency_id uuid, out_role app_role)
  LANGUAGE plpgsql
@@ -5809,6 +5812,7 @@ ALTER TABLE public.agency_invitations
   ADD COLUMN IF NOT EXISTS metadata JSONB NOT NULL DEFAULT '{}'::jsonb;
 
 -- Extend accept_agency_invitation to create staff_members row when role='staff'
+DROP FUNCTION IF EXISTS public.accept_agency_invitation(uuid);
 CREATE OR REPLACE FUNCTION public.accept_agency_invitation(_token uuid)
  RETURNS TABLE(out_agency_id uuid, out_role app_role)
  LANGUAGE plpgsql
