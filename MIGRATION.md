@@ -64,6 +64,21 @@ Load it after the schema:
 psql "postgresql://postgres:<password>@db.<your-ref>.supabase.co:5432/postgres" -f supabase/export/data.sql
 ```
 
+### One-command import (schema + data)
+
+Instead of running the two `psql` commands by hand:
+
+```bash
+chmod +x supabase/export/import.sh
+./supabase/export/import.sh "postgresql://postgres:<password>@db.<your-ref>.supabase.co:5432/postgres"
+```
+
+It verifies the connection, applies `schema.sql`, then loads `data.sql`, and
+prints the remaining checklist (buckets, functions, secrets, Google auth, env vars).
+Use the **direct** connection URI on port 5432 (Project Settings → Database →
+Connection string → URI), not the pooler.
+
+
 ## Step 5 — Users come with it
 
 `auth.users` (including `encrypted_password`) and `auth.identities` (the Google
