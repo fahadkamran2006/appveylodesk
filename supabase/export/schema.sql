@@ -5195,7 +5195,23 @@ CREATE INDEX IF NOT EXISTS idx_drive_folders_share_link_id ON public.drive_folde
 REVOKE EXECUTE ON FUNCTION public.get_admin_agency_stats() FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_admin_agency_stats() TO service_role;
 
+-- [migration-export] table created outside this project's migrations; ensure it exists
+CREATE TABLE IF NOT EXISTS public.tool_leads (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  email TEXT NOT NULL,
+  tool_used TEXT NOT NULL,
+  input_data JSONB
+);
+GRANT INSERT ON public.tool_leads TO anon, authenticated;
+GRANT ALL ON public.tool_leads TO service_role;
+ALTER TABLE public.tool_leads ENABLE ROW LEVEL SECURITY;
+
 DROP POLICY IF EXISTS "Allow public insert" ON public.tool_leads;
+CREATE POLICY "Allow public insert" ON public.tool_leads
+  FOR INSERT
+  TO anon, authenticated
+  WITH CHECK (true);
 DROP POLICY IF EXISTS "Service role manages tool leads" ON public.tool_leads;
 CREATE POLICY "Service role manages tool leads" ON public.tool_leads
   FOR ALL
