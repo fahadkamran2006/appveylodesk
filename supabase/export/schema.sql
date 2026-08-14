@@ -1,4 +1,8 @@
+-- Veylodesk full schema: all migrations concatenated in order.
+-- Run this on a fresh Supabase project (SQL Editor or psql).
+
 -- >>> 20251228012201_4cd7a89f-0842-4ccc-93da-4d613ed10902.sql
+
 -- Create enum for user roles
 CREATE TYPE public.app_role AS ENUM ('admin', 'client', 'editor');
 
@@ -378,7 +382,9 @@ CREATE TRIGGER update_projects_updated_at
 CREATE TRIGGER update_invoices_updated_at
   BEFORE UPDATE ON public.invoices
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
 -- >>> 20260105191040_19034d6a-e454-4dbe-b7cc-720c982029be.sql
+
 -- Drop the existing restrictive INSERT policy on agencies
 DROP POLICY IF EXISTS "Authenticated users can create agencies" ON public.agencies;
 
@@ -407,7 +413,9 @@ FOR UPDATE
 TO authenticated
 USING (has_role(auth.uid(), 'admin') AND user_belongs_to_agency(auth.uid(), id))
 WITH CHECK (has_role(auth.uid(), 'admin') AND user_belongs_to_agency(auth.uid(), id));
+
 -- >>> 20260105191050_f61b7400-6229-4485-9c7e-b7d15057e03b.sql
+
 -- Fix the update_updated_at_column function to have explicit search_path
 CREATE OR REPLACE FUNCTION public.update_updated_at_column()
 RETURNS trigger
@@ -420,7 +428,9 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+
 -- >>> 20260105193027_53542598-f908-43df-949b-4bd6e8605e4d.sql
+
 -- Add creator/owner reference so the inserting user can immediately read the row (needed for INSERT ... RETURNING)
 ALTER TABLE public.agencies
 ADD COLUMN IF NOT EXISTS created_by uuid;
@@ -477,7 +487,9 @@ WITH CHECK (
 
 -- Ensure grants exist (RLS still applies)
 GRANT SELECT, INSERT, UPDATE ON public.agencies TO authenticated;
+
 -- >>> 20260105203952_4b5c58b6-6c1c-489b-a937-2305b9568d35.sql
+
 -- Drop existing problematic policies on projects table
 DROP POLICY IF EXISTS "Admins can manage all agency projects" ON public.projects;
 DROP POLICY IF EXISTS "Clients can view their projects" ON public.projects;
@@ -539,7 +551,9 @@ USING (
   agency_id = get_user_agency_id(auth.uid())
   OR id = auth.uid()
 );
+
 -- >>> 20260105210648_571848b1-5393-417b-9fa4-a68cd8713794.sql
+
 -- Allow admins to insert profiles for invited users in their agency
 CREATE POLICY "Admins can insert profiles in their agency"
 ON public.profiles
@@ -549,7 +563,9 @@ WITH CHECK (
   public.has_role(auth.uid(), 'admin') 
   AND agency_id = public.get_user_agency_id(auth.uid())
 );
+
 -- >>> 20260105211533_9d2492e8-6dfc-47e2-9aba-16f8b2a34619.sql
+
 -- Invitations table for inviting clients/editors without creating placeholder auth users
 CREATE TABLE IF NOT EXISTS public.agency_invitations (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -695,6 +711,7 @@ WITH CHECK (
 );
 
 -- >>> 20260107212605_09abbd0d-112b-433a-8261-9a1e000301f1.sql
+
 -- Add editor_rate column to projects table
 ALTER TABLE public.projects 
 ADD COLUMN IF NOT EXISTS editor_rate numeric DEFAULT NULL;
@@ -734,16 +751,22 @@ USING (
 -- - "Clients can view their invoices" - for clients only
 -- - "Clients can update invoice payment proof" - for clients only
 -- Editors have NO policies on invoices table, so they cannot read it.
+
 -- >>> 20260107212912_a73356c6-07fb-4891-82ad-a7c92f58b43c.sql
+
 -- Add 'pending' status to invoice_status enum for payment proof review state
 ALTER TYPE public.invoice_status ADD VALUE IF NOT EXISTS 'pending';
+
 -- >>> 20260108093032_0a9d63aa-88a6-4ba6-bf2d-8ccd0a5703e6.sql
+
 -- Allow anyone to read an invitation by its ID (for join pages)
 CREATE POLICY "Anyone can view invitation by id for verification"
 ON public.agency_invitations
 FOR SELECT
 USING (true);
+
 -- >>> 20260108094019_fc2cdbb0-13bb-488e-a1d9-fc0116c48294.sql
+
 -- Drop and recreate to fix ambiguous column reference
 DROP FUNCTION IF EXISTS public.accept_agency_invitation(uuid);
 
@@ -808,7 +831,9 @@ BEGIN
   RETURN NEXT;
 END;
 $function$;
+
 -- >>> 20260108100403_5847a3e1-a22c-4d67-bac9-c13346c7d90b.sql
+
 -- =====================================================
 -- MESSAGING SYSTEM SCHEMA
 -- =====================================================
@@ -1212,7 +1237,9 @@ CREATE TRIGGER update_channels_updated_at
   BEFORE UPDATE ON public.channels
   FOR EACH ROW
   EXECUTE FUNCTION public.update_updated_at_column();
+
 -- >>> 20260109183143_af44dcf3-e9a7-4ee6-86c6-086cc062306f.sql
+
 -- Add subscription plan and storage tracking to agencies
 ALTER TABLE public.agencies
 ADD COLUMN subscription_plan TEXT NOT NULL DEFAULT 'starter' CHECK (subscription_plan IN ('starter', 'pro')),
@@ -1427,7 +1454,9 @@ CREATE TRIGGER update_deliverable_comments_updated_at
 BEFORE UPDATE ON public.deliverable_comments
 FOR EACH ROW
 EXECUTE FUNCTION public.update_updated_at_column();
+
 -- >>> 20260109211906_b3d8d059-4718-48dd-aed0-65a38a526758.sql
+
 
 -- Add proposal status to project_status enum
 ALTER TYPE project_status ADD VALUE IF NOT EXISTS 'proposal';
@@ -1498,6 +1527,7 @@ FOR EACH ROW
 EXECUTE FUNCTION public.update_updated_at_column();
 
 -- >>> 20260109214057_4de62f0c-0e3b-47b2-8669-8fe7d9bea6f5.sql
+
 -- Fix: Remove public access policy and create secure RPC for invitation verification
 
 -- Drop the overly permissive public policy
@@ -1556,7 +1586,9 @@ BEGIN
     (inv.accepted_at IS NOT NULL)::boolean as already_accepted;
 END;
 $$;
+
 -- >>> 20260110181439_0b61ce95-dce9-48f1-a6e3-1ff7f2d79130.sql
+
 -- Drop existing functions that may have different signatures
 DROP FUNCTION IF EXISTS public.create_project_channel(uuid, uuid, uuid, uuid, uuid);
 DROP FUNCTION IF EXISTS public.create_project_channel(uuid, uuid, uuid, uuid);
@@ -1715,7 +1747,9 @@ END $$;
 -- Grant execute on functions
 GRANT EXECUTE ON FUNCTION public.create_project_channel(uuid, uuid, uuid, uuid, uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.add_project_channel_participant(uuid, uuid) TO authenticated;
+
 -- >>> 20260110184032_1987baa7-9b30-4875-8b1c-cd4521d2da7f.sql
+
 -- Create a SECURITY DEFINER helper function to check channel membership without RLS recursion
 CREATE OR REPLACE FUNCTION public.is_channel_member(_channel_id uuid, _user_id uuid)
 RETURNS boolean
@@ -1744,7 +1778,9 @@ CREATE POLICY "Users can view channel participants"
 ON public.channel_participants
 FOR SELECT
 USING (public.is_channel_member(channel_id, auth.uid()));
+
 -- >>> 20260110184555_d0399aed-2ca0-4d72-9d87-11ac272e9254.sql
+
 -- Avoid recursion: channel_participants admin policy should not query channels with RLS
 
 -- Helper function: check if a channel belongs to a given agency (bypasses RLS via SECURITY DEFINER)
@@ -1790,7 +1826,9 @@ ON public.channel_participants
 FOR SELECT
 TO authenticated
 USING (public.is_channel_member(channel_id, auth.uid()));
+
 -- >>> 20260111112208_b268bcd5-37f0-44ab-9cc7-0f098b24cb3e.sql
+
 -- Create channel_read_receipts table to track when users last viewed each channel
 CREATE TABLE public.channel_read_receipts (
   id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -1848,7 +1886,9 @@ GRANT EXECUTE ON FUNCTION public.get_channel_unread_count(uuid, uuid) TO authent
 
 -- Enable realtime for channel_read_receipts
 ALTER PUBLICATION supabase_realtime ADD TABLE public.channel_read_receipts;
+
 -- >>> 20260112091729_ade60dfe-22ee-48ce-97a8-22385b97e882.sql
+
 -- Fix the auto_archive_project_channel trigger function to remove invalid 'delivered' enum value
 -- The project_status enum only has: 'backlog', 'in_progress', 'review', 'done', 'proposal', 'cancelled'
 -- 'delivered' is NOT a valid value and causes errors when the trigger fires
@@ -1873,7 +1913,9 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
 -- >>> 20260116153141_76e8fb69-94ed-4ebe-9265-1345b7f2e466.sql
+
 -- Add completed_at column to track when projects are completed
 ALTER TABLE public.projects 
 ADD COLUMN completed_at timestamp with time zone;
@@ -1903,7 +1945,9 @@ EXECUTE FUNCTION public.set_project_completed_at();
 UPDATE public.projects 
 SET completed_at = updated_at 
 WHERE status = 'done' AND completed_at IS NULL;
+
 -- >>> 20260116232413_5a0b94de-09aa-4ec9-a5b2-03a2655d6f9f.sql
+
 -- Allow clients to create project proposals (with status 'proposal')
 CREATE POLICY "Clients can create project proposals"
 ON public.projects
@@ -1913,7 +1957,9 @@ WITH CHECK (
   AND client_id = auth.uid()
   AND status = 'proposal'::project_status
 );
+
 -- >>> 20260116232705_f69a97d1-1a3e-4f13-a935-6b6f3062222a.sql
+
 -- Create function to auto-send DM when client submits a proposal
 CREATE OR REPLACE FUNCTION public.auto_dm_on_proposal()
 RETURNS trigger
@@ -1992,7 +2038,9 @@ CREATE TRIGGER trigger_auto_dm_on_proposal
   AFTER INSERT ON public.projects
   FOR EACH ROW
   EXECUTE FUNCTION public.auto_dm_on_proposal();
+
 -- >>> 20260120180016_6ad7be3e-c6aa-4f3c-94c6-58f6a4929528.sql
+
 -- Add attachment_url and attachment_type columns to messages table for file attachments
 ALTER TABLE public.messages 
 ADD COLUMN IF NOT EXISTS attachment_url TEXT,
@@ -2176,7 +2224,9 @@ AS $$
   GROUP BY m.month, m.year, m.month_num
   ORDER BY m.year, m.month_num;
 $$;
+
 -- >>> 20260120223709_daf25aea-4ccf-4a8c-8625-cb6db9c38e5c.sql
+
 -- Fix warn-level finding: prevent unauthenticated (anon) reads of agency data
 -- by scoping SELECT policies to authenticated role and explicitly denying anon.
 
@@ -2207,7 +2257,9 @@ TO anon
 USING (false);
 
 COMMIT;
+
 -- >>> 20260121061346_c9443ad0-e426-40bf-8030-b43c8c8d9d66.sql
+
 -- Fix error-level finding: restrict profiles table access to authenticated users only
 -- This prevents unauthenticated access to sensitive user data (email, full_name, avatar_url)
 
@@ -2245,7 +2297,9 @@ TO anon
 USING (false);
 
 COMMIT;
+
 -- >>> 20260121182846_e3309ca6-273d-4dd5-811b-8e32cbf5f56b.sql
+
 -- Fix profiles RLS to properly allow viewing agency members' profiles
 -- The issue: profiles.agency_id can be NULL, and we need to match via user_roles table instead
 
@@ -2272,14 +2326,18 @@ CREATE POLICY "Authenticated users can view agency member profiles"
         AND ur2.user_id = profiles.id
     )
   );
+
 -- >>> 20260121184341_69159df7-0ebd-4eb4-88bb-b8ccf6fe14ef.sql
+
 -- Add reference_links column to projects table for storing external links (Google Drive, reference URLs, etc.)
 ALTER TABLE public.projects 
 ADD COLUMN IF NOT EXISTS reference_links TEXT DEFAULT NULL;
 
 -- Add comment for documentation
 COMMENT ON COLUMN public.projects.reference_links IS 'JSON array or newline-separated list of external reference links (Google Drive, reference URLs, etc.)';
+
 -- >>> 20260121192916_af4a81bf-debb-4223-a93d-761b1b638b81.sql
+
 -- Add file_type column to deliverables table
 ALTER TABLE public.deliverables 
 ADD COLUMN file_type text NOT NULL DEFAULT 'deliverable';
@@ -2304,7 +2362,9 @@ WITH CHECK (
 
 -- Create index for faster file_type filtering
 CREATE INDEX idx_deliverables_file_type ON public.deliverables(file_type);
+
 -- >>> 20260123163744_64da1660-02f2-4370-a1e8-c052618d48fd.sql
+
 -- Create function to recalculate agency storage from actual deliverables
 CREATE OR REPLACE FUNCTION public.recalculate_agency_storage()
 RETURNS void
@@ -2326,7 +2386,9 @@ $$;
 
 -- Run it immediately to fix the current mismatch
 SELECT public.recalculate_agency_storage();
+
 -- >>> 20260123174534_0e910ac1-eaf2-43d2-b410-c3110652b5ae.sql
+
 -- Drop and recreate the recalculate_agency_storage function with proper WHERE clause
 CREATE OR REPLACE FUNCTION public.recalculate_agency_storage()
 RETURNS void
@@ -2354,7 +2416,9 @@ BEGIN
   END LOOP;
 END;
 $$;
+
 -- >>> 20260123214105_93338337-a722-4076-9d42-b0a40e5727a0.sql
+
 -- Create table to track individual message read status (for read receipts / seen ticks)
 CREATE TABLE IF NOT EXISTS public.message_read_receipts (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -2426,7 +2490,9 @@ USING (user_id = auth.uid());
 
 -- Enable realtime for message_read_receipts
 ALTER PUBLICATION supabase_realtime ADD TABLE public.message_read_receipts;
+
 -- >>> 20260124185659_835a45fe-bccb-4a9d-a99c-f35826175a8e.sql
+
 -- Allow authenticated users to view user_roles of members in the same agency
 -- This is required for the profiles RLS policy JOIN to work for Clients/Editors
 CREATE POLICY "Users can view roles of agency members"
@@ -2440,7 +2506,9 @@ USING (
     WHERE ur.user_id = auth.uid()
   )
 );
+
 -- >>> 20260124191530_8cf03027-41c6-48b8-93b3-055dbfb4b295.sql
+
 -- Fix infinite recursion in user_roles RLS by removing self-referencing policy
 -- and switching profiles access to a SECURITY DEFINER helper.
 
@@ -2475,7 +2543,9 @@ USING (
   (id = auth.uid())
   OR public.users_share_agency(auth.uid(), id)
 );
+
 -- >>> 20260129075302_ad094129-eda8-4cce-825c-6d2ed839e40e.sql
+
 -- Add subscription-related columns to agencies table
 ALTER TABLE public.agencies 
 ADD COLUMN IF NOT EXISTS plan_tier TEXT NOT NULL DEFAULT 'starter' CHECK (plan_tier IN ('starter', 'growth', 'scale')),
@@ -2521,7 +2591,9 @@ SET
     ELSE 214748364800  -- 200 GB
   END
 WHERE plan_tier IS NULL OR plan_tier = 'starter';
+
 -- >>> 20260131104527_085eda7c-90dd-4492-903f-20cef7fd4e2a.sql
+
 -- Fix outdated subscription_plan constraint to allow current tiers
 ALTER TABLE public.agencies
 DROP CONSTRAINT IF EXISTS agencies_subscription_plan_check;
@@ -2533,6 +2605,7 @@ CHECK (
 );
 
 -- >>> 20260201063044_1e6df294-8323-4ecf-b5e4-31f1e98a9927.sql
+
 -- Create enum for notification types
 CREATE TYPE public.notification_type AS ENUM (
   'task_assignment',
@@ -2943,7 +3016,9 @@ CREATE TRIGGER update_notification_preferences_updated_at
 BEFORE UPDATE ON public.notification_preferences
 FOR EACH ROW
 EXECUTE FUNCTION update_updated_at_column();
+
 -- >>> 20260204234155_53eb3f7f-91df-49fd-b358-338d00d37acf.sql
+
 -- Create project_containers table for the middle tier (Client > Container > Video)
 CREATE TABLE public.project_containers (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -3022,7 +3097,9 @@ AS $$
       AND pc.agency_id = _agency_id
   )
 $$;
+
 -- >>> 20260207121848_b815c9e2-ff19-467c-b298-e24978b5eba6.sql
+
 -- Create payment_methods table for agency payment profiles
 CREATE TABLE public.payment_methods (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -3127,7 +3204,9 @@ CREATE TRIGGER update_payment_methods_updated_at
   BEFORE UPDATE ON public.payment_methods
   FOR EACH ROW
   EXECUTE FUNCTION public.update_updated_at_column();
+
 -- >>> 20260207131323_acb4b1fd-bf12-4a9f-b370-0eda251c283d.sql
+
 -- Add 'paid' and 'archived' values to project_status enum
 ALTER TYPE public.project_status ADD VALUE IF NOT EXISTS 'paid';
 ALTER TYPE public.project_status ADD VALUE IF NOT EXISTS 'archived';
@@ -3244,7 +3323,9 @@ CREATE POLICY "Clients can approve their review videos"
     auth.uid() = client_id 
     AND (status = 'done' OR status = 'in_progress')
   );
+
 -- >>> 20260207132234_4b6ceeda-e2a2-40ff-b68f-428d77327852.sql
+
 -- Drop the existing trigger that creates channels on every project insert
 DROP TRIGGER IF EXISTS trigger_create_project_channel ON public.projects;
 
@@ -3352,7 +3433,9 @@ CREATE TRIGGER trigger_create_project_channel
   AFTER INSERT ON public.projects
   FOR EACH ROW
   EXECUTE FUNCTION public.create_project_channel();
+
 -- >>> 20260208212928_85db4360-d539-4033-800b-d0fe5faaa624.sql
+
 -- Add RLS policy for admins to delete profiles of users in their agency
 CREATE POLICY "Admins can delete profiles in their agency"
 ON public.profiles
@@ -3372,7 +3455,9 @@ USING (
     )
   )
 );
+
 -- >>> 20260209104304_04b4d24f-3c82-4f70-bc44-a19971441148.sql
+
 -- Add legal compliance fields to agencies table for professional invoicing
 ALTER TABLE public.agencies 
 ADD COLUMN IF NOT EXISTS business_name TEXT,
@@ -3388,7 +3473,9 @@ BEGIN
         ALTER TYPE project_status ADD VALUE 'request';
     END IF;
 END $$;
+
 -- >>> 20260209105007_53c44969-cdd1-428e-bf80-4de0f0850553.sql
+
 -- Create employment_type enum
 CREATE TYPE public.employment_type AS ENUM ('freelance', 'salaried');
 
@@ -3397,7 +3484,9 @@ ALTER TABLE public.profiles
 ADD COLUMN IF NOT EXISTS employment_type public.employment_type NOT NULL DEFAULT 'freelance',
 ADD COLUMN IF NOT EXISTS monthly_salary NUMERIC DEFAULT NULL,
 ADD COLUMN IF NOT EXISTS accumulated_bonus NUMERIC NOT NULL DEFAULT 0;
+
 -- >>> 20260209143956_67aedf47-d25d-436e-99b5-9e830b790614.sql
+
 
 -- Add parent_id for reply threads
 ALTER TABLE public.messages ADD COLUMN IF NOT EXISTS parent_id UUID REFERENCES public.messages(id) ON DELETE SET NULL;
@@ -3454,6 +3543,7 @@ CREATE INDEX idx_message_reactions_message_id ON public.message_reactions(messag
 CREATE INDEX idx_messages_parent_id ON public.messages(parent_id);
 
 -- >>> 20260210102859_9536d5e2-2afe-4b53-ad73-fa09a7588d06.sql
+
 CREATE POLICY "Admins can update profiles in their agency"
 ON public.profiles
 FOR UPDATE
@@ -3468,7 +3558,9 @@ USING (
     AND ur_target.user_id = profiles.id
   )
 );
+
 -- >>> 20260210103719_65cd3362-d6b5-4d1f-95d2-8c69984b3d9c.sql
+
 
 -- Payroll payments table to track paid/unpaid status per month
 CREATE TABLE public.payroll_payments (
@@ -3537,6 +3629,7 @@ BEFORE UPDATE ON public.editor_balances
 FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 -- >>> 20260210105213_22ac5da3-e433-41c0-97d0-0673cb02a92c.sql
+
 CREATE POLICY "Clients can create video requests"
 ON public.projects
 FOR INSERT
@@ -3545,7 +3638,9 @@ WITH CHECK (
   AND client_id = auth.uid()
   AND status = 'request'::project_status
 );
+
 -- >>> 20260211235823_6f66fcc4-6d57-45d9-a9a0-147a8709aba3.sql
+
 
 -- 1. Add container_id column to channels table
 ALTER TABLE public.channels ADD COLUMN container_id UUID REFERENCES public.project_containers(id) ON DELETE CASCADE;
@@ -3650,6 +3745,7 @@ DELETE FROM public.channels WHERE type = 'project' AND project_id IS NOT NULL;
 
 -- >>> 20260212000733_764fd221-32df-43b5-8a74-b2e73d3e49bf.sql
 
+
 ALTER TABLE public.channels DROP CONSTRAINT channels_project_check;
 
 ALTER TABLE public.channels ADD CONSTRAINT channels_project_check CHECK (
@@ -3658,6 +3754,7 @@ ALTER TABLE public.channels ADD CONSTRAINT channels_project_check CHECK (
 );
 
 -- >>> 20260212002813_178e8c50-a844-453f-96f6-e711a95b1968.sql
+
 
 CREATE OR REPLACE FUNCTION public.notify_video_approval()
  RETURNS trigger
@@ -3742,6 +3839,7 @@ END;
 $function$;
 
 -- >>> 20260213172225_64c89adc-8425-40ce-a5ff-103ab3735c17.sql
+
 -- Allow admins to upload agency logos to the avatars bucket under agency-logos/ path
 CREATE POLICY "Admins can upload agency logos"
 ON storage.objects
@@ -3769,7 +3867,9 @@ USING (
   AND (storage.foldername(name))[1] = 'agency-logos'
   AND has_role(auth.uid(), 'admin'::app_role)
 );
+
 -- >>> 20260215131301_601545f8-a8c9-481d-8599-6530ed944c9b.sql
+
 
 -- 1. Change column default for email_enabled to false
 ALTER TABLE public.notification_preferences ALTER COLUMN email_enabled SET DEFAULT false;
@@ -3789,6 +3889,7 @@ AS $function$
 $function$;
 
 -- >>> 20260215135259_cee09c83-9d92-4b92-9dee-44a43f7d9350.sql
+
 
 -- Create push_subscriptions table to store Web Push subscriptions
 CREATE TABLE public.push_subscriptions (
@@ -3827,6 +3928,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.push_subscriptions;
 
 -- >>> 20260215135523_793f3e24-f162-43c0-b1c9-521ea9a67e2a.sql
 
+
 -- Create a function that sends web push notifications via the edge function
 -- This will be called by a trigger on the notifications table
 CREATE OR REPLACE FUNCTION public.trigger_web_push_notification()
@@ -3864,11 +3966,13 @@ CREATE TRIGGER on_notification_send_web_push
 
 -- >>> 20260216051110_2999817b-c1d9-442a-8f93-0b9362e7a51e.sql
 
+
 -- Drop the trigger that uses pg_net (which doesn't exist on this instance)
 DROP TRIGGER IF EXISTS on_notification_send_web_push ON public.notifications;
 DROP FUNCTION IF EXISTS public.trigger_web_push_notification();
 
 -- >>> 20260216093514_24d34f20-c7e9-4732-8a1c-814a66b85620.sql
+
 
 -- Allow users to update their own messages (for editing)
 CREATE POLICY "Users can update their own messages"
@@ -3890,6 +3994,7 @@ USING (sender_id = auth.uid());
 
 -- >>> 20260216093724_ce6ae32e-7179-42d9-b0c9-b849edae8e51.sql
 
+
 -- Allow deleting read receipts for messages owned by the deleter
 -- This is needed for cleanup when a user deletes their own message
 CREATE POLICY "Users can delete read receipts for their messages"
@@ -3905,10 +4010,12 @@ USING (
 
 -- >>> 20260219010622_0a6dbf39-6e47-4b76-9074-5f708e756304.sql
 
+
 -- Rename lemon_squeezy_customer_id to paddle_customer_id
 ALTER TABLE public.agencies RENAME COLUMN lemon_squeezy_customer_id TO paddle_customer_id;
 
 -- >>> 20260221195955_e077c990-f34e-4f5d-91c3-a25214ed1449.sql
+
 -- Create a public bucket for chat attachments
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('chat-attachments', 'chat-attachments', true)
@@ -3933,7 +4040,9 @@ ON storage.objects
 FOR DELETE
 TO authenticated
 USING (bucket_id = 'chat-attachments' AND auth.uid()::text = (storage.foldername(name))[1]);
+
 -- >>> 20260223074439_03344d14-1c41-4c95-b6d6-054a55e1bff7.sql
+
 
 -- 1. is_super_admin function
 CREATE OR REPLACE FUNCTION public.is_super_admin(_user_id uuid)
@@ -4020,6 +4129,7 @@ $$;
 
 -- >>> 20260224172151_2fed5551-bc7c-459e-b6a0-f7594ee444a1.sql
 
+
 -- Trigger: Log when a new agency is created
 CREATE OR REPLACE FUNCTION public.log_new_agency()
 RETURNS trigger
@@ -4097,6 +4207,7 @@ CREATE TRIGGER trg_log_new_user_signup
   EXECUTE FUNCTION public.log_new_user_signup();
 
 -- >>> 20260302071008_77a9ba25-5b91-4def-8b08-ed724e78e72d.sql
+
 
 -- Public review links table
 CREATE TABLE public.public_review_links (
@@ -4211,12 +4322,14 @@ CREATE TRIGGER update_public_review_links_updated_at
 
 -- >>> 20260303023425_db62901e-859c-4e53-a6e0-ec9608878859.sql
 
+
 -- Add granular permissions to public_review_links
 ALTER TABLE public.public_review_links
 ADD COLUMN IF NOT EXISTS allow_comments boolean NOT NULL DEFAULT true,
 ADD COLUMN IF NOT EXISTS allow_download boolean NOT NULL DEFAULT false;
 
 -- >>> 20260306151123_6ea41d05-e185-48c7-bbb8-dd4af75cdbb0.sql
+
 
 CREATE TABLE public.bug_reports (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -4254,6 +4367,7 @@ ON public.bug_reports FOR UPDATE TO authenticated
 USING (public.is_super_admin(auth.uid()));
 
 -- >>> 20260307043646_cbccbcef-6b3a-493a-94eb-a69bed90433f.sql
+
 
 -- Allow admins/editors to delete deliverable comments
 CREATE POLICY "Admins and editors can delete comments"
@@ -4301,10 +4415,12 @@ ADD COLUMN IF NOT EXISTS resolved_at timestamptz DEFAULT NULL;
 
 -- >>> 20260307044320_cf40cd22-04e5-47b1-be14-0249a5f4a2cc.sql
 
+
 ALTER TABLE public.deliverable_comments ADD COLUMN parent_id UUID REFERENCES public.deliverable_comments(id) ON DELETE CASCADE DEFAULT NULL;
 CREATE INDEX idx_deliverable_comments_parent_id ON public.deliverable_comments(parent_id);
 
 -- >>> 20260307050751_6dc78227-293f-47ee-8024-4cd8ae3b93e5.sql
+
 -- 1. Update is_super_admin to support both emails
 CREATE OR REPLACE FUNCTION public.is_super_admin(_user_id uuid)
 RETURNS boolean
@@ -4362,8 +4478,10 @@ ON public.marketing_emails_log
 FOR ALL
 TO authenticated
 USING (is_super_admin(auth.uid()))
-WITH CHECK (is_super_admin(auth.uid()))
+WITH CHECK (is_super_admin(auth.uid()));
+
 -- >>> 20260310145556_8c93d9e2-e663-4973-be31-a86d3590a26d.sql
+
 
 -- Create daily_logs table (unified attendance + task logs)
 CREATE TABLE public.daily_logs (
@@ -4438,6 +4556,7 @@ USING (has_role(auth.uid(), 'admin') AND user_belongs_to_agency(auth.uid(), agen
 
 -- >>> 20260310170522_6ab4979c-ca94-459d-8df8-6a219e8c6f15.sql
 
+
 CREATE TABLE public.agency_work_schedule (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   agency_id uuid NOT NULL REFERENCES public.agencies(id) ON DELETE CASCADE,
@@ -4472,10 +4591,15 @@ CREATE TRIGGER update_agency_work_schedule_updated_at
   EXECUTE FUNCTION update_updated_at_column();
 
 -- >>> 20260310172941_482533be-ce03-4201-b95c-bdf19d183d71.sql
+
 ALTER TABLE public.agency_work_schedule ADD COLUMN IF NOT EXISTS auto_monthly_report boolean NOT NULL DEFAULT false;
+
 -- >>> 20260403153352_ce8a12ce-c51f-4572-85a6-b6ce80ad761b.sql
+
 ALTER TYPE public.project_status ADD VALUE 'quality_check' BEFORE 'done';
+
 -- >>> 20260403153415_716c4392-c07f-4272-8c76-178ab01c89e8.sql
+
 
 -- Add columns
 ALTER TABLE public.deliverables
@@ -4557,6 +4681,7 @@ EXECUTE FUNCTION public.auto_unlock_deliverables_on_payment();
 
 -- >>> 20260404181216_472cb630-645a-441f-8dc1-1c86d8759c49.sql
 
+
 CREATE OR REPLACE FUNCTION public.auto_move_to_quality_check()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -4581,6 +4706,7 @@ FOR EACH ROW
 EXECUTE FUNCTION public.auto_move_to_quality_check();
 
 -- >>> 20260503125345_5755ac2c-e7d1-4143-ba19-ae7e1f70e98f.sql
+
 CREATE TABLE public.subscription_cancellation_logs (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   agency_id UUID NOT NULL,
@@ -4618,7 +4744,9 @@ ON public.subscription_cancellation_logs
 FOR SELECT
 TO authenticated
 USING (is_super_admin(auth.uid()));
+
 -- >>> 20260505114342_b1c41ea7-87af-4175-8270-6016440b8beb.sql
+
 
 CREATE TABLE public.lead_magnet_subscribers (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -4649,13 +4777,16 @@ USING (
 );
 
 -- >>> 20260505120615_3c4ee111-01d5-470b-b503-594922e2099b.sql
+
 insert into storage.buckets (id, name, public) values ('lead-magnet-assets', 'lead-magnet-assets', true) on conflict (id) do update set public = true;
 
 drop policy if exists "Public read lead magnet assets" on storage.objects;
 create policy "Public read lead magnet assets"
 on storage.objects for select
 using (bucket_id = 'lead-magnet-assets');
+
 -- >>> 20260505121126_f842e0a7-8a4e-4858-9fc9-2c9aa5c18e7d.sql
+
 ALTER TABLE public.lead_magnet_subscribers
   ADD COLUMN IF NOT EXISTS email_1_message_id TEXT,
   ADD COLUMN IF NOT EXISTS email_2_message_id TEXT,
@@ -4691,7 +4822,9 @@ ON public.lead_magnet_email_events
 FOR SELECT
 TO authenticated
 USING (public.is_super_admin(auth.uid()));
+
 -- >>> 20260505140935_3587d190-4648-4bce-87e9-5ee3211d3fe6.sql
+
 DROP POLICY IF EXISTS "Super admins can read leads" ON public.lead_magnet_subscribers;
 
 CREATE POLICY "Super admins can read leads"
@@ -4699,7 +4832,9 @@ ON public.lead_magnet_subscribers
 FOR SELECT
 TO authenticated
 USING (public.is_super_admin(auth.uid()));
+
 -- >>> 20260512191648_4b5f8b87-60bb-4733-9b3e-5fb2ada5e6bf.sql
+
 
 -- Permission enum for share links
 DO $$ BEGIN
@@ -4900,6 +5035,7 @@ CREATE TRIGGER trg_drive_files_storage
   FOR EACH ROW EXECUTE FUNCTION public.update_agency_storage_drive();
 
 -- >>> 20260513052040_e524c910-53e4-4fbf-b1c4-71da565a676c.sql
+
 ALTER TABLE public.drive_share_links
   ALTER COLUMN folder_id DROP NOT NULL,
   ADD COLUMN IF NOT EXISTS file_id UUID REFERENCES public.drive_files(id) ON DELETE CASCADE;
@@ -4912,7 +5048,9 @@ ALTER TABLE public.drive_share_links
 ALTER TABLE public.drive_share_links
   ADD CONSTRAINT drive_share_links_target_chk
   CHECK ((folder_id IS NOT NULL AND file_id IS NULL) OR (folder_id IS NULL AND file_id IS NOT NULL));
+
 -- >>> 20260513054302_3083c5b5-1d64-4d62-8b97-2b36df29544b.sql
+
 
 -- 1. Soft-delete columns
 ALTER TABLE public.drive_files
@@ -4958,21 +5096,28 @@ USING (
 );
 
 -- >>> 20260513060608_0084dade-fa0f-40a7-852c-fcb303c12b87.sql
+
 ALTER TYPE drive_folder_kind ADD VALUE IF NOT EXISTS 'client_root';
 ALTER TABLE public.drive_folders ADD COLUMN IF NOT EXISTS client_id uuid;
 CREATE INDEX IF NOT EXISTS idx_drive_folders_client_id ON public.drive_folders(client_id);
+
 -- >>> 20260513061056_082433b3-4cf1-4bfa-aaf0-126611561c30.sql
+
 ALTER TYPE drive_folder_kind ADD VALUE IF NOT EXISTS 'container_root';
 ALTER TABLE public.drive_folders ADD COLUMN IF NOT EXISTS container_id uuid;
 CREATE INDEX IF NOT EXISTS idx_drive_folders_container_id ON public.drive_folders(container_id);
+
 -- >>> 20260513062341_e1fb510c-d3fb-48d8-9aab-5432c4b59c8c.sql
+
 -- Add 'edit' to drive_share_permission enum
 ALTER TYPE public.drive_share_permission ADD VALUE IF NOT EXISTS 'edit';
 
 -- Track which share link created a folder (for share-link recipients to manage their own items)
 ALTER TABLE public.drive_folders ADD COLUMN IF NOT EXISTS share_link_id UUID;
 CREATE INDEX IF NOT EXISTS idx_drive_folders_share_link_id ON public.drive_folders(share_link_id);
+
 -- >>> 20260606182636_47407602-340d-4d36-8f9c-e2e35f60b22e.sql
+
 REVOKE EXECUTE ON FUNCTION public.get_admin_agency_stats() FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_admin_agency_stats() TO service_role;
 
@@ -4983,7 +5128,9 @@ CREATE POLICY "Service role manages tool leads"
   TO service_role
   USING (true)
   WITH CHECK (true);
+
 -- >>> 20260609065123_17df893d-608d-44d5-b696-790809bedc0b.sql
+
 
 -- 1. Managed clients table
 CREATE TABLE public.managed_clients (
@@ -5166,6 +5313,7 @@ $function$;
 
 -- >>> 20260609070001_fcb100a9-f66d-4eb5-bdaa-7c507e5fb1a7.sql
 
+
 -- Allow project_containers to belong to a managed client
 ALTER TABLE public.project_containers
   ALTER COLUMN client_id DROP NOT NULL,
@@ -5281,6 +5429,7 @@ $function$;
 
 -- >>> 20260609070206_1ec31090-6915-416c-b440-c301130a3718.sql
 
+
 CREATE OR REPLACE FUNCTION public.notify_invoice_change()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -5326,6 +5475,7 @@ END;
 $function$;
 
 -- >>> 20260609071345_826300cb-fd2d-4ed0-9956-dcdbf5ed690b.sql
+
 
 -- 1. Extend app_role enum with 'staff'
 ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'staff';
@@ -5561,6 +5711,7 @@ ON CONFLICT (agency_id, name) DO NOTHING;
 
 -- >>> 20260609071651_72e9fe90-d6ca-4816-a927-63acf0358796.sql
 
+
 ALTER TABLE public.agency_invitations
   ADD COLUMN IF NOT EXISTS metadata JSONB NOT NULL DEFAULT '{}'::jsonb;
 
@@ -5661,6 +5812,7 @@ $function$;
 
 -- >>> 20260609202933_54f4de50-3b67-40b4-9eb4-9edd7a7c2b5c.sql
 
+
 DROP POLICY IF EXISTS "Public read access to chat attachments" ON storage.objects;
 DROP POLICY IF EXISTS "Authenticated users can upload chat attachments" ON storage.objects;
 DROP POLICY IF EXISTS "Users can delete own chat attachments" ON storage.objects;
@@ -5687,13 +5839,18 @@ USING (
 );
 
 -- >>> 20260609204701_2e53640b-5e7e-45de-947f-2e710547c95c.sql
+
 ALTER TABLE public.drive_folders ADD COLUMN IF NOT EXISTS managed_client_id uuid REFERENCES public.managed_clients(id) ON DELETE CASCADE;
 CREATE INDEX IF NOT EXISTS drive_folders_managed_client_idx ON public.drive_folders(agency_id, managed_client_id) WHERE kind = 'client_root';
+
 -- >>> 20260609212551_f2852c56-4570-4913-913c-cc73a481f067.sql
+
 ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS container_id uuid REFERENCES public.project_containers(id) ON DELETE SET NULL;
 ALTER TABLE public.invoices ALTER COLUMN project_id DROP NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_invoices_container_id ON public.invoices(container_id);
+
 -- >>> 20260611080802_2d1b1255-4d42-4499-a4d8-0ae12bf0fc56.sql
+
 
 -- 1. payment_methods: restrict SELECT to admins only
 DROP POLICY IF EXISTS "Agency members can view payment methods" ON public.payment_methods;
@@ -5787,6 +5944,7 @@ USING (bucket_id = 'lead-magnet-assets' AND name IS NOT NULL AND position('/' in
 
 -- >>> 20260612133308_bdd97691-4362-41c1-b191-7d3c65379fbb.sql
 
+
 -- Trigger to ensure clients can only modify payment_proof_url on their invoices
 CREATE OR REPLACE FUNCTION public.enforce_client_invoice_update_columns()
 RETURNS trigger
@@ -5836,8 +5994,11 @@ USING (client_id = auth.uid())
 WITH CHECK (client_id = auth.uid());
 
 -- >>> 20260612151107_10beed52-47f9-46df-bf48-1ff1846c0b99.sql
+
 ALTER TYPE invoice_status ADD VALUE IF NOT EXISTS 'draft';
+
 -- >>> 20260613170553_8f270bb7-f3d7-43ec-971f-294425fa1649.sql
+
 
 -- ============ Free plan support ============
 
@@ -5983,6 +6144,7 @@ FOR EACH ROW EXECUTE FUNCTION public.enforce_storage_limit_drive();
 
 -- >>> 20260613172057_f50ea41e-eed0-4da9-a8c2-e94cbf67bccc.sql
 
+
 -- Restrict what clients can update on their own invoices.
 -- Without column-level RLS, we use a BEFORE UPDATE trigger that rejects
 -- changes to financial / status fields when the updater is the client
@@ -6047,10 +6209,13 @@ FOR EACH ROW
 EXECUTE FUNCTION public.enforce_client_invoice_update_scope();
 
 -- >>> 20260613184508_a3b10c84-db7a-4652-9b3b-8334339fa333.sql
+
 UPDATE public.agencies SET plan_tier = 'free' WHERE plan_tier IS NULL OR plan_tier = '';
 UPDATE public.agencies SET subscription_plan = 'free' WHERE subscription_plan IS NULL OR subscription_plan = '';
 UPDATE public.agencies SET max_clients = COALESCE(max_clients, 1), storage_limit_bytes = COALESCE(storage_limit_bytes, 2147483648) WHERE plan_tier = 'free';
+
 -- >>> 20260615165236_c28b1c0b-9788-40a3-9383-3f7138fb1707.sql
+
 
 DROP POLICY IF EXISTS "Users can view agency projects" ON public.projects;
 
@@ -6071,6 +6236,7 @@ USING (
 );
 
 -- >>> 20260616210228_13a514f1-b59c-4a0e-8ff6-ab58b237be48.sql
+
 
 CREATE TABLE public.email_sequences (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -6097,6 +6263,7 @@ CREATE POLICY "Users can view own sequence"
 CREATE INDEX idx_email_sequences_cron ON public.email_sequences(created_at, email_1_sent_at, email_2_sent_at, email_3_sent_at) WHERE unsubscribed_at IS NULL;
 
 -- >>> 20260625092809_7e5db7c2-8916-4a28-a65a-9b3644ce3376.sql
+
 CREATE TABLE IF NOT EXISTS public.employee_compensation (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL UNIQUE,
@@ -6155,7 +6322,9 @@ CREATE POLICY "Admins can delete team compensation"
 CREATE TRIGGER update_employee_compensation_updated_at
   BEFORE UPDATE ON public.employee_compensation
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
 -- >>> 20260625093804_e24f926b-1715-429c-8215-8ee132bfb9b2.sql
+
 CREATE OR REPLACE FUNCTION public.get_user_agency_id(_user_id uuid)
 RETURNS uuid
 LANGUAGE sql
@@ -6168,10 +6337,14 @@ AS $function$
   ORDER BY created_at ASC, agency_id ASC
   LIMIT 1
 $function$;
+
 -- >>> 20260625094344_5409a70f-4088-40dc-bafc-3cc0353fd8d8.sql
+
 -- Add 'custom' to channel_type enum
 ALTER TYPE public.channel_type ADD VALUE IF NOT EXISTS 'custom';
+
 -- >>> 20260625095907_9d9a341d-9b63-4875-b4d6-c2d6887ab242.sql
+
 
 -- 1. Fix channels INSERT policy: support multi-agency admins by checking membership instead of single-agency match
 DROP POLICY IF EXISTS "Admins can create channels" ON public.channels;
@@ -6242,6 +6415,7 @@ ALTER TABLE public.channels
 CREATE INDEX IF NOT EXISTS idx_channels_group_id ON public.channels(group_id);
 
 -- >>> 20260626151951_55595320-079d-4dbe-80f7-a65d2738d86c.sql
+
 DROP POLICY IF EXISTS "Users can view their channels" ON public.channels;
 CREATE POLICY "Users can view their channels"
 ON public.channels
@@ -6257,7 +6431,9 @@ USING (
     AND public.user_belongs_to_agency(auth.uid(), agency_id)
   )
 );
+
 -- >>> 20260627184401_c4fd06b0-0ad1-4074-8974-5e4137943b05.sql
+
 
 -- 1. Webhook endpoints table
 CREATE TABLE public.webhook_endpoints (
@@ -6483,6 +6659,7 @@ FOR EACH ROW EXECUTE FUNCTION public.auto_send_notification_email();
 
 -- >>> 20260704001215_c21e452b-1960-4cae-ad14-c6c2f4ac78b5.sql
 
+
 -- 1) Restrict client invoice updates to payment_proof_url only via trigger
 CREATE OR REPLACE FUNCTION public.restrict_client_invoice_updates()
 RETURNS trigger
@@ -6546,4 +6723,3 @@ CREATE POLICY "Agency members view drive files"
       OR has_role(auth.uid(), 'admin'::app_role)
     )
   );
-
