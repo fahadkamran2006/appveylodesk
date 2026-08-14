@@ -1160,8 +1160,7 @@ BEGIN
 END;
 $function$;
 
--- DROP TRIGGER IF EXISTS for ON public.projects;
-CREATE TRIGGER for auto-creating project channels
+-- CREATE TRIGGER for auto-creating project channels
 CREATE TRIGGER on_project_created_create_channel
   AFTER INSERT ON public.projects
   FOR EACH ROW
@@ -1196,8 +1195,7 @@ BEGIN
 END;
 $function$;
 
--- DROP TRIGGER IF EXISTS for ON public.project_editors;
-CREATE TRIGGER for adding editors to channels
+-- CREATE TRIGGER for adding editors to channels
 CREATE TRIGGER on_editor_assigned_add_to_channel
   AFTER INSERT ON public.project_editors
   FOR EACH ROW
@@ -1228,8 +1226,7 @@ BEGIN
 END;
 $function$;
 
--- DROP TRIGGER IF EXISTS for ON public.projects;
-CREATE TRIGGER for archiving channels
+-- CREATE TRIGGER for archiving channels
 CREATE TRIGGER on_project_status_change_archive_channel
   AFTER UPDATE OF status ON public.projects
   FOR EACH ROW
@@ -1743,8 +1740,7 @@ BEGIN
 END;
 $$;
 
--- DROP TRIGGER IF EXISTS for ON public.projects;
-CREATE TRIGGER for auto-archiving
+-- CREATE TRIGGER for auto-archiving
 DROP TRIGGER IF EXISTS trigger_auto_archive_project_channel ON public.projects;
 DROP TRIGGER IF EXISTS trigger_auto_archive_project_channel ON public.projects;
 CREATE TRIGGER trigger_auto_archive_project_channel
@@ -1766,8 +1762,7 @@ BEGIN
 END;
 $$;
 
--- DROP TRIGGER IF EXISTS for ON public.project_editors;
-CREATE TRIGGER for auto-adding editors to project channels
+-- CREATE TRIGGER for auto-adding editors to project channels
 DROP TRIGGER IF EXISTS trigger_add_editor_to_channel ON public.project_editors;
 DROP TRIGGER IF EXISTS trigger_add_editor_to_channel ON public.project_editors;
 CREATE TRIGGER trigger_add_editor_to_channel
@@ -1978,8 +1973,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SET search_path = public;
 
--- DROP TRIGGER IF EXISTS CREATE ON public.projects;
-CREATE TRIGGER CREATE TRIGGER set_project_completed_at_trigger
+-- CREATE TRIGGER CREATE TRIGGER set_project_completed_at_trigger
 BEFORE UPDATE ON public.projects
 FOR EACH ROW
 EXECUTE FUNCTION public.set_project_completed_at();
@@ -2075,8 +2069,7 @@ Please review and let me know the pricing and timeline. Thank you!';
 END;
 $$;
 
--- DROP TRIGGER IF EXISTS for ON proposal;
-CREATE TRIGGER for auto-DM ON proposal creation
+-- CREATE TRIGGER for auto-DM ON proposal creation
 DROP TRIGGER IF EXISTS trigger_auto_dm_on_proposal ON public.projects;
 DROP TRIGGER IF EXISTS trigger_auto_dm_on_proposal ON public.projects;
 CREATE TRIGGER trigger_auto_dm_on_proposal
@@ -2791,8 +2784,7 @@ AS $$
   );
 $$;
 
--- DROP TRIGGER IF EXISTS function ON a.id;
-CREATE TRIGGER function for project editor assignment
+-- CREATE TRIGGER function for project editor assignment
 CREATE OR REPLACE FUNCTION public.notify_editor_assignment()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -2825,8 +2817,7 @@ BEGIN
 END;
 $$;
 
--- DROP TRIGGER IF EXISTS for ON public.project_editors;
-CREATE TRIGGER for editor assignment
+-- CREATE TRIGGER for editor assignment
 CREATE TRIGGER on_editor_assigned
 AFTER INSERT ON public.project_editors
 FOR EACH ROW
@@ -2890,8 +2881,7 @@ BEGIN
 END;
 $$;
 
--- DROP TRIGGER IF EXISTS for ON public.projects;
-CREATE TRIGGER for project status changes
+-- CREATE TRIGGER for project status changes
 CREATE TRIGGER on_project_status_change
 AFTER UPDATE ON public.projects
 FOR EACH ROW
@@ -2936,8 +2926,7 @@ BEGIN
 END;
 $$;
 
--- DROP TRIGGER IF EXISTS for ON public.projects;
-CREATE TRIGGER for new proposals
+-- CREATE TRIGGER for new proposals
 CREATE TRIGGER on_new_proposal
 AFTER INSERT ON public.projects
 FOR EACH ROW
@@ -3004,8 +2993,7 @@ AFTER UPDATE ON public.invoices
 FOR EACH ROW
 EXECUTE FUNCTION notify_invoice_change();
 
--- DROP TRIGGER IF EXISTS function ON p.id;
-CREATE TRIGGER function for new messages
+-- CREATE TRIGGER function for new messages
 CREATE OR REPLACE FUNCTION public.notify_new_message()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -3060,15 +3048,13 @@ BEGIN
 END;
 $$;
 
--- DROP TRIGGER IF EXISTS for ON public.messages;
-CREATE TRIGGER for new messages
+-- CREATE TRIGGER for new messages
 CREATE TRIGGER on_new_message
 AFTER INSERT ON public.messages
 FOR EACH ROW
 EXECUTE FUNCTION notify_new_message();
 
--- DROP TRIGGER IF EXISTS for ON notification_preferences;
-CREATE TRIGGER for updated_at ON notification_preferences
+-- CREATE TRIGGER for updated_at ON notification_preferences
 DROP TRIGGER IF EXISTS update_notification_preferences_updated_at ON public.notification_preferences;
 CREATE TRIGGER update_notification_preferences_updated_at
 BEFORE UPDATE ON public.notification_preferences
@@ -3258,8 +3244,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
--- DROP TRIGGER IF EXISTS for ON payment_methods;
-CREATE TRIGGER for updated_at ON payment_methods
+-- CREATE TRIGGER for updated_at ON payment_methods
 DROP TRIGGER IF EXISTS update_payment_methods_updated_at ON public.payment_methods;
 CREATE TRIGGER update_payment_methods_updated_at
   BEFORE UPDATE ON public.payment_methods
@@ -3364,8 +3349,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
--- DROP TRIGGER IF EXISTS for ON public.projects;
-CREATE TRIGGER for video approval notifications
+-- CREATE TRIGGER for video approval notifications
 DROP TRIGGER IF EXISTS trigger_video_approval_notification ON public.projects;
 DROP TRIGGER IF EXISTS trigger_video_approval_notification ON public.projects;
 CREATE TRIGGER trigger_video_approval_notification
@@ -3442,8 +3426,7 @@ BEGIN
 END;
 $function$;
 
--- DROP TRIGGER IF EXISTS for ON approval;
-CREATE TRIGGER for channel creation ON approval
+-- CREATE TRIGGER for channel creation ON approval
 DROP TRIGGER IF EXISTS trigger_create_channel_on_approval ON public.projects;
 CREATE TRIGGER trigger_create_channel_on_approval
   AFTER UPDATE ON public.projects
@@ -4031,8 +4014,7 @@ BEGIN
 END;
 $function$;
 
--- DROP TRIGGER IF EXISTS to ON notification;
-CREATE TRIGGER to send web push ON notification insert
+-- CREATE TRIGGER to send web push ON notification insert
 DROP TRIGGER IF EXISTS on_notification_send_web_push ON public.notifications;
 CREATE TRIGGER on_notification_send_web_push
   AFTER INSERT ON public.notifications
