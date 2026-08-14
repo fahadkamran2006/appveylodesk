@@ -3521,7 +3521,7 @@ ADD COLUMN IF NOT EXISTS invoice_footer TEXT;
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'request' AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'project_status')) THEN
--- [migration-export] enum value folded into CREATE TYPE above: ALTER TYPE project_status ADD VALUE 'request';
+NULL; -- enum value folded into CREATE TYPE above
     END IF;
 END $$;
 
