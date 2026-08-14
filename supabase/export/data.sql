@@ -630,5 +630,15 @@ INSERT INTO public.marketing_emails_log SELECT * FROM json_populate_recordset(nu
 INSERT INTO public.cancellation_requests SELECT * FROM json_populate_recordset(null::public.cancellation_requests, $j$[]$j$) ON CONFLICT DO NOTHING;
 INSERT INTO public.subscription_cancellation_logs SELECT * FROM json_populate_recordset(null::public.subscription_cancellation_logs, $j$[]$j$) ON CONFLICT DO NOTHING;
 
-SET session_replication_role = DEFAULT;
+
+-- Re-enable triggers on public tables
+DO $$
+DECLARE r RECORD;
+BEGIN
+  FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public') LOOP
+    EXECUTE 'ALTER TABLE public.' || quote_ident(r.tablename) || ' ENABLE TRIGGER ALL';
+  END LOOP;
+END $$;
+
 COMMIT;
+
