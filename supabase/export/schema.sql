@@ -910,7 +910,7 @@ CREATE TABLE IF NOT EXISTS public.channel_mutes (
 
 -- Modify messages table to use channels instead of projects
 ALTER TABLE public.messages 
-  ADD COLUMN channel_id UUID REFERENCES public.channels(id) ON DELETE CASCADE,
+  ADD COLUMN IF NOT EXISTS channel_id UUID REFERENCES public.channels(id) ON DELETE CASCADE,
   ALTER COLUMN project_id DROP NOT NULL;
 
 -- Create indexes for performance
@@ -1275,9 +1275,9 @@ CREATE TRIGGER update_channels_updated_at
 
 -- Add subscription plan and storage tracking to agencies
 ALTER TABLE public.agencies
-ADD COLUMN subscription_plan TEXT NOT NULL DEFAULT 'starter' CHECK (subscription_plan IN ('starter', 'pro')),
-ADD COLUMN storage_limit_bytes BIGINT NOT NULL DEFAULT 214748364800, -- 200GB in bytes
-ADD COLUMN storage_used_bytes BIGINT NOT NULL DEFAULT 0;
+ADD COLUMN IF NOT EXISTS subscription_plan TEXT NOT NULL DEFAULT 'starter' CHECK (subscription_plan IN ('starter', 'pro')),
+ADD COLUMN IF NOT EXISTS storage_limit_bytes BIGINT NOT NULL DEFAULT 214748364800, -- 200GB in bytes
+ADD COLUMN IF NOT EXISTS storage_used_bytes BIGINT NOT NULL DEFAULT 0;
 
 -- CREATE TABLE IF NOT EXISTS for timestamped video comments
 CREATE TABLE IF NOT EXISTS public.deliverable_comments (
@@ -1956,7 +1956,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- Add completed_at column to track when projects are completed
 ALTER TABLE public.projects 
-ADD COLUMN completed_at timestamp with time zone;
+ADD COLUMN IF NOT EXISTS completed_at timestamp with time zone;
 
 -- Create a trigger to automatically set completed_at when status changes to 'done'
 CREATE OR REPLACE FUNCTION public.set_project_completed_at()
@@ -2380,7 +2380,7 @@ COMMENT ON COLUMN public.projects.reference_links IS 'JSON array or newline-sepa
 
 -- Add file_type column to deliverables table
 ALTER TABLE public.deliverables 
-ADD COLUMN file_type text NOT NULL DEFAULT 'deliverable';
+ADD COLUMN IF NOT EXISTS file_type text NOT NULL DEFAULT 'deliverable';
 
 -- Add check constraint for valid file types
 ALTER TABLE public.deliverables 
@@ -3078,7 +3078,7 @@ CREATE TABLE IF NOT EXISTS public.project_containers (
 
 -- Add container_id to projects table FIRST (before RLS policies reference it)
 ALTER TABLE public.projects 
-ADD COLUMN container_id UUID;
+ADD COLUMN IF NOT EXISTS container_id UUID;
 
 -- Enable RLS
 ALTER TABLE public.project_containers ENABLE ROW LEVEL SECURITY;
@@ -3699,7 +3699,7 @@ WITH CHECK (
 
 
 -- 1. Add container_id column to channels table
-ALTER TABLE public.channels ADD COLUMN container_id UUID REFERENCES public.project_containers(id) ON DELETE CASCADE;
+ALTER TABLE public.channels ADD COLUMN IF NOT EXISTS container_id UUID REFERENCES public.project_containers(id) ON DELETE CASCADE;
 
 -- 2. Drop ALL per-video channel creation triggers (they cause duplicates + wrong level)
 DROP TRIGGER IF EXISTS trigger_create_project_channel ON public.projects;
@@ -4479,7 +4479,7 @@ ADD COLUMN IF NOT EXISTS resolved_at timestamptz DEFAULT NULL;
 -- >>> 20260307044320_cf40cd22-04e5-47b1-be14-0249a5f4a2cc.sql
 
 
-ALTER TABLE public.deliverable_comments ADD COLUMN parent_id UUID REFERENCES public.deliverable_comments(id) ON DELETE CASCADE DEFAULT NULL;
+ALTER TABLE public.deliverable_comments ADD COLUMN IF NOT EXISTS parent_id UUID REFERENCES public.deliverable_comments(id) ON DELETE CASCADE DEFAULT NULL;
 CREATE INDEX IF NOT EXISTS idx_deliverable_comments_parent_id ON public.deliverable_comments(parent_id);
 
 -- >>> 20260307050751_6dc78227-293f-47ee-8024-4cd8ae3b93e5.sql
@@ -4667,8 +4667,8 @@ ALTER TYPE public.project_status ADD VALUE 'quality_check' BEFORE 'done';
 
 -- Add columns
 ALTER TABLE public.deliverables
-  ADD COLUMN is_locked boolean NOT NULL DEFAULT false,
-  ADD COLUMN linked_invoice_id uuid REFERENCES public.invoices(id) ON DELETE SET NULL;
+  ADD COLUMN IF NOT EXISTS is_locked boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS linked_invoice_id uuid REFERENCES public.invoices(id) ON DELETE SET NULL;
 
 -- Update RLS: split the old SELECT policy into role-specific ones
 DROP POLICY IF EXISTS "Users can view deliverables on their projects" ON public.deliverables;
@@ -5246,10 +5246,10 @@ CREATE TRIGGER update_managed_clients_updated_at
 
 -- 2. Optional managed_client_id on projects and invoices
 ALTER TABLE public.projects
-  ADD COLUMN managed_client_id UUID REFERENCES public.managed_clients(id) ON DELETE SET NULL;
+  ADD COLUMN IF NOT EXISTS managed_client_id UUID REFERENCES public.managed_clients(id) ON DELETE SET NULL;
 
 ALTER TABLE public.invoices
-  ADD COLUMN managed_client_id UUID REFERENCES public.managed_clients(id) ON DELETE SET NULL;
+  ADD COLUMN IF NOT EXISTS managed_client_id UUID REFERENCES public.managed_clients(id) ON DELETE SET NULL;
 
 -- Allow invoices to have either a real client OR a managed client (relax NOT NULL)
 ALTER TABLE public.invoices ALTER COLUMN client_id DROP NOT NULL;
