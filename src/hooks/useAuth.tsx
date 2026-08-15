@@ -130,11 +130,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signUp = async (email: string, password: string, fullName: string) => {
     const redirectUrl = `${window.location.origin}/`;
-    
-    // Check if there's a pending invite token
-    const inviteToken = localStorage.getItem('pending_invite_token');
-    
-    const { error } = await supabase.auth.signUp({
+
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -146,13 +143,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     if (!error) {
-      // After signup, always redirect to onboarding
-      // Plan selection is already captured in localStorage from the pricing page
-      navigate('/onboarding');
+      if (data.session) {
+        // Signed in immediately (auto-confirm enabled)
+        navigate('/onboarding');
+      } else {
+        // Email confirmation required — do NOT pretend the user is logged in
+        return { error: null, needsConfirmation: true };
+      }
     }
 
-    return { error: error as Error | null };
+    return { error: error as Error | null, needsConfirmation: false };
   };
+
 
   const signIn = async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signInWithPassword({
