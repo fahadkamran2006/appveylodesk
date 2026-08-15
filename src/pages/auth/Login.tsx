@@ -45,12 +45,20 @@ const Login = () => {
     setIsLoading(false);
 
     if (error) {
-      if (error.message.includes('Invalid login credentials')) {
-        toast.error('Invalid email or password. Please try again.');
+      const msg = error.message || '';
+      if (msg.includes('Invalid login credentials')) {
+        toast.error(
+          'Invalid email or password. If your account was created before the platform migration, use "Forgot password" to set a new one.'
+        );
+      } else if (msg.toLowerCase().includes('email not confirmed')) {
+        toast.error('Please confirm your email first — check your inbox.');
+      } else if (/confirmation_token|scan error/i.test(msg)) {
+        toast.error('Your account record needs repair on the server. Please contact support.');
       } else {
-        toast.error(error.message);
+        toast.error(msg);
       }
     }
+
   };
 
   return (
