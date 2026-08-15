@@ -54,7 +54,7 @@ const Signup = () => {
     }
 
     setIsLoading(true);
-    const { error } = await signUp(email, password, fullName);
+    const { error, needsConfirmation } = await signUp(email, password, fullName);
     setIsLoading(false);
 
     if (error) {
@@ -63,6 +63,10 @@ const Signup = () => {
       } else {
         toast.error(error.message);
       }
+    } else if (needsConfirmation) {
+      toast.success(`Confirm your email — we sent a link to ${email}. Click it, then sign in.`, {
+        duration: 10000,
+      });
     } else {
       toast.success('Account created! Let\'s set up your agency.');
     }
