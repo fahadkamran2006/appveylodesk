@@ -36,7 +36,7 @@ async function addToResendAudience(email: string, firstName: string) {
     console.error("Resend audience add failed", e);
   }
 }
-const PDF_URL = "https://bwfnxidpifugpklczfyo.supabase.co/storage/v1/object/public/lead-magnet-assets/veylodesk-agency-guide.pdf";
+const PDF_URL = "https://ostuofnfaqcdtdzvtcuk.supabase.co/storage/v1/object/public/lead-magnet-assets/veylodesk-agency-guide.pdf";
 const FROM = "Fahad Kamran <fahad@veylodesk.com>";
 const REPLY_TO = "hello@fahadkamran.com";
 
