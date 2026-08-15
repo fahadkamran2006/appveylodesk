@@ -24,7 +24,6 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/auth/Login";
 import Signup from "./pages/auth/Signup";
 import AuthCallback from "./pages/auth/AuthCallback";
-import OAuthInitiateProxy from "./pages/auth/OAuthInitiateProxy";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import ResetPassword from "./pages/auth/ResetPassword";
 import JoinClient from "./pages/JoinClient";
@@ -178,8 +177,6 @@ const App = () => (
                   <Route path="/super-admin" element={<SuperAdminGuard><SuperAdminDashboard /></SuperAdminGuard>} />
 
                   {/* OAuth broker proxy routes - must be before catch-all */}
-                  <Route path="/~oauth/initiate" element={<OAuthInitiateProxy />} />
-                  <Route path="/--oauth/initiate" element={<OAuthInitiateProxy />} />
 
                   {/* Catch-all must be last */}
                   <Route path="*" element={<NotFound />} />
