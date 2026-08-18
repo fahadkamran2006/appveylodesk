@@ -231,7 +231,10 @@ const AdminClients = () => {
               </p>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setAddManualOpen(true)}>
+              <Button
+                variant="outline"
+                onClick={() => (canAddClient() ? setAddManualOpen(true) : setUpgradeOpen(true))}
+              >
                 <UserPlus className="w-4 h-4 mr-2" />
                 Add Manually
               </Button>
@@ -246,15 +249,16 @@ const AdminClients = () => {
               ) : (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div>
-                      <Button disabled className="bg-primary/50 cursor-not-allowed">
-                        <AlertCircle className="w-4 h-4 mr-2" />
-                        Limit Reached ({currentClients}/{maxClients})
-                      </Button>
-                    </div>
+                    <Button
+                      onClick={() => setUpgradeOpen(true)}
+                      className="bg-primary hover:bg-primary/90"
+                    >
+                      <AlertCircle className="w-4 h-4 mr-2" />
+                      Upgrade to add more ({currentClients}/{maxClients})
+                    </Button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="max-w-xs">
-                    <p>You've reached the client limit for your {planTier} plan. Upgrade to add more clients.</p>
+                    <p>You've reached the client limit for your {planTier} plan. Click to upgrade instantly.</p>
                   </TooltipContent>
                 </Tooltip>
               )}
