@@ -292,15 +292,10 @@ const AdminClients = () => {
                   Invite Your First Client
                 </Button>
               ) : (
-                <div className="text-center">
-                  <p className="text-sm text-destructive mb-2">Client limit reached ({currentClients}/{maxClients})</p>
-                  <Button
-                    onClick={() => navigate('/admin/settings')}
-                    variant="outline"
-                  >
-                    Upgrade Plan
-                  </Button>
-                </div>
+                <Button onClick={() => setUpgradeOpen(true)} className="bg-primary hover:bg-primary/90">
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Upgrade to add more clients ({currentClients}/{maxClients})
+                </Button>
               )}
             </div>
           ) : (
