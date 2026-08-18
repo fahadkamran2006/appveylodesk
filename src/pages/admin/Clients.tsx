@@ -16,6 +16,7 @@ import { ActivateClientModal } from '@/components/clients/ActivateClientModal';
 import { PendingInvitationCard } from '@/components/PendingInvitationCard';
 import { RemoveMemberModal } from '@/components/RemoveMemberModal';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { UpgradeRequiredModal } from '@/components/UpgradeRequiredModal';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -80,6 +81,7 @@ const AdminClients = () => {
   const [selectedClient, setSelectedClient] = useState<ClientProfile | null>(null);
   const [selectedManaged, setSelectedManaged] = useState<ManagedClient | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [removeModalOpen, setRemoveModalOpen] = useState(false);
   const [clientToRemove, setClientToRemove] = useState<ClientProfile | null>(null);
 
@@ -229,7 +231,10 @@ const AdminClients = () => {
               </p>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setAddManualOpen(true)}>
+              <Button
+                variant="outline"
+                onClick={() => (canAddClient() ? setAddManualOpen(true) : setUpgradeOpen(true))}
+              >
                 <UserPlus className="w-4 h-4 mr-2" />
                 Add Manually
               </Button>
@@ -244,15 +249,16 @@ const AdminClients = () => {
               ) : (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div>
-                      <Button disabled className="bg-primary/50 cursor-not-allowed">
-                        <AlertCircle className="w-4 h-4 mr-2" />
-                        Limit Reached ({currentClients}/{maxClients})
-                      </Button>
-                    </div>
+                    <Button
+                      onClick={() => setUpgradeOpen(true)}
+                      className="bg-primary hover:bg-primary/90"
+                    >
+                      <AlertCircle className="w-4 h-4 mr-2" />
+                      Upgrade to add more ({currentClients}/{maxClients})
+                    </Button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="max-w-xs">
-                    <p>You've reached the client limit for your {planTier} plan. Upgrade to add more clients.</p>
+                    <p>You've reached the client limit for your {planTier} plan. Click to upgrade instantly.</p>
                   </TooltipContent>
                 </Tooltip>
               )}
@@ -286,15 +292,10 @@ const AdminClients = () => {
                   Invite Your First Client
                 </Button>
               ) : (
-                <div className="text-center">
-                  <p className="text-sm text-destructive mb-2">Client limit reached ({currentClients}/{maxClients})</p>
-                  <Button
-                    onClick={() => navigate('/admin/settings')}
-                    variant="outline"
-                  >
-                    Upgrade Plan
-                  </Button>
-                </div>
+                <Button onClick={() => setUpgradeOpen(true)} className="bg-primary hover:bg-primary/90">
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Upgrade to add more clients ({currentClients}/{maxClients})
+                </Button>
               )}
             </div>
           ) : (
@@ -488,6 +489,8 @@ const AdminClients = () => {
       <MobileBottomNav role="admin" />
 
       {/* Add Manual Client Modal */}
+      <UpgradeRequiredModal open={upgradeOpen} onOpenChange={setUpgradeOpen} limitType="client" />
+
       <AddManualClientModal
         open={addManualOpen}
         onOpenChange={setAddManualOpen}
