@@ -81,6 +81,7 @@ const AdminClients = () => {
   const [selectedClient, setSelectedClient] = useState<ClientProfile | null>(null);
   const [selectedManaged, setSelectedManaged] = useState<ManagedClient | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [removeModalOpen, setRemoveModalOpen] = useState(false);
   const [clientToRemove, setClientToRemove] = useState<ClientProfile | null>(null);
 
