@@ -489,6 +489,8 @@ const AdminClients = () => {
       <MobileBottomNav role="admin" />
 
       {/* Add Manual Client Modal */}
+      <UpgradeRequiredModal open={upgradeOpen} onOpenChange={setUpgradeOpen} limitType="client" />
+
       <AddManualClientModal
         open={addManualOpen}
         onOpenChange={setAddManualOpen}
