@@ -16,6 +16,7 @@ import { ActivateClientModal } from '@/components/clients/ActivateClientModal';
 import { PendingInvitationCard } from '@/components/PendingInvitationCard';
 import { RemoveMemberModal } from '@/components/RemoveMemberModal';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { UpgradeRequiredModal } from '@/components/UpgradeRequiredModal';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
