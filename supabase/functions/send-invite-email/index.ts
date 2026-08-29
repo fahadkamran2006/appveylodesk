@@ -13,7 +13,7 @@ const corsHeaders = {
 interface InviteEmailRequest {
   invitationId: string;
   email: string;
-  role: "client" | "editor";
+  role: "client" | "editor" | "staff";
   agencyName: string;
 }
 
@@ -145,6 +145,20 @@ const handler = async (req: Request): Promise<Response> => {
         </html>
       `,
     });
+
+    if (emailResponse.error) {
+      console.error("Resend rejected invite email:", emailResponse.error);
+      return new Response(
+        JSON.stringify({
+          error: emailResponse.error.message || "Email provider rejected the invitation",
+          providerError: emailResponse.error,
+        }),
+        {
+          status: 502,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        },
+      );
+    }
 
     console.log("Email sent successfully:", emailResponse);
 
