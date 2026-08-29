@@ -212,7 +212,7 @@ const Onboarding = () => {
         }
 
         // Send invite email via edge function
-        await supabase.functions.invoke('send-invite-email', {
+        const { error: emailError } = await supabase.functions.invoke('send-invite-email', {
           body: {
             invitationId: invitation.id,
             email: invite.email.toLowerCase().trim(),
@@ -220,6 +220,9 @@ const Onboarding = () => {
             agencyName: agencyName,
           },
         });
+        if (emailError) {
+          throw new Error(`Invitation saved, but email delivery failed: ${emailError.message}`);
+        }
       }
 
       toast.success(`Invited ${validInvites.length} team member${validInvites.length > 1 ? 's' : ''}!`);

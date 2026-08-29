@@ -78,7 +78,9 @@ export function ActivateClientModal({ open, onOpenChange, client, onSuccess }: P
           agencyName: agency?.name || 'Your Agency',
         },
       });
-      if (emailErr) console.error('Invite email failed:', emailErr);
+      if (emailErr) {
+        throw new Error(`Dashboard access was prepared, but email delivery failed: ${emailErr.message}`);
+      }
 
       toast({
         title: 'Invitation sent',

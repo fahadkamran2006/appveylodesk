@@ -71,7 +71,9 @@ export function InviteStaffModal({ open, onOpenChange, onSuccess }: Props) {
           agencyName,
         },
       });
-      if (emailError) console.error('Email failed:', emailError);
+      if (emailError) {
+        throw new Error(`Invitation saved, but email delivery failed: ${emailError.message}`);
+      }
 
       toast({ title: 'Staff invite sent', description: `Invitation sent to ${email}` });
       setEmail(''); setName(''); setRoleId('');

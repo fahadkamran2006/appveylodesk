@@ -134,8 +134,7 @@ export function InviteUserModal({
       });
 
       if (emailError) {
-        console.error('Failed to send email:', emailError);
-        // Don't throw - the invite was created, just email failed
+        throw new Error(`Invitation saved, but email delivery failed: ${emailError.message}`);
       }
 
       toast({
