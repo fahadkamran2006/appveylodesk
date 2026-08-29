@@ -85,6 +85,24 @@ export function PendingInvitationCard({
     }
   };
 
+  const handleCopyLink = async () => {
+    const invitePath = invitation.role === 'client' ? '/join-client' : '/join-team';
+    const inviteLink = `${window.location.origin}${invitePath}?invite=${encodeURIComponent(invitation.id)}`;
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+      toast({
+        title: 'Link copied',
+        description: 'Invite link copied — send it to your client directly.',
+      });
+    } catch {
+      toast({
+        title: 'Copy failed',
+        description: inviteLink,
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleCancel = async () => {
     setIsCancelling(true);
     try {
