@@ -185,11 +185,11 @@ export function CreateProjectModal({
     }
   }, [selectedClientId, preselectedContainerId, form]);
 
-  const { clients, agencyId: resolvedAgencyId, loading: clientsLoading } = useAgencyClients(open);
+  const { clients: fetchedClients, agencyId: resolvedAgencyId } = useAgencyClients(open);
 
   useEffect(() => {
-    setClients(clients);
-  }, [clients]);
+    setClients(fetchedClients as Person[]);
+  }, [fetchedClients]);
 
   useEffect(() => {
     if (resolvedAgencyId) setAgencyId(resolvedAgencyId);
