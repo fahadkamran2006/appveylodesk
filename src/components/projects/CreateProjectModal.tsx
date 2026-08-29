@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { supabase } from '@/integrations/supabase/client';
+import { useAgencyClients } from '@/hooks/useAgencyClients';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useUploadContext } from '@/contexts/UploadContext';
@@ -184,58 +185,25 @@ export function CreateProjectModal({
     }
   }, [selectedClientId, preselectedContainerId, form]);
 
+  const { clients: fetchedClients, agencyId: resolvedAgencyId } = useAgencyClients(open);
+
+  useEffect(() => {
+    setClients(fetchedClients as Person[]);
+  }, [fetchedClients]);
+
+  useEffect(() => {
+    if (resolvedAgencyId) setAgencyId(resolvedAgencyId);
+  }, [resolvedAgencyId]);
+
   useEffect(() => {
     const fetchData = async () => {
-      if (!user) return;
+      if (!user || !resolvedAgencyId) return;
 
       try {
-        const { data: userRole } = await supabase
-          .from('user_roles')
-          .select('agency_id')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (!userRole?.agency_id) return;
-        setAgencyId(userRole.agency_id);
-
-        const { data: clientRoles } = await supabase
-          .from('user_roles')
-          .select('user_id')
-          .eq('agency_id', userRole.agency_id)
-          .eq('role', 'client');
-
-        const allClients: Person[] = [];
-        if (clientRoles && clientRoles.length > 0) {
-          const clientIds = clientRoles.map((r) => r.user_id);
-          const { data: clientProfiles } = await supabase
-            .from('profiles')
-            .select('id, full_name, email')
-            .in('id', clientIds);
-          for (const p of clientProfiles || []) {
-            allClients.push({ id: p.id, name: p.full_name || p.email, email: p.email });
-          }
-        }
-
-        const { data: managed } = await supabase
-          .from('managed_clients')
-          .select('id, full_name, email')
-          .eq('agency_id', userRole.agency_id)
-          .is('activated_at', null);
-
-        for (const m of managed || []) {
-          allClients.push({
-            id: `mc:${m.id}`,
-            name: (m.full_name || m.email) + ' (Manual)',
-            email: m.email,
-            isManaged: true,
-          });
-        }
-        setClients(allClients);
-
         const { data: editorRoles } = await supabase
           .from('user_roles')
           .select('user_id')
-          .eq('agency_id', userRole.agency_id)
+          .eq('agency_id', resolvedAgencyId)
           .eq('role', 'editor');
 
         if (editorRoles && editorRoles.length > 0) {
@@ -258,7 +226,7 @@ export function CreateProjectModal({
         const { data: containersData } = await supabase
           .from('project_containers')
           .select('id, title, client_id, managed_client_id')
-          .eq('agency_id', userRole.agency_id)
+          .eq('agency_id', resolvedAgencyId)
           .order('title', { ascending: true });
 
         setContainers(containersData || []);
@@ -268,7 +236,7 @@ export function CreateProjectModal({
     };
 
     if (open) fetchData();
-  }, [user, open]);
+  }, [user, open, resolvedAgencyId]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
