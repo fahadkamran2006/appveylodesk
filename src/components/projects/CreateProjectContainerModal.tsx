@@ -31,6 +31,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Loader2, FolderPlus } from 'lucide-react';
+import { useAgencyClients } from '@/hooks/useAgencyClients';
 
 const containerSchema = z.object({
   title: z.string().min(1, 'Project name is required'),
@@ -39,13 +40,6 @@ const containerSchema = z.object({
 });
 
 type ContainerFormData = z.infer<typeof containerSchema>;
-
-interface Client {
-  id: string;
-  name: string;
-  email: string;
-  isManaged?: boolean;
-}
 
 interface CreateProjectContainerModalProps {
   open: boolean;
@@ -203,7 +197,7 @@ export function CreateProjectContainerModal({
                           {client.name}
                         </SelectItem>
                       ))}
-                      {clients.length === 0 && (
+                      {clients.length === 0 && !clientsLoading && (
                         <div className="px-2 py-1.5 text-sm text-muted-foreground">
                           No clients found
                         </div>
