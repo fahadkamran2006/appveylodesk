@@ -161,6 +161,15 @@ export function PendingInvitationCard({
             <Button
               variant="outline"
               size="sm"
+              onClick={handleCopyLink}
+              disabled={isResending || isCancelling}
+              title="Copy invite link"
+            >
+              <Copy className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={handleResend}
               disabled={isResending || isCancelling}
               className="text-primary hover:text-primary"
