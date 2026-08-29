@@ -61,10 +61,9 @@ export function CreateProjectContainerModal({
   preselectedClientId,
 }: CreateProjectContainerModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [agencyId, setAgencyId] = useState<string | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
+  const { clients, agencyId, loading: clientsLoading } = useAgencyClients(open);
 
   const form = useForm<ContainerFormData>({
     resolver: zodResolver(containerSchema),
@@ -82,63 +81,6 @@ export function CreateProjectContainerModal({
     }
   }, [preselectedClientId, form]);
 
-  // Fetch clients
-  useEffect(() => {
-    const fetchClients = async () => {
-      if (!user) return;
-
-      try {
-        const { data: userRole } = await supabase
-          .from('user_roles')
-          .select('agency_id')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (!userRole?.agency_id) return;
-        setAgencyId(userRole.agency_id);
-
-        const { data: clientRoles } = await supabase
-          .from('user_roles')
-          .select('user_id')
-          .eq('agency_id', userRole.agency_id)
-          .eq('role', 'client');
-
-        const realClients: Client[] = [];
-        if (clientRoles && clientRoles.length > 0) {
-          const clientIds = clientRoles.map((r) => r.user_id);
-          const { data: clientProfiles } = await supabase
-            .from('profiles')
-            .select('id, full_name, email')
-            .in('id', clientIds);
-          for (const p of clientProfiles || []) {
-            realClients.push({ id: p.id, name: p.full_name || p.email, email: p.email });
-          }
-        }
-
-        // Managed (non-activated) clients
-        const { data: managed } = await supabase
-          .from('managed_clients')
-          .select('id, full_name, email, activated_at')
-          .eq('agency_id', userRole.agency_id)
-          .is('activated_at', null);
-
-        const managedClients: Client[] = (managed || []).map((m) => ({
-          id: `mc:${m.id}`,
-          name: (m.full_name || m.email) + ' (Manual)',
-          email: m.email,
-          isManaged: true,
-        }));
-
-        setClients([...realClients, ...managedClients]);
-      } catch (error) {
-        console.error('Error fetching clients:', error);
-      }
-    };
-
-    if (open) {
-      fetchClients();
-    }
-  }, [user, open]);
 
   const onSubmit = async (data: ContainerFormData) => {
     if (!user || !agencyId) return;
