@@ -40,16 +40,16 @@ const handler = async (req: Request): Promise<Response> => {
     );
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
-      console.error("JWT validation failed:", claimsError);
+    const { data: userData, error: userError } = await supabase.auth.getUser(token);
+    if (userError || !userData?.user) {
+      console.error("JWT validation failed:", userError);
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    console.log("Authenticated user:", claimsData.claims.sub);
+    console.log("Authenticated user:", userData.user.id);
 
     const { invitationId, email, role, agencyName }: InviteEmailRequest = await req.json();
 

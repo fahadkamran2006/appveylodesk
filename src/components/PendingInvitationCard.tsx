@@ -16,7 +16,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Loader2, Mail, RotateCcw, Trash2, Clock } from 'lucide-react';
+import { Loader2, Mail, RotateCcw, Trash2, Clock, Copy } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { InvitationTimeline } from '@/components/invitations/InvitationTimeline';
 
@@ -85,6 +85,24 @@ export function PendingInvitationCard({
     }
   };
 
+  const handleCopyLink = async () => {
+    const invitePath = invitation.role === 'client' ? '/join-client' : '/join-team';
+    const inviteLink = `${window.location.origin}${invitePath}?invite=${encodeURIComponent(invitation.id)}`;
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+      toast({
+        title: 'Link copied',
+        description: 'Invite link copied — send it to your client directly.',
+      });
+    } catch {
+      toast({
+        title: 'Copy failed',
+        description: inviteLink,
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleCancel = async () => {
     setIsCancelling(true);
     try {
@@ -140,6 +158,15 @@ export function PendingInvitationCard({
           </div>
 
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCopyLink}
+              disabled={isResending || isCancelling}
+              title="Copy invite link"
+            >
+              <Copy className="w-4 h-4" />
+            </Button>
             <Button
               variant="outline"
               size="sm"
