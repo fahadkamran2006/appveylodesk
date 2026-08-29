@@ -59,26 +59,51 @@ export function useAgencyClients(enabled: boolean) {
     setLoading(true);
     try {
       const resolvedAgencyId = await resolveAgencyId(user.id);
-      if (resolvedAgencyId) setAgencyId(resolvedAgencyId);
+      setAgencyId(resolvedAgencyId);
 
       const collected: AgencyClient[] = [];
 
       if (resolvedAgencyId) {
-        const { data: clientRoles } = await supabase
-          .from('user_roles')
-          .select('user_id')
-          .eq('agency_id', resolvedAgencyId)
-          .eq('role', 'client');
+        const [{ data: clientRoles, error: rolesError }, { data: acceptedInvites, error: invitesError }] =
+          await Promise.all([
+            supabase
+              .from('user_roles')
+              .select('user_id')
+              .eq('agency_id', resolvedAgencyId)
+              .eq('role', 'client'),
+            supabase
+              .from('agency_invitations')
+              .select('accepted_by, full_name, email')
+              .eq('agency_id', resolvedAgencyId)
+              .eq('role', 'client')
+              .not('accepted_at', 'is', null)
+              .not('accepted_by', 'is', null),
+          ]);
+
+        if (rolesError) console.error('Error fetching client roles:', rolesError);
+        if (invitesError) console.error('Error fetching accepted client invitations:', invitesError);
 
         const clientIds = (clientRoles || []).map((r) => r.user_id);
         if (clientIds.length > 0) {
-          const { data: clientProfiles } = await supabase
+          const { data: clientProfiles, error: profilesError } = await supabase
             .from('profiles')
             .select('id, full_name, email')
             .in('id', clientIds);
+          if (profilesError) console.error('Error fetching client profiles:', profilesError);
           for (const p of clientProfiles || []) {
             collected.push({ id: p.id, name: p.full_name || p.email, email: p.email });
           }
+        }
+
+        // Accepted invitations are an authoritative fallback when the admin's
+        // user_roles/profile SELECT policy has not yet been migrated correctly.
+        for (const invitation of acceptedInvites || []) {
+          if (!invitation.accepted_by) continue;
+          collected.push({
+            id: invitation.accepted_by,
+            name: invitation.full_name || invitation.email,
+            email: invitation.email,
+          });
         }
       }
 
@@ -88,9 +113,11 @@ export function useAgencyClients(enabled: boolean) {
         .select('id, full_name, email, activated_at')
         .is('activated_at', null);
 
-      const { data: managed } = resolvedAgencyId
+      const { data: managed, error: managedError } = resolvedAgencyId
         ? await managedQuery.eq('agency_id', resolvedAgencyId)
         : await managedQuery.eq('created_by', user.id);
+
+      if (managedError) console.error('Error fetching manual clients:', managedError);
 
       let managedRows = managed || [];
       if (resolvedAgencyId && managedRows.length === 0) {
