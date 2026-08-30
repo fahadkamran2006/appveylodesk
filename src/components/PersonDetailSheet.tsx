@@ -162,7 +162,7 @@ export function PersonDetailSheet({
                 <div className="flex items-center gap-2 text-muted-foreground mb-1">
                   <FolderKanban className="w-4 h-4" />
                   <span className="text-xs">
-                    {variant === 'client' ? 'Total Projects' : 'Active Projects'}
+                    {variant === 'client' ? 'Total Videos' : 'Active Projects'}
                   </span>
                 </div>
                 <p className="text-2xl font-bold text-foreground">
@@ -244,10 +244,12 @@ export function PersonDetailSheet({
           ) : (
             <div>
               <h4 className="text-sm font-medium text-muted-foreground mb-3">
-                {variant === 'client' ? 'Project History' : 'Assigned Projects'}
+                {variant === 'client' ? 'Video History' : 'Assigned Projects'}
               </h4>
               {projects.length === 0 ? (
-                <div className="text-center py-6 text-muted-foreground text-sm">No projects yet</div>
+                <div className="text-center py-6 text-muted-foreground text-sm">
+                  {variant === 'client' ? 'No videos yet' : 'No projects yet'}
+                </div>
               ) : (
                 <div className="space-y-2">
                   {projects.map((project) => (
