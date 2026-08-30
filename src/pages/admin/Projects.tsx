@@ -183,13 +183,40 @@ const AdminProjects = () => {
       if (videosError) throw videosError;
 
       // Fetch all project containers
-      const { data: containersData, error: containersError } = await supabase
+      const { data: agencyContainers, error: containersError } = await supabase
         .from('project_containers')
         .select('*')
         .eq('agency_id', agencyId)
         .order('title', { ascending: true });
 
-      if (containersError) throw containersError;
+      if (containersError) {
+        console.error('Error fetching project containers:', containersError);
+      }
+
+      // Safety net: also pull containers linked to this agency's clients, in case
+      // a container row carries a different agency_id than the one resolved here.
+      let clientLinkedContainers: any[] = [];
+      const managedIds = managedClients.map((m: any) => m.id);
+      if (clientIds.length > 0 || managedIds.length > 0) {
+        const filters: string[] = [];
+        if (clientIds.length > 0) filters.push(`client_id.in.(${clientIds.join(',')})`);
+        if (managedIds.length > 0) filters.push(`managed_client_id.in.(${managedIds.join(',')})`);
+        const { data: linked, error: linkedError } = await supabase
+          .from('project_containers')
+          .select('*')
+          .or(filters.join(','));
+        if (linkedError) console.error('Error fetching client containers:', linkedError);
+        clientLinkedContainers = linked || [];
+      }
+
+      const containersMap = new Map<string, any>();
+      for (const c of [...(agencyContainers || []), ...clientLinkedContainers]) {
+        containersMap.set(c.id, c);
+      }
+      const containersData = Array.from(containersMap.values()).sort((a, b) =>
+        (a.title || '').localeCompare(b.title || '')
+      );
+
 
       // Track stats for workspaces (client level) and containers
       const clientStats: Record<string, { total: number; active: number; completed: number }> = {};
