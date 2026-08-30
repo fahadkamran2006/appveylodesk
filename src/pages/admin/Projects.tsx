@@ -18,6 +18,8 @@ import { DeliverVideoModal } from '@/components/projects/DeliverVideoModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getCache, setCache } from '@/lib/sessionCache';
+import { resolveAgencyId } from '@/hooks/useAgencyClients';
+
 import { Plus, Loader2, ArrowLeft, LayoutGrid, Video } from 'lucide-react';
 
 const COLUMNS: { id: ProjectStatus; title: string }[] = [
@@ -113,19 +115,15 @@ const AdminProjects = () => {
     // Only show full loader when there is no cached data yet.
     if (!getCache(`projects:admin:${user.id}`)) setIsLoading(true);
     try {
-      // Get agency_id
-      const { data: userRoleData } = await supabase
-        .from('user_roles')
-        .select('agency_id')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      // Get agency_id (same resolution the create-modals use, so a container
+      // created there can never land under a different agency than we query).
+      const agencyId = await resolveAgencyId(user.id);
 
-      if (!userRoleData?.agency_id) {
+      if (!agencyId) {
         setIsLoading(false);
         return;
       }
 
-      const agencyId = userRoleData.agency_id;
 
       // Fetch all clients in this agency
       const { data: clientRoles } = await supabase
@@ -187,13 +185,40 @@ const AdminProjects = () => {
       if (videosError) throw videosError;
 
       // Fetch all project containers
-      const { data: containersData, error: containersError } = await supabase
+      const { data: agencyContainers, error: containersError } = await supabase
         .from('project_containers')
         .select('*')
         .eq('agency_id', agencyId)
         .order('title', { ascending: true });
 
-      if (containersError) throw containersError;
+      if (containersError) {
+        console.error('Error fetching project containers:', containersError);
+      }
+
+      // Safety net: also pull containers linked to this agency's clients, in case
+      // a container row carries a different agency_id than the one resolved here.
+      let clientLinkedContainers: any[] = [];
+      const managedIds = managedClients.map((m: any) => m.id);
+      if (clientIds.length > 0 || managedIds.length > 0) {
+        const filters: string[] = [];
+        if (clientIds.length > 0) filters.push(`client_id.in.(${clientIds.join(',')})`);
+        if (managedIds.length > 0) filters.push(`managed_client_id.in.(${managedIds.join(',')})`);
+        const { data: linked, error: linkedError } = await supabase
+          .from('project_containers')
+          .select('*')
+          .or(filters.join(','));
+        if (linkedError) console.error('Error fetching client containers:', linkedError);
+        clientLinkedContainers = linked || [];
+      }
+
+      const containersMap = new Map<string, any>();
+      for (const c of [...(agencyContainers || []), ...clientLinkedContainers]) {
+        containersMap.set(c.id, c);
+      }
+      const containersData = Array.from(containersMap.values()).sort((a, b) =>
+        (a.title || '').localeCompare(b.title || '')
+      );
+
 
       // Track stats for workspaces (client level) and containers
       const clientStats: Record<string, { total: number; active: number; completed: number }> = {};
