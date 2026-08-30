@@ -123,7 +123,7 @@ export function PersonCard({
             <div className="flex items-center gap-1.5 text-muted-foreground">
               <FolderKanban className="w-4 h-4" />
               <span>
-                Active Projects:{' '}
+                Active Videos:{' '}
                 <span className="text-foreground font-medium">
                   {stats?.activeProjects ?? 0}
                 </span>
