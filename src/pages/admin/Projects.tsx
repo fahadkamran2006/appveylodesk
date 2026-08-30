@@ -113,19 +113,15 @@ const AdminProjects = () => {
     // Only show full loader when there is no cached data yet.
     if (!getCache(`projects:admin:${user.id}`)) setIsLoading(true);
     try {
-      // Get agency_id
-      const { data: userRoleData } = await supabase
-        .from('user_roles')
-        .select('agency_id')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      // Get agency_id (same resolution the create-modals use, so a container
+      // created there can never land under a different agency than we query).
+      const agencyId = await resolveAgencyId(user.id);
 
-      if (!userRoleData?.agency_id) {
+      if (!agencyId) {
         setIsLoading(false);
         return;
       }
 
-      const agencyId = userRoleData.agency_id;
 
       // Fetch all clients in this agency
       const { data: clientRoles } = await supabase
