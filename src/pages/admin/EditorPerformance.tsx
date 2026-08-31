@@ -161,6 +161,8 @@ export default function EditorPerformancePage() {
           .maybeSingle(),
       ]);
 
+      if (profileRes.error) console.error('Editor profile fetch error:', profileRes.error);
+      if (!profileRes.data) console.warn('Editor profile not found for id:', editorId);
       setEditor(profileRes.data as EditorProfile | null);
       setLogs((logsRes.data || []) as DailyLog[]);
       setLeaves((leavesRes.data || []) as LeaveRequest[]);
