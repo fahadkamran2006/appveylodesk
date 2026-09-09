@@ -115,7 +115,16 @@ export function InviteUserModal({
           full_name: data.name?.trim() ? data.name.trim() : null,
           role: data.role,
           invited_by: user.id,
-        })
+          metadata: data.role === 'editor'
+            ? {
+                employment_type: data.employment_type,
+                monthly_salary:
+                  data.employment_type === 'salaried' && data.monthly_salary
+                    ? data.monthly_salary.replace(/[^0-9.]/g, '')
+                    : null,
+              }
+            : {},
+        } as any)
         .select('id')
         .single();
 
