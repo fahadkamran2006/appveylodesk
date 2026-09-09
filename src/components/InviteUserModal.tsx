@@ -36,6 +36,8 @@ const inviteSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
   name: z.string().optional(),
   role: z.enum(['client', 'editor']),
+  employment_type: z.enum(['freelance', 'salaried']).default('freelance'),
+  monthly_salary: z.string().optional(),
 });
 
 type InviteFormData = z.infer<typeof inviteSchema>;
