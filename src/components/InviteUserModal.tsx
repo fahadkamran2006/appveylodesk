@@ -36,6 +36,8 @@ const inviteSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
   name: z.string().optional(),
   role: z.enum(['client', 'editor']),
+  employment_type: z.enum(['freelance', 'salaried']),
+  monthly_salary: z.string().optional(),
 });
 
 type InviteFormData = z.infer<typeof inviteSchema>;
@@ -64,8 +66,13 @@ export function InviteUserModal({
       email: '',
       name: '',
       role: lockedRole || 'client',
+      employment_type: 'freelance',
+      monthly_salary: '',
     },
   });
+
+  const selectedRole = form.watch('role');
+  const employmentType = form.watch('employment_type');
 
   const onSubmit = async (data: InviteFormData) => {
     if (!user) return;
@@ -108,7 +115,16 @@ export function InviteUserModal({
           full_name: data.name?.trim() ? data.name.trim() : null,
           role: data.role,
           invited_by: user.id,
-        })
+          metadata: data.role === 'editor'
+            ? {
+                employment_type: data.employment_type,
+                monthly_salary:
+                  data.employment_type === 'salaried' && data.monthly_salary
+                    ? data.monthly_salary.replace(/[^0-9.]/g, '')
+                    : null,
+              }
+            : {},
+        } as any)
         .select('id')
         .single();
 
@@ -238,6 +254,68 @@ export function InviteUserModal({
                   </FormItem>
                 )}
               />
+            )}
+
+            {selectedRole === 'editor' && (
+              <>
+                <FormField
+                  control={form.control}
+                  name="employment_type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-foreground">Compensation Mode</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="bg-surface-elevated border-border/50">
+                            <SelectValue placeholder="Select compensation type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="freelance">
+                            <div className="flex flex-col">
+                              <span>Freelance</span>
+                              <span className="text-xs text-muted-foreground">Paid per video/project</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="salaried">
+                            <div className="flex flex-col">
+                              <span>Salaried</span>
+                              <span className="text-xs text-muted-foreground">Fixed monthly rate + bonuses</span>
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {employmentType === 'salaried' && (
+                  <FormField
+                    control={form.control}
+                    name="monthly_salary"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-foreground">
+                          Monthly Base Salary <span className="text-muted-foreground">(optional)</span>
+                        </FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                            <Input
+                              type="text"
+                              placeholder="e.g., 3000"
+                              className="bg-surface-elevated border-border/50 pl-7"
+                              {...field}
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </>
             )}
 
             <div className="flex gap-3 pt-4">
