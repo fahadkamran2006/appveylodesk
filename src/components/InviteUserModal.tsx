@@ -66,8 +66,13 @@ export function InviteUserModal({
       email: '',
       name: '',
       role: lockedRole || 'client',
+      employment_type: 'freelance',
+      monthly_salary: '',
     },
   });
+
+  const selectedRole = form.watch('role');
+  const employmentType = form.watch('employment_type');
 
   const onSubmit = async (data: InviteFormData) => {
     if (!user) return;
