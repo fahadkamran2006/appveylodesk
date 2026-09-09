@@ -256,6 +256,68 @@ export function InviteUserModal({
               />
             )}
 
+            {selectedRole === 'editor' && (
+              <>
+                <FormField
+                  control={form.control}
+                  name="employment_type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-foreground">Compensation Mode</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="bg-surface-elevated border-border/50">
+                            <SelectValue placeholder="Select compensation type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="freelance">
+                            <div className="flex flex-col">
+                              <span>Freelance</span>
+                              <span className="text-xs text-muted-foreground">Paid per video/project</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="salaried">
+                            <div className="flex flex-col">
+                              <span>Salaried</span>
+                              <span className="text-xs text-muted-foreground">Fixed monthly rate + bonuses</span>
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {employmentType === 'salaried' && (
+                  <FormField
+                    control={form.control}
+                    name="monthly_salary"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-foreground">
+                          Monthly Base Salary <span className="text-muted-foreground">(optional)</span>
+                        </FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                            <Input
+                              type="text"
+                              placeholder="e.g., 3000"
+                              className="bg-surface-elevated border-border/50 pl-7"
+                              {...field}
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </>
+            )}
+
             <div className="flex gap-3 pt-4">
               <Button
                 type="button"
